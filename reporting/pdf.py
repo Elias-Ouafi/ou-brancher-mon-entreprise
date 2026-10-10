@@ -109,16 +109,16 @@ def _tableau(entetes: list[str], lignes: list[list], largeurs: list[float]) -> T
     return table
 
 
-def _kpis(cartes: list[tuple[str, str]]) -> Table:
+def _kpis(cartes: list[tuple[str, str]], par_ligne: int = 3) -> Table:
     """Bandeau d'indicateurs : valeur en gros, libellé dessous."""
     cellules = [
         [Paragraph(valeur, STYLES["kpi_valeur"]), Paragraph(libelle, STYLES["kpi_libelle"])]
         for valeur, libelle in cartes
     ]
-    par_ligne = 3
     lignes = [cellules[i : i + par_ligne] for i in range(0, len(cellules), par_ligne)]
     for ligne in lignes:
-        ligne.extend([[""]] * (par_ligne - len(ligne)))
+        # Une cellule vide, pas une liste : reportlab lirait une liste de flowables.
+        ligne.extend([""] * (par_ligne - len(ligne)))
     table = Table(lignes, colWidths=[LARGEUR / par_ligne] * par_ligne, hAlign="LEFT")
     table.setStyle(
         TableStyle(

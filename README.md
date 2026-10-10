@@ -31,8 +31,10 @@ dbt (`eco2mix`) gardent le nom de la source de données : ils désignent la donn
 > risque**, limites affichées à côté de chaque chiffre — une exigence autant méthodologique que
 > réglementaire (directive EmpCo sur les allégations environnementales).
 
-Un **rapport mensuel** (PDF ou Markdown) sur les pics de carbone et les créneaux Tempo existe
-déjà et sert de base au futur rapport d'implantation (voir
+Le diagnostic s'imprime en terminal ou s'exporte en **rapport d'implantation** PDF ou Markdown,
+graphiques compris — [exemple réel pour Lyon](docs/exemples/implantation_lyon.md)
+([PDF](docs/exemples/implantation_lyon.pdf)) — ou en JSON pour un autre outil. Un **rapport
+mensuel** sur les pics de carbone et les créneaux Tempo complète l'ensemble (voir
 [Rapport mensuel](#rapport-mensuel--pics-de-carbone-et-créneaux-tempo)).
 
 L'exigence technique est inchangée : ingestion idempotente, gestion explicite des changements
@@ -48,9 +50,9 @@ commande, l'adresse étant passée en argument :
 uv run python -m ingestion.cli diagnose --adresse "20 rue de la République, 69002 Lyon" --puissance 12
 ```
 
-La commande écrit le diagnostic dans le terminal ([exemple réel](#diagnostiquer-une-adresse)).
-Le rapport PDF ou Markdown par adresse (`--format pdf` / `--format md`), qui réutilisera le
-moteur du rapport mensuel existant, est la prochaine étape. C'est un choix assumé : le livrable est un pipeline de données et son interface en ligne de commande,
+La commande écrit le diagnostic dans le terminal ([exemple réel](#diagnostiquer-une-adresse)),
+ou, avec `--format pdf`, `md` ou `json`, un rapport d'implantation ou une sortie machine. C'est
+un choix assumé : le livrable est un pipeline de données et son interface en ligne de commande,
 pas une vitrine web.
 
 ---
@@ -133,7 +135,7 @@ load_*, dbt_build, contrôles et rapport passent par le pool duckdb_writer (1 sl
 | **Parquet** (pyarrow) | Zone bronze immuable, partitionnée par date d'ingestion | Format colonne typé, lisible par DuckDB aujourd'hui et par BigQuery demain |
 | **httpx** + **tenacity** | Appels HTTP, retry exponentiel, timeouts | `tenacity` évite d'écrire une boucle de retry à la main |
 | **pydantic-settings** | Configuration typée depuis l'environnement | Valide les réglages au démarrage plutôt qu'au premier appel |
-| **pytest** + **pytest-httpx** | 169 tests, aucun appel réseau réel | L'interception au niveau du transport garantit qu'aucun test ne sort |
+| **pytest** + **pytest-httpx** | 186 tests, aucun appel réseau réel | L'interception au niveau du transport garantit qu'aucun test ne sort |
 | **ruff** | Lint et format | Un seul outil pour les deux |
 | **matplotlib** + **reportlab** | Graphiques et PDF du rapport | Importés paresseusement : ils ne pèsent que sur la commande de rapport |
 
@@ -153,7 +155,7 @@ reste transposable à un moteur Spark sans réécriture du modèle si les volume
 
 ## État d'avancement
 
-*Mis à jour le 10 octobre 2026 — diagnostic par adresse opérationnel. Le 9 octobre : réorientation du projet vers le diagnostic d'implantation
+*Mis à jour le 10 octobre 2026 — diagnostic par adresse opérationnel, rapport PDF / Markdown / JSON. Le 9 octobre : réorientation du projet vers le diagnostic d'implantation
 (voir le [cadrage produit](docs/cadrage-besoins-entreprises.md), § 7 « Décision »).*
 
 **Objectif du MVP** : une adresse française en entrée, un diagnostic de contexte électrique et
@@ -171,8 +173,9 @@ un coût horaire de profil en sortie, produits par un pipeline qui tourne sans i
 | Trois DAGs Airflow (horaire, consolidation mensuelle, rapport à la demande) | Import et structure vérifiés en CI (Airflow 2.10) |
 | **Diagnostic par adresse** (`diagnose --adresse --puissance`) : pression industrielle, tension régionale, seuil de raccordement, limites | 33 tests ; exécuté sur des adresses réelles (Lyon, Fos-sur-Mer, Ajaccio) |
 | **Coût horaire d'un profil type** : bureau 36 kVA chiffré heure par heure sur la grille HP/HC non résidentielle officielle (CRE), carbone, gain d'un décalage vers les heures creuses | 8 tests ; chiffré sur février → septembre 2026 réels |
+| **Rapport d'implantation par adresse** (`diagnose --format pdf/md/json`) : mêmes blocs et limites que le terminal, trois graphiques de mise en perspective | 17 tests, dont les territoires sans donnée (outre-mer, Corse, commune sans site) ; [exemple réel commité](docs/exemples/implantation_lyon.pdf) |
 | Grilles tarifaires Tempo et HP/HC vérifiées sur les barèmes officiels de la CRE (délibérations n° 2026-06 et 2026-147) | Les 12 prix Tempo du seed retrouvés au dix-millième d'euro près depuis les prix HT |
-| Qualité | 169 tests pytest, ruff, CI GitHub Actions verte |
+| Qualité | 186 tests pytest, ruff, CI GitHub Actions verte |
 
 ### Pas encore validé en conditions réelles
 
@@ -193,10 +196,10 @@ Le socle technique est réutilisé tel quel ; ce qui change est le périmètre f
 | 3 | ~~**Géocodage d'adresse**~~ — **fait** (9 octobre 2026) : `ingestion/geocode.py`, commande `geocode --adresse`, 17 tests, vérifié contre la BAN réelle | ~~Une adresse résout son territoire, hors ligne en test~~ |
 | 4 | ~~**Gold : table de diagnostic par territoire**~~ — **fait** (10 octobre 2026) : référentiel commune → département → région, `fct_diagnostic_territoire` (une ligne par département, la commune en complément), seuils de raccordement, limites méthodologiques ; commande `diagnose`. *Mix régional* reporté avec `eco2mix-regional-cons-def` | ~~Une requête par code INSEE renvoie le diagnostic complet~~ |
 | 5 | ~~**Coût horaire sur profil**~~ — **fait** (10 octobre 2026) sur un profil type et l'option HP/HC, sans compte RTE ; grilles vérifiées sur les barèmes CRE. *Reste* : les autres profils et le TURPE détaillé pour les sites > 36 kVA | ~~Un profil donné est chiffré créneau par créneau, avec le gain d'un décalage~~ |
-| 6 | **Rapport d'implantation par adresse** (reprend le moteur du rapport mensuel) | Un PDF est produit pour une adresse saisie, limites méthodologiques affichées |
+| 6 | ~~**Rapport d'implantation par adresse**~~ — **fait** (10 octobre 2026) : `diagnose --format pdf/md/json`, styles du rapport mensuel réutilisés | ~~Un PDF est produit pour une adresse saisie, limites méthodologiques affichées~~ |
 | 7 | Fiabilité : alerte en cas d'échec d'une tâche, `main` protégée (CI obligatoire) | Un échec simulé déclenche l'alerte |
 | 8 | Exploitation sur 7 jours, puis chiffres clés restants | Le tableau des [chiffres clés](#chiffres-clés) est complet |
-| 9 | Vitrine : exemple de rapport et captures dans ce README | Le dépôt se comprend sans rien installer |
+| 9 | Vitrine : ~~exemple de rapport~~ (**fait**, [docs/exemples/](docs/exemples/)) et captures dans ce README | Le dépôt se comprend sans rien installer |
 
 **Écarté explicitement** (et pourquoi, cf. cadrage) : le prix moyen par adresse (péréquation
 tarifaire), l'intensité carbone régionale présentée comme opposable (pas de facteur ADEME
@@ -363,6 +366,28 @@ Ce que la sortie fait, et pourquoi :
 - **Pas de chiffre sans sa limite.** Chaque bloc est suivi de la limite lue dans
   `gold.limites_methodologiques`, et la capacité de raccordement, absente de l'open data,
   renvoie toujours vers l'étude RTE ou Enedis.
+
+#### Rapport d'implantation et sortie machine
+
+```bash
+uv run python -m ingestion.cli diagnose --adresse "20 rue de la République, 69002 Lyon" --puissance 12 --format pdf
+uv run python -m ingestion.cli diagnose --adresse "..." --format md                # graphiques en PNG à côté
+uv run python -m ingestion.cli diagnose --adresse "..." --format json > lyon.json  # sortie standard
+```
+
+Le fichier est écrit dans `data/reports/implantation_<code commune>_<adresse>.<format>`, ou
+au chemin donné par `--output`. Exemple commité : [Markdown](docs/exemples/implantation_lyon.md)
+et [PDF](docs/exemples/implantation_lyon.pdf).
+
+- **Même contenu que le terminal.** Les quatre blocs et leurs limites viennent d'une seule
+  fonction (`ingestion.diagnostic.sections`) : aucun format ne peut afficher un chiffre sans sa
+  limite, ni diverger des autres.
+- **Trois graphiques de mise en perspective**, lus dans la couche gold : les 15 départements à
+  plus forte pression industrielle (celui de l'adresse ajouté et surligné s'il est plus loin, ou
+  signalé « aucun site »), la couverture de chaque région, et la courbe journalière du profil
+  chiffré, heures creuses et part déplaçable en couleur.
+- **JSON** : les champs du diagnostic sous leurs noms Python, dates ISO, limites indexées par
+  indicateur — de quoi brancher l'outil sur un tableur ou un autre pipeline.
 
 ---
 
@@ -673,10 +698,11 @@ Le DAG, le client API et la normalisation restent inchangés.
 ou-brancher-mon-entreprise/
 ├── ingestion/              # clients API (ODRÉ, RTE), normalisation, warehouse, CLI
 │   └── tests/              # pytest — aucun appel réseau
-├── reporting/              # rapport mensuel PDF / Markdown (matplotlib + reportlab)
+├── reporting/              # rapports PDF / Markdown : mensuel et implantation (matplotlib + reportlab)
 ├── airflow/                # projet Astro (Airflow 2.10, Python 3.12)
 │   └── dags/               # ingestion horaire, consolidation mensuelle, rapport à la demande
 ├── dbt/                    # couches silver et gold (dbt-duckdb)
+├── docs/                   # cadrage, feuille de route, exemples/ : rapport d'implantation réel
 ├── infra/                  # à venir : Terraform GCP
 ├── data/                   # gitignoré — voir data/README.md
 └── .github/workflows/      # CI : ruff, pytest, import du DagBag
