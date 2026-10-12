@@ -128,3 +128,53 @@ def profil_journalier(diagnostic: Diagnostic, comparaisons: Comparaisons) -> byt
         frameon=False,
     )
     return _png(fig)
+
+
+def prix_tranche(diagnostic: Diagnostic, comparaisons: Comparaisons) -> bytes | None:
+    """Prix semestriel de la tranche depuis 2007, puis l'éventail des scénarios à 3 ans.
+
+    L'éventail part du prix des 12 derniers mois, placé au dernier semestre
+    publié : la zone colorée va du scénario bas au scénario haut, la médiane en
+    pointillés. Rien n'y est extrapolé : ce sont les variations passées de la tranche.
+    """
+    prix = diagnostic.prix
+    if prix is None or not comparaisons.historique_prix:
+        return None
+    dates = [d for d, _ in comparaisons.historique_prix]
+    valeurs = [v for _, v in comparaisons.historique_prix]
+
+    fig, ax = plt.subplots(figsize=(7.2, 2.8))
+    ax.plot(dates, valeurs, color=ICI, linewidth=1.4, marker="o", markersize=2.5,
+            label="prix constaté (Eurostat, HTVA)")  # fmt: skip
+    if comparaisons.scenarios_prix and prix.prix_3_ans_central_eur_kwh is not None:
+        depart = dates[-1]
+        horizons = [depart] + [
+            depart.replace(year=depart.year + h) for h, *_ in comparaisons.scenarios_prix
+        ]
+        reference = prix.prix_reference_eur_kwh
+        bas = [reference] + [b for _, b, _, _ in comparaisons.scenarios_prix]
+        centre = [reference] + [c for _, _, c, _ in comparaisons.scenarios_prix]
+        haut = [reference] + [t for _, _, _, t in comparaisons.scenarios_prix]
+        ax.fill_between(horizons, bas, haut, color=FLEXIBLE, alpha=0.18, linewidth=0,
+                        label="scénarios bas – haut (10e – 90e centile)")  # fmt: skip
+        ax.plot(horizons, centre, color=FLEXIBLE, linestyle="--", linewidth=1.2,
+                label="scénario central (médiane)")  # fmt: skip
+        # Point de départ : la moyenne des deux derniers semestres, pas le dernier seul.
+        ax.plot([depart], [reference], color=FLEXIBLE, marker="D", markersize=4,
+                linestyle="none", label="départ : moyenne des 12 derniers mois")  # fmt: skip
+    ax.annotate(
+        f"plus haut : {prix.prix_max_eur_kwh:.3f} €/kWh".replace(".", ","),
+        xy=(dates[valeurs.index(prix.prix_max_eur_kwh)], prix.prix_max_eur_kwh),
+        xytext=(6, 0),
+        textcoords="offset points",
+        va="center",
+        fontsize=7,
+        color=ENCRE,
+    )
+    ax.set_ylabel("€/kWh HTVA")
+    ax.set_ylim(bottom=0)
+    ax.set_title(
+        f"Tranche {prix.code_tranche} ({prix.libelle_tranche})", fontsize=9, color=ENCRE, loc="left"
+    )
+    ax.legend(loc="upper left", fontsize=7, frameon=False)
+    return _png(fig)

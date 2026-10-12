@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     #: API Adresse de la Géoplateforme (IGN). L'ancien point d'accès
     #: api-adresse.data.gouv.fr a été décommissionné fin janvier 2026.
     ban_base_url: str = "https://data.geopf.fr/geocodage"
+
+    #: API de diffusion d'Eurostat (JSON-stat), sans compte ni clé.
+    eurostat_base_url: str = "https://ec.europa.eu/eurostat/api/dissemination"
     rte_client_id: str | None = None
     rte_client_secret: SecretStr | None = None
 

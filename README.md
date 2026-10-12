@@ -5,7 +5,8 @@ projet restitue le contexte électrique du territoire — pression industrielle 
 réseau régional, mix et intensité carbone au pas 15 minutes — et chiffre le **coût horaire**
 d'un profil de consommation selon le calendrier **Tempo**.
 
-Les données viennent de **RTE** et de la plateforme **ODRÉ** (API Opendatasoft Explore v2.1).
+Les données viennent de **RTE**, de la plateforme **ODRÉ** (API Opendatasoft Explore v2.1)
+et d'**Eurostat** pour le prix de l'électricité payé par les entreprises.
 Elles sont organisées en **architecture médaillon** (bronze → silver → gold) dans **DuckDB**,
 transformées par **dbt** et orchestrées par **Airflow** (Astro CLI) — le tout **100 % en local**,
 sans aucun service cloud.
@@ -47,7 +48,7 @@ d'heure, quota d'API suivi et documenté, tests sans réseau, CI sur runner nu.
 commande, l'adresse étant passée en argument :
 
 ```bash
-uv run python -m ingestion.cli diagnose --adresse "20 rue de la République, 69002 Lyon" --puissance 12
+uv run python -m ingestion.cli diagnose --adresse "20 rue de la République, 69002 Lyon" --puissance 12 --conso 60000
 ```
 
 La commande écrit le diagnostic dans le terminal ([exemple réel](#diagnostiquer-une-adresse)),
@@ -63,6 +64,7 @@ pas une vitrine web.
 flowchart LR
     ODRE[("API ODRÉ<br/>national-tr · national-cons-def")]
     RTE[("API RTE<br/>calendrier Tempo")]
+    EUROSTAT[("API Eurostat<br/>prix entreprises nrg_pc_205")]
 
     subgraph BRONZE["Bronze — fidèle à la source (Python)"]
         direction TB
@@ -85,6 +87,7 @@ flowchart LR
 
     ODRE -->|"extract_odre.py<br/>transform.py"| PARQUET
     RTE -->|"extract_rte.py<br/>OAuth2"| PARQUET
+    EUROSTAT -->|"extract_eurostat.py<br/>JSON-stat"| PARQUET
     BTABLES --> STR
     MIX --> FCT
     STR --> FCT
@@ -135,7 +138,7 @@ load_*, dbt_build, contrôles et rapport passent par le pool duckdb_writer (1 sl
 | **Parquet** (pyarrow) | Zone bronze immuable, partitionnée par date d'ingestion | Format colonne typé, lisible par DuckDB aujourd'hui et par BigQuery demain |
 | **httpx** + **tenacity** | Appels HTTP, retry exponentiel, timeouts | `tenacity` évite d'écrire une boucle de retry à la main |
 | **pydantic-settings** | Configuration typée depuis l'environnement | Valide les réglages au démarrage plutôt qu'au premier appel |
-| **pytest** + **pytest-httpx** | 186 tests, aucun appel réseau réel | L'interception au niveau du transport garantit qu'aucun test ne sort |
+| **pytest** + **pytest-httpx** | 219 tests, aucun appel réseau réel | L'interception au niveau du transport garantit qu'aucun test ne sort |
 | **ruff** | Lint et format | Un seul outil pour les deux |
 | **matplotlib** + **reportlab** | Graphiques et PDF du rapport | Importés paresseusement : ils ne pèsent que sur la commande de rapport |
 
@@ -173,9 +176,10 @@ un coût horaire de profil en sortie, produits par un pipeline qui tourne sans i
 | Trois DAGs Airflow (horaire, consolidation mensuelle, rapport à la demande) | Import et structure vérifiés en CI (Airflow 2.10) |
 | **Diagnostic par adresse** (`diagnose --adresse --puissance`) : pression industrielle, tension régionale, seuil de raccordement, limites | 33 tests ; exécuté sur des adresses réelles (Lyon, Fos-sur-Mer, Ajaccio) |
 | **Coût horaire d'un profil type** : bureau 36 kVA chiffré heure par heure sur la grille HP/HC non résidentielle officielle (CRE), carbone, gain d'un décalage vers les heures creuses | 8 tests ; chiffré sur février → septembre 2026 réels |
-| **Rapport d'implantation par adresse** (`diagnose --format pdf/md/json`) : mêmes blocs et limites que le terminal, trois graphiques de mise en perspective | 17 tests, dont les territoires sans donnée (outre-mer, Corse, commune sans site) ; [exemple réel commité](docs/exemples/implantation_lyon.pdf) |
+| **Rapport d'implantation par adresse** (`diagnose --format pdf/md/json`) : mêmes blocs et limites que le terminal, quatre graphiques de mise en perspective | 17 tests, dont les territoires sans donnée (outre-mer, Corse, commune sans site) ; [exemple réel commité](docs/exemples/implantation_lyon.pdf) |
+| **Prix de l'électricité de l'entreprise** (`diagnose --conso`) : prix Eurostat de sa tranche sur 12 mois, repères depuis 2007, prix moyen des 3 prochaines années en trois scénarios tirés de l'historique | 33 tests ; série réelle chargée (494 valeurs, 1 appel), 7 tranches |
 | Grilles tarifaires Tempo et HP/HC vérifiées sur les barèmes officiels de la CRE (délibérations n° 2026-06 et 2026-147) | Les 12 prix Tempo du seed retrouvés au dix-millième d'euro près depuis les prix HT |
-| Qualité | 186 tests pytest, ruff, CI GitHub Actions verte |
+| Qualité | 219 tests pytest, ruff, CI GitHub Actions verte |
 
 ### Pas encore validé en conditions réelles
 
@@ -227,6 +231,7 @@ Un run complet à la main, sans Airflow — bronze, puis silver et gold :
 ```bash
 uv run python -m ingestion.cli ingest
 uv run python -m ingestion.cli consolidate
+uv run python -m ingestion.cli prix          # prix des entreprises (Eurostat)
 uv run dbt build --project-dir dbt --profiles-dir dbt
 ```
 
@@ -317,10 +322,10 @@ C'est exactement le genre d'approximation qu'un diagnostic doit montrer plutôt 
 
 ```bash
 uv run dbt build --project-dir dbt --profiles-dir dbt   # une fois, après chargement des jeux
-uv run python -m ingestion.cli diagnose --adresse "20 rue de la République, 69002 Lyon" --puissance 12
+uv run python -m ingestion.cli diagnose --adresse "20 rue de la République, 69002 Lyon" --puissance 12 --conso 60000
 ```
 
-Sortie réelle, le 10 octobre 2026 :
+Sortie réelle, le 12 octobre 2026 :
 
 ```
 DIAGNOSTIC D'IMPLANTATION — 20 Rue de la République 69002 Lyon
@@ -343,7 +348,14 @@ Commune Lyon (69123) · Rhône (69) · Auvergne-Rhône-Alpes (84)
    ↳ Limite : Indicatif : 1 kVA est assimilé à 1 kW. Le domaine de tension réel est fixé par le gestionnaire lors de l'étude de raccordement.
    ↳ Limite : La capacité de raccordement disponible pour la consommation n'est pas publiée en open data (Caparéseau ne couvre que l'injection). Seule une étude de raccordement RTE ou Enedis fait foi.
 
-4. Coût horaire d'un profil type (identique sur tout le territoire)
+4. Prix de l'électricité pour l'entreprise (identique sur tout le territoire)
+   Consommation 60 000 MWh/an → tranche IE (de 20 000 à 70 000 MWh par an), prix moyen constaté par Eurostat
+   12 derniers mois (S2 2025 – S1 2026) : 0,0916 €/kWh HTVA, dont 0,0079 €/kWh de taxes non récupérables → facture d'environ 5 500 000 € par an
+   Repères depuis S2 2007 : moyenne sur 5 ans 0,1122 €/kWh, plus bas 0,0553 (S2 2007), plus haut 0,1676 (S1 2023)
+   Prix moyen des 3 prochaines années, d'après les variations passées de la tranche : de 0,0780 à 0,1286 €/kWh, 0,0962 au centre → facture de 4 680 000 € à 7 710 000 € par an (5 770 000 € au centre)
+   ↳ Limite : Prix moyen national constaté pour la tranche, hors TVA et taxes récupérables : identique en tout point du territoire (péréquation), il ne dépend pas de l'adresse. C'est une moyenne déclarée par les fournisseurs : un contrat donné peut s'en écarter nettement selon sa date de signature, sa durée et le profil du site. Les scénarios à 3 ans ne sont pas une prévision : ils appliquent au prix des 12 derniers mois les variations observées dans le passé sur la même tranche (10e centile, médiane, 90e centile), crise de 2022-2023 comprise.
+
+5. Coût horaire d'un profil type (identique sur tout le territoire)
    Bureau tertiaire, 36 kVA, septembre 2026, option Heures Creuses du tarif bleu non résidentiel
    9 600 kWh, dont 15 % en heures creuses : 1 586 € HTVA, soit 0,1652 €/kWh ; 22 gCO₂/kWh en moyenne
    Décaler 528 kWh flexibles vers les heures creuses : 22 € économisés, mais 1,4 kgCO₂ émis en plus : les heures creuses de nuit sont plus carbonées que la mi-journée solaire
@@ -359,13 +371,44 @@ Ce que la sortie fait, et pourquoi :
 - **Millésime 2021, pas 2023.** Depuis 2022, ~40 % des IRIS sont masqués par le secret
   statistique : sur 2023, le Nord tomberait de 8,7 à 2,3 TWh et la Savoie de 3,8 à 0,9 TWh. Le
   millésime retenu est le dernier publié en entier, calculé par dbt, pas codé en dur.
-- **Le coût ne dépend pas de l'adresse, et la sortie le dit.** Le tarif est péréqué : le bloc 4
-  chiffre un profil type, le même partout. Le report vers les heures creuses fait gagner de
+- **Le prix ne dépend pas de l'adresse, et la sortie le dit.** Le tarif est péréqué : le bloc 4
+  donne le prix de la tranche de l'entreprise, le bloc 5 chiffre un profil type, les mêmes
+  partout. Le report vers les heures creuses fait gagner de
   l'argent, mais en été il **augmente** les émissions : la nuit est plus carbonée que la
   mi-journée solaire. Le diagnostic l'affiche au lieu de promettre un CO₂ évité.
 - **Pas de chiffre sans sa limite.** Chaque bloc est suivi de la limite lue dans
   `gold.limites_methodologiques`, et la capacité de raccordement, absente de l'open data,
   renvoie toujours vers l'étude RTE ou Enedis.
+
+#### Prix de l'électricité de l'entreprise (`--conso`)
+
+```bash
+uv run python -m ingestion.cli prix    # 1 appel Eurostat, sans compte, puis dbt build
+```
+
+Au-delà de 36 kVA, il n'existe plus de tarif réglementé et les contrats de fourniture sont
+confidentiels. La seule série publique, longue et officielle de prix **effectivement payés** par
+les entreprises françaises est celle d'**Eurostat** (`nrg_pc_205`) : un prix moyen semestriel,
+tout compris (énergie, acheminement, part fixe), hors TVA et taxes récupérables, par tranche de
+consommation annuelle (IA, moins de 20 MWh, à IG, 150 000 MWh et plus), depuis 2007.
+
+`--conso` (en MWh par an, lue sur la facture) place l'entreprise dans sa tranche. Le bloc 4
+donne alors :
+
+- **le prix des 12 derniers mois** (moyenne des deux derniers semestres) et la facture annuelle
+  qui en découle, arrondie à trois chiffres significatifs ;
+- **des repères** : moyenne sur 5 ans, plus bas et plus haut depuis 2007 ;
+- **le prix moyen des 3 prochaines années**, en trois scénarios **tirés de l'historique de la
+  tranche, sans hypothèse extérieure** : pour chaque horizon (1, 2, 3 ans), toutes les variations
+  observées depuis 2007 entre deux semestres de même saison ; le 10e centile, la médiane et le
+  90e centile sont appliqués au prix des 12 derniers mois.
+
+Ce n'est pas une prévision, et la sortie le dit. Deux conséquences assumées : la crise de
+2022-2023 fait partie de l'historique et élargit le scénario haut ; et, la tendance longue étant
+haussière, même le scénario bas est souvent en légère hausse alors que les prix baissent depuis
+le pic de 2023. Une tranche à l'historique trop court (moins de 10 variations observées) n'a pas
+de scénario. Le rapport ajoute le graphique de la tranche depuis 2007, prolongé par l'éventail
+des scénarios.
 
 #### Rapport d'implantation et sortie machine
 
@@ -379,13 +422,13 @@ Le fichier est écrit dans `data/reports/implantation_<code commune>_<adresse>.<
 au chemin donné par `--output`. Exemple commité : [Markdown](docs/exemples/implantation_lyon.md)
 et [PDF](docs/exemples/implantation_lyon.pdf).
 
-- **Même contenu que le terminal.** Les quatre blocs et leurs limites viennent d'une seule
+- **Même contenu que le terminal.** Les cinq blocs et leurs limites viennent d'une seule
   fonction (`ingestion.diagnostic.sections`) : aucun format ne peut afficher un chiffre sans sa
   limite, ni diverger des autres.
-- **Trois graphiques de mise en perspective**, lus dans la couche gold : les 15 départements à
-  plus forte pression industrielle (celui de l'adresse ajouté et surligné s'il est plus loin, ou
-  signalé « aucun site »), la couverture de chaque région, et la courbe journalière du profil
-  chiffré, heures creuses et part déplaçable en couleur.
+- **Quatre graphiques de mise en perspective** : les 15 départements à plus forte pression
+  industrielle (celui de l'adresse ajouté et surligné s'il est plus loin, ou signalé « aucun
+  site »), la couverture de chaque région, le prix de la tranche depuis 2007 avec ses
+  scénarios (avec `--conso`), et la courbe journalière du profil chiffré.
 - **JSON** : les champs du diagnostic sous leurs noms Python, dates ISO, limites indexées par
   indicateur — de quoi brancher l'outil sur un tableur ou un autre pipeline.
 

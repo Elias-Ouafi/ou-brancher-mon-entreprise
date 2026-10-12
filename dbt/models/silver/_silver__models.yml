@@ -166,3 +166,35 @@ models:
       - name: code_insee_region
         description: Nul si le libellé publié n'a pas été reconnu — le test l'interdit.
         data_tests: [unique, not_null]
+
+  - name: prix_entreprises
+    description: >
+      Prix semestriel de l'électricité des entreprises (Eurostat `nrg_pc_205`), une
+      ligne par semestre et par tranche, hors taxes et hors TVA côte à côte.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [semestre, tranche]
+    columns:
+      - name: rang_semestre
+        description: Numéro continu du semestre (`annee * 2 + numero - 1`).
+        data_tests: [not_null]
+      - name: numero_semestre
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [1, 2]
+                quote: false
+      - name: prix_htva_eur_kwh
+        data_tests:
+          - not_null
+          - accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1
+      - name: taxes_non_recuperables_eur_kwh
+        description: Écart entre le prix hors TVA et le prix hors taxes (accise, CTA…).
+        data_tests:
+          - accepted_range:
+              arguments:
+                min_value: 0

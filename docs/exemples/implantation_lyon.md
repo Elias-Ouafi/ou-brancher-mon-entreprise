@@ -2,7 +2,7 @@
 
 *Commune Lyon (69123) · Rhône (69) · Auvergne-Rhône-Alpes (84)*  
 
-Établi le 10/10/2026 à partir des données ouvertes de RTE et d'ODRÉ. Chaque indicateur est suivi de sa limite méthodologique.
+Établi le 12/10/2026 à partir des données ouvertes de RTE et d'ODRÉ. Chaque indicateur est suivi de sa limite méthodologique.
 
 ## 1. Pression industrielle locale (sites raccordés au réseau de transport, 2021)
 
@@ -34,7 +34,18 @@
 
 > **Limite.** La capacité de raccordement disponible pour la consommation n'est pas publiée en open data (Caparéseau ne couvre que l'injection). Seule une étude de raccordement RTE ou Enedis fait foi.
 
-## 4. Coût horaire d'un profil type (identique sur tout le territoire)
+## 4. Prix de l'électricité pour l'entreprise (identique sur tout le territoire)
+
+- Consommation 60 000 MWh/an → tranche IE (de 20 000 à 70 000 MWh par an), prix moyen constaté par Eurostat
+- 12 derniers mois (S2 2025 – S1 2026) : 0,0916 €/kWh HTVA, dont 0,0079 €/kWh de taxes non récupérables → facture d'environ 5 500 000 € par an
+- Repères depuis S2 2007 : moyenne sur 5 ans 0,1122 €/kWh, plus bas 0,0553 (S2 2007), plus haut 0,1676 (S1 2023)
+- Prix moyen des 3 prochaines années, d'après les variations passées de la tranche : de 0,0780 à 0,1286 €/kWh, 0,0962 au centre → facture de 4 680 000 € à 7 710 000 € par an (5 770 000 € au centre)
+
+> **Limite.** Prix moyen national constaté pour la tranche, hors TVA et taxes récupérables : identique en tout point du territoire (péréquation), il ne dépend pas de l'adresse. C'est une moyenne déclarée par les fournisseurs : un contrat donné peut s'en écarter nettement selon sa date de signature, sa durée et le profil du site. Les scénarios à 3 ans ne sont pas une prévision : ils appliquent au prix des 12 derniers mois les variations observées dans le passé sur la même tranche (10e centile, médiane, 90e centile), crise de 2022-2023 comprise.
+
+![Prix de la tranche depuis 2007 et scénarios à 3 ans](implantation_lyon_graphiques/prix_tranche.png)
+
+## 5. Coût horaire d'un profil type (identique sur tout le territoire)
 
 - Bureau tertiaire, 36 kVA, septembre 2026, option Heures Creuses du tarif bleu non résidentiel
 - 9 600 kWh, dont 15 % en heures creuses : 1 586 € HTVA, soit 0,1652 €/kWh ; 22 gCO₂/kWh en moyenne
@@ -49,4 +60,5 @@
 - Géocodage : Base Adresse Nationale (api-adresse.data.gouv.fr).
 - Pression industrielle : ODRÉ, consommation-annuelle-par-iris (RTE, GRTgaz, Teréga).
 - Tension régionale : ODRÉ, equilibre-regional-mensuel-prod-conso-brute et contraintes-regionales (RTE).
-- Prix : barèmes du tarif bleu non résidentiel, délibérations de la CRE n° 2026-06 et n° 2026-147. Carbone : éCO2mix national (RTE).
+- Prix de l'électricité des entreprises : Eurostat, nrg_pc_205 (semestriel, par tranche).
+- Profil type : barèmes du tarif bleu non résidentiel, délibérations de la CRE n° 2026-06 et n° 2026-147. Carbone : éCO2mix national (RTE).

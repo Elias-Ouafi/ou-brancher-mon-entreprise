@@ -78,3 +78,30 @@ sources:
         columns:
           - name: region
             data_tests: [unique, not_null]
+      - name: eurostat_nrg_pc_205
+        description: >
+          Prix semestriels de l'électricité des entreprises en France (Eurostat
+          `nrg_pc_205`), par tranche de consommation annuelle IA à IG, depuis 2007.
+          Deux niveaux de fiscalité : `X_TAX` (hors taxes) et `X_VAT` (hors TVA et taxes
+          récupérables, le prix réellement payé par une entreprise). Moyennes pondérées
+          déclarées par les fournisseurs : un prix de marché constaté, pas un tarif.
+        data_tests:
+          - unique_combination:
+              arguments:
+                columns: [semestre, tranche, fiscalite]
+        columns:
+          - name: semestre
+            description: Semestre tel que publié (« 2026-S1 »).
+            data_tests: [not_null]
+          - name: tranche
+            data_tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: ref('tranches_eurostat')
+                    field: tranche
+          - name: fiscalite
+            data_tests:
+              - accepted_values:
+                  arguments:
+                    values: [X_TAX, X_VAT]
