@@ -62,7 +62,15 @@ def _synthese(d: Diagnostic) -> list:
         cartes.append((d.seuil.domaine_tension, f"raccordement indicatif, {d.seuil.gestionnaire}"))
     else:
         cartes.append(("n.d.", "domaine de tension : préciser --puissance"))
-    if d.cout is not None:
+    if d.prix is not None:
+        cartes.append(
+            (
+                f"{_nombre(d.prix.prix_reference_eur_kwh, 4)} €/kWh",
+                f"prix HTVA des 12 derniers mois, tranche {d.prix.code_tranche},"
+                " identique sur tout le territoire",
+            )
+        )
+    elif d.cout is not None:
         cartes.append(
             (
                 f"{_nombre(d.cout.prix_moyen_htva_eur_kwh, 4)} €/kWh",

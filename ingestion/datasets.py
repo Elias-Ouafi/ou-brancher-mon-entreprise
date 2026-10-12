@@ -348,6 +348,19 @@ RTE_TEMPO = DatasetSpec(
     description="Calendrier Tempo RTE (couleur de chaque jour)",
 )
 
+#: Prix semestriels de l'électricité des entreprises en France, par tranche de
+#: consommation annuelle (Eurostat `nrg_pc_205`, API de diffusion, sans compte).
+#: Deux niveaux de fiscalité : `X_TAX` (hors taxes) et `X_VAT` (hors TVA et taxes
+#: récupérables, ce que paie réellement une entreprise). Leur écart isole les taxes
+#: non récupérables, dont l'accise, qui a varié fortement depuis 2022.
+EUROSTAT_PRIX_ENTREPRISES = DatasetSpec(
+    dataset_id="eurostat-nrg-pc-205",
+    keys=(period("semestre"), code("tranche"), code("fiscalite")),
+    attributes=(label("libelle_tranche"), label("statut")),
+    measures=measures("prix_eur_kwh"),
+    description="Prix de l'électricité des entreprises, France, par tranche (Eurostat)",
+)
+
 
 # ---------------------------------------------------------------------------
 # Registres
@@ -381,6 +394,7 @@ BRONZE_SPECS: tuple[DatasetSpec, ...] = (
     NATIONAL_TR,
     NATIONAL_CONS_DEF,
     RTE_TEMPO,
+    EUROSTAT_PRIX_ENTREPRISES,
     *TERRITORIAL_SPECS,
 )
 

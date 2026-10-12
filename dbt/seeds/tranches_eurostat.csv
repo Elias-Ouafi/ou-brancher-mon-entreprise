@@ -1,0 +1,8 @@
+tranche,code,libelle,conso_min_mwh,conso_max_mwh
+MWH_LT20,IA,moins de 20 MWh par an,0,20
+MWH20-499,IB,de 20 à 500 MWh par an,20,500
+MWH500-1999,IC,de 500 à 2 000 MWh par an,500,2000
+MWH2000-19999,ID,de 2 000 à 20 000 MWh par an,2000,20000
+MWH20000-69999,IE,de 20 000 à 70 000 MWh par an,20000,70000
+MWH70000-149999,IF,de 70 000 à 150 000 MWh par an,70000,150000
+MWH_GE150000,IG,150 000 MWh par an ou plus,150000,
