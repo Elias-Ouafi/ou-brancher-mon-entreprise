@@ -40,6 +40,10 @@
 
 > **Limite.** Repère de densité du réseau de transport, pas une capacité de raccordement : un poste proche peut être saturé. Les postes ne sont pas géolocalisés en open data, et environ 3 % d'entre eux n'ont pas de département publié.
 
+- Zone industrielle prioritaire de RTE la plus proche : Vallée de la chimie (P2), à 7 km (Saint-Fons) : capacité supplémentaire possible à partir de 2029, si les projets industriels de la zone se concrétisent ; ouvrages prévus : nouveau poste 225 kV « Rhôna » raccordé au poste 400 kV de Mions
+
+> **Limite.** Zones et années cibles du schéma décennal de RTE, sous réserve des autorisations administratives et, pour les zones P2, de la concrétisation des projets industriels ; les zones P3 sont de simples exemples, sans date. Distance à vol d'oiseau jusqu'à la commune de référence de la zone, pas jusqu'au poste. Être proche d'une zone ne donne aucun droit d'accès au réseau : la capacité est attribuée selon les procédures de RTE. Concerne surtout les raccordements au réseau de transport (au-delà de quelques dizaines de MW).
+
 > **Limite.** La capacité de raccordement disponible pour la consommation n'est pas publiée en open data (Caparéseau ne couvre que l'injection). Seule une étude de raccordement RTE ou Enedis fait foi.
 
 ## 4. Prix de l'électricité pour l'entreprise (identique sur tout le territoire)
