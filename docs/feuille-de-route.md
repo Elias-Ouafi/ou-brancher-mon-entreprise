@@ -76,6 +76,7 @@ dépôt, lance une commande et passe l'adresse en argument.
 |---|---|---|
 | 4.1 | ~~`diagnose --adresse`~~ — **fait** (10 oct.) | ~~Une adresse produit un diagnostic lisible~~ |
 | 4.2 | Options ~~`--puissance`~~ (**fait**, 10 oct.) et `--profil` | Le diagnostic s'adapte au projet décrit |
+| 4.6 | ~~Comparer plusieurs adresses (`compare`)~~ — **fait** (15 oct.) : tableau côte à côte sans classement, décision du jour ; un classement pondéré reste possible ensuite, avec des poids à exposer et justifier | ~~Une entreprise compare ses sites candidats~~ |
 | 4.3 | ~~`--format pdf` / `--format md` : rapport d'implantation par adresse~~ — **fait** (10 oct.) : mêmes sections que le terminal, trois graphiques (pression départementale, couverture régionale, profil journalier) | ~~Un document est produit, graphiques compris~~ |
 | 4.4 | `--format json` — **fait** (10 oct.), sur la sortie standard ou `--output`. Le CSV est écarté : le diagnostic est un objet imbriqué, pas une table | ~~Le diagnostic s'intègre à un autre outil~~ |
 | 4.5 | ~~Affichage systématique des limites méthodologiques~~ — **fait** en sortie terminal (10 oct.), testé | ~~Aucun indicateur n'apparaît sans sa limite~~ |
