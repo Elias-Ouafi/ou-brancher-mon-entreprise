@@ -1,0 +1,15 @@
+zone,priorite,annee_capacite,ouvrages,point_reference,code_insee_commune,latitude,longitude
+Dunkerque,P1,2028,"nouveau poste 400 kV dans le secteur de Grande-Synthe, poste de Flandre-Maritime au sud de Gravelines",Grande-Synthe,59271,51.0157,2.2938
+Le Havre,P1,2029,"nouveaux postes 400 kV dans les secteurs du Havre et de Port-Jérôme, doublement du réseau 400 kV vers Rougemontier",Le Havre,76351,49.4958,0.1312
+Fos-sur-Mer,P1,2029,"création ou extension de trois postes 400 kV, nouvelle ligne 2 x 400 kV depuis Jonquières-Saint-Vincent",Fos-sur-Mer,13039,43.4545,4.8979
+Vallée de la chimie,P2,2029,"nouveau poste 225 kV « Rhôna » raccordé au poste 400 kV de Mions",Saint-Fons,69199,45.6997,4.8514
+Plan-de-Campagne,P2,2029,"nouveau poste 225 kV dans le secteur de Plan-de-Campagne, raccordé au réseau 400 kV",Cabriès,13019,43.4530,5.3467
+Loire-Estuaire,P2,2030,"nouveau poste 225 kV dans le secteur de Donges, raccordé au réseau 400 kV",Donges,44052,47.3398,-2.0731
+Valenciennes,P2,2030,nouveau poste 400 kV au sud de Valenciennes,Valenciennes,59606,50.3620,3.5142
+Sud Alsace,P2,2030,"nouveau poste 400 kV dans le secteur d'Ottmarsheim, capacité accrue du poste 400 kV de Sierentz",Ottmarsheim,68253,47.7856,7.4930
+Saint-Avold,P2,2030,"capacité accrue du poste 400 kV de Saint-Avold, restructuration du réseau 400 kV à ses abords",Saint-Avold,57606,49.1279,6.7088
+Sud Île-de-France,P2,2030,créations et renforcements de plusieurs postes 225 kV en Essonne et en Seine-et-Marne,Évry-Courcouronnes,91228,48.6287,2.4313
+Sud Île-de-France,P2,2030,créations et renforcements de plusieurs postes 225 kV en Essonne et en Seine-et-Marne,Melun,77288,48.5421,2.6552
+Port-la-Nouvelle,P3,,infrastructures dédiées à l'accueil de plusieurs industries (exemple cité par RTE),Port-la-Nouvelle,11266,43.0225,3.0363
+Lacq,P3,,accélération possible du renforcement du réseau 400 kV (exemple cité par RTE),Lacq,64300,43.4250,-0.6003
+Châteauroux,P3,,accélération possible du renforcement du réseau 400 kV (exemple cité par RTE),Châteauroux,36044,46.8023,1.6903

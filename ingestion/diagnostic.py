@@ -99,6 +99,32 @@ order by rang_occurrence desc, rang_perennite desc, puissance_max_mw desc, nom_d
 limit $limite
 """
 
+#: Zones industrielles prioritaires de RTE, de la plus proche à la plus lointaine.
+#: Distance à vol d'oiseau (haversine, rayon terrestre de 6 371 km) jusqu'au point
+#: de référence le plus proche de la zone ; une zone peut en avoir plusieurs.
+_ZONES_SQL = """
+with distances as (
+    select
+        *,
+        2 * 6371 * asin(sqrt(
+            power(sin(radians(latitude - $latitude) / 2), 2)
+            + cos(radians($latitude)) * cos(radians(latitude))
+            * power(sin(radians(longitude - $longitude) / 2), 2)
+        )) as distance_km
+    from gold.zones_raccordement_rte
+)
+select
+    zone,
+    priorite,
+    annee_capacite,
+    ouvrages,
+    arg_min(point_reference, distance_km) as point_reference,
+    min(distance_km) as distance_km
+from distances
+group by zone, priorite, annee_capacite, ouvrages
+order by distance_km
+"""
+
 _PRIX_SQL = """
 select *
 from gold.fct_prix_entreprise_tranche
@@ -150,6 +176,18 @@ class CoutProfil:
     kwh_decales: float
     gain_decalage_eur: float
     co2_evite_kg: float
+
+
+@dataclass(frozen=True, slots=True)
+class ZoneRte:
+    """Zone industrielle où RTE renforce en priorité le réseau (SDDR 2025)."""
+
+    zone: str
+    priorite: str
+    annee_capacite: int | None
+    ouvrages: str
+    point_reference: str
+    distance_km: float
 
 
 @dataclass(frozen=True, slots=True)
@@ -253,6 +291,10 @@ class Diagnostic:
     nb_contraintes_departement: int
     nb_contraintes_frequentes_departement: int | None
     contraintes: list[ContrainteOuvrage]
+    #: Zone prioritaire RTE (P1 ou P2) la plus proche de l'adresse.
+    zone_rte: ZoneRte | None
+    #: Exemple de zone P3 cité par RTE, seulement s'il est plus proche que `zone_rte`.
+    zone_rte_p3: ZoneRte | None
     # Raccordement et limites
     seuil: Seuil | None
     #: Consommation annuelle déclarée (`--conso`), même sans prix publié pour sa tranche.
@@ -298,6 +340,7 @@ def lire_diagnostic(
             )
             seuil = _seuil(connection, puissance_mw) if puissance_mw is not None else None
             prix = _prix(connection, conso_mwh) if conso_mwh is not None else None
+            zone_rte, zone_rte_p3 = _zones_rte(connection, territoire)
             contraintes = [
                 ContrainteOuvrage(*ligne)
                 for ligne in connection.execute(
@@ -327,6 +370,8 @@ def lire_diagnostic(
         conso_mwh=conso_mwh,
         prix=prix,
         contraintes=contraintes,
+        zone_rte=zone_rte,
+        zone_rte_p3=zone_rte_p3,
         cout=None if cout_ligne is None else CoutProfil(**cout_ligne),
         limites=limites,
         **ligne,
@@ -530,6 +575,28 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
             f" (225 kV) et {d.nb_postes_htb3 or 0} en HTB3 (400 kV){projet}",
         )
         limite(s, "postes_rte")
+    if d.est_zni:
+        texte(
+            s,
+            "Zones industrielles prioritaires de RTE : aucune, le réseau de ce territoire n'est"
+            " pas exploité par RTE.",
+        )
+    elif d.zone_rte is not None:
+        z = d.zone_rte
+        texte(
+            s,
+            f"Zone industrielle prioritaire de RTE la plus proche : {z.zone} ({z.priorite}),"
+            f" {_distance(z.distance_km)} ({z.point_reference}) : {_calendrier_zone(z)} ;"
+            f" ouvrages prévus : {z.ouvrages}",
+        )
+        if (p3 := d.zone_rte_p3) is not None:
+            texte(
+                s,
+                f"Plus proche encore, {p3.zone} ({_distance(p3.distance_km)}) : exemple de zone"
+                " où RTE pourrait accélérer le réseau (P3), sans date et sous engagement"
+                " financier des industriels.",
+            )
+        limite(s, "zones_raccordement_rte")
     limite(s, "capacite_raccordement")
 
     # 4. Prix de l'électricité pour l'entreprise
@@ -768,6 +835,40 @@ def _controle_sur_le_passe(p: PrixEntreprise) -> str:
         " chevauchent : ce ne sont pas des essais indépendants. Leurs écarts font désormais"
         " partie des erreurs qui calibrent la fourchette affichée."
     )
+
+
+def _zones_rte(
+    connection: duckdb.DuckDBPyConnection, territoire: Territoire
+) -> tuple[ZoneRte | None, ZoneRte | None]:
+    """Zone P1 ou P2 la plus proche, et une zone P3 seulement si elle l'est davantage."""
+    zones = [
+        ZoneRte(*ligne)
+        for ligne in connection.execute(
+            _ZONES_SQL, {"latitude": territoire.latitude, "longitude": territoire.longitude}
+        ).fetchall()
+    ]
+    prioritaire = next((z for z in zones if z.priorite in ("P1", "P2")), None)
+    p3 = next((z for z in zones if z.priorite == "P3"), None)
+    if prioritaire is not None and p3 is not None and p3.distance_km >= prioritaire.distance_km:
+        p3 = None
+    return prioritaire, p3
+
+
+def _calendrier_zone(z: ZoneRte) -> str:
+    if z.priorite == "P1":
+        return (
+            f"capacité supplémentaire annoncée à partir de {z.annee_capacite}, travaux lancés"
+            " dès l'obtention des autorisations"
+        )
+    return (
+        f"capacité supplémentaire possible à partir de {z.annee_capacite}, si les projets"
+        " industriels de la zone se concrétisent"
+    )
+
+
+def _distance(km: float) -> str:
+    """« à 9 km » ; en deçà d'un kilomètre, la précision du point de référence ne suit pas."""
+    return "à moins d'un km" if km < 1 else f"à {_nombre(km)} km"
 
 
 def _contrainte(c: ContrainteOuvrage) -> str:

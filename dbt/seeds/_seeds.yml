@@ -208,3 +208,50 @@ seeds:
         data_tests: [unique, not_null]
       - name: conso_min_mwh
         data_tests: [unique, not_null]
+
+  - name: zones_raccordement_rte
+    description: >
+      Zones industrielles où RTE renforce en priorité le réseau de transport pour accueillir
+      de nouvelles consommations, d'après le SDDR 2025 (fiche 5) : P1, mise à disposition de
+      la capacité à partir de l'année indiquée, travaux lancés dès les autorisations ; P2,
+      travaux conditionnés à la concrétisation des projets industriels ; P3, exemples
+      d'accélération possible cités par RTE, sans date et sous engagement financier des
+      industriels. Chaque zone est repérée par la commune du poste ou du secteur cité par RTE
+      (coordonnées du centre de la commune, geo.api.gouv.fr) ; « Sud Île-de-France », décrite
+      par RTE comme l'Essonne et la Seine-et-Marne, a deux points (préfectures). Document daté
+      de février 2025 : à mettre à jour à chaque nouvelle édition du SDDR.
+    config:
+      column_types:
+        annee_capacite: integer
+        code_insee_commune: varchar
+        latitude: double
+        longitude: double
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [zone, point_reference]
+    columns:
+      - name: priorite
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [P1, P2, P3]
+      - name: annee_capacite
+        description: Nulle pour les zones P3, renseignée pour P1 et P2.
+        data_tests:
+          - not_null:
+              config:
+                where: "priorite in ('P1', 'P2')"
+      - name: latitude
+        data_tests:
+          - accepted_range:
+              arguments:
+                min_value: 41
+                max_value: 51.5
+      - name: longitude
+        data_tests:
+          - accepted_range:
+              arguments:
+                min_value: -5.5
+                max_value: 10

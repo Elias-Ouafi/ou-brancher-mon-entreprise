@@ -139,7 +139,7 @@ load_*, dbt_build, contrôles et rapport passent par le pool duckdb_writer (1 sl
 | **Parquet** (pyarrow) | Zone bronze immuable, partitionnée par date d'ingestion | Format colonne typé, lisible par DuckDB aujourd'hui et par BigQuery demain |
 | **httpx** + **tenacity** | Appels HTTP, retry exponentiel, timeouts | `tenacity` évite d'écrire une boucle de retry à la main |
 | **pydantic-settings** | Configuration typée depuis l'environnement | Valide les réglages au démarrage plutôt qu'au premier appel |
-| **pytest** + **pytest-httpx** | 264 tests, aucun appel réseau réel | L'interception au niveau du transport garantit qu'aucun test ne sort |
+| **pytest** + **pytest-httpx** | 273 tests, aucun appel réseau réel | L'interception au niveau du transport garantit qu'aucun test ne sort |
 | **ruff** | Lint et format | Un seul outil pour les deux |
 | **matplotlib** + **reportlab** | Graphiques et PDF du rapport | Importés paresseusement : ils ne pèsent que sur la commande de rapport |
 
@@ -181,8 +181,9 @@ un coût horaire de profil en sortie, produits par un pipeline qui tourne sans i
 | **Prix de l'électricité de l'entreprise** (`diagnose --conso`) : prix Eurostat de sa tranche sur 12 mois, repères depuis 2007, prix moyen des 3 prochaines années en trois scénarios tirés de l'historique et **calibrés sur les erreurs passées de la méthode**, contrôle sur le passé affiché | 40 tests, dont chaque éventail passé et le backtest recalculés indépendamment ; série réelle chargée (494 valeurs, 1 appel), 7 tranches |
 | **Risques naturels et technologiques à l'adresse** (Géorisques) : statut à l'adresse distingué du statut communal, repli sur la commune si le rapport ne répond pas, diagnostic jamais bloqué | 25 tests sur de vraies réponses de Géorisques (Lyon, Ajaccio), coupures et repli simulés ; exécuté sur Lyon et Ajaccio réels |
 | **Réseau de transport autour du site** : contraintes prospectives RTE (3 à 5 ans) et postes RTE par domaine de tension, rattachés au département par les codes de postes | 13 tests (clé à postes optionnels, rattachement, liaisons interdépartementales, Corse) ; 407 contraintes et 5 042 postes réels chargés |
+| **Zone industrielle prioritaire de RTE la plus proche** (SDDR 2025) : distance, priorité P1 ou P2, année de capacité et ouvrages prévus | 9 tests (zone à plusieurs points, P3 plus proche, Corse) ; exécuté sur Lyon, Lille, Poitiers, Montpellier, Ajaccio |
 | Grilles tarifaires Tempo et HP/HC vérifiées sur les barèmes officiels de la CRE (délibérations n° 2026-06 et 2026-147) | Les 12 prix Tempo du seed retrouvés au dix-millième d'euro près depuis les prix HT |
-| Qualité | 264 tests pytest, ruff, CI GitHub Actions verte |
+| Qualité | 273 tests pytest, ruff, CI GitHub Actions verte |
 
 ### Pas encore validé en conditions réelles
 
@@ -353,6 +354,8 @@ Commune Lyon (69123) · Rhône (69) · Auvergne-Rhône-Alpes (84)
    ↳ Limite : Indicatif : 1 kVA est assimilé à 1 kW. Le domaine de tension réel est fixé par le gestionnaire lors de l'étude de raccordement.
    Postes RTE en exploitation dans le département : 91, dont 64 en HTB1 (63 à 150 kV), 19 en HTB2 (225 kV) et 3 en HTB3 (400 kV)
    ↳ Limite : Repère de densité du réseau de transport, pas une capacité de raccordement : un poste proche peut être saturé. Les postes ne sont pas géolocalisés en open data, et environ 3 % d'entre eux n'ont pas de département publié.
+   Zone industrielle prioritaire de RTE la plus proche : Vallée de la chimie (P2), à 7 km (Saint-Fons) : capacité supplémentaire possible à partir de 2029, si les projets industriels de la zone se concrétisent ; ouvrages prévus : nouveau poste 225 kV « Rhôna » raccordé au poste 400 kV de Mions
+   ↳ Limite : Zones et années cibles du schéma décennal de RTE, sous réserve des autorisations administratives et, pour les zones P2, de la concrétisation des projets industriels ; les zones P3 sont de simples exemples, sans date. Distance à vol d'oiseau jusqu'à la commune de référence de la zone, pas jusqu'au poste. Être proche d'une zone ne donne aucun droit d'accès au réseau : la capacité est attribuée selon les procédures de RTE. Concerne surtout les raccordements au réseau de transport (au-delà de quelques dizaines de MW).
    ↳ Limite : La capacité de raccordement disponible pour la consommation n'est pas publiée en open data (Caparéseau ne couvre que l'injection). Seule une étude de raccordement RTE ou Enedis fait foi.
 
 4. Prix de l'électricité pour l'entreprise (identique sur tout le territoire)
@@ -480,6 +483,26 @@ En Corse et outre-mer, le réseau n'est pas exploité par RTE : le diagnostic le
 **Limites affichées** : ce sont des contraintes d'**injection**, indicatives et non engageantes,
 qui ne mesurent pas la capacité disponible pour un consommateur ; et un poste proche peut être
 saturé. Seule une étude de raccordement fait foi.
+
+#### Zones industrielles prioritaires de RTE (SDDR 2025)
+
+Pour un gros projet, la question n'est pas seulement « à quel réseau me raccorder ? » mais
+« où la puissance sera-t-elle disponible, et quand ? ». Le schéma décennal de RTE (SDDR 2025,
+fiche 5) y répond pour dix zones où le réseau est renforcé en priorité :
+
+- **P1** (Dunkerque, Le Havre, Fos-sur-Mer) : capacité annoncée à partir de 2028-2029, travaux
+  lancés dès l'obtention des autorisations ;
+- **P2** (Vallée de la chimie, Plan-de-Campagne, Loire-Estuaire, Valenciennes, Sud Alsace,
+  Saint-Avold, Sud Île-de-France) : capacité possible en 2029-2030, travaux lancés seulement si
+  les projets industriels de la zone se concrétisent ;
+- **P3** : exemples cités par RTE (Port-la-Nouvelle, Lacq, Châteauroux), sans date, sous
+  engagement financier des industriels.
+
+Le bloc 3 donne la zone P1 ou P2 la plus proche de l'adresse, sa distance à vol d'oiseau, son
+calendrier et les ouvrages prévus ; une zone P3 n'est citée que si elle est plus proche encore.
+Les zones sont dans un seed (`zones_raccordement_rte`), chacune repérée par la commune du poste
+ou du secteur cité par RTE : document daté, à mettre à jour à chaque édition du SDDR. La limite
+affichée rappelle qu'être proche d'une zone ne donne aucun droit d'accès au réseau.
 
 #### Risques naturels et technologiques à l'adresse (Géorisques)
 
