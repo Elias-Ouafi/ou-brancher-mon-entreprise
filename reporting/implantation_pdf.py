@@ -103,7 +103,8 @@ def rendre(
     blocs += [Paragraph(_pdf(ligne), STYLES["texte"]) for ligne in entete(diagnostic)]
     blocs.append(
         Paragraph(
-            f"Établi le {now:%d/%m/%Y} à partir des données ouvertes de RTE et d'ODRÉ. Chaque"
+            f"Établi le {now:%d/%m/%Y} à partir de données publiques ouvertes (RTE, ODRÉ, Eurostat,"
+            " Géorisques). Chaque"
             " indicateur est suivi de sa limite méthodologique.",
             STYLES["note"],
         )

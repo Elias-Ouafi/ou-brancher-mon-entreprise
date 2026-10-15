@@ -52,6 +52,7 @@ dépôt, lance une commande et passe l'adresse en argument.
 | 2.4 | `fct_mix_regional` : mix et parts bas-carbone par région, au pas 15 min | Série régionale exploitable |
 | 2.5 | ~~`fct_diagnostic_territoire`~~ — **fait** (10 oct.), **une ligne par département** et non par commune : aucun jeu ouvert ne liste les 35 000 communes, et seules ~1 300 ont un site. La commune s'ajoute par jointure à la lecture | ~~Un seul `SELECT` produit tout le diagnostic~~ |
 | 2.6 | ~~Limites méthodologiques~~ — **fait** (10 oct.) : seed `limites_methodologiques` | ~~Chaque chiffre du rapport peut citer sa limite~~ |
+| 2.7 | ~~Risques naturels et technologiques à l'adresse~~ — **fait** (15 oct.) : API Géorisques, statut à l'adresse distingué du statut communal ; repli sur la commune (GASPAR, zonage sismique) car le rapport à l'adresse coupe souvent les connexions ; `--sans-risques` | ~~Chaque diagnostic dit à quels risques l'adresse est exposée~~ |
 
 ### Lot 3 — Coût horaire d'un profil
 
