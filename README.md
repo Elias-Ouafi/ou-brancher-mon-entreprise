@@ -139,7 +139,7 @@ load_*, dbt_build, contrôles et rapport passent par le pool duckdb_writer (1 sl
 | **Parquet** (pyarrow) | Zone bronze immuable, partitionnée par date d'ingestion | Format colonne typé, lisible par DuckDB aujourd'hui et par BigQuery demain |
 | **httpx** + **tenacity** | Appels HTTP, retry exponentiel, timeouts | `tenacity` évite d'écrire une boucle de retry à la main |
 | **pydantic-settings** | Configuration typée depuis l'environnement | Valide les réglages au démarrage plutôt qu'au premier appel |
-| **pytest** + **pytest-httpx** | 273 tests, aucun appel réseau réel | L'interception au niveau du transport garantit qu'aucun test ne sort |
+| **pytest** + **pytest-httpx** | 285 tests, aucun appel réseau réel | L'interception au niveau du transport garantit qu'aucun test ne sort |
 | **ruff** | Lint et format | Un seul outil pour les deux |
 | **matplotlib** + **reportlab** | Graphiques et PDF du rapport | Importés paresseusement : ils ne pèsent que sur la commande de rapport |
 
@@ -182,8 +182,9 @@ un coût horaire de profil en sortie, produits par un pipeline qui tourne sans i
 | **Risques naturels et technologiques à l'adresse** (Géorisques) : statut à l'adresse distingué du statut communal, repli sur la commune si le rapport ne répond pas, diagnostic jamais bloqué | 25 tests sur de vraies réponses de Géorisques (Lyon, Ajaccio), coupures et repli simulés ; exécuté sur Lyon et Ajaccio réels |
 | **Réseau de transport autour du site** : contraintes prospectives RTE (3 à 5 ans) et postes RTE par domaine de tension, rattachés au département par les codes de postes | 13 tests (clé à postes optionnels, rattachement, liaisons interdépartementales, Corse) ; 407 contraintes et 5 042 postes réels chargés |
 | **Zone industrielle prioritaire de RTE la plus proche** (SDDR 2025) : distance, priorité P1 ou P2, année de capacité et ouvrages prévus | 9 tests (zone à plusieurs points, P3 plus proche, Corse) ; exécuté sur Lyon, Lille, Poitiers, Montpellier, Ajaccio |
+| **Comparaison d'adresses** (`compare`) : 2 à 6 adresses côte à côte, sans classement ; communs et limites donnés une fois ; texte, Markdown, CSV, JSON | 12 tests ; exécuté sur Lyon, Lille et Poitiers réels |
 | Grilles tarifaires Tempo et HP/HC vérifiées sur les barèmes officiels de la CRE (délibérations n° 2026-06 et 2026-147) | Les 12 prix Tempo du seed retrouvés au dix-millième d'euro près depuis les prix HT |
-| Qualité | 273 tests pytest, ruff, CI GitHub Actions verte |
+| Qualité | 285 tests pytest, ruff, CI GitHub Actions verte |
 
 ### Pas encore validé en conditions réelles
 
@@ -550,6 +551,30 @@ et [PDF](docs/exemples/implantation_lyon.pdf).
   scénarios (avec `--conso`), et la courbe journalière du profil chiffré.
 - **JSON** : les champs du diagnostic sous leurs noms Python, dates ISO, limites indexées par
   indicateur — de quoi brancher l'outil sur un tableur ou un autre pipeline.
+
+---
+
+### Comparer plusieurs adresses
+
+```bash
+uv run python -m ingestion.cli compare --adresse "20 rue de la République, 69002 Lyon" \
+    --adresse "1 place du Général de Gaulle, Lille" --adresse "1 place du Maréchal Leclerc, Poitiers" \
+    --puissance 12 --conso 60000                      # tableau dans le terminal
+uv run python -m ingestion.cli compare --adresse "..." --adresse "..." --format csv --output sites.csv
+```
+
+De deux à six adresses, **côte à côte et sans classement** : une ligne par indicateur qui
+dépend de l'adresse (territoire, qualité du géocodage, pression industrielle, couverture
+régionale, contraintes et postes RTE, zone prioritaire RTE, risques à l'adresse). Ce qui ne
+dépend pas de l'adresse — niveau de tension selon la puissance, prix de la tranche, coût du
+profil type — est donné une seule fois sous le tableau. Les limites de tous les indicateurs
+sont listées à la fin, une fois chacune.
+
+Pas de note ni de verdict : pondérer un risque d'inondation contre une distance à un poste est
+un choix de l'entreprise, pas une donnée. Formats : texte, Markdown, CSV (avec BOM, pour Excel)
+et JSON. Exemple réel commité : [Lyon, Lille, Poitiers](docs/exemples/comparaison_lyon_lille_poitiers.md)
+— deux adresses avec le rapport Géorisques à l'adresse, une avec le repli communal, comme
+l'indique le tableau.
 
 ---
 
