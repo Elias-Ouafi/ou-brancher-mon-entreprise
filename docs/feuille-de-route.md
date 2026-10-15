@@ -1,170 +1,54 @@
 # Feuille de route
 
-> Établie le 9 octobre 2026, après la réorientation du projet vers le diagnostic
-> d'implantation électrique par adresse (voir
-> [cadrage-besoins-entreprises.md](cadrage-besoins-entreprises.md)).
->
-> Deux parties : **A.** le projet complet, lot par lot. **B.** le MVP, dans
-> l'ordre, en coupant tout ce qui n'est pas indispensable à la démonstration.
+> Mise à jour le 15 octobre 2026. Périmètre : une commande, pas d'application ; chaque
+> indicateur avec sa limite. Pourquoi ce périmètre : [cadrage](cadrage-besoins-entreprises.md).
 
-**Rappel du périmètre** : aucun site, aucune application. L'utilisateur clone le
-dépôt, lance une commande et passe l'adresse en argument.
+## Fait
 
----
-
-## Partie A — Le projet complet
-
-### Lot 0 — Socle technique · **fait**
-
-| # | Étape | État |
-|---|---|---|
-| 0.1 | Client API ODRÉ : retry, timeout, quota compté et quota serveur relevé | fait |
-| 0.2 | Normalisation UTC avec gestion des deux changements d'heure | fait |
-| 0.3 | Architecture médaillon : bronze Python, silver et gold dbt-duckdb | fait |
-| 0.4 | Interface `WarehouseLoader` + `DuckDBLoader`, MERGE idempotent | fait |
-| 0.5 | Clé de MERGE **composite** et colonnes typées par nature | fait (9 oct.) |
-| 0.6 | Extraction intégrale pour les jeux sans dimension temporelle | fait (9 oct.) |
-| 0.7 | Correction du BOM dans les exports CSV + backfill de réparation | fait (9 oct.) |
-| 0.8 | Géocodage BAN : `geocode --adresse` | fait (9 oct.) |
-| 0.9 | Trois DAGs Airflow, CI (ruff, pytest, import DagBag) | fait, Airflow jamais exécuté |
-| 0.10 | Rapport mensuel PDF et Markdown | fait, sans prix réels |
-
-### Lot 1 — Données territoriales
-
-| # | Étape | Fini quand | Dépend de |
-|---|---|---|---|
-| 1.1 | ~~Déclarer les sources dbt des jeux territoriaux~~ — **fait** (9 oct.), 8 tests de source ajoutés | ~~`dbt build` passe~~ 74/74 verts | — |
-| 1.2 | ~~Charger `consommation-annuelle-par-iris`~~ — **fait** (9 oct.) : 17 656 lignes après dédoublonnage, 2012→2023, 1 523 communes | ~~La table bronze est peuplée~~ | 1.1 |
-| 1.3 | ~~Charger `equilibre-regional-mensuel` et `contraintes-regionales`~~ — **fait** (9 oct.) : 1 872 et 12 lignes | ~~Tables bronze peuplées~~ | 1.1 |
-| 1.4 | ~~Ajouter les trois specs à `BRONZE_SPECS`~~ — **fait** (9 oct.) | ~~Les tables existent dès le premier run~~ | 1.1 |
-| 1.5 | Charger `eco2mix-regional-cons-def` (2,86 M lignes, 1 appel export) | Série régionale au pas 15 min disponible | 1.1 |
-| 1.6 | ~~Référentiel territoires : commune → département → région~~ — **fait** (10 oct.) : seeds `dim_region`, `dim_departement`, macro `code_departement` | ~~Un `code_insee_commune` résout sa hiérarchie sans appel réseau~~ | — |
-| 1.7 | ~~Silver : normaliser les noms de région et joindre **par code INSEE**~~ — **fait** (10 oct.), plus trois réparations découvertes sur les données réelles : codes IRIS tronqués à 8 caractères, doublons vides, communes non publiées | ~~Les trois jeux se joignent sans perte~~ | 1.2, 1.3, 1.6 |
-| 1.8 | ~~Tests dbt sur les nouvelles tables silver~~ — **fait** (10 oct.) : 134 tests verts sur données réelles, dont la conformité de la hiérarchie aux codes publiés | ~~Tests verts sur données réelles~~ | 1.7 |
-
-### Lot 2 — Couche de diagnostic (gold)
-
-| # | Étape | Fini quand |
-|---|---|---|
-| 2.1 | ~~`fct_pression_industrielle_commune` et `_departement`~~ — **fait** (10 oct.), millésime = dernière année sans secret statistique (2021) | ~~Une requête par code INSEE renvoie la pression locale~~ |
-| 2.2 | ~~`fct_tension_reseau_region`~~ — **fait** (10 oct.) : couverture sur 12 mois glissants, rang de dépendance, contraintes d'évacuation | ~~Les régions se classent par tension~~ |
-| 2.3 | ~~Seuils de raccordement~~ — **fait** (10 oct.) : seed `seuils_raccordement` (BT, HTA, zone grise 20–40 MW, HTB) | ~~Une puissance de projet renvoie le gestionnaire et le niveau de tension~~ |
-| 2.4 | `fct_mix_regional` : mix et parts bas-carbone par région, au pas 15 min | Série régionale exploitable |
-| 2.5 | ~~`fct_diagnostic_territoire`~~ — **fait** (10 oct.), **une ligne par département** et non par commune : aucun jeu ouvert ne liste les 35 000 communes, et seules ~1 300 ont un site. La commune s'ajoute par jointure à la lecture | ~~Un seul `SELECT` produit tout le diagnostic~~ |
-| 2.6 | ~~Limites méthodologiques~~ — **fait** (10 oct.) : seed `limites_methodologiques` | ~~Chaque chiffre du rapport peut citer sa limite~~ |
-| 2.7 | ~~Risques naturels et technologiques à l'adresse~~ — **fait** (15 oct.) : API Géorisques, statut à l'adresse distingué du statut communal ; repli sur la commune (GASPAR, zonage sismique) car le rapport à l'adresse coupe souvent les connexions ; `--sans-risques` | ~~Chaque diagnostic dit à quels risques l'adresse est exposée~~ |
-| 2.8 | ~~Contraintes prospectives et postes RTE autour du site~~ — **fait** (15 oct.) : jeux ODRÉ `contraintes-region` et `postes-electriques-rte`, à la maille du département (ni ouvrages ni postes géolocalisés en open data), rattachement par les codes de postes | ~~Le diagnostic situe le site dans son réseau de transport~~ |
-| 2.9 | ~~Zone industrielle prioritaire de RTE la plus proche~~ — **fait** (15 oct.), première priorité de la revue des besoins : seed des zones P1, P2 et P3 du SDDR 2025, distance à vol d'oiseau, calendrier et condition de chaque zone | ~~Le diagnostic dit où la puissance sera disponible, et quand~~ |
-| 2.10 | ~~Site industriel clé en main le plus proche~~ — **fait** (15 oct.) : liste ANCT/DGE de 55 sites (data.gouv.fr), seed repéré par commune, recherche limitée au même territoire (métropole, ou département pour la Corse et l'outre-mer) | ~~Le diagnostic signale le foncier industriel labellisé le plus proche~~ |
-
-### Lot 3 — Coût horaire d'un profil
-
-| # | Étape | Fini quand | Dépend de |
-|---|---|---|---|
-| 3.1 | Seed `profils_consommation` : courbes types (tertiaire, industriel 3×8, data center, froid alimentaire) — **amorcé** (10 oct.) : un profil illustratif, bureau 36 kVA | Quatre profils sélectionnables | — |
-| 3.2 | ~~Vérifier la grille Tempo sur source officielle~~ — **fait** (10 oct.) : les 12 prix recalculés depuis les barèmes HT de la CRE (TTC = (HT + accise) × 1,20) | ~~`tarifs_tempo.csv` sourcé et daté~~ | — |
-| 3.3 | Seed `turpe` : barèmes TURPE 7 par domaine de tension (CRE, période août 2025 → juillet 2029) — **plus nécessaire au prix moyen** depuis 3.7 ; ne servirait qu'à décomposer une facture ou à chiffrer un profil horaire au-delà de 36 kVA | Composantes fixes et variables par tension | — |
-| 3.4 | Identifiants API RTE Tempo (compte `data.rte-france.com`) | Le calendrier Tempo se charge sur données réelles | **action utilisateur** |
-| 3.5 | ~~`fct_cout_horaire_profil`~~ — **fait** (10 oct.) sur l'option HP/HC du tarif bleu non résidentiel (fourniture et TURPE inclus dans le TRV, plus l'accise, en € HTVA) | ~~Un profil est chiffré sur un mois~~ |
-| 3.7 | ~~Prix moyen de l'électricité par tranche de consommation~~ — **fait** (12 oct.) : Eurostat `nrg_pc_205` (France, 7 tranches, depuis 2007), `diagnose --conso`. Prix des 12 derniers mois, repères historiques, prix moyen des 3 prochaines années en scénarios bas / central / haut tirés des variations passées. Décision du 12 octobre : **prix fixes et historiques, pas de prix horaire** | ~~Une entreprise connaît le prix moyen de sa tranche pour les années à venir~~ | — |
-| 3.8 | ~~Contrôler les scénarios de prix sur le passé~~ — **fait** (15 oct.) : backtest de la méthode à chaque semestre depuis 2015. Constat : l'éventail 10e–90e centile n'encadre le prix réel que 3 à 9 fois sur 17 selon la tranche (80 % attendus), surtout dépassé par le haut. Le taux est affiché sous les scénarios | ~~La fiabilité passée des scénarios est mesurée et affichée~~ | 3.7 |
-| 3.9 | ~~Calibrer la fourchette sur les erreurs passées de la méthode~~ — **fait** (15 oct., décision du jour : option « erreurs passées ») : central brut tiré des variations, bornes tirées des écarts passés entre prix réel et central. Fourchette plus large et moins orientée à la hausse ; contrôle en conditions réelles possible sur 8 périodes seulement (2019-2023), toutes à cheval sur la crise | ~~La fourchette intègre ce que la méthode a déjà manqué~~ | 3.8 |
-| 3.6 | ~~Gain de décalage~~ — **fait** (10 oct.) dans `fct_cout_mensuel_profil` : report de la part flexible vers les heures creuses du jour. Constat : en été, ce report **augmente** les émissions | Le meilleur créneau de décalage est identifié | 3.5 |
-
-### Lot 4 — Restitution en ligne de commande
-
-| # | Étape | Fini quand |
-|---|---|---|
-| 4.1 | ~~`diagnose --adresse`~~ — **fait** (10 oct.) | ~~Une adresse produit un diagnostic lisible~~ |
-| 4.2 | Options ~~`--puissance`~~ (**fait**, 10 oct.) et `--profil` | Le diagnostic s'adapte au projet décrit |
-| 4.6 | ~~Comparer plusieurs adresses (`compare`)~~ — **fait** (15 oct.) : tableau côte à côte sans classement, décision du jour ; un classement pondéré reste possible ensuite, avec des poids à exposer et justifier | ~~Une entreprise compare ses sites candidats~~ |
-| 4.3 | ~~`--format pdf` / `--format md` : rapport d'implantation par adresse~~ — **fait** (10 oct.) : mêmes sections que le terminal, trois graphiques (pression départementale, couverture régionale, profil journalier) | ~~Un document est produit, graphiques compris~~ |
-| 4.4 | `--format json` — **fait** (10 oct.), sur la sortie standard ou `--output`. Le CSV est écarté : le diagnostic est un objet imbriqué, pas une table | ~~Le diagnostic s'intègre à un autre outil~~ |
-| 4.5 | ~~Affichage systématique des limites méthodologiques~~ — **fait** en sortie terminal (10 oct.), testé | ~~Aucun indicateur n'apparaît sans sa limite~~ |
-
-### Lot 5 — Exploitation et orchestration
-
-| # | Étape | Fini quand | Dépend de |
-|---|---|---|---|
-| 5.1 | Lancer la stack Astro (`astro dev start`) et valider les DAGs | Le DAG horaire est vert plusieurs heures de suite | **Docker Desktop à installer** |
-| 5.2 | DAG `territorial_refresh` (annuel/mensuel selon les jeux) | Les jeux territoriaux se rafraîchissent seuls | 1.x |
-| 5.3 | Alerte en cas d'échec de tâche | Un échec simulé déclenche l'alerte | 5.1 |
-| 5.4 | Protéger `main` (CI obligatoire) | Aucun push direct possible | — |
-| 5.5 | Exploitation 7 jours, puis compléter les chiffres clés du README | Le tableau est complet | 5.1 |
-
-### Lot 6 — Vitrine
-
-| # | Étape | Fini quand |
-|---|---|---|
-| 6.1 | ~~Exemple de rapport d'implantation commité (PDF + Markdown)~~ — **fait** (10 oct.) : `docs/exemples/implantation_lyon` | ~~Le dépôt se comprend sans rien installer~~ |
-| 6.2 | Captures des graphiques dans le README | — |
-| 6.3 | ~~Renommer le dépôt et aligner le nom du projet partout~~ — **fait** (9 oct. 2026) : « Où brancher mon entreprise », slug `ou-brancher-mon-entreprise` | ~~Plus aucune occurrence de l'ancien nom~~ |
-| 6.4 | Démonstration de 2 minutes (asciinema ou vidéo courte) | Un prospect voit tourner l'outil |
-
-### Lot 7 — Reporté, assumé
-
-| Sujet | Pourquoi plus tard |
+| Domaine | Livré |
 |---|---|
-| Migration GCS + BigQuery | `BigQueryLoader` à écrire derrière l'interface existante ; aucun intérêt fonctionnel tant que le local suffit |
-| Comparaison européenne (Eurostat `NRG_PC_205`) | Le jeu est désormais ingéré pour la France (3.7) : l'étendre aux autres pays ne demande que le paramètre `geo`. Donne du sens au « où est-ce moins cher » à l'échelle où la question a une réponse, mais élargit le périmètre |
-| Scope 2 horaire et score 24/7 CFE | Écarté comme objectif ; les briques 15 min restent en place |
-| IRIS par jointure spatiale | Inutile : `code_insee_commune` suffit aux jointures |
-| Intensité carbone régionale | **Impossible proprement** : pas de `taux_co2` régional chez RTE, pas de facteur ADEME régional opposable |
-| Capacité de raccordement chiffrée | **Absente de l'open data** pour la consommation ; seule une étude RTE/Enedis fait foi |
+| Socle | Ingestion ODRÉ, RTE et Eurostat idempotente (MERGE, clés composites et optionnelles), UTC et changements d'heure, quota suivi ; médaillon DuckDB + dbt ; trois DAGs Airflow vérifiés en CI |
+| Territoire | Référentiel commune → département → région ; pression industrielle (millésime sans secret statistique) ; tension régionale sur 12 mois |
+| Réseau | Seuils de raccordement ; contraintes prospectives et postes RTE par département ; zone prioritaire RTE la plus proche (SDDR 2025) |
+| Foncier et risques | Site clé en main France 2030 le plus proche ; risques Géorisques à l'adresse, avec repli communal |
+| Prix | Coût horaire d'un profil type (HP/HC, CRE) ; prix Eurostat par tranche ; scénarios à 3 ans calibrés sur les erreurs passées, contrôle sur le passé affiché |
+| Restitution | `diagnose` (texte, PDF, Markdown, JSON) ; `compare` (2 à 6 adresses, sans classement) ; limites affichées partout ; exemples réels dans `docs/exemples/` |
 
----
+## À faire
 
-## Partie B — Le MVP, dans l'ordre
+| Priorité | Étape | Bloqué par |
+|---|---|---|
+| 1 | Protéger `main` : CI obligatoire, PR obligatoire | réglage GitHub, par le propriétaire du dépôt |
+| 2 | Situer l'électro-intensité : facture estimée rapportée au chiffre d'affaires (`--ca`) | — |
+| 3 | Importer la vraie courbe de charge (export Enedis) à la place du profil type | — |
+| 4 | Lancer Airflow et l'exploiter 7 jours ; alerte en cas d'échec | Docker Desktop |
+| 5 | DAG de rafraîchissement des référentiels (Eurostat, contraintes, postes, zones, sites) | 4 |
+| 6 | Calendrier Tempo sur données réelles | compte RTE, par l'utilisateur |
+| 7 | Repère de prix pour les consommateurs au-delà de 150 000 MWh (contrats CAPN) | décision |
+| 8 | Classement pondéré dans `compare` | décision : poids à exposer et justifier |
+| 9 | Vitrine : captures dans le README, démonstration de 2 minutes | — |
 
-**Ce que le MVP doit prouver** : une adresse française en entrée, un diagnostic
-d'implantation étayé par des données réelles en sortie, reproductible par
-quiconque clone le dépôt.
+## Décisions
 
-**Deux coupes qui font gagner le plus de temps :**
+| Date | Décision |
+|---|---|
+| 9 oct. | Diagnostic de contexte et de risque par adresse, plutôt que « le prix et le CO₂ à l'adresse » |
+| 10 oct. | Coût du profil sur l'option HP/HC, sans compte RTE |
+| 10 oct. | `fct_diagnostic_territoire` à la maille du département ; la commune s'y joint à la lecture |
+| 12 oct. | Prix fixes et historiques par tranche (Eurostat), pas de prix horaire ; horizon de 3 ans ; `--conso` saisi |
+| 15 oct. | Fourchette des scénarios calibrée sur les erreurs passées de la méthode |
+| 15 oct. | Contraintes et postes RTE au département : aucun n'est géolocalisé en open data |
+| 15 oct. | Comparaison côte à côte, sans classement |
 
-1. **Pas d'Airflow dans le MVP.** La ligne de commande fait tout, et Docker est
-   justement le blocage actuel. Les DAGs existent déjà et sont vérifiés en CI :
-   les lancer est une étape d'exploitation, pas de démonstration.
-2. **Pas de mix régional au pas 15 min** (2,86 M lignes). Comme il n'existe de
-   toute façon pas d'intensité carbone régionale opposable, cette série
-   n'apporte presque rien au diagnostic, pour le plus gros coût d'ingestion.
+## Écarté
 
-### Les sept étapes
-
-| # | Étape | Pourquoi elle est dans le MVP | Effort |
-|---|---|---|---|
-| **1** | ~~Sources dbt + chargement des trois jeux territoriaux~~ — **FAIT le 9 octobre 2026** (4 appels API) | Sans elles, `--adresse` ne renvoyait que des codes administratifs. | ~~½ journée~~ |
-| **2** | ~~Référentiel commune → département → région, et silver normalisée jointe **par code INSEE**~~ — **FAIT le 10 octobre 2026**. Repli au département quand la commune n'a pas de site, signalé dans la sortie. | Les sources écrivent `GRAND EST` et `Grand Est` : sans normalisation, la jointure perd des lignes en silence. | ~~½ journée~~ |
-| **3** | ~~`fct_diagnostic_territoire`~~ — **FAIT le 10 octobre 2026**, une ligne par **département** (voir 2.5), la commune jointe à la lecture | Le cœur du produit. Un `SELECT` par code INSEE doit suffire. | ~~1 journée~~ |
-| **4** | ~~`diagnose --adresse`~~ — **FAIT le 10 octobre 2026**, avec `--puissance` et les limites affichées | C'est le livrable visible, et la forme exacte que tu as fixée. | ~~½ journée~~ |
-| **5** | ~~Coût horaire sur **un seul** profil type~~ — **FAIT le 10 octobre 2026**, sur l'option HP/HC (voie sans compte RTE) | Prouve le volet prix sans attendre les quatre profils ni le TURPE détaillé. | 1 journée |
-| **6** | ~~Tests : dbt sur les nouvelles tables, pytest sur `diagnose`~~ — **FAIT** (154 tests dbt, 41 tests pytest pour les étapes 2 à 5) | La rigueur est l'argument de vente du dépôt ; une table gold sans test l'annule. | ½ journée |
-| **7** | README : un exemple de diagnostic réel, de bout en bout, et le nouveau nom | Le dépôt doit se comprendre sans rien installer. | ½ journée |
-
-**Total : environ 4 à 5 jours à temps partiel.**
-
-### Le point de décision de l'étape 5
-
-Le coût horaire a besoin des couleurs Tempo, donc d'un compte
-`data.rte-france.com` (identifiants dans `airflow/.env`). Deux voies :
-
-- **tu crées le compte** (une quinzaine de minutes) → coût Tempo réel, bien plus
-  démonstratif ;
-- **tu ne le crées pas** → repli sur une tarification Base ou HP/HC, chiffrée
-  depuis le seed TURPE, sans dépendance externe. Moins parlant, mais le MVP
-  tient quand même.
-
-**Décision du 10 octobre 2026 : HP/HC, sans compte RTE.** La grille vient
-directement des barèmes de la CRE (tarif bleu non résidentiel, 36 kVA), qui
-incluent déjà l'acheminement : le seed TURPE n'est pas nécessaire pour ce
-périmètre. Il le redeviendra pour les sites au-delà de 36 kVA (3.3).
-
-### Ce qui vient juste après le MVP
-
-Dans cet ordre : lancer Airflow (5.1), brancher les quatre profils (3.1), le
-TURPE détaillé (3.3), ~~le rapport PDF par adresse (4.3)~~ (**fait** le 10 octobre,
-avec la sortie JSON et un exemple commité), puis la fin de la vitrine (6.2, 6.4).
-
-Le prix au-delà de 36 kVA est désormais donné par tranche de consommation (3.7, Eurostat),
-sans hypothèse de fourniture. Les profils horaires industriel 3×8 et data center (3.1)
-restent utiles pour la forme de la courbe, mais plus pour le prix moyen.
+| Sujet | Pourquoi |
+|---|---|
+| Prix « à l'adresse » | Péréquation : identique partout |
+| Intensité carbone régionale | Pas de `taux_co2` régional ni de facteur ADEME opposable ; une estimation reste possible si on l'étiquette comme telle (à décider) |
+| Capacité de raccordement chiffrée | Absente de l'open data pour la consommation |
+| Distance au poste RTE | Postes publiés sans coordonnées |
+| Prix spot horaire | Hors besoin (décision du 12 oct.) |
+| Mix régional au pas 15 min | 2,86 M lignes pour un apport faible au diagnostic |
+| Migration BigQuery | `BigQueryLoader` à écrire derrière l'interface existante, sans intérêt tant que le local suffit |
+| Site web, dashboard | Hors périmètre |
