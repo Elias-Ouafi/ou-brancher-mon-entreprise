@@ -2,13 +2,15 @@
 
 Le contenu est celui de `diagnose` en terminal, bloc pour bloc et limite pour
 limite : les trois formats partent des mêmes `sections` de
-`ingestion.diagnostic`. Le rapport y ajoute trois graphiques de mise en
-perspective, lus dans la couche gold en lecture seule :
+`ingestion.diagnostic`. Le rapport y ajoute quatre graphiques de mise en
+perspective, lus dans les couches silver et gold en lecture seule :
 
 * la couverture de chaque région (production / consommation), la région de
   l'adresse surlignée ;
 * les départements à plus forte pression industrielle, celui de l'adresse
   surligné même s'il est hors du classement affiché ;
+* le prix de la tranche de l'entreprise depuis 2007, prolongé par l'éventail
+  des scénarios à 3 ans (seulement avec `--conso`) ;
 * la courbe journalière du profil type chiffré, heures creuses en fond.
 """
 
@@ -18,10 +20,10 @@ import json
 import logging
 import re
 import unicodedata
-from dataclasses import dataclass
-from datetime import datetime
+from dataclasses import dataclass, field
+from datetime import date, datetime
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import duckdb
 
@@ -41,7 +43,8 @@ SOURCES = [
     "Pression industrielle : ODRÉ, consommation-annuelle-par-iris (RTE, GRTgaz, Teréga).",
     "Tension régionale : ODRÉ, equilibre-regional-mensuel-prod-conso-brute et "
     "contraintes-regionales (RTE).",
-    "Prix : barèmes du tarif bleu non résidentiel, délibérations de la CRE n° 2026-06 et "
+    "Prix de l'électricité des entreprises : Eurostat, nrg_pc_205 (semestriel, par tranche).",
+    "Profil type : barèmes du tarif bleu non résidentiel, délibérations de la CRE n° 2026-06 et "
     "n° 2026-147. Carbone : éCO2mix national (RTE).",
 ]
 
@@ -66,9 +69,16 @@ class Comparaisons:
     #: (code, nom, GWh/an), par rang national de pression industrielle.
     departements: list[tuple[str, str, float]]
     profil: list[PlageProfil]
+    #: (début du semestre, prix HTVA €/kWh) de la tranche de l'entreprise, sinon vide.
+    historique_prix: list[tuple[date, float]] = field(default_factory=list)
+    #: (horizon en années, prix bas, central, haut) de la tranche, sinon vide.
+    scenarios_prix: list[tuple[int, float, float, float]] = field(default_factory=list)
 
 
-def lire_comparaisons(connection: duckdb.DuckDBPyConnection) -> Comparaisons:
+def lire_comparaisons(
+    connection: duckdb.DuckDBPyConnection, *, tranche: str | None = None
+) -> Comparaisons:
+    """Séries de comparaison ; `tranche` ajoute l'historique et les scénarios de prix."""
     regions = connection.execute(
         """
         select region, taux_couverture
@@ -94,10 +104,33 @@ def lire_comparaisons(connection: duckdb.DuckDBPyConnection) -> Comparaisons:
         """,
         {"profil": PROFIL_DEFAUT},
     ).fetchall()
+    historique_prix: list[tuple[Any, ...]] = []
+    scenarios_prix: list[tuple[Any, ...]] = []
+    if tranche is not None:
+        historique_prix = connection.execute(
+            """
+            select debut_semestre, prix_htva_eur_kwh
+            from silver.prix_entreprises
+            where tranche = $tranche
+            order by debut_semestre
+            """,
+            {"tranche": tranche},
+        ).fetchall()
+        scenarios_prix = connection.execute(
+            """
+            select horizon_annees, prix_bas_eur_kwh, prix_central_eur_kwh, prix_haut_eur_kwh
+            from gold.fct_prix_entreprise_scenarios
+            where tranche = $tranche
+            order by horizon_annees
+            """,
+            {"tranche": tranche},
+        ).fetchall()
     return Comparaisons(
         regions=[(r, float(t)) for r, t in regions],
         departements=[(c, n, float(g)) for c, n, g in departements],
         profil=[PlageProfil(*ligne) for ligne in profil],
+        historique_prix=[(d, float(v)) for d, v in historique_prix],
+        scenarios_prix=[(int(h), float(b), float(c), float(t)) for h, b, c, t in scenarios_prix],
     )
 
 
@@ -137,7 +170,9 @@ def generer_rapport_implantation(
         chemin.write_text(en_json(diagnostic), encoding="utf-8")
     else:
         with duckdb.connect(str(settings.duckdb_path), read_only=True) as connection:
-            comparaisons = lire_comparaisons(connection)
+            comparaisons = lire_comparaisons(
+                connection, tranche=diagnostic.prix.tranche if diagnostic.prix else None
+            )
         if format == "md":
             rendre_markdown(diagnostic, comparaisons, chemin, graphiques=graphiques, now=genere_le)
         else:
@@ -172,7 +207,8 @@ def texte_compact(contenu: str) -> str:
 GRAPHIQUES = {
     1: ("pression_departements", "Pression industrielle des départements"),
     2: ("couverture_regions", "Couverture de la consommation par la production, par région"),
-    4: ("profil_journalier", "Courbe journalière du profil type"),
+    4: ("prix_tranche", "Prix de la tranche depuis 2007 et scénarios à 3 ans"),
+    5: ("profil_journalier", "Courbe journalière du profil type"),
 }
 
 

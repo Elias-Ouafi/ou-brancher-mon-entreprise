@@ -83,6 +83,14 @@ limit 1
 """
 
 
+_PRIX_SQL = """
+select *
+from gold.fct_prix_entreprise_tranche
+where $conso >= conso_min_mwh
+  and (conso_max_mwh is null or $conso < conso_max_mwh)
+"""
+
+
 class DiagnosticIndisponibleError(RuntimeError):
     """Le warehouse ne permet pas de produire le diagnostic."""
 
@@ -129,6 +137,40 @@ class CoutProfil:
 
 
 @dataclass(frozen=True, slots=True)
+class PrixEntreprise:
+    """Prix de l'électricité de la tranche de consommation de l'entreprise (Eurostat)."""
+
+    conso_mwh: float
+    tranche: str
+    code_tranche: str
+    libelle_tranche: str
+    conso_min_mwh: float
+    conso_max_mwh: float | None
+    premier_semestre: str
+    dernier_semestre: str
+    prix_dernier_semestre_eur_kwh: float
+    prix_reference_eur_kwh: float
+    taxes_reference_eur_kwh: float | None
+    prix_moyen_5_ans_eur_kwh: float
+    prix_min_eur_kwh: float
+    semestre_min: str
+    prix_max_eur_kwh: float
+    semestre_max: str
+    prix_3_ans_bas_eur_kwh: float | None
+    prix_3_ans_central_eur_kwh: float | None
+    prix_3_ans_haut_eur_kwh: float | None
+    nb_variations_observees: int | None
+
+    def facture_eur(self, prix_eur_kwh: float) -> float:
+        """Facture annuelle HTVA à ce prix.
+
+        Le prix Eurostat est un prix moyen tout compris (énergie, acheminement,
+        part fixe), rapporté au kWh : il donne directement la facture.
+        """
+        return self.conso_mwh * 1000 * prix_eur_kwh
+
+
+@dataclass(frozen=True, slots=True)
 class Diagnostic:
     """Diagnostic complet d'une adresse : une ligne de gold, plus la commune."""
 
@@ -168,6 +210,9 @@ class Diagnostic:
     energie_non_evacuee_mwh: float | None
     # Raccordement et limites
     seuil: Seuil | None
+    #: Consommation annuelle déclarée (`--conso`), même sans prix publié pour sa tranche.
+    conso_mwh: float | None
+    prix: PrixEntreprise | None
     cout: CoutProfil | None
     limites: dict[str, str]
 
@@ -180,6 +225,7 @@ def lire_diagnostic(
     territoire: Territoire,
     *,
     puissance_mw: float | None = None,
+    conso_mwh: float | None = None,
     settings: Settings | None = None,
     database: Path | None = None,
 ) -> Diagnostic:
@@ -202,6 +248,7 @@ def lire_diagnostic(
                 connection, _DIAGNOSTIC_SQL, {"commune": commune, "departement": departement}
             )
             seuil = _seuil(connection, puissance_mw) if puissance_mw is not None else None
+            prix = _prix(connection, conso_mwh) if conso_mwh is not None else None
             cout_ligne = _une_ligne(connection, _COUT_SQL, {"profil": PROFIL_DEFAUT})
             limites = dict(
                 connection.execute(
@@ -221,6 +268,8 @@ def lire_diagnostic(
         territoire=territoire,
         code_insee_commune=commune,
         seuil=seuil,
+        conso_mwh=conso_mwh,
+        prix=prix,
         cout=None if cout_ligne is None else CoutProfil(**cout_ligne),
         limites=limites,
         **ligne,
@@ -242,6 +291,13 @@ def _seuil(connection: duckdb.DuckDBPyConnection, puissance_mw: float) -> Seuil 
         raise ValueError("la puissance du projet doit etre positive")
     ligne = _une_ligne(connection, _SEUIL_SQL, {"puissance": puissance_mw})
     return None if ligne is None else Seuil(puissance_mw=puissance_mw, **ligne)
+
+
+def _prix(connection: duckdb.DuckDBPyConnection, conso_mwh: float) -> PrixEntreprise | None:
+    if conso_mwh <= 0:
+        raise ValueError("la consommation annuelle doit etre strictement positive")
+    ligne = _une_ligne(connection, _PRIX_SQL, {"conso": conso_mwh})
+    return None if ligne is None else PrixEntreprise(conso_mwh=conso_mwh, **ligne)
 
 
 # ---------------------------------------------------------------------------
@@ -378,8 +434,69 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
         texte(s, "Préciser --puissance (en MW) pour connaître le domaine de tension.")
     limite(s, "capacite_raccordement")
 
-    # 4. Coût d'un profil type
-    s = bloc("4. Coût horaire d'un profil type (identique sur tout le territoire)")
+    # 4. Prix de l'électricité pour l'entreprise
+    s = bloc("4. Prix de l'électricité pour l'entreprise (identique sur tout le territoire)")
+    if d.prix is None and d.conso_mwh is not None:
+        texte(
+            s,
+            f"Aucun prix publié par Eurostat pour la tranche de {_nombre_court(d.conso_mwh)}"
+            " MWh/an.",
+        )
+    elif d.prix is None:
+        texte(
+            s,
+            "Préciser --conso (consommation annuelle en MWh, lue sur la facture) pour connaître"
+            " le prix de la tranche de l'entreprise.",
+        )
+    else:
+        p = d.prix
+        texte(
+            s,
+            f"Consommation {_nombre_court(p.conso_mwh)} MWh/an → tranche {p.code_tranche}"
+            f" ({p.libelle_tranche}), prix moyen constaté par Eurostat",
+        )
+        taxes = (
+            f", dont {_nombre(p.taxes_reference_eur_kwh, 4)} €/kWh de taxes non récupérables"
+            if p.taxes_reference_eur_kwh is not None
+            else ""
+        )
+        facture = _euros_arrondis(p.facture_eur(p.prix_reference_eur_kwh))
+        texte(
+            s,
+            f"12 derniers mois ({_semestre(p.dernier_semestre, precedent=True)} –"
+            f" {_semestre(p.dernier_semestre)}) : {_nombre(p.prix_reference_eur_kwh, 4)} €/kWh"
+            f" HTVA{taxes} → facture d'environ {facture} par an",
+        )
+        texte(
+            s,
+            f"Repères depuis {_semestre(p.premier_semestre)} : moyenne sur 5 ans"
+            f" {_nombre(p.prix_moyen_5_ans_eur_kwh, 4)} €/kWh, plus bas"
+            f" {_nombre(p.prix_min_eur_kwh, 4)} ({_semestre(p.semestre_min)}), plus haut"
+            f" {_nombre(p.prix_max_eur_kwh, 4)} ({_semestre(p.semestre_max)})",
+        )
+        bas, centre, haut = (
+            p.prix_3_ans_bas_eur_kwh,
+            p.prix_3_ans_central_eur_kwh,
+            p.prix_3_ans_haut_eur_kwh,
+        )
+        if bas is not None and centre is not None and haut is not None:
+            texte(
+                s,
+                "Prix moyen des 3 prochaines années, d'après les variations passées de la tranche :"
+                f" de {_nombre(bas, 4)} à {_nombre(haut, 4)} €/kWh, {_nombre(centre, 4)} au centre"
+                f" → facture de {_euros_arrondis(p.facture_eur(bas))} à"
+                f" {_euros_arrondis(p.facture_eur(haut))} par an"
+                f" ({_euros_arrondis(p.facture_eur(centre))} au centre)",
+            )
+        else:
+            texte(
+                s,
+                "Historique trop court pour cette tranche : pas de scénario à 3 ans.",
+            )
+        limite(s, "prix_entreprise")
+
+    # 5. Coût d'un profil type
+    s = bloc("5. Coût horaire d'un profil type (identique sur tout le territoire)")
     if d.cout is None:
         texte(s, "Aucun mois complet et tarifé : charger les données nationales récentes.")
     else:
@@ -457,6 +574,25 @@ def _co2_evite(kg: float) -> str:
 
 
 _STATUTS = {"excedentaire": "excédentaire", "deficitaire": "déficitaire"}
+
+
+def _semestre(code: str, *, precedent: bool = False) -> str:
+    """« 2026-S1 » -> « S1 2026 » ; `precedent` donne le semestre d'avant."""
+    annee, numero = int(code[:4]), int(code[-1])
+    if precedent:
+        annee, numero = (annee, 1) if numero == 2 else (annee - 1, 2)
+    return f"S{numero} {annee}"
+
+
+def _euros_arrondis(valeur: float) -> str:
+    """Trois chiffres significatifs : 67 375 -> 67 400, 5 496 000 -> 5 500 000.
+
+    Au-delà, la précision serait illusoire : le prix est une moyenne de tranche.
+    """
+    if valeur <= 0:
+        return f"{_nombre(valeur)} €"
+    chiffres = len(str(int(valeur)))
+    return f"{_nombre(round(valeur, min(0, 3 - chiffres)))} €"
 
 
 def _nombre_court(valeur: float) -> str:

@@ -14,7 +14,14 @@ from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 from ingestion.config import Settings, get_settings
-from ingestion.datasets import BRONZE_SPECS, NATIONAL_TR, RTE_TEMPO, DatasetSpec
+from ingestion.datasets import (
+    BRONZE_SPECS,
+    EUROSTAT_PRIX_ENTREPRISES,
+    NATIONAL_TR,
+    RTE_TEMPO,
+    DatasetSpec,
+)
+from ingestion.extract_eurostat import EurostatClient
 from ingestion.extract_odre import ExtractionWindow, OdreClient
 from ingestion.extract_rte import DayRange, RteTempoClient
 from ingestion.transform import PARIS_TZ, records_to_table, write_parquet
@@ -406,6 +413,41 @@ def run_tempo_ingestion(
     settings = settings or get_settings()
     outcome = extract_tempo_to_parquet(days, settings=settings, run_id=run_id, now=now)
     result = load_to_warehouse(outcome.parquet_path, settings=settings, spec=RTE_TEMPO)
+    return outcome, result
+
+
+def run_prix_entreprises_ingestion(
+    *,
+    settings: Settings | None = None,
+    run_id: str = "manual",
+    now: datetime | None = None,
+) -> tuple[ExtractionOutcome, LoadResult]:
+    """Prix Eurostat des entreprises : extraction intégrale (un appel), puis MERGE.
+
+    Eurostat révise parfois les semestres récents : relire toute la série coûte
+    un seul appel et garantit que la table bronze porte la dernière version.
+    """
+    settings = settings or get_settings()
+    ingested_at = (now or datetime.now(UTC)).astimezone(UTC)
+    with EurostatClient(settings) as client:
+        records = client.fetch_prix_entreprises()
+        api_calls = client.calls
+    table = records_to_table(records, spec=EUROSTAT_PRIX_ENTREPRISES, ingested_at=ingested_at)
+    path = write_parquet(
+        table,
+        dataset_dir=EUROSTAT_PRIX_ENTREPRISES.bronze_dataset_dir(settings.bronze_dir),
+        run_id=run_id,
+        ingest_date=ingested_at.date(),
+    )
+    outcome = ExtractionOutcome(
+        dataset_id=EUROSTAT_PRIX_ENTREPRISES.dataset_id,
+        parquet_path=str(path),
+        rows=table.num_rows,
+        api_calls=api_calls,
+        window_start=None,
+        window_end=None,
+    )
+    result = load_to_warehouse(path, settings=settings, spec=EUROSTAT_PRIX_ENTREPRISES)
     return outcome, result
 
 
