@@ -8,6 +8,9 @@
       plus bas et plus haut depuis 2007 avec leur semestre.
     * **Prix moyen des 3 prochaines années**, par scénario : moyenne des prix à
       1, 2 et 3 ans de `fct_prix_entreprise_scenarios`. Ce n'est pas une prévision.
+    * **Contrôle sur le passé** : combien de fois la même méthode, appliquée à
+      chaque semestre de l'histoire, a encadré le prix moyen réel des 3 années
+      suivantes (`fct_prix_entreprise_calibration`).
 
     Le prix est national (péréquation) : il ne dépend pas de l'adresse.
 -#}
@@ -72,7 +75,16 @@ select
     trois_ans.prix_3_ans_bas_eur_kwh,
     trois_ans.prix_3_ans_central_eur_kwh,
     trois_ans.prix_3_ans_haut_eur_kwh,
-    trois_ans.nb_variations_observees
+    trois_ans.nb_variations_observees,
+    coalesce(calibration.nb_periodes_controlees, 0) as nb_periodes_controlees,
+    calibration.nb_dans_eventail,
+    calibration.nb_au_dessus,
+    calibration.nb_en_dessous,
+    calibration.premiere_origine_controlee,
+    calibration.derniere_origine_controlee,
+    calibration.ecart_median_au_central
 from {{ ref('tranches_eurostat') }} as tranches
 inner join historique on historique.tranche = tranches.tranche
 left join trois_ans on trois_ans.tranche = tranches.tranche
+left join {{ ref('fct_prix_entreprise_calibration') }} as calibration
+    on calibration.tranche = tranches.tranche

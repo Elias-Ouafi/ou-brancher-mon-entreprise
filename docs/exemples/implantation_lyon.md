@@ -2,7 +2,7 @@
 
 *Commune Lyon (69123) · Rhône (69) · Auvergne-Rhône-Alpes (84)*  
 
-Établi le 12/10/2026 à partir des données ouvertes de RTE et d'ODRÉ. Chaque indicateur est suivi de sa limite méthodologique.
+Établi le 15/10/2026 à partir des données ouvertes de RTE et d'ODRÉ. Chaque indicateur est suivi de sa limite méthodologique.
 
 ## 1. Pression industrielle locale (sites raccordés au réseau de transport, 2021)
 
@@ -40,6 +40,7 @@
 - 12 derniers mois (S2 2025 – S1 2026) : 0,0916 €/kWh HTVA, dont 0,0079 €/kWh de taxes non récupérables → facture d'environ 5 500 000 € par an
 - Repères depuis S2 2007 : moyenne sur 5 ans 0,1122 €/kWh, plus bas 0,0553 (S2 2007), plus haut 0,1676 (S1 2023)
 - Prix moyen des 3 prochaines années, d'après les variations passées de la tranche : de 0,0780 à 0,1286 €/kWh, 0,0962 au centre → facture de 4 680 000 € à 7 710 000 € par an (5 770 000 € au centre)
+- Contrôle sur le passé : appliquée à chaque semestre de S1 2015 à S1 2023, la méthode a encadré le prix moyen réel des 3 années suivantes 4 fois sur 17 (24 %, contre 80 % pour une méthode bien calibrée) ; il a dépassé le scénario haut 9 fois et est passé sous le scénario bas 4 fois. Ces périodes de 3 ans se chevauchent : ce ne sont pas des essais indépendants.
 
 > **Limite.** Prix moyen national constaté pour la tranche, hors TVA et taxes récupérables : identique en tout point du territoire (péréquation), il ne dépend pas de l'adresse. C'est une moyenne déclarée par les fournisseurs : un contrat donné peut s'en écarter nettement selon sa date de signature, sa durée et le profil du site. Les scénarios à 3 ans ne sont pas une prévision : ils appliquent au prix des 12 derniers mois les variations observées dans le passé sur la même tranche (10e centile, médiane, 90e centile), crise de 2022-2023 comprise.
 
