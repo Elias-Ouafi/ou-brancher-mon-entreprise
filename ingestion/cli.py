@@ -11,6 +11,7 @@
     python -m ingestion.cli diagnose --adresse "12 rue de la Paix, 69003 Lyon" --puissance 5
     python -m ingestion.cli diagnose --adresse "..." --puissance 5 --format pdf   # rapport
     python -m ingestion.cli diagnose --adresse "..." --conso 350   # prix de la tranche
+    python -m ingestion.cli compare --adresse "A" --adresse "B"    # côte à côte
     python -m ingestion.cli tempo --month 2026-09        # calendrier Tempo (API RTE)
     python -m ingestion.cli prix                         # prix entreprises (Eurostat)
     python -m ingestion.cli report --month 2026-09       # rapport PDF du mois
@@ -177,6 +178,30 @@ def build_parser() -> argparse.ArgumentParser:
         help="Markdown uniquement : texte seul, sans images PNG",
     )
 
+    compare = subparsers.add_parser(
+        "compare", help="compare plusieurs adresses côte à côte, sans classement"
+    )
+    compare.add_argument(
+        "--adresse",
+        action="append",
+        required=True,
+        help="adresse à comparer (répéter l'option : 2 à 6 adresses)",
+    )
+    compare.add_argument(
+        "--puissance", type=_parse_puissance, help="puissance du projet en MW (ex. 0.5, 12)"
+    )
+    compare.add_argument(
+        "--conso", type=_parse_conso, help="consommation annuelle en MWh : prix de la tranche"
+    )
+    compare.add_argument(
+        "--format",
+        choices=["texte", "md", "csv", "json"],
+        default="texte",
+        help="tableau en texte (terminal), Markdown, CSV (tableur) ou JSON",
+    )
+    compare.add_argument("--output", help="fichier de sortie (défaut : sortie standard)")
+    compare.add_argument("--sans-risques", action="store_true", help="ne consulte pas Géorisques")
+
     coverage = subparsers.add_parser(
         "coverage", help="contrôle la complétude du dernier mois révolu"
     )
@@ -296,6 +321,50 @@ def main(argv: list[str] | None = None) -> int:
                     graphiques=not args.sans_graphiques,
                 )
                 logger.info("rapport ecrit %s", path)
+        case "compare":
+            from ingestion import comparaison
+
+            if not comparaison.NB_ADRESSES_MIN <= len(args.adresse) <= comparaison.NB_ADRESSES_MAX:
+                logger.error(
+                    "comparer de %d a %d adresses (%d donnees)",
+                    comparaison.NB_ADRESSES_MIN,
+                    comparaison.NB_ADRESSES_MAX,
+                    len(args.adresse),
+                )
+                return 1
+            diagnostics = []
+            for adresse in args.adresse:
+                try:
+                    diagnostic = lire_diagnostic(
+                        geocode(adresse, settings=settings),
+                        puissance_mw=args.puissance,
+                        conso_mwh=args.conso,
+                        settings=settings,
+                    )
+                except (GeocodingError, DiagnosticIndisponibleError) as error:
+                    logger.error("comparaison impossible pour %r : %s", adresse, error)
+                    return 1
+                if not args.sans_risques:
+                    diagnostic = completer_risques(diagnostic, settings=settings)
+                diagnostics.append(diagnostic)
+            rendus = {
+                "texte": comparaison.formater_comparaison,
+                "md": comparaison.comparaison_en_markdown,
+                "csv": comparaison.comparaison_en_csv,
+                "json": comparaison.comparaison_en_json,
+            }
+            sortie = rendus[args.format](diagnostics)
+            if args.output:
+                chemin = Path(args.output)
+                chemin.parent.mkdir(parents=True, exist_ok=True)
+                # BOM pour le CSV : Excel le lit alors en UTF-8 sans casser les accents.
+                encodage = "utf-8-sig" if args.format == "csv" else "utf-8"
+                chemin.write_text(sortie, encoding=encodage)
+                logger.info("comparaison ecrite %s", chemin)
+            else:
+                if hasattr(sys.stdout, "reconfigure"):
+                    sys.stdout.reconfigure(encoding="utf-8")
+                print(sortie)
         case "tempo":
             if args.month:
                 days = tempo_days_for_month(args.month)

@@ -204,23 +204,27 @@ def lire_gaspar(payload: dict[str, Any], codes_commune: set[str]) -> list[Risque
 
     GASPAR numérote les risques naturels en 1x et les technologiques en 2x, avec
     des sous-types à trois chiffres (11 inondation, 112 crue lente…). Un type
-    général est omis quand un de ses sous-types, plus parlant, est listé.
+    général est omis quand un de ses sous-types, plus parlant, est listé ; un
+    sous-type qui ne se comprend pas seul (« Par une crue lente… ») reprend le
+    libellé de son type (« Inondation par une crue lente… »).
     """
     communes = payload.get("data")
     if not isinstance(communes, list) or not communes:
         raise GeorisquesError("aucune commune dans la reponse GASPAR")
     commune = next((c for c in communes if c.get("code_insee") in codes_commune), communes[0])
     details = [d for d in commune.get("risques_detail") or [] if d.get("num_risque")]
-    numeros = {str(d["num_risque"]) for d in details}
+    libelles = {str(d["num_risque"]): str(d.get("libelle_risque_long") or "") for d in details}
     risques = []
-    for detail in details:
-        numero = str(detail["num_risque"])
-        if any(autre != numero and autre.startswith(numero) for autre in numeros):
+    for numero, libelle in libelles.items():
+        if any(autre != numero and autre.startswith(numero) for autre in libelles):
             continue
+        type_general = libelles.get(numero[:2], "")
+        if len(numero) > 2 and type_general and libelle.lower().startswith("par "):
+            libelle = f"{type_general} {libelle[0].lower()}{libelle[1:]}"
         risques.append(
             Risque(
                 code=f"gaspar_{numero}",
-                libelle=str(detail.get("libelle_risque_long") or numero),
+                libelle=libelle or numero,
                 famille="naturel" if numero.startswith("1") else "technologique",
                 statut_commune=RECENSE,
                 statut_adresse=None,
@@ -303,7 +307,8 @@ class GeorisquesClient:
             logger.warning("zonage sismique indisponible : %s", error)
             seisme = None
         if seisme is not None:
-            risques = [seisme, *risques]
+            # La zone de sismicité remplace la mention « Séisme » (13) de GASPAR.
+            risques = [seisme, *(r for r in risques if r.code != "gaspar_13")]
         return RisquesSite(url=None, risques=risques, maille="commune")
 
     def _json(self, path: str, *, latitude: float, longitude: float) -> dict[str, Any]:
