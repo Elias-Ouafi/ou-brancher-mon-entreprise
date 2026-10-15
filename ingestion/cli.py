@@ -9,6 +9,7 @@
     python -m ingestion.cli coverage
     python -m ingestion.cli geocode --adresse "12 rue de la Paix, 69003 Lyon"
     python -m ingestion.cli diagnose --adresse "12 rue de la Paix, 69003 Lyon" --puissance 5
+    python -m ingestion.cli diagnose --adresse "..." --puissance 5 --format pdf   # rapport
     python -m ingestion.cli tempo --month 2026-09        # calendrier Tempo (API RTE)
     python -m ingestion.cli report --month 2026-09       # rapport PDF du mois
     python -m ingestion.cli report --month 2026-09 --format md   # même rapport en Markdown
@@ -135,6 +136,18 @@ def build_parser() -> argparse.ArgumentParser:
     diagnose.add_argument(
         "--puissance", type=_parse_puissance, help="puissance du projet en MW (ex. 0.5, 12)"
     )
+    diagnose.add_argument(
+        "--format",
+        choices=["texte", "md", "pdf", "json"],
+        default="texte",
+        help="texte (terminal), rapport md ou pdf, ou json (sortie standard sans --output)",
+    )
+    diagnose.add_argument("--output", help="chemin du fichier (défaut : data/reports/)")
+    diagnose.add_argument(
+        "--sans-graphiques",
+        action="store_true",
+        help="Markdown uniquement : texte seul, sans images PNG",
+    )
 
     coverage = subparsers.add_parser(
         "coverage", help="contrôle la complétude du dernier mois révolu"
@@ -227,7 +240,24 @@ def main(argv: list[str] | None = None) -> int:
             # Sortie redirigée sous Windows : cp1252 ne connaît ni « → » ni « ≤ ».
             if hasattr(sys.stdout, "reconfigure"):
                 sys.stdout.reconfigure(encoding="utf-8")
-            print(formater_diagnostic(diagnostic))
+            if args.format == "texte":
+                print(formater_diagnostic(diagnostic))
+            elif args.format == "json" and not args.output:
+                from reporting.implantation import en_json
+
+                print(en_json(diagnostic))
+            else:
+                # Import paresseux : matplotlib et reportlab ne servent qu'au rapport.
+                from reporting.implantation import generer_rapport_implantation
+
+                path = generer_rapport_implantation(
+                    diagnostic,
+                    format=args.format,
+                    settings=settings,
+                    output=Path(args.output) if args.output else None,
+                    graphiques=not args.sans_graphiques,
+                )
+                logger.info("rapport ecrit %s", path)
         case "tempo":
             if args.month:
                 days = tempo_days_for_month(args.month)
