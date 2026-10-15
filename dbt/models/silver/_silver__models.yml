@@ -198,3 +198,48 @@ models:
           - accepted_range:
               arguments:
                 min_value: 0
+
+  - name: postes_rte
+    description: >
+      Postes électriques RTE, code de département retrouvé depuis le nom publié, domaine
+      de tension (HTB1 ≤ 150 kV, HTB2 225 kV, HTB3 400 kV).
+    columns:
+      - name: code_poste
+        data_tests: [unique, not_null]
+      - name: code_departement
+        description: Nul si la source ne publie pas de département ; jamais si elle en publie un.
+        data_tests:
+          - not_null:
+              config:
+                where: "departement_publie is not null"
+          - relationships:
+              arguments:
+                to: ref('dim_departement')
+                field: code_departement
+      - name: domaine_tension
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [HTB1, HTB2, HTB3]
+
+  - name: contraintes_ouvrages
+    description: >
+      Contraintes résiduelles prospectives sur le réseau de transport, classes de
+      fréquence et de pérennité ordonnées, code de région retrouvé depuis le libellé.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [ouvrage, poste_1, poste_2, poste_3]
+    columns:
+      - name: code_insee_region
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_region')
+                field: code_insee_region
+      - name: rang_occurrence
+        description: 1 (très faible, jusqu'à 5 fois par an) à 5 (très forte, plus de 150 fois).
+        data_tests: [not_null]
+      - name: rang_perennite
+        data_tests: [not_null]

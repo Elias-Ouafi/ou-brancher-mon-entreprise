@@ -86,12 +86,16 @@ tranche Eurostat aussi, sans saisir `--conso`.
 fichier). Rien ne quitte la machine.
 *Effort* : 1 journée.
 
-**4. Contraintes du réseau de transport à proximité de l'adresse.**
+**4. Contraintes du réseau de transport à proximité de l'adresse.** — **fait le 15 octobre 2026, à la maille du département** (feuille de route, 2.8).
 *Découvert pendant cette veille*, dans le catalogue ODRÉ.
 Lister les ouvrages contraints dans un rayon de N km : nom, postes concernés,
 fréquence, durée, pérennité.
-*Données* : **vérifié le 15 oct.** — jeu ODRÉ `contraintes-region`, 407 ouvrages
-géolocalisés (forme et centroïde), vision prospective à 3–5 ans, hors Corse. Il
+*Données* : jeu ODRÉ `contraintes-region`, 407 contraintes, vision prospective à
+3–5 ans, hors Corse. **Correction** : le catalogue annonce des champs `geom` et
+`centroid`, mais ils sont **tous vides** (vérifié sur les données le 15 octobre ; la
+première version de cette note ne s'appuyait que sur la liste des champs). Pas de
+rayon autour de l'adresse possible : les contraintes sont rattachées au département
+par les codes des postes qu'elles relient. Il
 complète `energies-et-puissances-regionales-liees-au-contraintes`, déjà ingéré.
 *Limite à afficher* : contraintes liées à l'**injection** d'énergies renouvelables,
 données à titre indicatif par RTE ; elles ne mesurent pas la capacité disponible en
@@ -125,7 +129,8 @@ Le rapport imprime la commande exacte qui le régénère et le millésime de cha
 (année IRIS, mois d'équilibre, dernier semestre Eurostat, mois du profil).
 *Effort* : 2 heures.
 
-**8. Densité de postes RTE autour du site.**
+**8. Densité de postes RTE autour du site.** — **fait le 15 octobre 2026** avec la
+piste 4 : nombre de postes du département par domaine de tension.
 *Inspiré de* `gridsuite/odre-server` et de l'indicateur « proximité des lignes HT » de
 `wa-datacenter-suitability`.
 *Données* : **vérifié le 15 oct.** — `postes-electriques-rte` (5 042 postes, tension et
@@ -169,5 +174,5 @@ cadrage l'avait écartée comme non opposable, et ça reste vrai : ce serait une
 1. ~~Backtest des scénarios de prix (2)~~ — fait le 15 octobre.
 2. ~~Risques naturels Géorisques (1)~~ — fait le 15 octobre.
 3. Méthodologie versionnée et rapport reproductible (6, 7), peu coûteux.
-4. Contraintes réseau à proximité (4), puis comparaison d'adresses (5).
+4. ~~Contraintes réseau à proximité (4)~~ — fait le 15 octobre, à la maille du département ; reste la comparaison d'adresses (5).
 5. Courbe de charge réelle (3), coût de raccordement (9) une fois sa source trouvée.

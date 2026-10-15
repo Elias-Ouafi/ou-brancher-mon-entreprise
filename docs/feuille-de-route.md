@@ -53,6 +53,7 @@ dépôt, lance une commande et passe l'adresse en argument.
 | 2.5 | ~~`fct_diagnostic_territoire`~~ — **fait** (10 oct.), **une ligne par département** et non par commune : aucun jeu ouvert ne liste les 35 000 communes, et seules ~1 300 ont un site. La commune s'ajoute par jointure à la lecture | ~~Un seul `SELECT` produit tout le diagnostic~~ |
 | 2.6 | ~~Limites méthodologiques~~ — **fait** (10 oct.) : seed `limites_methodologiques` | ~~Chaque chiffre du rapport peut citer sa limite~~ |
 | 2.7 | ~~Risques naturels et technologiques à l'adresse~~ — **fait** (15 oct.) : API Géorisques, statut à l'adresse distingué du statut communal ; repli sur la commune (GASPAR, zonage sismique) car le rapport à l'adresse coupe souvent les connexions ; `--sans-risques` | ~~Chaque diagnostic dit à quels risques l'adresse est exposée~~ |
+| 2.8 | ~~Contraintes prospectives et postes RTE autour du site~~ — **fait** (15 oct.) : jeux ODRÉ `contraintes-region` et `postes-electriques-rte`, à la maille du département (ni ouvrages ni postes géolocalisés en open data), rattachement par les codes de postes | ~~Le diagnostic situe le site dans son réseau de transport~~ |
 
 ### Lot 3 — Coût horaire d'un profil
 
