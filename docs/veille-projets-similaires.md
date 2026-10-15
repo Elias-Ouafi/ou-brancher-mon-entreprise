@@ -52,7 +52,7 @@ commande, pas d'application ; aucun chiffre sans sa limite.
 
 ### Priorité 1 — forte valeur, données vérifiées
 
-**1. Risques naturels du site, à l'adresse exacte (API Géorisques).**
+**1. Risques naturels du site, à l'adresse exacte (API Géorisques).** — **fait le 15 octobre 2026** (feuille de route, 2.7), avec un repli sur la commune : le rapport à l'adresse s'est révélé instable.
 *Inspiré de* `wa-datacenter-suitability` (sismicité, inondation comme indicateurs de
 risque) et de ses critères éliminatoires.
 C'est le seul indicateur **réellement propre à l'adresse** : le prix est national et la
@@ -167,7 +167,7 @@ cadrage l'avait écartée comme non opposable, et ça reste vrai : ce serait une
 ## Ordre proposé
 
 1. ~~Backtest des scénarios de prix (2)~~ — fait le 15 octobre.
-2. Risques naturels Géorisques (1), le gain le plus net pour un diagnostic « par adresse ».
+2. ~~Risques naturels Géorisques (1)~~ — fait le 15 octobre.
 3. Méthodologie versionnée et rapport reproductible (6, 7), peu coûteux.
 4. Contraintes réseau à proximité (4), puis comparaison d'adresses (5).
 5. Courbe de charge réelle (3), coût de raccordement (9) une fois sa source trouvée.

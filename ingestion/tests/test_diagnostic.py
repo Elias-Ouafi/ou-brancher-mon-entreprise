@@ -7,7 +7,9 @@ réel (la BAN est simulée par `pytest-httpx`).
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterator
+from dataclasses import replace
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -26,6 +28,8 @@ from ingestion.diagnostic import (
     lire_diagnostic,
 )
 from ingestion.geocode import Territoire
+from ingestion.georisques import lire_rapport
+from ingestion.tests.conftest import FIXTURES_DIR
 from ingestion.tests.medallion import ANNEE_REFERENCE, DBT_BIN
 
 pytestmark = pytest.mark.skipif(DBT_BIN is None, reason="dbt non installé (uv sync --group dbt)")
@@ -248,13 +252,18 @@ def test_connection_threshold_follows_project_power(
 
 
 def test_every_figure_comes_with_its_limit(medallion_db: Path, warehouse: Any) -> None:
-    texte = formater_diagnostic(
-        lire_diagnostic(territoire("69123"), puissance_mw=50, conso_mwh=350, database=medallion_db)
+    rapport = json.loads(
+        (FIXTURES_DIR / "georisques_rapport_lyon.json").read_text(encoding="utf-8")
     )
+    diagnostic = replace(
+        lire_diagnostic(territoire("69123"), puissance_mw=50, conso_mwh=350, database=medallion_db),
+        risques=lire_rapport(rapport),
+    )
+    texte = formater_diagnostic(diagnostic)
     limites = [
         limite for (limite,) in _rows(warehouse, "SELECT limite FROM gold.limites_methodologiques")
     ]
-    assert len(limites) == 7
+    assert len(limites) == 8
     for limite in limites:
         assert limite in texte
 
@@ -314,7 +323,9 @@ def test_diagnose_command_end_to_end(
     )
     monkeypatch.setattr(cli, "get_settings", lambda: reglages)
 
-    code = cli.main(["diagnose", "--adresse", "10 rue Garibaldi, Lyon", "--puissance", "0,5"])
+    code = cli.main(
+        ["diagnose", "--adresse", "10 rue Garibaldi, Lyon", "--puissance", "0,5", "--sans-risques"]
+    )
 
     sortie = capsys.readouterr().out
     assert code == 0
