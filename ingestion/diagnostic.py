@@ -159,7 +159,7 @@ class PrixEntreprise:
     prix_3_ans_bas_eur_kwh: float | None
     prix_3_ans_central_eur_kwh: float | None
     prix_3_ans_haut_eur_kwh: float | None
-    nb_variations_observees: int | None
+    nb_erreurs_observees: int | None
     # Contrôle de la méthode sur le passé (gold.fct_prix_entreprise_calibration)
     nb_periodes_controlees: int
     nb_dans_eventail: int | None
@@ -490,7 +490,8 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
         if bas is not None and centre is not None and haut is not None:
             texte(
                 s,
-                "Prix moyen des 3 prochaines années, d'après les variations passées de la tranche :"
+                "Prix moyen des 3 prochaines années, d'après l'historique de la tranche et les"
+                " erreurs passées de la méthode :"
                 f" de {_nombre(bas, 4)} à {_nombre(haut, 4)} €/kWh, {_nombre(centre, 4)} au centre"
                 f" → facture de {_euros_arrondis(p.facture_eur(bas))} à"
                 f" {_euros_arrondis(p.facture_eur(haut))} par an"
@@ -599,7 +600,8 @@ def _controle_sur_le_passe(p: PrixEntreprise) -> str:
         f" {total} ({_nombre(dans / total * 100)} %, contre 80 % pour une méthode bien"
         f" calibrée) ; il a dépassé le scénario haut {p.nb_au_dessus or 0} fois et est passé"
         f" sous le scénario bas {p.nb_en_dessous or 0} fois. Ces périodes de 3 ans se"
-        " chevauchent : ce ne sont pas des essais indépendants."
+        " chevauchent : ce ne sont pas des essais indépendants. Leurs écarts font désormais"
+        " partie des erreurs qui calibrent la fourchette affichée."
     )
 
 
