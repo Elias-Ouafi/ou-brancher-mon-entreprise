@@ -16,7 +16,8 @@ observés sur les API :
   l'arrondissement ;
 * une année récente partiellement masquée par le secret statistique ;
 * une région identifiée par son libellé en majuscules, et non par son code ;
-* une tranche de prix Eurostat à l'historique trop court pour des scénarios.
+* une tranche de prix Eurostat à l'historique trop court pour des scénarios, et
+  une autre assez longue pour contrôler la méthode sur le passé, crise comprise.
 
 Silver et gold sont ensuite construites par `dbt build`, lancé en sous-processus
 comme le fait le DAG : dbt-duckdb garde sa connexion ouverte dans le processus
@@ -251,19 +252,32 @@ PRIX_IB_PAS = 0.005
 TAXES_IB = 0.02
 
 
+#: Tranche ID : 30 semestres de 2011-S1 à 2025-S2, +2 % par semestre, un bruit
+#: déterministe de ±10 % au plus, et une « crise » de 30 % sur les semestres 20 à 23
+#: (2021-S1 à 2022-S2). Le contrôle sur le passé y trouve les trois positions.
+PRIX_ID = [
+    0.10 * 1.02**i * (1.3 if 20 <= i <= 23 else 1.0) * (1 + 0.05 * ((i * 7) % 5 - 2))
+    for i in range(30)
+]
+
+
 def semestres(premier: int, dernier: int) -> list[str]:
     """`semestres(2024, 2025)` -> 2024-S1, 2024-S2, 2025-S1, 2025-S2."""
     return [f"{annee}-S{n}" for annee in range(premier, dernier + 1) for n in (1, 2)]
 
 
 def prix_entreprises() -> list[dict[str, Any]]:
-    """IB sur 10 ans ; IG sur 2 ans seulement, trop peu pour des scénarios."""
+    """IB sur 10 ans ; IG sur 2 ans, trop peu pour des scénarios ; ID sur 15 ans."""
     series = {
         "MWH20-499": [
             (semestre, PRIX_IB_DEPART + PRIX_IB_PAS * i, TAXES_IB)
             for i, semestre in enumerate(semestres(2016, 2025))
         ],
         "MWH_GE150000": [(semestre, 0.07, 0.001) for semestre in semestres(2024, 2025)],
+        "MWH2000-19999": [
+            (semestre, prix, 0.01)
+            for semestre, prix in zip(semestres(2011, 2025), PRIX_ID, strict=True)
+        ],
     }
     return [
         {

@@ -160,6 +160,14 @@ class PrixEntreprise:
     prix_3_ans_central_eur_kwh: float | None
     prix_3_ans_haut_eur_kwh: float | None
     nb_variations_observees: int | None
+    # Contrôle de la méthode sur le passé (gold.fct_prix_entreprise_calibration)
+    nb_periodes_controlees: int
+    nb_dans_eventail: int | None
+    nb_au_dessus: int | None
+    nb_en_dessous: int | None
+    premiere_origine_controlee: str | None
+    derniere_origine_controlee: str | None
+    ecart_median_au_central: float | None
 
     def facture_eur(self, prix_eur_kwh: float) -> float:
         """Facture annuelle HTVA à ce prix.
@@ -488,6 +496,7 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
                 f" {_euros_arrondis(p.facture_eur(haut))} par an"
                 f" ({_euros_arrondis(p.facture_eur(centre))} au centre)",
             )
+            texte(s, _controle_sur_le_passe(p))
         else:
             texte(
                 s,
@@ -574,6 +583,24 @@ def _co2_evite(kg: float) -> str:
 
 
 _STATUTS = {"excedentaire": "excédentaire", "deficitaire": "déficitaire"}
+
+
+def _controle_sur_le_passe(p: PrixEntreprise) -> str:
+    """Combien de fois la méthode des scénarios a encadré le prix réel, par le passé."""
+    if not p.nb_periodes_controlees or p.premiere_origine_controlee is None:
+        return "Historique trop court pour contrôler la méthode sur le passé."
+    total = p.nb_periodes_controlees
+    dans = p.nb_dans_eventail or 0
+    return (
+        f"Contrôle sur le passé : appliquée à chaque semestre de"
+        f" {_semestre(p.premiere_origine_controlee)} à"
+        f" {_semestre(p.derniere_origine_controlee or p.premiere_origine_controlee)},"
+        f" la méthode a encadré le prix moyen réel des 3 années suivantes {dans} fois sur"
+        f" {total} ({_nombre(dans / total * 100)} %, contre 80 % pour une méthode bien"
+        f" calibrée) ; il a dépassé le scénario haut {p.nb_au_dessus or 0} fois et est passé"
+        f" sous le scénario bas {p.nb_en_dessous or 0} fois. Ces périodes de 3 ans se"
+        " chevauchent : ce ne sont pas des essais indépendants."
+    )
 
 
 def _semestre(code: str, *, precedent: bool = False) -> str:

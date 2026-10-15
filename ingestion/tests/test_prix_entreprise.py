@@ -27,7 +27,14 @@ from ingestion.extract_eurostat import (
     aplatir_json_stat,
 )
 from ingestion.pipeline import run_prix_entreprises_ingestion
-from ingestion.tests.medallion import DBT_BIN, PRIX_IB_DEPART, PRIX_IB_PAS, TAXES_IB
+from ingestion.tests.medallion import (
+    DBT_BIN,
+    PRIX_IB_DEPART,
+    PRIX_IB_PAS,
+    PRIX_ID,
+    TAXES_IB,
+    semestres,
+)
 from ingestion.tests.test_diagnostic import territoire
 from reporting.implantation import generer_rapport_implantation
 
@@ -219,6 +226,97 @@ def test_short_history_gives_no_scenario(medallion_db: Path) -> None:
         " FROM gold.fct_prix_entreprise_tranche WHERE tranche = 'MWH_GE150000'",
     )
     assert ligne == (pytest.approx(0.07), None, None)
+
+
+# --- Contrôle de la méthode sur le passé ----------------------------------------------
+
+SEMESTRES_ID = semestres(2011, 2025)
+
+
+def calibration_attendue(prix: list[float], minimum: int = 10) -> dict[str, Any]:
+    """Recalcul indépendant du backtest dbt, sur une série semestrielle sans trou."""
+    n = len(prix)
+    periodes = []
+    for t in range(n):
+        bornes = []
+        for h in (1, 2, 3):
+            pas = 2 * h
+            variations = [prix[s + pas] / prix[s] for s in range(n) if s + pas <= t]
+            if len(variations) < minimum or t + pas >= n:
+                break
+            reference = sum(prix[max(0, t - 1) : t + 1]) / len(prix[max(0, t - 1) : t + 1])
+            realise = (prix[t + pas - 1] + prix[t + pas]) / 2
+            bas, haut = (reference * quantile_cont(variations, q) for q in (0.1, 0.9))
+            bornes.append((bas, haut, realise))
+        if len(bornes) == 3:
+            bas, haut, realise = (sum(b[k] for b in bornes) / 3 for k in range(3))
+            periodes.append((t, bas, haut, realise))
+    return {
+        "nb_periodes_controlees": len(periodes),
+        "nb_dans_eventail": sum(bas <= r <= haut for _, bas, haut, r in periodes),
+        "nb_au_dessus": sum(r > haut for _, _, haut, r in periodes),
+        "nb_en_dessous": sum(r < bas for _, bas, _, r in periodes),
+        "premiere_origine_controlee": SEMESTRES_ID[periodes[0][0]],
+        "derniere_origine_controlee": SEMESTRES_ID[periodes[-1][0]],
+    }
+
+
+@dbt_requis
+def test_past_fans_only_use_variations_known_at_their_origin(medallion_db: Path) -> None:
+    with duckdb.connect(str(medallion_db), read_only=True) as connection:
+        lignes = connection.execute(
+            "SELECT semestre_origine, horizon_annees, nb_variations_observees"
+            " FROM gold.fct_prix_entreprise_eventails WHERE tranche = 'MWH2000-19999'"
+        ).fetchall()
+    for semestre, horizon, nb in lignes:
+        t = SEMESTRES_ID.index(semestre)
+        # Départs s = 0 … t - 2h : l'arrivée s + 2h ne dépasse jamais l'origine.
+        assert nb == t - 2 * horizon + 1
+
+
+@dbt_requis
+def test_calibration_matches_an_independent_backtest(medallion_db: Path) -> None:
+    attendu = calibration_attendue(PRIX_ID)
+    with duckdb.connect(str(medallion_db), read_only=True) as connection:
+        resultat = connection.execute(
+            "SELECT nb_periodes_controlees, nb_dans_eventail, nb_au_dessus, nb_en_dessous,"
+            " premiere_origine_controlee, derniere_origine_controlee"
+            " FROM gold.fct_prix_entreprise_calibration WHERE tranche = 'MWH2000-19999'"
+        ).fetchone()
+    assert resultat == tuple(attendu.values())
+    # Les trois positions sont représentées : aucune branche du contrôle n'est muette.
+    assert min(attendu["nb_dans_eventail"], attendu["nb_au_dessus"], attendu["nb_en_dessous"]) > 0
+
+
+@dbt_requis
+def test_short_histories_are_not_calibrated(medallion_db: Path) -> None:
+    ligne = _une_ligne(
+        medallion_db,
+        "SELECT nb_periodes_controlees, nb_dans_eventail FROM gold.fct_prix_entreprise_tranche"
+        " WHERE tranche = 'MWH20-499'",
+    )
+    assert ligne == (0, None)
+
+
+@dbt_requis
+def test_price_section_reports_the_past_check(medallion_db: Path) -> None:
+    attendu = calibration_attendue(PRIX_ID)
+    texte = formater_diagnostic(
+        lire_diagnostic(territoire("69123"), conso_mwh=5_000, database=medallion_db)
+    )
+    total, dans = attendu["nb_periodes_controlees"], attendu["nb_dans_eventail"]
+    assert (
+        f"la méthode a encadré le prix moyen réel des 3 années suivantes {dans} fois sur {total}"
+        in texte
+    )
+    assert f"il a dépassé le scénario haut {attendu['nb_au_dessus']} fois" in texte
+    assert "ce ne sont pas des essais indépendants" in texte
+
+    # IB : 10 ans d'historique, assez pour des scénarios, pas pour les contrôler.
+    texte_ib = formater_diagnostic(
+        lire_diagnostic(territoire("69123"), conso_mwh=350, database=medallion_db)
+    )
+    assert "Historique trop court pour contrôler la méthode sur le passé." in texte_ib
 
 
 # --- Diagnostic -------------------------------------------------------------------------
