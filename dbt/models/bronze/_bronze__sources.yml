@@ -105,3 +105,24 @@ sources:
               - accepted_values:
                   arguments:
                     values: [X_TAX, X_VAT]
+      - name: contraintes_region
+        description: >
+          Contraintes résiduelles prospectives (horizon 3 à 5 ans) sur le réseau de
+          transport, ouvrage par ouvrage (ODRÉ `contraintes-region`, vision décembre 2024).
+          Les champs géographiques de la source sont vides : une contrainte se localise par
+          ses postes. Un même ouvrage peut porter plusieurs contraintes ; `poste_2` et
+          `poste_3` valent la chaîne vide quand ils sont absents.
+        data_tests:
+          - unique_combination:
+              arguments:
+                columns: [ouvrage, poste_1, poste_2, poste_3]
+        columns:
+          - name: ouvrage
+            data_tests: [not_null]
+      - name: postes_electriques_rte
+        description: >
+          Postes électriques RTE et points de piquage (ODRÉ `postes-electriques-rte`) :
+          tension, état et nom du département, sans coordonnées.
+        columns:
+          - name: code_poste
+            data_tests: [unique, not_null]

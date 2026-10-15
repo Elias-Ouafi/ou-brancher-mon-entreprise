@@ -277,3 +277,28 @@ models:
         description: >
           Le scénario central est encadré par les scénarios bas et haut (test
           `assert_scenarios_prix_ordonnes`).
+
+  - name: fct_contraintes_departement
+    description: >
+      Contraintes prospectives du réseau de transport rattachées à un département par
+      leurs postes : une ligne par département et par contrainte.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [code_departement, ouvrage, poste_1, poste_2, poste_3]
+    columns:
+      - name: code_departement
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_departement')
+                field: code_departement
+
+  - name: fct_postes_rte_departement
+    description: >
+      Postes RTE en exploitation par département et par domaine de tension, et postes
+      en projet. Un repère de densité du réseau, pas une capacité de raccordement.
+    columns:
+      - name: code_departement
+        data_tests: [unique, not_null]

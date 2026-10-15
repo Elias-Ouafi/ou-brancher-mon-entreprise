@@ -66,6 +66,10 @@ _ARROW_TYPES: dict[ColumnKind, pa.DataType] = {
 class Column:
     name: str
     kind: ColumnKind
+    #: Dans une clé seulement : une valeur absente vaut la chaîne vide au lieu de
+    #: faire écarter l'enregistrement. Le MERGE reste idempotent (`'' = ''` est
+    #: vrai, `NULL = NULL` ne l'est pas) ; silver remet `NULL` avec `nullif`.
+    vide_si_absent: bool = False
 
     @property
     def arrow_type(self) -> pa.DataType:
@@ -81,8 +85,8 @@ def period(name: str) -> Column:
     return Column(name, ColumnKind.PERIOD)
 
 
-def code(name: str) -> Column:
-    return Column(name, ColumnKind.CODE)
+def code(name: str, *, vide_si_absent: bool = False) -> Column:
+    return Column(name, ColumnKind.CODE, vide_si_absent=vide_si_absent)
 
 
 def label(name: str) -> Column:
@@ -335,6 +339,51 @@ CONTRAINTES_REGIONALES = DatasetSpec(
 )
 
 
+#: Contraintes résiduelles prospectives (horizon 3 à 5 ans) sur le réseau de
+#: transport, ouvrage par ouvrage. Les champs géographiques du jeu (`geom`,
+#: `centroid`) sont tous vides (constaté le 15 octobre 2026) : un ouvrage se
+#: localise par les codes des postes qu'il relie (`poste_1` à `poste_3`).
+#: Un même ouvrage peut porter plusieurs contraintes, qui diffèrent par leurs
+#: postes : la clé les inclut, `poste_2` et `poste_3` étant parfois absents.
+CONTRAINTES_OUVRAGES = DatasetSpec(
+    dataset_id="contraintes-region",
+    keys=(
+        code("ouvrage"),
+        code("poste_1"),
+        code("poste_2", vide_si_absent=True),
+        code("poste_3", vide_si_absent=True),
+    ),
+    attributes=(
+        label("region"),
+        label("nom_de_l_ouvrage"),
+        label("specificite"),
+        label("occurrence"),
+        label("duree"),
+        label("perennite"),
+    ),
+    measures=measures(
+        "puissance_max_de_l_ouvrage", "pourcentage_1", "pourcentage_2", "pourcentage_3"
+    ),
+    description="Contraintes résiduelles prospectives sur le réseau de transport, par ouvrage",
+)
+
+#: Postes électriques RTE (environ 5 000) : tension, état et département.
+#: Sans coordonnées : la distance à l'adresse n'est pas calculable.
+POSTES_RTE = DatasetSpec(
+    dataset_id="postes-electriques-rte",
+    keys=(code("code_poste"),),
+    attributes=(
+        label("nom_poste"),
+        label("fonction"),
+        label("etat"),
+        label("tension"),
+        label("departement"),
+    ),
+    measures=(),
+    description="Sites électriques RTE et points de piquage",
+)
+
+
 # ---------------------------------------------------------------------------
 # Autres sources
 # ---------------------------------------------------------------------------
@@ -376,6 +425,8 @@ SPECS: dict[str, DatasetSpec] = {
         CONSO_IRIS,
         EQUILIBRE_REGIONAL,
         CONTRAINTES_REGIONALES,
+        CONTRAINTES_OUVRAGES,
+        POSTES_RTE,
     )
 }
 
@@ -384,6 +435,8 @@ TERRITORIAL_SPECS: tuple[DatasetSpec, ...] = (
     CONSO_IRIS,
     EQUILIBRE_REGIONAL,
     CONTRAINTES_REGIONALES,
+    CONTRAINTES_OUVRAGES,
+    POSTES_RTE,
 )
 
 #: Tables bronze créées d'office à chaque chargement, parce que la couche silver

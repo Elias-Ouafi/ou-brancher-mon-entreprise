@@ -2,8 +2,8 @@
     Contraintes d'évacuation du réseau de transport par région (vision RTE).
 
     La source identifie la région par son **libellé en majuscules**
-    (« AUVERGNE-RHÔNE-ALPES ») : c'est le seul endroit du projet où le code INSEE
-    est retrouvé à partir d'un nom, via `normalise_libelle`. Le test
+    (« AUVERGNE-RHÔNE-ALPES ») : le code INSEE est retrouvé à partir du nom, via
+    `normalise_libelle` (comme pour `contraintes_ouvrages` et `postes_rte`). Le test
     `not_null` sur `code_insee_region` garantit qu'aucune région n'est perdue
     en silence si RTE change d'écriture.
 

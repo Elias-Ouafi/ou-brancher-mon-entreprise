@@ -139,7 +139,7 @@ load_*, dbt_build, contrôles et rapport passent par le pool duckdb_writer (1 sl
 | **Parquet** (pyarrow) | Zone bronze immuable, partitionnée par date d'ingestion | Format colonne typé, lisible par DuckDB aujourd'hui et par BigQuery demain |
 | **httpx** + **tenacity** | Appels HTTP, retry exponentiel, timeouts | `tenacity` évite d'écrire une boucle de retry à la main |
 | **pydantic-settings** | Configuration typée depuis l'environnement | Valide les réglages au démarrage plutôt qu'au premier appel |
-| **pytest** + **pytest-httpx** | 251 tests, aucun appel réseau réel | L'interception au niveau du transport garantit qu'aucun test ne sort |
+| **pytest** + **pytest-httpx** | 264 tests, aucun appel réseau réel | L'interception au niveau du transport garantit qu'aucun test ne sort |
 | **ruff** | Lint et format | Un seul outil pour les deux |
 | **matplotlib** + **reportlab** | Graphiques et PDF du rapport | Importés paresseusement : ils ne pèsent que sur la commande de rapport |
 
@@ -180,8 +180,9 @@ un coût horaire de profil en sortie, produits par un pipeline qui tourne sans i
 | **Rapport d'implantation par adresse** (`diagnose --format pdf/md/json`) : mêmes blocs et limites que le terminal, quatre graphiques de mise en perspective | 17 tests, dont les territoires sans donnée (outre-mer, Corse, commune sans site) ; [exemple réel commité](docs/exemples/implantation_lyon.pdf) |
 | **Prix de l'électricité de l'entreprise** (`diagnose --conso`) : prix Eurostat de sa tranche sur 12 mois, repères depuis 2007, prix moyen des 3 prochaines années en trois scénarios tirés de l'historique et **calibrés sur les erreurs passées de la méthode**, contrôle sur le passé affiché | 40 tests, dont chaque éventail passé et le backtest recalculés indépendamment ; série réelle chargée (494 valeurs, 1 appel), 7 tranches |
 | **Risques naturels et technologiques à l'adresse** (Géorisques) : statut à l'adresse distingué du statut communal, repli sur la commune si le rapport ne répond pas, diagnostic jamais bloqué | 25 tests sur de vraies réponses de Géorisques (Lyon, Ajaccio), coupures et repli simulés ; exécuté sur Lyon et Ajaccio réels |
+| **Réseau de transport autour du site** : contraintes prospectives RTE (3 à 5 ans) et postes RTE par domaine de tension, rattachés au département par les codes de postes | 13 tests (clé à postes optionnels, rattachement, liaisons interdépartementales, Corse) ; 407 contraintes et 5 042 postes réels chargés |
 | Grilles tarifaires Tempo et HP/HC vérifiées sur les barèmes officiels de la CRE (délibérations n° 2026-06 et 2026-147) | Les 12 prix Tempo du seed retrouvés au dix-millième d'euro près depuis les prix HT |
-| Qualité | 251 tests pytest, ruff, CI GitHub Actions verte |
+| Qualité | 264 tests pytest, ruff, CI GitHub Actions verte |
 
 ### Pas encore validé en conditions réelles
 
@@ -344,10 +345,14 @@ Commune Lyon (69123) · Rhône (69) · Auvergne-Rhône-Alpes (84)
    ↳ Limite : Le réseau est interconnecté : une région déficitaire importe sans difficulté de ses voisines. Le solde décrit une dépendance structurelle, pas une pénurie ni un risque de coupure.
    Contraintes d'évacuation (RTE) : 14 575 MW d'EnR installés ou en projet, 187 MW à compenser, 2 777 MWh non évacués par an
    ↳ Limite : Contraintes d'évacuation de la production renouvelable (injection), données à titre indicatif par RTE. Elles ne mesurent pas la capacité disponible pour un consommateur (soutirage). Pas de donnée pour la Corse ni l'outre-mer.
+   Contraintes prospectives (RTE, d'ici 3 à 5 ans) : aucune sur les ouvrages reliés aux postes du département.
+   ↳ Limite : Contraintes de transit liées à l'accueil des énergies renouvelables (injection), que RTE prévoit de gérer par de la flexibilité plutôt que par de nouveaux ouvrages ; données indicatives et non engageantes. Elles ne mesurent pas la capacité disponible pour un consommateur. Ni les ouvrages ni les postes ne sont géolocalisés en open data : la maille est le département, pas l'adresse, et une liaison entre deux départements compte dans les deux.
 
 3. Raccordement
    Puissance 12 MW → HTA, Enedis (ou ELD) : Raccordement en moyenne tension (20 kV), souvent sur un départ dédié au-delà de quelques MW
    ↳ Limite : Indicatif : 1 kVA est assimilé à 1 kW. Le domaine de tension réel est fixé par le gestionnaire lors de l'étude de raccordement.
+   Postes RTE en exploitation dans le département : 91, dont 64 en HTB1 (63 à 150 kV), 19 en HTB2 (225 kV) et 3 en HTB3 (400 kV)
+   ↳ Limite : Repère de densité du réseau de transport, pas une capacité de raccordement : un poste proche peut être saturé. Les postes ne sont pas géolocalisés en open data, et environ 3 % d'entre eux n'ont pas de département publié.
    ↳ Limite : La capacité de raccordement disponible pour la consommation n'est pas publiée en open data (Caparéseau ne couvre que l'injection). Seule une étude de raccordement RTE ou Enedis fait foi.
 
 4. Prix de l'électricité pour l'entreprise (identique sur tout le territoire)
@@ -453,6 +458,28 @@ qu'avec la première version (IB : 0,1918–0,2848 €/kWh contre 0,1949–0,272
 vérifient sur deux séries synthétiques : avec une crise récente, les fourchettes contrôlées
 l'ont manquée ; avec une crise ancienne, ses erreurs élargissent les fourchettes suivantes, qui
 encadrent alors le prix réel bien plus souvent.
+
+#### Réseau de transport autour du site (contraintes prospectives, postes RTE)
+
+Deux jeux ODRÉ complètent les blocs 2 et 3 :
+
+- **les contraintes prospectives** (`contraintes-region`, 407 contraintes, vision décembre 2024) :
+  les ouvrages où RTE prévoit, d'ici 3 à 5 ans, des limitations liées à l'accueil des énergies
+  renouvelables, avec leur fréquence, la durée des épisodes et leur pérennité. Le diagnostic
+  compte celles du département et détaille les trois plus fréquentes ;
+- **les postes RTE** (`postes-electriques-rte`, environ 5 000 postes) : leur nombre dans le
+  département, par domaine de tension (HTB1 63–150 kV, HTB2 225 kV, HTB3 400 kV), et ceux en projet.
+
+**Pourquoi le département et pas l'adresse.** Les champs géographiques du jeu des contraintes
+existent mais sont **tous vides**, et les postes n'ont pas de coordonnées. Une contrainte est donc
+rattachée à un département par les postes qu'elle relie (code poste → département publié en
+toutes lettres → code via le référentiel) : 405 contraintes sur 407 par leur premier poste,
+toutes par l'un de leurs trois postes. Une liaison entre deux départements compte dans les deux.
+En Corse et outre-mer, le réseau n'est pas exploité par RTE : le diagnostic le dit.
+
+**Limites affichées** : ce sont des contraintes d'**injection**, indicatives et non engageantes,
+qui ne mesurent pas la capacité disponible pour un consommateur ; et un poste proche peut être
+saturé. Seule une étude de raccordement fait foi.
 
 #### Risques naturels et technologiques à l'adresse (Géorisques)
 
