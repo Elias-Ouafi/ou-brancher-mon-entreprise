@@ -23,6 +23,7 @@ Points de conception :
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import asdict, dataclass, replace
 from datetime import date
 from pathlib import Path
@@ -87,6 +88,17 @@ limit 1
 """
 
 
+#: Nombre de contraintes prospectives détaillées dans le diagnostic.
+NB_CONTRAINTES_AFFICHEES = 3
+
+_CONTRAINTES_SQL = """
+select nom_de_l_ouvrage, occurrence, duree, perennite, puissance_max_mw, est_en_journee
+from gold.fct_contraintes_departement
+where code_departement = $departement
+order by rang_occurrence desc, rang_perennite desc, puissance_max_mw desc, nom_de_l_ouvrage
+limit $limite
+"""
+
 _PRIX_SQL = """
 select *
 from gold.fct_prix_entreprise_tranche
@@ -138,6 +150,18 @@ class CoutProfil:
     kwh_decales: float
     gain_decalage_eur: float
     co2_evite_kg: float
+
+
+@dataclass(frozen=True, slots=True)
+class ContrainteOuvrage:
+    """Une contrainte prospective du réseau de transport (RTE, horizon 3 à 5 ans)."""
+
+    nom_de_l_ouvrage: str
+    occurrence: str
+    duree: str
+    perennite: str
+    puissance_max_mw: float | None
+    est_en_journee: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -220,6 +244,15 @@ class Diagnostic:
     puissance_enr_installee_mw: float | None
     puissance_a_compenser_mw: float | None
     energie_non_evacuee_mwh: float | None
+    # Réseau de transport dans le département
+    nb_postes_rte: int | None
+    nb_postes_htb1: int | None
+    nb_postes_htb2: int | None
+    nb_postes_htb3: int | None
+    nb_postes_en_projet: int | None
+    nb_contraintes_departement: int
+    nb_contraintes_frequentes_departement: int | None
+    contraintes: list[ContrainteOuvrage]
     # Raccordement et limites
     seuil: Seuil | None
     #: Consommation annuelle déclarée (`--conso`), même sans prix publié pour sa tranche.
@@ -265,6 +298,13 @@ def lire_diagnostic(
             )
             seuil = _seuil(connection, puissance_mw) if puissance_mw is not None else None
             prix = _prix(connection, conso_mwh) if conso_mwh is not None else None
+            contraintes = [
+                ContrainteOuvrage(*ligne)
+                for ligne in connection.execute(
+                    _CONTRAINTES_SQL,
+                    {"departement": departement, "limite": NB_CONTRAINTES_AFFICHEES},
+                ).fetchall()
+            ]
             cout_ligne = _une_ligne(connection, _COUT_SQL, {"profil": PROFIL_DEFAUT})
             limites = dict(
                 connection.execute(
@@ -286,6 +326,7 @@ def lire_diagnostic(
         seuil=seuil,
         conso_mwh=conso_mwh,
         prix=prix,
+        contraintes=contraintes,
         cout=None if cout_ligne is None else CoutProfil(**cout_ligne),
         limites=limites,
         **ligne,
@@ -436,6 +477,32 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
             f" compenser, {_nombre(d.energie_non_evacuee_mwh or 0)} MWh non évacués par an",
         )
         limite(s, "contraintes_reseau")
+    if d.est_zni and not d.nb_postes_rte:
+        texte(
+            s,
+            "Contraintes prospectives du réseau de transport : non publiées, le réseau de ce"
+            " territoire n'est pas exploité par RTE.",
+        )
+    else:
+        if d.nb_contraintes_departement == 0:
+            texte(
+                s,
+                "Contraintes prospectives (RTE, d'ici 3 à 5 ans) : aucune sur les ouvrages reliés"
+                " aux postes du département.",
+            )
+        else:
+            frequentes = d.nb_contraintes_frequentes_departement or 0
+            texte(
+                s,
+                f"Contraintes prospectives (RTE, d'ici 3 à 5 ans) : {d.nb_contraintes_departement}"
+                " sur des ouvrages reliés aux postes du département, dont"
+                f" {frequentes} plus de 75 fois par an.",
+            )
+            texte(
+                s,
+                "Les plus fréquentes : " + " ; ".join(_contrainte(c) for c in d.contraintes),
+            )
+        limite(s, "contraintes_prospectives")
 
     # 3. Raccordement
     s = bloc("3. Raccordement")
@@ -448,6 +515,21 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
         limite(s, "seuil_raccordement")
     else:
         texte(s, "Préciser --puissance (en MW) pour connaître le domaine de tension.")
+    if not d.nb_postes_rte:
+        texte(
+            s,
+            "Postes RTE dans le département : aucun"
+            + (" (réseau de ce territoire non exploité par RTE)." if d.est_zni else "."),
+        )
+    else:
+        projet = f" ; {d.nb_postes_en_projet} en projet" if d.nb_postes_en_projet else ""
+        texte(
+            s,
+            f"Postes RTE en exploitation dans le département : {d.nb_postes_rte}, dont"
+            f" {d.nb_postes_htb1 or 0} en HTB1 (63 à 150 kV), {d.nb_postes_htb2 or 0} en HTB2"
+            f" (225 kV) et {d.nb_postes_htb3 or 0} en HTB3 (400 kV){projet}",
+        )
+        limite(s, "postes_rte")
     limite(s, "capacite_raccordement")
 
     # 4. Prix de l'électricité pour l'entreprise
@@ -686,6 +768,25 @@ def _controle_sur_le_passe(p: PrixEntreprise) -> str:
         " chevauchent : ce ne sont pas des essais indépendants. Leurs écarts font désormais"
         " partie des erreurs qui calibrent la fourchette affichée."
     )
+
+
+def _contrainte(c: ContrainteOuvrage) -> str:
+    """« LIAISON 90kV … (très forte : plus de 150 fois par an, épisodes de 4 à 6 h,
+    pérennité moyenne, en journée) »."""
+    details = [c.occurrence[:1].lower() + c.occurrence[1:], _duree(c.duree)]
+    details.append(f"pérennité {c.perennite}")
+    if c.est_en_journee:
+        details.append("en journée")
+    return f"{c.nom_de_l_ouvrage} ({', '.join(d for d in details if d)})"
+
+
+def _duree(duree: str) -> str:
+    """« ]4h-6h] » -> « épisodes de 4 à 6 h » ; « ]0h-2h] » -> « épisodes de moins de 2 h »."""
+    bornes = re.fullmatch(r"\](\d+)h-(\d+)h\]", duree.strip())
+    if bornes is None:
+        return f"durée {duree}" if duree else ""
+    debut, fin = bornes.groups()
+    return f"épisodes de moins de {fin} h" if debut == "0" else f"épisodes de {debut} à {fin} h"
 
 
 def _semestre(code: str, *, precedent: bool = False) -> str:
