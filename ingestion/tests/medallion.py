@@ -16,6 +16,9 @@ observés sur les API :
   l'arrondissement ;
 * une année récente partiellement masquée par le secret statistique ;
 * une région identifiée par son libellé en majuscules, et non par son code ;
+* des postes RTE repérés par le **nom** de leur département, parfois absent, et des
+  contraintes réseau sans géométrie, localisées par leurs postes (deuxième et
+  troisième postes parfois absents, même ouvrage portant deux contraintes) ;
 * des tranches de prix Eurostat à l'historique trop court pour des scénarios, et
   deux autres assez longues pour contrôler la méthode sur le passé : l'une avec une
   crise récente, l'autre avec une crise ancienne.
@@ -39,11 +42,13 @@ from typing import Any
 from ingestion.config import Settings
 from ingestion.datasets import (
     CONSO_IRIS,
+    CONTRAINTES_OUVRAGES,
     CONTRAINTES_REGIONALES,
     EQUILIBRE_REGIONAL,
     EUROSTAT_PRIX_ENTREPRISES,
     NATIONAL_CONS_DEF,
     NATIONAL_TR,
+    POSTES_RTE,
     RTE_TEMPO,
     DatasetSpec,
 )
@@ -310,6 +315,76 @@ def prix_entreprises() -> list[dict[str, Any]]:
     ]
 
 
+def _poste(code: str, tension: str, departement: str, etat: str = "EN EXPLOITATION") -> dict:
+    return {
+        "code_poste": code,
+        "nom_poste": code,
+        "fonction": "Poste de transformation",
+        "etat": etat,
+        "tension": tension,
+        "departement": departement,
+    }
+
+
+def postes_rte() -> list[dict[str, Any]]:
+    """Rhône : 3 postes en exploitation (HTB1, HTB2, HTB3) et 1 en projet ; Ain : 1 poste."""
+    return [
+        _poste("LYON1", "63kV", "Rhône"),
+        _poste("LYON2", "225kV", "Rhône"),
+        _poste("LYON3", "400kV", "RHONE"),  # casse et accent différents
+        _poste("LYON4", "90kV", "Rhône", etat="ACCORD ADMINISTRATIF"),
+        _poste("BOURG", "63kV", "Ain"),
+        _poste("PIQUA", "<45kV", ""),  # département non publié
+    ]
+
+
+def _contrainte(
+    ouvrage: str,
+    postes: tuple[str | None, str | None, str | None],
+    occurrence: str,
+    perennite: str,
+    puissance: float,
+    *,
+    en_journee: bool = False,
+) -> dict[str, Any]:
+    return {
+        "ouvrage": ouvrage,
+        "poste_1": postes[0],
+        "poste_2": postes[1],
+        "poste_3": postes[2],
+        "region": "AUVERGNE-RHÔNE-ALPES",
+        "nom_de_l_ouvrage": f"LIAISON {ouvrage}",
+        "puissance_max_de_l_ouvrage": puissance,
+        "pourcentage_1": -50.0,
+        "pourcentage_2": None,
+        "pourcentage_3": None,
+        "specificite": "Contrainte en journée" if en_journee else None,
+        "occurrence": occurrence,
+        "duree": "]4h-6h]",
+        "perennite": perennite,
+    }
+
+
+TRES_FORTE = "Très forte : plus de 150 fois par an"
+FORTE = "Forte : entre 75 et 150 fois par an"
+FAIBLE = "Faible : entre 5 et 25 fois par an"
+
+
+def contraintes_ouvrages() -> list[dict[str, Any]]:
+    """Rhône : 3 contraintes, dont une liaison vers l'Ain et un ouvrage à deux contraintes."""
+    return [
+        # Liaison Ain-Rhône : comptée dans les deux départements.
+        _contrainte("BOURGLYON1", ("BOURG", "LYON1", None), FORTE, "ELEVEE", 80.0),
+        # Même ouvrage, deux contraintes qui diffèrent par leurs postes.
+        _contrainte("LYON2LYON3", ("LYON2", "LYON3", None), FAIBLE, "FAIBLE", 40.0),
+        _contrainte(
+            "LYON2LYON3", ("LYON2", "LYON3", "LYON1"), TRES_FORTE, "MOYENNE", 60.0, en_journee=True
+        ),
+        # Postes inconnus : contrainte rattachée à aucun département.
+        _contrainte("ORPHELINE", ("XXXXX", None, None), FAIBLE, "FAIBLE", 10.0),
+    ]
+
+
 def load_bronze(
     database: Path, tmp_path: Path, spec: DatasetSpec, records: list[dict[str, Any]]
 ) -> None:
@@ -355,6 +430,8 @@ def build_warehouse(tmp_path: Path, *, with_tempo: bool = True) -> Path:
     load_bronze(database, tmp_path, EQUILIBRE_REGIONAL, equilibre_regional())
     load_bronze(database, tmp_path, CONTRAINTES_REGIONALES, contraintes_regionales())
     load_bronze(database, tmp_path, EUROSTAT_PRIX_ENTREPRISES, prix_entreprises())
+    load_bronze(database, tmp_path, POSTES_RTE, postes_rte())
+    load_bronze(database, tmp_path, CONTRAINTES_OUVRAGES, contraintes_ouvrages())
     ensure_bronze_tables(settings=Settings(_env_file=None, duckdb_path=database))
     dbt_build(database, tmp_path)
     return database

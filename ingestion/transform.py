@@ -180,11 +180,10 @@ def records_to_table(
     ingested_at_utc = ingested_at.astimezone(UTC)
 
     key_names = spec.key_names
-    usable = [r for r in records if all(_coerce_str(r.get(n)) for n in key_names)]
+    requises = [c.name for c in spec.keys if not c.vide_si_absent]
+    usable = [r for r in records if all(_coerce_str(r.get(n)) for n in requises)]
     if (dropped := len(records) - len(usable)) > 0:
-        logger.warning(
-            "%d enregistrement(s) sans cle complete %s ignore(s)", dropped, list(key_names)
-        )
+        logger.warning("%d enregistrement(s) sans cle complete %s ignore(s)", dropped, requises)
 
     if usable:
         seen: set[str] = set().union(*(set(r.keys()) for r in usable))
@@ -203,6 +202,8 @@ def records_to_table(
             columns[column.name] = [
                 _coerce_float(r.get(column.name), column=column.name) for r in usable
             ]
+        elif column.vide_si_absent:
+            columns[column.name] = [_coerce_str(r.get(column.name)) or "" for r in usable]
         else:
             columns[column.name] = [_coerce_str(r.get(column.name)) for r in usable]
     columns[INGESTED_AT_COLUMN] = [ingested_at_utc] * len(usable)

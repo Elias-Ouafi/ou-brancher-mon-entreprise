@@ -24,6 +24,10 @@
 
 > **Limite.** Contraintes d'évacuation de la production renouvelable (injection), données à titre indicatif par RTE. Elles ne mesurent pas la capacité disponible pour un consommateur (soutirage). Pas de donnée pour la Corse ni l'outre-mer.
 
+- Contraintes prospectives (RTE, d'ici 3 à 5 ans) : aucune sur les ouvrages reliés aux postes du département.
+
+> **Limite.** Contraintes de transit liées à l'accueil des énergies renouvelables (injection), que RTE prévoit de gérer par de la flexibilité plutôt que par de nouveaux ouvrages ; données indicatives et non engageantes. Elles ne mesurent pas la capacité disponible pour un consommateur. Ni les ouvrages ni les postes ne sont géolocalisés en open data : la maille est le département, pas l'adresse, et une liaison entre deux départements compte dans les deux.
+
 ![Couverture de la consommation par la production, par région](implantation_lyon_graphiques/couverture_regions.png)
 
 ## 3. Raccordement
@@ -31,6 +35,10 @@
 - Puissance 12 MW → HTA, Enedis (ou ELD) : Raccordement en moyenne tension (20 kV), souvent sur un départ dédié au-delà de quelques MW
 
 > **Limite.** Indicatif : 1 kVA est assimilé à 1 kW. Le domaine de tension réel est fixé par le gestionnaire lors de l'étude de raccordement.
+
+- Postes RTE en exploitation dans le département : 91, dont 64 en HTB1 (63 à 150 kV), 19 en HTB2 (225 kV) et 3 en HTB3 (400 kV)
+
+> **Limite.** Repère de densité du réseau de transport, pas une capacité de raccordement : un poste proche peut être saturé. Les postes ne sont pas géolocalisés en open data, et environ 3 % d'entre eux n'ont pas de département publié.
 
 > **Limite.** La capacité de raccordement disponible pour la consommation n'est pas publiée en open data (Caparéseau ne couvre que l'injection). Seule une étude de raccordement RTE ou Enedis fait foi.
 
