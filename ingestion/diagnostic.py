@@ -99,18 +99,21 @@ order by rang_occurrence desc, rang_perennite desc, puissance_max_mw desc, nom_d
 limit $limite
 """
 
-#: Zones industrielles prioritaires de RTE, de la plus proche à la plus lointaine.
-#: Distance à vol d'oiseau (haversine, rayon terrestre de 6 371 km) jusqu'au point
-#: de référence le plus proche de la zone ; une zone peut en avoir plusieurs.
-_ZONES_SQL = """
+#: Distance à vol d'oiseau (haversine, rayon terrestre de 6 371 km) entre le
+#: point de la ligne (`latitude`, `longitude`) et l'adresse (`$latitude`, `$longitude`).
+_DISTANCE_KM_SQL = """
+    2 * 6371 * asin(sqrt(
+        power(sin(radians(latitude - $latitude) / 2), 2)
+        + cos(radians($latitude)) * cos(radians(latitude))
+        * power(sin(radians(longitude - $longitude) / 2), 2)
+    ))
+"""
+
+#: Zones industrielles prioritaires de RTE, de la plus proche à la plus lointaine,
+#: jusqu'au point de référence le plus proche de la zone (une zone peut en avoir plusieurs).
+_ZONES_SQL = f"""
 with distances as (
-    select
-        *,
-        2 * 6371 * asin(sqrt(
-            power(sin(radians(latitude - $latitude) / 2), 2)
-            + cos(radians($latitude)) * cos(radians(latitude))
-            * power(sin(radians(longitude - $longitude) / 2), 2)
-        )) as distance_km
+    select *, {_DISTANCE_KM_SQL} as distance_km
     from gold.zones_raccordement_rte
 )
 select
@@ -123,6 +126,24 @@ select
 from distances
 group by zone, priorite, annee_capacite, ouvrages
 order by distance_km
+"""
+
+#: Site clé en main le plus proche. Une adresse de métropole ne regarde que la
+#: métropole ; une adresse en Corse ou outre-mer, que son propre département.
+_SITE_SQL = f"""
+select
+    id_site,
+    commune,
+    code_insee_commune,
+    maturite_site,
+    {_DISTANCE_KM_SQL} as distance_km
+from gold.sites_cles_en_main
+where case
+    when $est_zni then code_departement = $departement
+    else code_departement not like '97%' and code_departement not in ('2A', '2B')
+end
+order by distance_km
+limit 1
 """
 
 _PRIX_SQL = """
@@ -187,6 +208,17 @@ class ZoneRte:
     annee_capacite: int | None
     ouvrages: str
     point_reference: str
+    distance_km: float
+
+
+@dataclass(frozen=True, slots=True)
+class SiteCleEnMain:
+    """Site industriel « clé en main » de France 2030, repéré par sa commune."""
+
+    id_site: str
+    commune: str
+    code_insee_commune: str
+    maturite_site: str
     distance_km: float
 
 
@@ -295,6 +327,8 @@ class Diagnostic:
     zone_rte: ZoneRte | None
     #: Exemple de zone P3 cité par RTE, seulement s'il est plus proche que `zone_rte`.
     zone_rte_p3: ZoneRte | None
+    #: Site industriel clé en main le plus proche, dans le même territoire.
+    site_cle_en_main: SiteCleEnMain | None
     # Raccordement et limites
     seuil: Seuil | None
     #: Consommation annuelle déclarée (`--conso`), même sans prix publié pour sa tranche.
@@ -341,6 +375,16 @@ def lire_diagnostic(
             seuil = _seuil(connection, puissance_mw) if puissance_mw is not None else None
             prix = _prix(connection, conso_mwh) if conso_mwh is not None else None
             zone_rte, zone_rte_p3 = _zones_rte(connection, territoire)
+            site = _une_ligne(
+                connection,
+                _SITE_SQL,
+                {
+                    "latitude": territoire.latitude,
+                    "longitude": territoire.longitude,
+                    "departement": departement,
+                    "est_zni": bool(ligne and ligne["est_zni"]),
+                },
+            )
             contraintes = [
                 ContrainteOuvrage(*ligne)
                 for ligne in connection.execute(
@@ -372,6 +416,7 @@ def lire_diagnostic(
         contraintes=contraintes,
         zone_rte=zone_rte,
         zone_rte_p3=zone_rte_p3,
+        site_cle_en_main=None if site is None else SiteCleEnMain(**site),
         cout=None if cout_ligne is None else CoutProfil(**cout_ligne),
         limites=limites,
         **ligne,
@@ -597,6 +642,16 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
                 " financier des industriels.",
             )
         limite(s, "zones_raccordement_rte")
+    if d.site_cle_en_main is not None:
+        site = d.site_cle_en_main
+        texte(
+            s,
+            f"Site industriel clé en main (France 2030) le plus proche : {site.commune},"
+            f" {_distance(site.distance_km)} ; annoncé prêt en {site.maturite_site}",
+        )
+        limite(s, "sites_cles_en_main")
+    else:
+        texte(s, "Site industriel clé en main (France 2030) : aucun dans ce territoire.")
     limite(s, "capacite_raccordement")
 
     # 4. Prix de l'électricité pour l'entreprise

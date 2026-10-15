@@ -255,3 +255,31 @@ seeds:
               arguments:
                 min_value: -5.5
                 max_value: 10
+
+  - name: sites_cles_en_main
+    description: >
+      Sites industriels « clés en main » de France 2030 : foncier labellisé par l'État pour
+      accueillir rapidement une activité industrielle (procédures et pré-aménagement
+      accompagnés). Liste de l'ANCT et de la DGE (data.gouv.fr, « Les sites clés en main -
+      France 2030 », version du 19 septembre 2025, Licence Ouverte), repérée par commune ;
+      coordonnées du point de la commune donné par le géocodeur de l'IGN (Géoplateforme).
+      `maturite_site` est la période où le site est annoncé prêt. À mettre à jour à chaque
+      nouvelle version de la liste.
+    config:
+      column_types:
+        code_insee_commune: varchar
+        code_departement: varchar
+        latitude: double
+        longitude: double
+    columns:
+      - name: id_site
+        data_tests: [unique, not_null]
+      - name: code_departement
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_departement')
+                field: code_departement
+      - name: maturite_site
+        data_tests: [not_null]

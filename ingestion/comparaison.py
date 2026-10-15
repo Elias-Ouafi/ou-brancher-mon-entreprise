@@ -114,6 +114,13 @@ def _zone(d: Diagnostic) -> str:
     )
 
 
+def _site(d: Diagnostic) -> str:
+    if d.site_cle_en_main is None:
+        return "aucun dans ce territoire"
+    site = d.site_cle_en_main
+    return f"{site.commune}, {_distance(site.distance_km)} ; prêt en {site.maturite_site}"
+
+
 def _risques(d: Diagnostic, famille: str) -> str:
     if d.risques_erreur is not None:
         return "non évalués (Géorisques injoignable)"
@@ -148,6 +155,7 @@ def lignes(diagnostics: list[Diagnostic]) -> list[Ligne]:
         ligne("Contraintes RTE (3-5 ans)", _contraintes, "contraintes_prospectives"),
         ligne("Postes RTE du département", _postes, "postes_rte"),
         ligne("Zone prioritaire RTE", _zone, "zones_raccordement_rte"),
+        ligne("Site clé en main (France 2030)", _site, "sites_cles_en_main"),
     ]
     if any(d.risques is not None or d.risques_erreur is not None for d in diagnostics):
         resultat += [

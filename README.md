@@ -139,7 +139,7 @@ load_*, dbt_build, contrôles et rapport passent par le pool duckdb_writer (1 sl
 | **Parquet** (pyarrow) | Zone bronze immuable, partitionnée par date d'ingestion | Format colonne typé, lisible par DuckDB aujourd'hui et par BigQuery demain |
 | **httpx** + **tenacity** | Appels HTTP, retry exponentiel, timeouts | `tenacity` évite d'écrire une boucle de retry à la main |
 | **pydantic-settings** | Configuration typée depuis l'environnement | Valide les réglages au démarrage plutôt qu'au premier appel |
-| **pytest** + **pytest-httpx** | 285 tests, aucun appel réseau réel | L'interception au niveau du transport garantit qu'aucun test ne sort |
+| **pytest** + **pytest-httpx** | 290 tests, aucun appel réseau réel | L'interception au niveau du transport garantit qu'aucun test ne sort |
 | **ruff** | Lint et format | Un seul outil pour les deux |
 | **matplotlib** + **reportlab** | Graphiques et PDF du rapport | Importés paresseusement : ils ne pèsent que sur la commande de rapport |
 
@@ -183,8 +183,9 @@ un coût horaire de profil en sortie, produits par un pipeline qui tourne sans i
 | **Réseau de transport autour du site** : contraintes prospectives RTE (3 à 5 ans) et postes RTE par domaine de tension, rattachés au département par les codes de postes | 13 tests (clé à postes optionnels, rattachement, liaisons interdépartementales, Corse) ; 407 contraintes et 5 042 postes réels chargés |
 | **Zone industrielle prioritaire de RTE la plus proche** (SDDR 2025) : distance, priorité P1 ou P2, année de capacité et ouvrages prévus | 9 tests (zone à plusieurs points, P3 plus proche, Corse) ; exécuté sur Lyon, Lille, Poitiers, Montpellier, Ajaccio |
 | **Comparaison d'adresses** (`compare`) : 2 à 6 adresses côte à côte, sans classement ; communs et limites donnés une fois ; texte, Markdown, CSV, JSON | 12 tests ; exécuté sur Lyon, Lille et Poitiers réels |
+| **Site industriel clé en main le plus proche** (France 2030, 55 sites) : distance et période de maturité, dans le même territoire | 5 tests (outre-mer, Corse) ; exécuté sur Lyon, Poitiers, Ajaccio, Saint-Denis de La Réunion |
 | Grilles tarifaires Tempo et HP/HC vérifiées sur les barèmes officiels de la CRE (délibérations n° 2026-06 et 2026-147) | Les 12 prix Tempo du seed retrouvés au dix-millième d'euro près depuis les prix HT |
-| Qualité | 285 tests pytest, ruff, CI GitHub Actions verte |
+| Qualité | 290 tests pytest, ruff, CI GitHub Actions verte |
 
 ### Pas encore validé en conditions réelles
 
@@ -357,6 +358,8 @@ Commune Lyon (69123) · Rhône (69) · Auvergne-Rhône-Alpes (84)
    ↳ Limite : Repère de densité du réseau de transport, pas une capacité de raccordement : un poste proche peut être saturé. Les postes ne sont pas géolocalisés en open data, et environ 3 % d'entre eux n'ont pas de département publié.
    Zone industrielle prioritaire de RTE la plus proche : Vallée de la chimie (P2), à 7 km (Saint-Fons) : capacité supplémentaire possible à partir de 2029, si les projets industriels de la zone se concrétisent ; ouvrages prévus : nouveau poste 225 kV « Rhôna » raccordé au poste 400 kV de Mions
    ↳ Limite : Zones et années cibles du schéma décennal de RTE, sous réserve des autorisations administratives et, pour les zones P2, de la concrétisation des projets industriels ; les zones P3 sont de simples exemples, sans date. Distance à vol d'oiseau jusqu'à la commune de référence de la zone, pas jusqu'au poste. Être proche d'une zone ne donne aucun droit d'accès au réseau : la capacité est attribuée selon les procédures de RTE. Concerne surtout les raccordements au réseau de transport (au-delà de quelques dizaines de MW).
+   Site industriel clé en main (France 2030) le plus proche : Salaise-sur-Sanne, à 47 km ; annoncé prêt en 2026 - 2027
+   ↳ Limite : Distance à vol d'oiseau jusqu'au point de la commune, pas jusqu'au site lui-même. La période de maturité est celle annoncée pour un site prêt à accueillir une activité ; elle ne garantit ni la disponibilité du foncier à la date voulue, ni la puissance électrique raccordable, à confirmer auprès de l'aménageur et du gestionnaire de réseau.
    ↳ Limite : La capacité de raccordement disponible pour la consommation n'est pas publiée en open data (Caparéseau ne couvre que l'injection). Seule une étude de raccordement RTE ou Enedis fait foi.
 
 4. Prix de l'électricité pour l'entreprise (identique sur tout le territoire)
@@ -505,6 +508,17 @@ Les zones sont dans un seed (`zones_raccordement_rte`), chacune repérée par la
 ou du secteur cité par RTE : document daté, à mettre à jour à chaque édition du SDDR. La limite
 affichée rappelle qu'être proche d'une zone ne donne aucun droit d'accès au réseau.
 
+#### Site industriel clé en main le plus proche (France 2030)
+
+Le foncier viabilisé et raccordé est le deuxième besoin des entreprises qui s'implantent
+(voir la [revue des besoins](docs/revue-besoins-entreprises.md)). Le bloc 3 donne le site
+labellisé « clé en main » France 2030 le plus proche de l'adresse, sa distance et la période
+où il est annoncé prêt. La liste vient de l'ANCT et de la DGE (data.gouv.fr, 55 sites, version
+du 19 septembre 2025, Licence Ouverte) ; elle est repérée par commune, dans un seed
+(`sites_cles_en_main`). Une adresse de métropole ne regarde que la métropole, une adresse en
+Corse ou outre-mer que son propre département. La limite rappelle que la date annoncée ne
+garantit ni le foncier ni la puissance raccordable.
+
 #### Risques naturels et technologiques à l'adresse (Géorisques)
 
 Le bloc 6 est le seul **propre à l'adresse exacte** : le prix est national, la tension du réseau
@@ -573,8 +587,8 @@ sont listées à la fin, une fois chacune.
 Pas de note ni de verdict : pondérer un risque d'inondation contre une distance à un poste est
 un choix de l'entreprise, pas une donnée. Formats : texte, Markdown, CSV (avec BOM, pour Excel)
 et JSON. Exemple réel commité : [Lyon, Lille, Poitiers](docs/exemples/comparaison_lyon_lille_poitiers.md)
-— deux adresses avec le rapport Géorisques à l'adresse, une avec le repli communal, comme
-l'indique le tableau.
+— avec le rapport Géorisques à l'adresse pour les trois ; quand Géorisques ne répond pas,
+le tableau indique « commune seulement » pour l'adresse concernée.
 
 ---
 
