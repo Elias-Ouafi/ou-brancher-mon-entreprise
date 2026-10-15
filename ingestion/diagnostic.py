@@ -22,7 +22,7 @@ Points de conception :
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -257,121 +257,187 @@ def _gwh(valeur: float) -> str:
     return f"{_nombre(valeur, 1 if valeur < 100 else 0)} GWh"
 
 
-def formater_diagnostic(diagnostic: Diagnostic) -> str:
-    """Diagnostic lisible en terminal, chaque bloc suivi de sa limite."""
+@dataclass(frozen=True, slots=True)
+class Section:
+    """Un bloc du diagnostic : un titre, puis des lignes de texte et de limites.
+
+    Les limites restent à leur place, juste après le chiffre qu'elles nuancent :
+    chaque format (terminal, Markdown, PDF) les met en forme à sa façon.
+    """
+
+    titre: str
+    #: Couples (`"texte"` ou `"limite"`, contenu), dans l'ordre d'affichage.
+    elements: list[tuple[str, str]]
+
+
+def entete(diagnostic: Diagnostic) -> list[str]:
+    """Hiérarchie territoriale, et l'avertissement si l'adresse est imprécise."""
     d = diagnostic
     t = d.territoire
     lignes = [
-        f"DIAGNOSTIC D'IMPLANTATION — {t.adresse}",
         f"Commune {t.commune} ({d.code_insee_commune}) · {d.departement} ({d.code_departement})"
         f" · {d.region} ({d.code_insee_region})",
     ]
     if not t.est_precis:
         lignes.append(f"Attention : adresse résolue à la maille « {t.precision} » seulement.")
+    return lignes
 
-    def limite(indicateur: str) -> None:
-        if texte := d.limites.get(indicateur):
-            lignes.append(f"   ↳ Limite : {texte}")
+
+def sections(diagnostic: Diagnostic) -> list[Section]:
+    """Les quatre blocs du diagnostic, communs à tous les formats de sortie."""
+    d = diagnostic
+    resultat: list[Section] = []
+
+    def bloc(titre: str) -> Section:
+        resultat.append(Section(titre, []))
+        return resultat[-1]
+
+    def texte(section: Section, contenu: str) -> None:
+        section.elements.append(("texte", contenu))
+
+    def limite(section: Section, indicateur: str) -> None:
+        if contenu := d.limites.get(indicateur):
+            section.elements.append(("limite", contenu))
 
     # 1. Pression industrielle
-    lignes += [
-        "",
+    s = bloc(
         "1. Pression industrielle locale"
-        f" (sites raccordés au réseau de transport, {d.annee_pression or '?'})",
-    ]
+        f" (sites raccordés au réseau de transport, {d.annee_pression or '?'})"
+    )
     if d.commune_a_des_sites:
         minorant = " (minorant : secret statistique)" if d.conso_commune_est_minorant else ""
-        lignes.append(
-            f"   Commune     : {d.nb_sites_commune} site(s),"
-            f" {_gwh(d.conso_industrielle_commune_gwh or 0)}/an{minorant}"
+        texte(
+            s,
+            f"Commune     : {d.nb_sites_commune} site(s),"
+            f" {_gwh(d.conso_industrielle_commune_gwh or 0)}/an{minorant}",
         )
     else:
-        lignes.append(
-            "   Commune     : aucun site raccordé au transport → repli sur le département"
-        )
+        texte(s, "Commune     : aucun site raccordé au transport → repli sur le département")
     if d.nb_sites_departement:
         rang = (
             f" — rang {d.rang_pression_departement} sur {d.nb_departements_classes} départements"
             if d.rang_pression_departement
             else ""
         )
-        lignes.append(
-            f"   Département : {d.nb_sites_departement} site(s) dans {d.nb_communes_avec_site}"
-            f" commune(s), {_gwh(d.conso_industrielle_departement_gwh)}/an{rang}"
+        texte(
+            s,
+            f"Département : {d.nb_sites_departement} site(s) dans {d.nb_communes_avec_site}"
+            f" commune(s), {_gwh(d.conso_industrielle_departement_gwh)}/an{rang}",
         )
     else:
-        lignes.append("   Département : aucun site raccordé au transport")
-    limite("pression_industrielle")
+        texte(s, "Département : aucun site raccordé au transport")
+    limite(s, "pression_industrielle")
 
     # 2. Tension du réseau régional
-    lignes.append("")
     if d.taux_couverture_region is None:
         zni = " (zone non interconnectée)" if d.est_zni else ""
-        lignes += [
-            "2. Tension du réseau régional",
-            f"   Aucun équilibre régional publié par RTE pour cette région{zni}.",
-        ]
+        s = bloc("2. Tension du réseau régional")
+        texte(s, f"Aucun équilibre régional publié par RTE pour cette région{zni}.")
     else:
         debut = f"{d.equilibre_mois_debut:%m/%Y}" if d.equilibre_mois_debut else "?"
         fin = f"{d.equilibre_mois_fin:%m/%Y}" if d.equilibre_mois_fin else "?"
-        lignes += [
-            f"2. Tension du réseau régional ({debut} – {fin}, {d.equilibre_nb_mois} mois)",
-            f"   Production {_gwh(d.production_region_gwh or 0)},"
+        s = bloc(f"2. Tension du réseau régional ({debut} – {fin}, {d.equilibre_nb_mois} mois)")
+        texte(
+            s,
+            f"Production {_gwh(d.production_region_gwh or 0)},"
             f" consommation {_gwh(d.consommation_region_gwh or 0)}"
             f" : couverture {_nombre(d.taux_couverture_region * 100)} %"
             f" → région {_STATUTS.get(d.statut_equilibre or '', '?')}",
-            f"   Rang de dépendance : {d.rang_dependance_region} sur {d.nb_regions_classees}"
-            " (1 = la plus déficitaire)",
-        ]
-        if d.est_zni:
-            lignes.append(
-                "   Zone non interconnectée : le réseau n'est relié au continent que par des"
-                " liaisons limitées, le déficit y pèse bien davantage qu'en métropole."
-            )
-    limite("equilibre_regional")
-    if d.puissance_a_compenser_mw is not None:
-        lignes.append(
-            f"   Contraintes d'évacuation (RTE) : {_nombre(d.puissance_enr_installee_mw or 0)} MW"
-            f" d'EnR installés ou en projet, {_nombre(d.puissance_a_compenser_mw)} MW à"
-            f" compenser, {_nombre(d.energie_non_evacuee_mwh or 0)} MWh non évacués par an"
         )
-        limite("contraintes_reseau")
+        texte(
+            s,
+            f"Rang de dépendance : {d.rang_dependance_region} sur {d.nb_regions_classees}"
+            " (1 = la plus déficitaire)",
+        )
+        if d.est_zni:
+            texte(
+                s,
+                "Zone non interconnectée : le réseau n'est relié au continent que par des"
+                " liaisons limitées, le déficit y pèse bien davantage qu'en métropole.",
+            )
+    limite(s, "equilibre_regional")
+    if d.puissance_a_compenser_mw is not None:
+        texte(
+            s,
+            f"Contraintes d'évacuation (RTE) : {_nombre(d.puissance_enr_installee_mw or 0)} MW"
+            f" d'EnR installés ou en projet, {_nombre(d.puissance_a_compenser_mw)} MW à"
+            f" compenser, {_nombre(d.energie_non_evacuee_mwh or 0)} MWh non évacués par an",
+        )
+        limite(s, "contraintes_reseau")
 
     # 3. Raccordement
-    lignes += ["", "3. Raccordement"]
+    s = bloc("3. Raccordement")
     if d.seuil is not None:
-        s = d.seuil
-        lignes.append(
-            f"   Puissance {_nombre_court(s.puissance_mw)} MW → {s.domaine_tension},"
-            f" {s.gestionnaire} : {s.commentaire}"
+        texte(
+            s,
+            f"Puissance {_nombre_court(d.seuil.puissance_mw)} MW → {d.seuil.domaine_tension},"
+            f" {d.seuil.gestionnaire} : {d.seuil.commentaire}",
         )
-        limite("seuil_raccordement")
+        limite(s, "seuil_raccordement")
     else:
-        lignes.append("   Préciser --puissance (en MW) pour connaître le domaine de tension.")
-    limite("capacite_raccordement")
+        texte(s, "Préciser --puissance (en MW) pour connaître le domaine de tension.")
+    limite(s, "capacite_raccordement")
 
     # 4. Coût d'un profil type
-    lignes += ["", "4. Coût horaire d'un profil type (identique sur tout le territoire)"]
+    s = bloc("4. Coût horaire d'un profil type (identique sur tout le territoire)")
     if d.cout is None:
-        lignes.append("   Aucun mois complet et tarifé : charger les données nationales récentes.")
+        texte(s, "Aucun mois complet et tarifé : charger les données nationales récentes.")
     else:
         c = d.cout
-        lignes += [
-            f"   {c.libelle}, {_MOIS[c.mois.month - 1]} {c.mois.year},"
+        texte(
+            s,
+            f"{c.libelle}, {_MOIS[c.mois.month - 1]} {c.mois.year},"
             " option Heures Creuses du tarif bleu non résidentiel",
-            f"   {_nombre(c.conso_kwh)} kWh, dont {_nombre(c.part_hc * 100)} % en heures creuses :"
+        )
+        texte(
+            s,
+            f"{_nombre(c.conso_kwh)} kWh, dont {_nombre(c.part_hc * 100)} % en heures creuses :"
             f" {_nombre(c.cout_htva_eur)} € HTVA, soit {_nombre(c.prix_moyen_htva_eur_kwh, 4)}"
             f" €/kWh ; {_nombre(c.intensite_moyenne_g_kwh)} gCO₂/kWh en moyenne",
-            f"   Décaler {_nombre(c.kwh_decales)} kWh flexibles vers les heures creuses :"
+        )
+        texte(
+            s,
+            f"Décaler {_nombre(c.kwh_decales)} kWh flexibles vers les heures creuses :"
             f" {_nombre(c.gain_decalage_eur)} € économisés, {_co2_evite(c.co2_evite_kg)}",
-        ]
+        )
         if d.est_zni:
-            lignes.append(
-                "   Barème de métropole continentale : la Corse et l'outre-mer ont leurs propres"
-                " barèmes réglementés."
+            texte(
+                s,
+                "Barème de métropole continentale : la Corse et l'outre-mer ont leurs propres"
+                " barèmes réglementés.",
             )
-    limite("cout_profil")
+    limite(s, "cout_profil")
+    return resultat
+
+
+def formater_diagnostic(diagnostic: Diagnostic) -> str:
+    """Diagnostic lisible en terminal, chaque bloc suivi de sa limite."""
+    lignes = [f"DIAGNOSTIC D'IMPLANTATION — {diagnostic.territoire.adresse}"]
+    lignes += entete(diagnostic)
+    for section in sections(diagnostic):
+        lignes += ["", section.titre]
+        lignes += [
+            f"   ↳ Limite : {contenu}" if nature == "limite" else f"   {contenu}"
+            for nature, contenu in section.elements
+        ]
     return "\n".join(lignes)
+
+
+def diagnostic_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
+    """Diagnostic sérialisable en JSON : dates au format ISO, mêmes noms de champs."""
+
+    def convertir(valeur: Any) -> Any:
+        if isinstance(valeur, date):
+            return valeur.isoformat()
+        if isinstance(valeur, dict):
+            return {cle: convertir(v) for cle, v in valeur.items()}
+        if isinstance(valeur, list):
+            return [convertir(v) for v in valeur]
+        return valeur
+
+    contenu = asdict(diagnostic)
+    contenu["commune_a_des_sites"] = diagnostic.commune_a_des_sites
+    return convertir(contenu)
 
 
 _MOIS = [

@@ -70,8 +70,8 @@ dépôt, lance une commande et passe l'adresse en argument.
 |---|---|---|
 | 4.1 | ~~`diagnose --adresse`~~ — **fait** (10 oct.) | ~~Une adresse produit un diagnostic lisible~~ |
 | 4.2 | Options ~~`--puissance`~~ (**fait**, 10 oct.) et `--profil` | Le diagnostic s'adapte au projet décrit |
-| 4.3 | `--format pdf` / `--format md` : rapport d'implantation par adresse | Un document est produit, graphiques compris |
-| 4.4 | `--format json` / `--format csv` : sortie machine | Le diagnostic s'intègre à un autre outil |
+| 4.3 | ~~`--format pdf` / `--format md` : rapport d'implantation par adresse~~ — **fait** (10 oct.) : mêmes sections que le terminal, trois graphiques (pression départementale, couverture régionale, profil journalier) | ~~Un document est produit, graphiques compris~~ |
+| 4.4 | `--format json` — **fait** (10 oct.), sur la sortie standard ou `--output`. Le CSV est écarté : le diagnostic est un objet imbriqué, pas une table | ~~Le diagnostic s'intègre à un autre outil~~ |
 | 4.5 | ~~Affichage systématique des limites méthodologiques~~ — **fait** en sortie terminal (10 oct.), testé | ~~Aucun indicateur n'apparaît sans sa limite~~ |
 
 ### Lot 5 — Exploitation et orchestration
@@ -88,7 +88,7 @@ dépôt, lance une commande et passe l'adresse en argument.
 
 | # | Étape | Fini quand |
 |---|---|---|
-| 6.1 | Exemple de rapport d'implantation commité (PDF + Markdown) | Le dépôt se comprend sans rien installer |
+| 6.1 | ~~Exemple de rapport d'implantation commité (PDF + Markdown)~~ — **fait** (10 oct.) : `docs/exemples/implantation_lyon` | ~~Le dépôt se comprend sans rien installer~~ |
 | 6.2 | Captures des graphiques dans le README | — |
 | 6.3 | ~~Renommer le dépôt et aligner le nom du projet partout~~ — **fait** (9 oct. 2026) : « Où brancher mon entreprise », slug `ou-brancher-mon-entreprise` | ~~Plus aucune occurrence de l'ancien nom~~ |
 | 6.4 | Démonstration de 2 minutes (asciinema ou vidéo courte) | Un prospect voit tourner l'outil |
@@ -154,4 +154,8 @@ périmètre. Il le redeviendra pour les sites au-delà de 36 kVA (3.3).
 ### Ce qui vient juste après le MVP
 
 Dans cet ordre : lancer Airflow (5.1), brancher les quatre profils (3.1), le
-TURPE détaillé (3.3), le rapport PDF par adresse (4.3), puis la vitrine (lot 6).
+TURPE détaillé (3.3), ~~le rapport PDF par adresse (4.3)~~ (**fait** le 10 octobre,
+avec la sortie JSON et un exemple commité), puis la fin de la vitrine (6.2, 6.4).
+
+Les profils au-delà de 36 kVA (industriel 3×8, data center) sortent du tarif bleu :
+ils attendent le TURPE (3.3) et une hypothèse de prix de fourniture en offre de marché.
