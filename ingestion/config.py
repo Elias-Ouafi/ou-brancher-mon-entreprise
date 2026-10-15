@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     #: api-adresse.data.gouv.fr a été décommissionné fin janvier 2026.
     ban_base_url: str = "https://data.geopf.fr/geocodage"
 
+    #: API Géorisques (risques naturels et technologiques à l'adresse), sans clé.
+    georisques_base_url: str = "https://www.georisques.gouv.fr/api/v1/"
+
     #: API de diffusion d'Eurostat (JSON-stat), sans compte ni clé.
     eurostat_base_url: str = "https://ec.europa.eu/eurostat/api/dissemination"
     rte_client_id: str | None = None

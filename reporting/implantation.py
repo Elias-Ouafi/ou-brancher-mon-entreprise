@@ -39,11 +39,13 @@ FORMATS: tuple[Format, ...] = ("md", "pdf", "json")
 NB_DEPARTEMENTS_AFFICHES = 15
 
 SOURCES = [
-    "Géocodage : Base Adresse Nationale (api-adresse.data.gouv.fr).",
+    "Géocodage : Base Adresse Nationale, via la Géoplateforme de l'IGN (data.geopf.fr).",
     "Pression industrielle : ODRÉ, consommation-annuelle-par-iris (RTE, GRTgaz, Teréga).",
     "Tension régionale : ODRÉ, equilibre-regional-mensuel-prod-conso-brute et "
     "contraintes-regionales (RTE).",
     "Prix de l'électricité des entreprises : Eurostat, nrg_pc_205 (semestriel, par tranche).",
+    "Risques à l'adresse : Géorisques (ministère de la Transition écologique, BRGM),"
+    " rapport de risques ; à défaut, base GASPAR et zonage sismique de la commune.",
     "Profil type : barèmes du tarif bleu non résidentiel, délibérations de la CRE n° 2026-06 et "
     "n° 2026-147. Carbone : éCO2mix national (RTE).",
 ]
@@ -227,8 +229,8 @@ def rendre_markdown(
         "",
         *[f"*{texte_compact(ligne)}*  " for ligne in entete(diagnostic)],
         "",
-        f"Établi le {now:%d/%m/%Y} à partir des données ouvertes de RTE et d'ODRÉ."
-        " Chaque indicateur est suivi de sa limite méthodologique.",
+        f"Établi le {now:%d/%m/%Y} à partir de données publiques ouvertes (RTE, ODRÉ, Eurostat,"
+        " Géorisques). Chaque indicateur est suivi de sa limite méthodologique.",
         "",
     ]
     for numero, section in enumerate(sections(diagnostic), start=1):

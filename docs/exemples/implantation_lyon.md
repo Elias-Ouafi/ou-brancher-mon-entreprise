@@ -2,7 +2,7 @@
 
 *Commune Lyon (69123) · Rhône (69) · Auvergne-Rhône-Alpes (84)*  
 
-Établi le 15/10/2026 à partir des données ouvertes de RTE et d'ODRÉ. Chaque indicateur est suivi de sa limite méthodologique.
+Établi le 15/10/2026 à partir de données publiques ouvertes (RTE, ODRÉ, Eurostat, Géorisques). Chaque indicateur est suivi de sa limite méthodologique.
 
 ## 1. Pression industrielle locale (sites raccordés au réseau de transport, 2021)
 
@@ -56,10 +56,21 @@
 
 ![Courbe journalière du profil type](implantation_lyon_graphiques/profil_journalier.png)
 
+## 6. Risques naturels et technologiques à l'adresse (Géorisques)
+
+- Naturels, à l'adresse : Inondation, Remontée de nappe, Séisme (faible), Retrait-gonflement des argiles (modéré), Radon (faible)
+- Technologiques, à l'adresse : Pollution des sols
+- Présents dans la commune, non évalués à l'adresse : Rupture de barrage
+- Présents dans la commune, mais l'adresse n'est pas concernée : Installations industrielles classées (ICPE), Canalisations de matières dangereuses
+- Rapport officiel : https://www.georisques.gouv.fr/mes-risques/connaitre-les-risques-pres-de-chez-moi/rapport2?typeForm=adresse&city=Lyon&codeInsee=69123&lon=4.835685&lat=45.763721&adresse=20+Rue+de+la+R%C3%A9publique%2C+69002+Lyon
+
+> **Limite.** Croisement de la position géocodée avec les zonages réglementaires et les cartographies d'aléas disponibles : le résultat dépend de la précision du géocodage et de la couverture des cartes, et un risque « non évalué » à l'adresse n'est pas un risque absent. Ce n'est ni l'état des risques réglementaire, obligatoire pour une vente ou une location, ni une étude de sol ou de vulnérabilité du site.
+
 ## Sources
 
-- Géocodage : Base Adresse Nationale (api-adresse.data.gouv.fr).
+- Géocodage : Base Adresse Nationale, via la Géoplateforme de l'IGN (data.geopf.fr).
 - Pression industrielle : ODRÉ, consommation-annuelle-par-iris (RTE, GRTgaz, Teréga).
 - Tension régionale : ODRÉ, equilibre-regional-mensuel-prod-conso-brute et contraintes-regionales (RTE).
 - Prix de l'électricité des entreprises : Eurostat, nrg_pc_205 (semestriel, par tranche).
+- Risques à l'adresse : Géorisques (ministère de la Transition écologique, BRGM), rapport de risques ; à défaut, base GASPAR et zonage sismique de la commune.
 - Profil type : barèmes du tarif bleu non résidentiel, délibérations de la CRE n° 2026-06 et n° 2026-147. Carbone : éCO2mix national (RTE).

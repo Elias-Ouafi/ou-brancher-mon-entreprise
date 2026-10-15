@@ -1,0 +1,47 @@
+{
+  "results": 1,
+  "page": 1,
+  "total_pages": 1,
+  "data": [
+    {
+      "risques_detail": [
+        {
+          "num_risque": "16",
+          "libelle_risque_long": "Feu de forêt",
+          "zone_sismicite": null
+        },
+        {
+          "num_risque": "17",
+          "libelle_risque_long": "Phénomène lié à l'atmosphère",
+          "zone_sismicite": null
+        },
+        {
+          "num_risque": "172",
+          "libelle_risque_long": "Tempête et grains (vent)",
+          "zone_sismicite": null
+        },
+        {
+          "num_risque": "21",
+          "libelle_risque_long": "Risque industriel",
+          "zone_sismicite": null
+        },
+        {
+          "num_risque": "23",
+          "libelle_risque_long": "Rupture de barrage",
+          "zone_sismicite": null
+        },
+        {
+          "num_risque": "24",
+          "libelle_risque_long": "Transport de marchandises dangereuses",
+          "zone_sismicite": null
+        }
+      ],
+      "code_insee": "2A004",
+      "libelle_commune": "AJACCIO"
+    }
+  ],
+  "response_code": 200,
+  "message": null,
+  "next": null,
+  "previous": null
+}

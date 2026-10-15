@@ -1,0 +1,143 @@
+{
+  "adresse": {
+    "libelle": "1 Boulevard du Roi Jerome, 20000 Ajaccio",
+    "longitude": 8.738701,
+    "latitude": 41.91929
+  },
+  "commune": {
+    "libelle": "Ajaccio",
+    "codePostal": "20000",
+    "codeInsee": "2A004"
+  },
+  "url": "https://www.georisques.gouv.fr/mes-risques/connaitre-les-risques-pres-de-chez-moi/rapport2?typeForm=adresse&city=Ajaccio&codeInsee=2A004&lon=8.7386&lat=41.9192&adresse=1+Boulevard+du+Roi+Jerome%2C+20000+Ajaccio",
+  "risquesNaturels": {
+    "inondation": {
+      "present": true,
+      "libelle": "Inondation",
+      "libelleStatutCommune": "Risque Existant",
+      "libelleStatutAdresse": "Risque Existant",
+      "specifique": null
+    },
+    "remonteeNappe": {
+      "present": true,
+      "libelle": "Remontée de nappe",
+      "libelleStatutCommune": "Risque Existant",
+      "libelleStatutAdresse": "Risque Existant",
+      "specifique": null
+    },
+    "risqueCotier": {
+      "present": true,
+      "libelle": "Risques côtiers (submersion marine, tsunami)",
+      "libelleStatutCommune": "Risque Existant",
+      "libelleStatutAdresse": "Risque non Connu",
+      "specifique": null
+    },
+    "seisme": {
+      "present": true,
+      "libelle": "Séisme",
+      "libelleStatutCommune": "Risque Existant - faible",
+      "libelleStatutAdresse": "Risque Existant - faible",
+      "specifique": null
+    },
+    "mouvementTerrain": {
+      "present": true,
+      "libelle": "Mouvements de terrain",
+      "libelleStatutCommune": "Risque Existant",
+      "libelleStatutAdresse": "Risque Existant",
+      "specifique": null
+    },
+    "reculTraitCote": {
+      "present": false,
+      "libelle": "Recul du trait de cote",
+      "libelleStatutCommune": null,
+      "libelleStatutAdresse": null,
+      "specifique": null
+    },
+    "retraitGonflementArgile": {
+      "present": true,
+      "libelle": "Retrait gonflement des argiles",
+      "libelleStatutCommune": "Risque Existant - modéré",
+      "libelleStatutAdresse": "Risque non Connu",
+      "specifique": null
+    },
+    "avalanche": {
+      "present": false,
+      "libelle": "Avalanche",
+      "libelleStatutCommune": null,
+      "libelleStatutAdresse": null,
+      "specifique": null
+    },
+    "feuForet": {
+      "present": true,
+      "libelle": "Feu de foret",
+      "libelleStatutCommune": "Risque Existant",
+      "libelleStatutAdresse": "Risque Existant",
+      "specifique": null
+    },
+    "eruptionVolcanique": {
+      "present": false,
+      "libelle": "Volcan",
+      "libelleStatutCommune": null,
+      "libelleStatutAdresse": null,
+      "specifique": null
+    },
+    "cyclone": {
+      "present": false,
+      "libelle": "Vent violent",
+      "libelleStatutCommune": null,
+      "libelleStatutAdresse": null,
+      "specifique": null
+    },
+    "radon": {
+      "present": true,
+      "libelle": "Radon",
+      "libelleStatutCommune": "Risque Existant - important",
+      "libelleStatutAdresse": "Risque Existant - important",
+      "specifique": null
+    }
+  },
+  "risquesTechnologiques": {
+    "icpe": {
+      "present": true,
+      "libelle": "Installations industrielles classées (ICPE)",
+      "libelleStatutCommune": "Risque Concerne",
+      "libelleStatutAdresse": "Risque Existant - important",
+      "specifique": null
+    },
+    "nucleaire": {
+      "present": false,
+      "libelle": "Nucléaire",
+      "libelleStatutCommune": null,
+      "libelleStatutAdresse": null,
+      "specifique": null
+    },
+    "canalisationsMatieresDangereuses": {
+      "present": true,
+      "libelle": "Canalisations de transport de matières dangereuses",
+      "libelleStatutCommune": "Risque Concerne",
+      "libelleStatutAdresse": "Risque non Concerne",
+      "specifique": null
+    },
+    "pollutionSols": {
+      "present": true,
+      "libelle": "Pollution des sols",
+      "libelleStatutCommune": "Risque Concerne",
+      "libelleStatutAdresse": "Risque Concerne",
+      "specifique": null
+    },
+    "ruptureBarrage": {
+      "present": true,
+      "libelle": "Rupture de barrage",
+      "libelleStatutCommune": "Risque Concerne",
+      "libelleStatutAdresse": "Risque Inconnu",
+      "specifique": null
+    },
+    "risqueMinier": {
+      "present": false,
+      "libelle": "Risques miniers",
+      "libelleStatutCommune": null,
+      "libelleStatutAdresse": null,
+      "specifique": null
+    }
+  }
+}

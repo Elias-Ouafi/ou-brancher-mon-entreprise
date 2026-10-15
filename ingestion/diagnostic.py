@@ -22,7 +22,8 @@ Points de conception :
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+import logging
+from dataclasses import asdict, dataclass, replace
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -31,6 +32,9 @@ import duckdb
 
 from ingestion.config import Settings, get_settings
 from ingestion.geocode import Territoire
+from ingestion.georisques import Exposition, GeorisquesError, Risque, RisquesSite, lire_risques
+
+logger = logging.getLogger(__name__)
 
 #: Arrondissements municipaux (3 premiers caractères du code) -> code de la commune.
 ARRONDISSEMENTS: dict[str, str] = {"751": "75056", "693": "69123", "132": "13055"}
@@ -223,6 +227,10 @@ class Diagnostic:
     prix: PrixEntreprise | None
     cout: CoutProfil | None
     limites: dict[str, str]
+    # Risques à l'adresse (Géorisques), ajoutés par `completer_risques`
+    risques: RisquesSite | None = None
+    #: Raison pour laquelle Géorisques n'a pas pu être consulté, le cas échéant.
+    risques_erreur: str | None = None
 
     @property
     def commune_a_des_sites(self) -> bool:
@@ -534,7 +542,82 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
                 " barèmes réglementés.",
             )
     limite(s, "cout_profil")
+
+    # 6. Risques à l'adresse
+    s = bloc("6. Risques naturels et technologiques à l'adresse (Géorisques)")
+    if d.risques_erreur is not None:
+        texte(
+            s,
+            "Géorisques n'a pas répondu, même après plusieurs tentatives : risques non évalués."
+            " À consulter sur georisques.gouv.fr avant tout engagement.",
+        )
+    elif d.risques is None:
+        texte(s, "Non consulté (option --sans-risques).")
+    elif d.risques.maille == "commune":
+        r = d.risques
+        texte(
+            s,
+            "Rapport à l'adresse indisponible (Géorisques n'a pas répondu) : repli sur les"
+            " risques recensés dans la commune, sans évaluation à l'adresse.",
+        )
+        for famille, nom in (("naturel", "Naturels"), ("technologique", "Technologiques")):
+            recenses = r.selon(Exposition.INCONNU, famille)
+            texte(
+                s,
+                f"{nom}, recensés dans la commune : {_liste_risques(recenses) or 'aucun'}",
+            )
+        limite(s, "risques_site")
+    else:
+        r = d.risques
+        if not d.territoire.est_precis:
+            texte(
+                s,
+                "Adresse résolue à la commune seulement : le statut « à l'adresse » ne vaut que"
+                " pour le point retenu par le géocodage.",
+            )
+        for famille, nom in (("naturel", "Naturels"), ("technologique", "Technologiques")):
+            exposes = r.selon(Exposition.EXPOSE, famille)
+            texte(s, f"{nom}, à l'adresse : {_liste_risques(exposes) or 'aucun recensé'}")
+        if inconnus := r.selon(Exposition.INCONNU):
+            texte(
+                s,
+                "Présents dans la commune, non évalués à l'adresse : " + _liste_risques(inconnus),
+            )
+        if ecartes := r.selon(Exposition.NON_EXPOSE):
+            texte(
+                s,
+                "Présents dans la commune, mais l'adresse n'est pas concernée : "
+                + _liste_risques(ecartes),
+            )
+        if r.url:
+            texte(s, f"Rapport officiel : {r.url}")
+        limite(s, "risques_site")
     return resultat
+
+
+def _liste_risques(risques: list[Risque]) -> str:
+    """« Séisme (faible), Inondation » : le niveau entre parenthèses quand il est publié."""
+    return ", ".join(f"{r.libelle} ({r.niveau})" if r.niveau else r.libelle for r in risques)
+
+
+def completer_risques(diagnostic: Diagnostic, *, settings: Settings | None = None) -> Diagnostic:
+    """Ajoute le rapport Géorisques de l'adresse ; ne fait jamais échouer le diagnostic.
+
+    Géorisques coupe des connexions par intermittence : s'il reste injoignable
+    après les nouvelles tentatives, le diagnostic sort quand même et le dit.
+    """
+    t = diagnostic.territoire
+    try:
+        risques = lire_risques(
+            latitude=t.latitude,
+            longitude=t.longitude,
+            codes_commune={t.code_insee_commune, diagnostic.code_insee_commune},
+            settings=settings,
+        )
+    except GeorisquesError as error:
+        logger.warning("risques non evalues : %s", error)
+        return replace(diagnostic, risques_erreur=str(error))
+    return replace(diagnostic, risques=risques)
 
 
 def formater_diagnostic(diagnostic: Diagnostic) -> str:

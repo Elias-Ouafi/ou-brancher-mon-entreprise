@@ -30,7 +30,12 @@ from pathlib import Path
 
 from ingestion.config import get_settings
 from ingestion.datasets import NATIONAL_CONS_DEF, NATIONAL_TR, SPECS, get_spec
-from ingestion.diagnostic import DiagnosticIndisponibleError, formater_diagnostic, lire_diagnostic
+from ingestion.diagnostic import (
+    DiagnosticIndisponibleError,
+    completer_risques,
+    formater_diagnostic,
+    lire_diagnostic,
+)
 from ingestion.extract_odre import ExtractionWindow
 from ingestion.extract_rte import DayRange, RteCredentialsMissingError
 from ingestion.geocode import GeocodingError, geocode
@@ -162,6 +167,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     diagnose.add_argument("--output", help="chemin du fichier (défaut : data/reports/)")
     diagnose.add_argument(
+        "--sans-risques",
+        action="store_true",
+        help="ne consulte pas Géorisques (usage hors ligne)",
+    )
+    diagnose.add_argument(
         "--sans-graphiques",
         action="store_true",
         help="Markdown uniquement : texte seul, sans images PNG",
@@ -263,6 +273,8 @@ def main(argv: list[str] | None = None) -> int:
             except (GeocodingError, DiagnosticIndisponibleError) as error:
                 logger.error("diagnostic impossible : %s", error)
                 return 1
+            if not args.sans_risques:
+                diagnostic = completer_risques(diagnostic, settings=settings)
             # Sortie redirigée sous Windows : cp1252 ne connaît ni « → » ni « ≤ ».
             if hasattr(sys.stdout, "reconfigure"):
                 sys.stdout.reconfigure(encoding="utf-8")
