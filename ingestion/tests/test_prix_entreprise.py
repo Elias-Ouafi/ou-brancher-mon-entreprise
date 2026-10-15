@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 from dataclasses import replace
 from pathlib import Path
+from statistics import mean
 from typing import Any
 
 import duckdb
@@ -27,7 +28,15 @@ from ingestion.extract_eurostat import (
     aplatir_json_stat,
 )
 from ingestion.pipeline import run_prix_entreprises_ingestion
-from ingestion.tests.medallion import DBT_BIN, PRIX_IB_DEPART, PRIX_IB_PAS, TAXES_IB
+from ingestion.tests.medallion import (
+    DBT_BIN,
+    PRIX_IB_DEPART,
+    PRIX_IB_PAS,
+    PRIX_ID,
+    PRIX_IE,
+    TAXES_IB,
+    semestres,
+)
 from ingestion.tests.test_diagnostic import territoire
 from reporting.implantation import generer_rapport_implantation
 
@@ -181,44 +190,159 @@ def test_tranche_summary_reads_last_twelve_months_and_history(medallion_db: Path
     assert (minimum, maximum) == (pytest.approx(PRIX_IB[0]), pytest.approx(PRIX_IB[19]))
 
 
-@dbt_requis
-def test_scenarios_apply_past_variations_to_reference_price(medallion_db: Path) -> None:
-    reference = (PRIX_IB[18] + PRIX_IB[19]) / 2
-    attendus = {}
-    for horizon in (1, 2, 3):
-        decalage = 2 * horizon
-        variations = [PRIX_IB[i + decalage] / PRIX_IB[i] for i in range(20 - decalage)]
-        attendus[horizon] = (
-            len(variations),
-            *(reference * quantile_cont(variations, q) for q in (0.1, 0.5, 0.9)),
-        )
+# --- Scénarios et contrôle sur le passé -----------------------------------------------
 
+#: Semestres des tranches synthétiques ID et IE (2006-S1 à 2025-S2).
+SEMESTRES_LONGS = semestres(2006, 2025)
+TRANCHES_LONGUES = {"MWH2000-19999": PRIX_ID, "MWH20000-69999": PRIX_IE}
+
+
+def eventails_attendus(
+    prix: list[float], *, nb_variations_min: int = 4, nb_erreurs_min: int = 10
+) -> tuple[dict[tuple[int, int], tuple[float, ...]], dict[tuple[int, int], float]]:
+    """Recalcul indépendant de `fct_prix_entreprise_eventails`, série sans trou.
+
+    Renvoie les éventails publiables `(t, h) -> (bas, central, haut, nb_erreurs)` et les
+    prix réalisés `(t, h) -> prix`.
+    """
+    n = len(prix)
+    central: dict[tuple[int, int], float] = {}
+    realise: dict[tuple[int, int], float] = {}
+    for t in range(n):
+        reference = mean(prix[max(0, t - 1) : t + 1])
+        for h in (1, 2, 3):
+            pas = 2 * h
+            variations = [prix[s + pas] / prix[s] for s in range(n) if s + pas <= t]
+            if len(variations) >= nb_variations_min:
+                central[t, h] = reference * quantile_cont(variations, 0.5)
+            if t + pas < n:
+                realise[t, h] = (prix[t + pas - 1] + prix[t + pas]) / 2
+    eventails = {}
+    for (t, h), centre in central.items():
+        erreurs = [
+            realise[u, h] / central[u, h]
+            for u in range(n)
+            if u + 2 * h <= t and (u, h) in central and (u, h) in realise
+        ]
+        if len(erreurs) >= nb_erreurs_min:
+            eventails[t, h] = (
+                *(centre * quantile_cont(erreurs, q) for q in (0.1, 0.5, 0.9)),
+                len(erreurs),
+            )
+    return eventails, realise
+
+
+def calibration_attendue(prix: list[float]) -> dict[str, Any]:
+    """Recalcul indépendant de `fct_prix_entreprise_calibration`."""
+    eventails, realise = eventails_attendus(prix)
+    periodes = []
+    for t in range(len(prix)):
+        cles = [(t, h) for h in (1, 2, 3) if (t, h) in eventails and (t, h) in realise]
+        if len(cles) == 3:
+            bas = mean(eventails[c][0] for c in cles)
+            haut = mean(eventails[c][2] for c in cles)
+            periodes.append((t, bas, haut, mean(realise[c] for c in cles)))
+    return {
+        "nb_periodes_controlees": len(periodes),
+        "nb_dans_eventail": sum(bas <= r <= haut for _, bas, haut, r in periodes),
+        "nb_au_dessus": sum(r > haut for _, _, haut, r in periodes),
+        "nb_en_dessous": sum(r < bas for _, bas, _, r in periodes),
+        "premiere_origine_controlee": SEMESTRES_LONGS[periodes[0][0]],
+        "derniere_origine_controlee": SEMESTRES_LONGS[periodes[-1][0]],
+    }
+
+
+@dbt_requis
+@pytest.mark.parametrize("tranche", sorted(TRANCHES_LONGUES))
+def test_every_past_fan_matches_an_independent_computation(
+    medallion_db: Path, tranche: str
+) -> None:
+    """Chaque éventail, à chaque origine, n'utilise que ce qui était connu à cette date."""
+    attendus, _ = eventails_attendus(TRANCHES_LONGUES[tranche])
     with duckdb.connect(str(medallion_db), read_only=True) as connection:
         lignes = connection.execute(
-            "SELECT horizon_annees, nb_variations_observees, prix_bas_eur_kwh,"
-            " prix_central_eur_kwh, prix_haut_eur_kwh FROM gold.fct_prix_entreprise_scenarios"
-            " WHERE tranche = 'MWH20-499' ORDER BY horizon_annees"
+            "SELECT semestre_origine, horizon_annees, prix_bas_eur_kwh, prix_central_eur_kwh,"
+            " prix_haut_eur_kwh, nb_erreurs_observees FROM gold.fct_prix_entreprise_eventails"
+            " WHERE tranche = $tranche AND prix_bas_eur_kwh IS NOT NULL",
+            {"tranche": tranche},
+        ).fetchall()
+    obtenus = {
+        (SEMESTRES_LONGS.index(semestre), horizon): valeurs
+        for semestre, horizon, *valeurs in lignes
+    }
+    assert obtenus.keys() == attendus.keys()
+    for cle, valeurs in obtenus.items():
+        assert tuple(valeurs) == pytest.approx(attendus[cle])
+
+
+@dbt_requis
+def test_scenarios_are_the_fan_at_the_last_semester(medallion_db: Path) -> None:
+    attendus, _ = eventails_attendus(PRIX_ID)
+    dernier = len(PRIX_ID) - 1
+    with duckdb.connect(str(medallion_db), read_only=True) as connection:
+        lignes = connection.execute(
+            "SELECT horizon_annees, prix_bas_eur_kwh, prix_central_eur_kwh, prix_haut_eur_kwh,"
+            " nb_erreurs_observees FROM gold.fct_prix_entreprise_scenarios"
+            " WHERE tranche = 'MWH2000-19999' ORDER BY horizon_annees"
         ).fetchall()
         trois_ans = connection.execute(
             "SELECT prix_3_ans_bas_eur_kwh, prix_3_ans_central_eur_kwh, prix_3_ans_haut_eur_kwh"
-            " FROM gold.fct_prix_entreprise_tranche WHERE tranche = 'MWH20-499'"
+            " FROM gold.fct_prix_entreprise_tranche WHERE tranche = 'MWH2000-19999'"
         ).fetchone()
-
-    for horizon, nb, bas, centre, haut in lignes:
-        assert (nb, bas, centre, haut) == pytest.approx(attendus[horizon])
+    for horizon, *valeurs in lignes:
+        assert tuple(valeurs) == pytest.approx(attendus[dernier, horizon])
     assert trois_ans == pytest.approx(
-        tuple(sum(attendus[h][k] for h in (1, 2, 3)) / 3 for k in (1, 2, 3))
+        tuple(mean(attendus[dernier, h][k] for h in (1, 2, 3)) for k in range(3))
     )
 
 
 @dbt_requis
-def test_short_history_gives_no_scenario(medallion_db: Path) -> None:
+@pytest.mark.parametrize("tranche", ["MWH20-499", "MWH_GE150000"])
+def test_short_history_gives_no_scenario(medallion_db: Path, tranche: str) -> None:
+    """IB (10 ans) n'a pas 10 erreurs passées à 3 ans ; IG (2 ans) n'a rien."""
     ligne = _une_ligne(
         medallion_db,
-        "SELECT prix_reference_eur_kwh, prix_3_ans_central_eur_kwh, nb_variations_observees"
-        " FROM gold.fct_prix_entreprise_tranche WHERE tranche = 'MWH_GE150000'",
+        "SELECT prix_3_ans_central_eur_kwh, nb_erreurs_observees, nb_periodes_controlees"
+        f" FROM gold.fct_prix_entreprise_tranche WHERE tranche = '{tranche}'",
     )
-    assert ligne == (pytest.approx(0.07), None, None)
+    assert ligne == (None, None, 0)
+
+
+@dbt_requis
+@pytest.mark.parametrize("tranche", sorted(TRANCHES_LONGUES))
+def test_calibration_matches_an_independent_backtest(medallion_db: Path, tranche: str) -> None:
+    attendu = calibration_attendue(TRANCHES_LONGUES[tranche])
+    ligne = _une_ligne(
+        medallion_db,
+        "SELECT nb_periodes_controlees, nb_dans_eventail, nb_au_dessus, nb_en_dessous,"
+        " premiere_origine_controlee, derniere_origine_controlee"
+        f" FROM gold.fct_prix_entreprise_calibration WHERE tranche = '{tranche}'",
+    )
+    assert ligne == tuple(attendu.values())
+
+
+def test_a_crisis_already_seen_is_absorbed_by_the_fans() -> None:
+    """Le sens de la méthode : une crise passée élargit les éventails qui la suivent."""
+    recente, ancienne = calibration_attendue(PRIX_ID), calibration_attendue(PRIX_IE)
+    # Crise récente : aucun éventail contrôlé ne l'avait vue, les trois positions existent.
+    assert min(recente["nb_dans_eventail"], recente["nb_au_dessus"], recente["nb_en_dessous"])
+    # Crise ancienne : ses erreurs calibrent les éventails, qui encadrent bien plus souvent.
+    assert ancienne["nb_dans_eventail"] > 2 * recente["nb_dans_eventail"]
+
+
+@dbt_requis
+def test_price_section_reports_the_past_check(medallion_db: Path) -> None:
+    attendu = calibration_attendue(PRIX_ID)
+    texte = formater_diagnostic(
+        lire_diagnostic(territoire("69123"), conso_mwh=5_000, database=medallion_db)
+    )
+    total, dans = attendu["nb_periodes_controlees"], attendu["nb_dans_eventail"]
+    assert (
+        f"la méthode a encadré le prix moyen réel des 3 années suivantes {dans} fois sur {total}"
+        in texte
+    )
+    assert f"il a dépassé le scénario haut {attendu['nb_au_dessus']} fois" in texte
+    assert "calibrent la fourchette affichée" in texte
 
 
 # --- Diagnostic -------------------------------------------------------------------------
@@ -251,7 +375,8 @@ def test_price_section_gives_bill_range_and_its_limit(medallion_db: Path) -> Non
     # 350 000 kWh à 0,1925 €/kWh = 67 375 €, arrondi à la centaine.
     assert "facture d'environ 67 400 € par an" in bloc
     assert "plus bas 0,1000 (S1 2016), plus haut 0,1950 (S2 2025)" in bloc
-    assert "Prix moyen des 3 prochaines années" in bloc
+    # Dix ans d'historique ne fournissent pas 10 erreurs passées à 3 ans.
+    assert "pas de scénario à 3 ans" in bloc
     assert diagnostic.limites["prix_entreprise"] in bloc
 
 
@@ -281,7 +406,9 @@ def test_non_positive_consumption_is_refused(medallion_db: Path) -> None:
 
 @dbt_requis
 def test_report_adds_the_band_price_chart(medallion_db: Path, tmp_path: Path) -> None:
-    diagnostic = lire_diagnostic(territoire("69123"), conso_mwh=350, database=medallion_db)
+    diagnostic = lire_diagnostic(territoire("69123"), conso_mwh=5_000, database=medallion_db)
+    assert diagnostic.prix is not None
+    assert diagnostic.prix.prix_3_ans_central_eur_kwh is not None
     reglages = Settings(_env_file=None, duckdb_path=medallion_db)
 
     chemin = generer_rapport_implantation(

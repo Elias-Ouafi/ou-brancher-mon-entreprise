@@ -138,7 +138,7 @@ load_*, dbt_build, contrôles et rapport passent par le pool duckdb_writer (1 sl
 | **Parquet** (pyarrow) | Zone bronze immuable, partitionnée par date d'ingestion | Format colonne typé, lisible par DuckDB aujourd'hui et par BigQuery demain |
 | **httpx** + **tenacity** | Appels HTTP, retry exponentiel, timeouts | `tenacity` évite d'écrire une boucle de retry à la main |
 | **pydantic-settings** | Configuration typée depuis l'environnement | Valide les réglages au démarrage plutôt qu'au premier appel |
-| **pytest** + **pytest-httpx** | 219 tests, aucun appel réseau réel | L'interception au niveau du transport garantit qu'aucun test ne sort |
+| **pytest** + **pytest-httpx** | 226 tests, aucun appel réseau réel | L'interception au niveau du transport garantit qu'aucun test ne sort |
 | **ruff** | Lint et format | Un seul outil pour les deux |
 | **matplotlib** + **reportlab** | Graphiques et PDF du rapport | Importés paresseusement : ils ne pèsent que sur la commande de rapport |
 
@@ -177,9 +177,9 @@ un coût horaire de profil en sortie, produits par un pipeline qui tourne sans i
 | **Diagnostic par adresse** (`diagnose --adresse --puissance`) : pression industrielle, tension régionale, seuil de raccordement, limites | 33 tests ; exécuté sur des adresses réelles (Lyon, Fos-sur-Mer, Ajaccio) |
 | **Coût horaire d'un profil type** : bureau 36 kVA chiffré heure par heure sur la grille HP/HC non résidentielle officielle (CRE), carbone, gain d'un décalage vers les heures creuses | 8 tests ; chiffré sur février → septembre 2026 réels |
 | **Rapport d'implantation par adresse** (`diagnose --format pdf/md/json`) : mêmes blocs et limites que le terminal, quatre graphiques de mise en perspective | 17 tests, dont les territoires sans donnée (outre-mer, Corse, commune sans site) ; [exemple réel commité](docs/exemples/implantation_lyon.pdf) |
-| **Prix de l'électricité de l'entreprise** (`diagnose --conso`) : prix Eurostat de sa tranche sur 12 mois, repères depuis 2007, prix moyen des 3 prochaines années en trois scénarios tirés de l'historique | 33 tests ; série réelle chargée (494 valeurs, 1 appel), 7 tranches |
+| **Prix de l'électricité de l'entreprise** (`diagnose --conso`) : prix Eurostat de sa tranche sur 12 mois, repères depuis 2007, prix moyen des 3 prochaines années en trois scénarios tirés de l'historique et **calibrés sur les erreurs passées de la méthode**, contrôle sur le passé affiché | 40 tests, dont chaque éventail passé et le backtest recalculés indépendamment ; série réelle chargée (494 valeurs, 1 appel), 7 tranches |
 | Grilles tarifaires Tempo et HP/HC vérifiées sur les barèmes officiels de la CRE (délibérations n° 2026-06 et 2026-147) | Les 12 prix Tempo du seed retrouvés au dix-millième d'euro près depuis les prix HT |
-| Qualité | 219 tests pytest, ruff, CI GitHub Actions verte |
+| Qualité | 226 tests pytest, ruff, CI GitHub Actions verte |
 
 ### Pas encore validé en conditions réelles
 
@@ -325,7 +325,7 @@ uv run dbt build --project-dir dbt --profiles-dir dbt   # une fois, après charg
 uv run python -m ingestion.cli diagnose --adresse "20 rue de la République, 69002 Lyon" --puissance 12 --conso 60000
 ```
 
-Sortie réelle, le 12 octobre 2026 :
+Sortie réelle, le 15 octobre 2026 :
 
 ```
 DIAGNOSTIC D'IMPLANTATION — 20 Rue de la République 69002 Lyon
@@ -352,8 +352,9 @@ Commune Lyon (69123) · Rhône (69) · Auvergne-Rhône-Alpes (84)
    Consommation 60 000 MWh/an → tranche IE (de 20 000 à 70 000 MWh par an), prix moyen constaté par Eurostat
    12 derniers mois (S2 2025 – S1 2026) : 0,0916 €/kWh HTVA, dont 0,0079 €/kWh de taxes non récupérables → facture d'environ 5 500 000 € par an
    Repères depuis S2 2007 : moyenne sur 5 ans 0,1122 €/kWh, plus bas 0,0553 (S2 2007), plus haut 0,1676 (S1 2023)
-   Prix moyen des 3 prochaines années, d'après les variations passées de la tranche : de 0,0780 à 0,1286 €/kWh, 0,0962 au centre → facture de 4 680 000 € à 7 710 000 € par an (5 770 000 € au centre)
-   ↳ Limite : Prix moyen national constaté pour la tranche, hors TVA et taxes récupérables : identique en tout point du territoire (péréquation), il ne dépend pas de l'adresse. C'est une moyenne déclarée par les fournisseurs : un contrat donné peut s'en écarter nettement selon sa date de signature, sa durée et le profil du site. Les scénarios à 3 ans ne sont pas une prévision : ils appliquent au prix des 12 derniers mois les variations observées dans le passé sur la même tranche (10e centile, médiane, 90e centile), crise de 2022-2023 comprise.
+   Prix moyen des 3 prochaines années, d'après l'historique de la tranche et les erreurs passées de la méthode : de 0,0762 à 0,1413 €/kWh, 0,0961 au centre → facture de 4 570 000 € à 8 480 000 € par an (5 760 000 € au centre)
+   Contrôle sur le passé : appliquée à chaque semestre de S2 2019 à S1 2023, la méthode a encadré le prix moyen réel des 3 années suivantes 1 fois sur 8 (12 %, contre 80 % pour une méthode bien calibrée) ; il a dépassé le scénario haut 6 fois et est passé sous le scénario bas 1 fois. Ces périodes de 3 ans se chevauchent : ce ne sont pas des essais indépendants. Leurs écarts font désormais partie des erreurs qui calibrent la fourchette affichée.
+   ↳ Limite : Prix moyen national constaté pour la tranche, hors TVA et taxes récupérables : identique en tout point du territoire (péréquation), il ne dépend pas de l'adresse. C'est une moyenne déclarée par les fournisseurs : un contrat donné peut s'en écarter nettement selon sa date de signature, sa durée et le profil du site. Les scénarios à 3 ans ne sont pas une prévision : le scénario central applique au prix des 12 derniers mois la variation médiane observée sur la tranche, et la fourchette reprend les erreurs passées de cette méthode (10e centile, médiane, 90e centile de l'écart entre prix réel et scénario central), crise de 2022-2023 comprise. Une rupture jamais observée la dépasserait encore.
 
 5. Coût horaire d'un profil type (identique sur tout le territoire)
    Bureau tertiaire, 36 kVA, septembre 2026, option Heures Creuses du tarif bleu non résidentiel
@@ -399,16 +400,49 @@ donne alors :
   qui en découle, arrondie à trois chiffres significatifs ;
 - **des repères** : moyenne sur 5 ans, plus bas et plus haut depuis 2007 ;
 - **le prix moyen des 3 prochaines années**, en trois scénarios **tirés de l'historique de la
-  tranche, sans hypothèse extérieure** : pour chaque horizon (1, 2, 3 ans), toutes les variations
-  observées depuis 2007 entre deux semestres de même saison ; le 10e centile, la médiane et le
-  90e centile sont appliqués au prix des 12 derniers mois.
+  tranche, sans hypothèse extérieure**, construits en deux temps pour chaque horizon (1, 2, 3 ans) :
+  1. **le scénario central brut** applique au prix des 12 derniers mois la variation médiane
+     observée depuis 2007 entre deux semestres de même saison ;
+  2. **la fourchette** reprend les **erreurs passées de cette méthode** : à chaque semestre de
+     l'histoire, on a calculé le central brut avec les seules données de l'époque, puis mesuré
+     l'écart avec le prix réellement payé ensuite. Le 10e centile, la médiane et le 90e centile
+     de ces écarts donnent les scénarios bas, central et haut.
 
-Ce n'est pas une prévision, et la sortie le dit. Deux conséquences assumées : la crise de
-2022-2023 fait partie de l'historique et élargit le scénario haut ; et, la tendance longue étant
-haussière, même le scénario bas est souvent en légère hausse alors que les prix baissent depuis
-le pic de 2023. Une tranche à l'historique trop court (moins de 10 variations observées) n'a pas
-de scénario. Le rapport ajoute le graphique de la tranche depuis 2007, prolongé par l'éventail
-des scénarios.
+Ce n'est pas une prévision, et la sortie le dit. La fourchette intègre ce que la méthode a déjà
+manqué, crise de 2022-2023 comprise ; une rupture jamais observée la dépasserait encore. Il faut
+au moins 10 erreurs passées par horizon : une tranche à l'historique trop court n'a pas de
+scénario. Le rapport ajoute le graphique de la tranche depuis 2007, prolongé par l'éventail.
+
+**Pourquoi cette méthode : un premier contrôle sur le passé.** La première version tirait la
+fourchette des seules variations de prix. Rejouée à chaque semestre depuis 2015 avec les données
+de l'époque, elle n'encadrait le prix moyen réel des 3 années suivantes que 3 à 9 fois sur 17
+selon la tranche, contre 8 fois sur 10 attendues : avant 2020, l'historique était calme et les
+fourchettes étroites, et la crise les a crevées par le haut.
+
+**Le contrôle reste affiché sous chaque scénario.** La méthode actuelle est rejouée de la même
+façon (`gold.fct_prix_entreprise_eventails`, `fct_prix_entreprise_backtest`,
+`fct_prix_entreprise_calibration`). Comme il faut d'abord accumuler 10 erreurs passées, seules
+8 périodes sont contrôlables, de S2 2019 à S1 2023 — toutes à cheval sur la crise :
+
+| Tranche | Prix réel dans la fourchette | Au-dessus | En dessous | Fourchette affichée à 3 ans (€/kWh) |
+|---|---|---|---|---|
+| IA (< 20 MWh) | 1 / 8 | 7 | 0 | 0,2612 – 0,3419 |
+| IB (20–500 MWh) | 2 / 8 | 6 | 0 | 0,1918 – 0,2848 |
+| IC (500–2 000 MWh) | 0 / 8 | 7 | 1 | 0,1404 – 0,2399 |
+| ID (2 000–20 000 MWh) | 0 / 8 | 7 | 1 | 0,1048 – 0,1970 |
+| IE (20 000–70 000 MWh) | 1 / 8 | 6 | 1 | 0,0762 – 0,1413 |
+| IF (70 000–150 000 MWh) | 1 / 8 | 5 | 2 | 0,0600 – 0,1251 |
+
+*Au 15 octobre 2026. Les périodes se chevauchent et ne sont pas des essais indépendants. IG :
+historique trop court.*
+
+Ces chiffres ne disent pas que la fourchette affichée aujourd'hui est fausse : ils disent qu'en
+2019-2021, une méthode fondée sur le seul passé de la tranche ne pouvait pas anticiper 2022. Les écarts de ces
+périodes calibrent désormais la fourchette affichée, plus large et moins orientée à la hausse
+qu'avec la première version (IB : 0,1918–0,2848 €/kWh contre 0,1949–0,2725). Les tests le
+vérifient sur deux séries synthétiques : avec une crise récente, les fourchettes contrôlées
+l'ont manquée ; avec une crise ancienne, ses erreurs élargissent les fourchettes suivantes, qui
+encadrent alors le prix réel bien plus souvent.
 
 #### Rapport d'implantation et sortie machine
 

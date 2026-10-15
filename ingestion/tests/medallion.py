@@ -16,7 +16,9 @@ observés sur les API :
   l'arrondissement ;
 * une année récente partiellement masquée par le secret statistique ;
 * une région identifiée par son libellé en majuscules, et non par son code ;
-* une tranche de prix Eurostat à l'historique trop court pour des scénarios.
+* des tranches de prix Eurostat à l'historique trop court pour des scénarios, et
+  deux autres assez longues pour contrôler la méthode sur le passé : l'une avec une
+  crise récente, l'autre avec une crise ancienne.
 
 Silver et gold sont ensuite construites par `dbt build`, lancé en sous-processus
 comme le fait le DAG : dbt-duckdb garde sa connexion ouverte dans le processus
@@ -251,19 +253,47 @@ PRIX_IB_PAS = 0.005
 TAXES_IB = 0.02
 
 
+def _serie_avec_crise(debut_crise: int) -> list[float]:
+    """40 semestres de 2006-S1 à 2025-S2 : +2 % par semestre, un bruit déterministe de
+    ±10 % au plus, et une « crise » de 30 % sur 4 semestres à partir de `debut_crise`."""
+    return [
+        0.10
+        * 1.02**i
+        * (1.3 if debut_crise <= i < debut_crise + 4 else 1.0)
+        * (1 + 0.05 * ((i * 7) % 5 - 2))
+        for i in range(40)
+    ]
+
+
+#: Tranche ID : crise tardive (2021-2022). Les éventails contrôlés ne l'avaient jamais
+#: vue : le contrôle sur le passé y trouve les trois positions.
+PRIX_ID = _serie_avec_crise(30)
+#: Tranche IE : même série, crise ancienne (2016-2017). Ses erreurs calibrent les
+#: éventails suivants, qui encadrent bien mieux le prix réel.
+PRIX_IE = _serie_avec_crise(20)
+
+
 def semestres(premier: int, dernier: int) -> list[str]:
     """`semestres(2024, 2025)` -> 2024-S1, 2024-S2, 2025-S1, 2025-S2."""
     return [f"{annee}-S{n}" for annee in range(premier, dernier + 1) for n in (1, 2)]
 
 
 def prix_entreprises() -> list[dict[str, Any]]:
-    """IB sur 10 ans ; IG sur 2 ans seulement, trop peu pour des scénarios."""
+    """IB sur 10 ans, IG sur 2 ans : trop peu pour des scénarios. ID et IE sur 20 ans."""
     series = {
         "MWH20-499": [
             (semestre, PRIX_IB_DEPART + PRIX_IB_PAS * i, TAXES_IB)
             for i, semestre in enumerate(semestres(2016, 2025))
         ],
         "MWH_GE150000": [(semestre, 0.07, 0.001) for semestre in semestres(2024, 2025)],
+        "MWH2000-19999": [
+            (semestre, prix, 0.01)
+            for semestre, prix in zip(semestres(2006, 2025), PRIX_ID, strict=True)
+        ],
+        "MWH20000-69999": [
+            (semestre, prix, 0.005)
+            for semestre, prix in zip(semestres(2006, 2025), PRIX_IE, strict=True)
+        ],
     }
     return [
         {
