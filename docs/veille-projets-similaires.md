@@ -64,7 +64,7 @@ remontée de nappe, mouvements de terrain, installations classées à proximité
 la BAN.
 *Effort* : ½ à 1 journée.
 
-**2. Calibrer les scénarios de prix par backtest.** — **fait le 15 octobre 2026** (feuille de route, 3.8) : l'éventail n'encadre le prix réel que 3 à 9 fois sur 17.
+**2. Calibrer les scénarios de prix par backtest.** — **fait le 15 octobre 2026** (feuille de route, 3.8) : l'éventail n'encadrait le prix réel que 3 à 9 fois sur 17 ; il est désormais calibré sur les erreurs passées de la méthode (3.9).
 *Inspiré de* `carbon-fr` (prévisions gardées par backtest) et `siting-model` (contrôle
 de réalité du score).
 Rejouer la méthode sur l'historique : à chaque semestre passé, calculer l'éventail

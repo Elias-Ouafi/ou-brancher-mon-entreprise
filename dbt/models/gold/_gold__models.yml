@@ -197,8 +197,9 @@ models:
   - name: fct_prix_entreprise_eventails
     description: >
       Éventail de prix à 1, 2 et 3 ans calculé à chaque semestre d'origine, avec les
-      seules variations connues à cette date. Source unique des scénarios affichés et
-      du contrôle sur le passé.
+      seules données connues à cette date : central brut tiré des variations passées,
+      bornes tirées des erreurs passées de la méthode. Source unique des scénarios
+      affichés et du contrôle sur le passé.
     data_tests:
       - unique_combination:
           arguments:
@@ -212,8 +213,8 @@ models:
 
   - name: fct_prix_entreprise_backtest
     description: >
-      Chaque éventail passé confronté au prix moyen réellement observé sur les 12 mois
-      qui s'achèvent à l'horizon.
+      Chaque éventail passé publiable confronté au prix moyen réellement observé sur les
+      12 mois qui s'achèvent à l'horizon.
     data_tests:
       - unique_combination:
           arguments:
@@ -240,9 +241,9 @@ models:
 
   - name: fct_prix_entreprise_scenarios
     description: >
-      Scénarios d'évolution du prix d'une tranche à 1, 2 et 3 ans : 10e centile, médiane
-      et 90e centile des variations observées depuis 2007, appliqués au prix des 12
-      derniers mois. Pas une prévision.
+      Scénarios d'évolution du prix d'une tranche à 1, 2 et 3 ans : central brut tiré des
+      variations passées, corrigé par le 10e centile, la médiane et le 90e centile des
+      erreurs passées de la méthode. Pas une prévision.
     data_tests:
       - unique_combination:
           arguments:
@@ -250,10 +251,11 @@ models:
     columns:
       - name: variation_centrale
         data_tests: [not_null]
-      - name: nb_variations_observees
+      - name: nb_erreurs_observees
         description: >
-          Nombre de couples de semestres comparés. En dessous de 10 (variable dbt
-          `prix_nb_variations_min`), `fct_prix_entreprise_tranche` ne publie pas de scénario.
+          Nombre d'erreurs passées qui calibrent l'éventail. En dessous de 10 (variable
+          dbt `prix_nb_erreurs_min`), les prix restent nuls et la tranche n'a pas de
+          scénario.
 
   - name: fct_prix_entreprise_tranche
     description: >

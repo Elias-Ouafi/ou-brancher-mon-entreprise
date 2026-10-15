@@ -120,7 +120,7 @@ def lire_comparaisons(
             """
             select horizon_annees, prix_bas_eur_kwh, prix_central_eur_kwh, prix_haut_eur_kwh
             from gold.fct_prix_entreprise_scenarios
-            where tranche = $tranche
+            where tranche = $tranche and prix_bas_eur_kwh is not null
             order by horizon_annees
             """,
             {"tranche": tranche},
