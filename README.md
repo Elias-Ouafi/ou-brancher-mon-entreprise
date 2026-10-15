@@ -5,8 +5,9 @@ projet restitue le contexte électrique du territoire — pression industrielle 
 réseau régional, mix et intensité carbone au pas 15 minutes — et chiffre le **coût horaire**
 d'un profil de consommation selon le calendrier **Tempo**.
 
-Les données viennent de **RTE**, de la plateforme **ODRÉ** (API Opendatasoft Explore v2.1)
-et d'**Eurostat** pour le prix de l'électricité payé par les entreprises.
+Les données viennent de **RTE**, de la plateforme **ODRÉ** (API Opendatasoft Explore v2.1),
+d'**Eurostat** pour le prix de l'électricité payé par les entreprises, et de **Géorisques**
+pour les risques naturels et technologiques à l'adresse.
 Elles sont organisées en **architecture médaillon** (bronze → silver → gold) dans **DuckDB**,
 transformées par **dbt** et orchestrées par **Airflow** (Astro CLI) — le tout **100 % en local**,
 sans aucun service cloud.
@@ -138,7 +139,7 @@ load_*, dbt_build, contrôles et rapport passent par le pool duckdb_writer (1 sl
 | **Parquet** (pyarrow) | Zone bronze immuable, partitionnée par date d'ingestion | Format colonne typé, lisible par DuckDB aujourd'hui et par BigQuery demain |
 | **httpx** + **tenacity** | Appels HTTP, retry exponentiel, timeouts | `tenacity` évite d'écrire une boucle de retry à la main |
 | **pydantic-settings** | Configuration typée depuis l'environnement | Valide les réglages au démarrage plutôt qu'au premier appel |
-| **pytest** + **pytest-httpx** | 226 tests, aucun appel réseau réel | L'interception au niveau du transport garantit qu'aucun test ne sort |
+| **pytest** + **pytest-httpx** | 251 tests, aucun appel réseau réel | L'interception au niveau du transport garantit qu'aucun test ne sort |
 | **ruff** | Lint et format | Un seul outil pour les deux |
 | **matplotlib** + **reportlab** | Graphiques et PDF du rapport | Importés paresseusement : ils ne pèsent que sur la commande de rapport |
 
@@ -178,8 +179,9 @@ un coût horaire de profil en sortie, produits par un pipeline qui tourne sans i
 | **Coût horaire d'un profil type** : bureau 36 kVA chiffré heure par heure sur la grille HP/HC non résidentielle officielle (CRE), carbone, gain d'un décalage vers les heures creuses | 8 tests ; chiffré sur février → septembre 2026 réels |
 | **Rapport d'implantation par adresse** (`diagnose --format pdf/md/json`) : mêmes blocs et limites que le terminal, quatre graphiques de mise en perspective | 17 tests, dont les territoires sans donnée (outre-mer, Corse, commune sans site) ; [exemple réel commité](docs/exemples/implantation_lyon.pdf) |
 | **Prix de l'électricité de l'entreprise** (`diagnose --conso`) : prix Eurostat de sa tranche sur 12 mois, repères depuis 2007, prix moyen des 3 prochaines années en trois scénarios tirés de l'historique et **calibrés sur les erreurs passées de la méthode**, contrôle sur le passé affiché | 40 tests, dont chaque éventail passé et le backtest recalculés indépendamment ; série réelle chargée (494 valeurs, 1 appel), 7 tranches |
+| **Risques naturels et technologiques à l'adresse** (Géorisques) : statut à l'adresse distingué du statut communal, repli sur la commune si le rapport ne répond pas, diagnostic jamais bloqué | 25 tests sur de vraies réponses de Géorisques (Lyon, Ajaccio), coupures et repli simulés ; exécuté sur Lyon et Ajaccio réels |
 | Grilles tarifaires Tempo et HP/HC vérifiées sur les barèmes officiels de la CRE (délibérations n° 2026-06 et 2026-147) | Les 12 prix Tempo du seed retrouvés au dix-millième d'euro près depuis les prix HT |
-| Qualité | 226 tests pytest, ruff, CI GitHub Actions verte |
+| Qualité | 251 tests pytest, ruff, CI GitHub Actions verte |
 
 ### Pas encore validé en conditions réelles
 
@@ -361,6 +363,14 @@ Commune Lyon (69123) · Rhône (69) · Auvergne-Rhône-Alpes (84)
    9 600 kWh, dont 15 % en heures creuses : 1 586 € HTVA, soit 0,1652 €/kWh ; 22 gCO₂/kWh en moyenne
    Décaler 528 kWh flexibles vers les heures creuses : 22 € économisés, mais 1,4 kgCO₂ émis en plus : les heures creuses de nuit sont plus carbonées que la mi-journée solaire
    ↳ Limite : Le prix est identique en tout point du territoire (péréquation tarifaire) : ce coût ne dépend pas de l'adresse. Profil illustratif, heures creuses supposées de 22 h à 6 h (en réalité fixées localement par le gestionnaire de réseau), jours fériés comptés comme ouvrés, abonnement exclu. Carbone : intensité nationale, faute d'intensité régionale opposable.
+
+6. Risques naturels et technologiques à l'adresse (Géorisques)
+   Naturels, à l'adresse : Inondation, Remontée de nappe, Séisme (faible), Retrait-gonflement des argiles (modéré), Radon (faible)
+   Technologiques, à l'adresse : Pollution des sols
+   Présents dans la commune, non évalués à l'adresse : Rupture de barrage
+   Présents dans la commune, mais l'adresse n'est pas concernée : Installations industrielles classées (ICPE), Canalisations de matières dangereuses
+   Rapport officiel : https://www.georisques.gouv.fr/mes-risques/connaitre-les-risques-pres-de-chez-moi/rapport2?typeForm=adresse&city=Lyon&codeInsee=69123&lon=4.835685&lat=45.763721&adresse=20+Rue+de+la+R%C3%A9publique%2C+69002+Lyon
+   ↳ Limite : Croisement de la position géocodée avec les zonages réglementaires et les cartographies d'aléas disponibles : le résultat dépend de la précision du géocodage et de la couverture des cartes, et un risque « non évalué » à l'adresse n'est pas un risque absent. Ce n'est ni l'état des risques réglementaire, obligatoire pour une vente ou une location, ni une étude de sol ou de vulnérabilité du site.
 ```
 
 Ce que la sortie fait, et pourquoi :
@@ -443,6 +453,31 @@ qu'avec la première version (IB : 0,1918–0,2848 €/kWh contre 0,1949–0,272
 vérifient sur deux séries synthétiques : avec une crise récente, les fourchettes contrôlées
 l'ont manquée ; avec une crise ancienne, ses erreurs élargissent les fourchettes suivantes, qui
 encadrent alors le prix réel bien plus souvent.
+
+#### Risques naturels et technologiques à l'adresse (Géorisques)
+
+Le bloc 6 est le seul **propre à l'adresse exacte** : le prix est national, la tension du réseau
+régionale, la pression industrielle départementale. Il interroge l'API publique de
+[Géorisques](https://www.georisques.gouv.fr/doc-api) (ministère de la Transition écologique,
+BRGM), sans clé, avec les coordonnées déjà fournies par le géocodage.
+
+Pour chaque risque, Géorisques publie un statut dans la commune et un statut à l'adresse. Le
+diagnostic les range en quatre cas : présent **à l'adresse** (avec son niveau quand il est
+publié), présent dans la commune mais **non évalué** à l'adresse, présent dans la commune mais
+**l'adresse n'est pas concernée**, ou absent. Un risque non évalué n'est jamais présenté comme
+absent, et le lien vers le rapport officiel est donné.
+
+**Une API instable, gérée comme telle.** Le 15 octobre 2026, le rapport à l'adresse coupait la
+plupart des connexions sans réponse, alors que les points d'accès communaux répondaient. D'où
+trois niveaux :
+
+1. plusieurs tentatives sur le rapport à l'adresse ;
+2. à défaut, **repli sur la commune** : risques recensés dans la base GASPAR et zone de
+   sismicité, annoncés comme tels (« recensés dans la commune, sans évaluation à l'adresse ») ;
+3. si rien ne répond, le diagnostic sort quand même et dit que les risques n'ont pas été évalués.
+
+`--sans-risques` saute l'appel (usage hors ligne). La limite affichée rappelle que ce n'est ni
+l'état des risques réglementaire, obligatoire pour une vente ou une location, ni une étude de sol.
 
 #### Rapport d'implantation et sortie machine
 
