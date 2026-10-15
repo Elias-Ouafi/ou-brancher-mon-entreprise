@@ -56,7 +56,7 @@ def reglages(settings: Settings, medallion_db: Path, tmp_path: Path) -> Settings
 
 def _lyon(medallion_db: Path) -> Diagnostic:
     diagnostic = lire_diagnostic(
-        territoire("69383", "Lyon"), puissance_mw=12, database=medallion_db
+        territoire("69383", "Lyon"), puissance_mw=12, conso_mwh=350, database=medallion_db
     )
     return replace(diagnostic, cout=COUT)
 
@@ -80,7 +80,7 @@ def test_markdown_report_carries_every_limit_and_its_charts(
     assert "\n- " in texte
     assert "\n\n\n" not in texte
     graphiques = chemin.with_name(f"{chemin.stem}_graphiques")
-    for nom in ("pression_departements", "couverture_regions", "profil_journalier"):
+    for nom in ("pression_departements", "couverture_regions", "prix_tranche", "profil_journalier"):
         assert f"]({graphiques.name}/{nom}.png)" in texte
         assert (graphiques / f"{nom}.png").read_bytes().startswith(b"\x89PNG")
 

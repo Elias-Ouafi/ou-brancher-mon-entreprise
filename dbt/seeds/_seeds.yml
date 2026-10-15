@@ -190,3 +190,21 @@ seeds:
           - accepted_range:
               arguments:
                 min_value: 0
+
+  - name: tranches_eurostat
+    description: >
+      Tranches de consommation annuelle d'électricité des entreprises, nomenclature
+      Eurostat 2007 (IA à IG), sur `[conso_min_mwh, conso_max_mwh)` ; `conso_max_mwh`
+      vide pour la dernière tranche. Place une entreprise dans sa tranche à partir de sa
+      consommation annuelle (`diagnose --conso`).
+    config:
+      column_types:
+        conso_min_mwh: double
+        conso_max_mwh: double
+    columns:
+      - name: tranche
+        data_tests: [unique, not_null]
+      - name: code
+        data_tests: [unique, not_null]
+      - name: conso_min_mwh
+        data_tests: [unique, not_null]

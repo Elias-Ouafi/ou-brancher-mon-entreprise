@@ -15,7 +15,8 @@ observés sur les API :
 * Paris, Lyon et Marseille publiés sous le code de la commune, pas de
   l'arrondissement ;
 * une année récente partiellement masquée par le secret statistique ;
-* une région identifiée par son libellé en majuscules, et non par son code.
+* une région identifiée par son libellé en majuscules, et non par son code ;
+* une tranche de prix Eurostat à l'historique trop court pour des scénarios.
 
 Silver et gold sont ensuite construites par `dbt build`, lancé en sous-processus
 comme le fait le DAG : dbt-duckdb garde sa connexion ouverte dans le processus
@@ -38,6 +39,7 @@ from ingestion.datasets import (
     CONSO_IRIS,
     CONTRAINTES_REGIONALES,
     EQUILIBRE_REGIONAL,
+    EUROSTAT_PRIX_ENTREPRISES,
     NATIONAL_CONS_DEF,
     NATIONAL_TR,
     RTE_TEMPO,
@@ -242,6 +244,42 @@ def contraintes_regionales() -> list[dict[str, Any]]:
     ]
 
 
+#: Tranche IB : 20 semestres de 2016-S1 à 2025-S2, prix HTVA en hausse de 0,005 €/kWh
+#: par semestre à partir de 0,10 ; taxes non récupérables constantes de 0,02 €/kWh.
+PRIX_IB_DEPART = 0.10
+PRIX_IB_PAS = 0.005
+TAXES_IB = 0.02
+
+
+def semestres(premier: int, dernier: int) -> list[str]:
+    """`semestres(2024, 2025)` -> 2024-S1, 2024-S2, 2025-S1, 2025-S2."""
+    return [f"{annee}-S{n}" for annee in range(premier, dernier + 1) for n in (1, 2)]
+
+
+def prix_entreprises() -> list[dict[str, Any]]:
+    """IB sur 10 ans ; IG sur 2 ans seulement, trop peu pour des scénarios."""
+    series = {
+        "MWH20-499": [
+            (semestre, PRIX_IB_DEPART + PRIX_IB_PAS * i, TAXES_IB)
+            for i, semestre in enumerate(semestres(2016, 2025))
+        ],
+        "MWH_GE150000": [(semestre, 0.07, 0.001) for semestre in semestres(2024, 2025)],
+    }
+    return [
+        {
+            "semestre": semestre,
+            "tranche": tranche,
+            "fiscalite": fiscalite,
+            "libelle_tranche": tranche,
+            "statut": None,
+            "prix_eur_kwh": prix if fiscalite == "X_VAT" else prix - taxes,
+        }
+        for tranche, lignes in series.items()
+        for semestre, prix, taxes in lignes
+        for fiscalite in ("X_TAX", "X_VAT")
+    ]
+
+
 def load_bronze(
     database: Path, tmp_path: Path, spec: DatasetSpec, records: list[dict[str, Any]]
 ) -> None:
@@ -286,6 +324,7 @@ def build_warehouse(tmp_path: Path, *, with_tempo: bool = True) -> Path:
     load_bronze(database, tmp_path, CONSO_IRIS, conso_iris())
     load_bronze(database, tmp_path, EQUILIBRE_REGIONAL, equilibre_regional())
     load_bronze(database, tmp_path, CONTRAINTES_REGIONALES, contraintes_regionales())
+    load_bronze(database, tmp_path, EUROSTAT_PRIX_ENTREPRISES, prix_entreprises())
     ensure_bronze_tables(settings=Settings(_env_file=None, duckdb_path=database))
     dbt_build(database, tmp_path)
     return database

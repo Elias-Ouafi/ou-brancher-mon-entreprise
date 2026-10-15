@@ -193,3 +193,41 @@ models:
           - accepted_range:
               arguments:
                 min_value: 0
+
+  - name: fct_prix_entreprise_scenarios
+    description: >
+      Scénarios d'évolution du prix d'une tranche à 1, 2 et 3 ans : 10e centile, médiane
+      et 90e centile des variations observées depuis 2007, appliqués au prix des 12
+      derniers mois. Pas une prévision.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [tranche, horizon_annees]
+    columns:
+      - name: variation_centrale
+        data_tests: [not_null]
+      - name: nb_variations_observees
+        description: >
+          Nombre de couples de semestres comparés. En dessous de 10 (variable dbt
+          `prix_nb_variations_min`), `fct_prix_entreprise_tranche` ne publie pas de scénario.
+
+  - name: fct_prix_entreprise_tranche
+    description: >
+      Prix de l'électricité d'une entreprise selon sa tranche de consommation annuelle :
+      prix des 12 derniers mois, repères historiques et prix moyen des 3 prochaines années
+      par scénario. National : ne dépend pas de l'adresse.
+    columns:
+      - name: tranche
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('tranches_eurostat')
+                field: tranche
+      - name: prix_reference_eur_kwh
+        data_tests: [not_null]
+      - name: prix_3_ans_central_eur_kwh
+        description: >
+          Le scénario central est encadré par les scénarios bas et haut (test
+          `assert_scenarios_prix_ordonnes`).

@@ -59,9 +59,10 @@ dépôt, lance une commande et passe l'adresse en argument.
 |---|---|---|---|
 | 3.1 | Seed `profils_consommation` : courbes types (tertiaire, industriel 3×8, data center, froid alimentaire) — **amorcé** (10 oct.) : un profil illustratif, bureau 36 kVA | Quatre profils sélectionnables | — |
 | 3.2 | ~~Vérifier la grille Tempo sur source officielle~~ — **fait** (10 oct.) : les 12 prix recalculés depuis les barèmes HT de la CRE (TTC = (HT + accise) × 1,20) | ~~`tarifs_tempo.csv` sourcé et daté~~ | — |
-| 3.3 | Seed `turpe` : barèmes TURPE 7 par domaine de tension (CRE, période août 2025 → juillet 2029) | Composantes fixes et variables par tension | — |
+| 3.3 | Seed `turpe` : barèmes TURPE 7 par domaine de tension (CRE, période août 2025 → juillet 2029) — **plus nécessaire au prix moyen** depuis 3.7 ; ne servirait qu'à décomposer une facture ou à chiffrer un profil horaire au-delà de 36 kVA | Composantes fixes et variables par tension | — |
 | 3.4 | Identifiants API RTE Tempo (compte `data.rte-france.com`) | Le calendrier Tempo se charge sur données réelles | **action utilisateur** |
 | 3.5 | ~~`fct_cout_horaire_profil`~~ — **fait** (10 oct.) sur l'option HP/HC du tarif bleu non résidentiel (fourniture et TURPE inclus dans le TRV, plus l'accise, en € HTVA) | ~~Un profil est chiffré sur un mois~~ |
+| 3.7 | ~~Prix moyen de l'électricité par tranche de consommation~~ — **fait** (12 oct.) : Eurostat `nrg_pc_205` (France, 7 tranches, depuis 2007), `diagnose --conso`. Prix des 12 derniers mois, repères historiques, prix moyen des 3 prochaines années en scénarios bas / central / haut tirés des variations passées. Décision du 12 octobre : **prix fixes et historiques, pas de prix horaire** | ~~Une entreprise connaît le prix moyen de sa tranche pour les années à venir~~ | — |
 | 3.6 | ~~Gain de décalage~~ — **fait** (10 oct.) dans `fct_cout_mensuel_profil` : report de la part flexible vers les heures creuses du jour. Constat : en été, ce report **augmente** les émissions | Le meilleur créneau de décalage est identifié | 3.5 |
 
 ### Lot 4 — Restitution en ligne de commande
@@ -98,7 +99,7 @@ dépôt, lance une commande et passe l'adresse en argument.
 | Sujet | Pourquoi plus tard |
 |---|---|
 | Migration GCS + BigQuery | `BigQueryLoader` à écrire derrière l'interface existante ; aucun intérêt fonctionnel tant que le local suffit |
-| Comparaison européenne (Eurostat `NRG_PC_205`) | Donne du sens au « où est-ce moins cher » à l'échelle où la question a une réponse, mais élargit le périmètre |
+| Comparaison européenne (Eurostat `NRG_PC_205`) | Le jeu est désormais ingéré pour la France (3.7) : l'étendre aux autres pays ne demande que le paramètre `geo`. Donne du sens au « où est-ce moins cher » à l'échelle où la question a une réponse, mais élargit le périmètre |
 | Scope 2 horaire et score 24/7 CFE | Écarté comme objectif ; les briques 15 min restent en place |
 | IRIS par jointure spatiale | Inutile : `code_insee_commune` suffit aux jointures |
 | Intensité carbone régionale | **Impossible proprement** : pas de `taux_co2` régional chez RTE, pas de facteur ADEME régional opposable |
@@ -157,5 +158,6 @@ Dans cet ordre : lancer Airflow (5.1), brancher les quatre profils (3.1), le
 TURPE détaillé (3.3), ~~le rapport PDF par adresse (4.3)~~ (**fait** le 10 octobre,
 avec la sortie JSON et un exemple commité), puis la fin de la vitrine (6.2, 6.4).
 
-Les profils au-delà de 36 kVA (industriel 3×8, data center) sortent du tarif bleu :
-ils attendent le TURPE (3.3) et une hypothèse de prix de fourniture en offre de marché.
+Le prix au-delà de 36 kVA est désormais donné par tranche de consommation (3.7, Eurostat),
+sans hypothèse de fourniture. Les profils horaires industriel 3×8 et data center (3.1)
+restent utiles pour la forme de la courbe, mais plus pour le prix moyen.

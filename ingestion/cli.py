@@ -10,7 +10,9 @@
     python -m ingestion.cli geocode --adresse "12 rue de la Paix, 69003 Lyon"
     python -m ingestion.cli diagnose --adresse "12 rue de la Paix, 69003 Lyon" --puissance 5
     python -m ingestion.cli diagnose --adresse "..." --puissance 5 --format pdf   # rapport
+    python -m ingestion.cli diagnose --adresse "..." --conso 350   # prix de la tranche
     python -m ingestion.cli tempo --month 2026-09        # calendrier Tempo (API RTE)
+    python -m ingestion.cli prix                         # prix entreprises (Eurostat)
     python -m ingestion.cli report --month 2026-09       # rapport PDF du mois
     python -m ingestion.cli report --month 2026-09 --format md   # même rapport en Markdown
 
@@ -41,6 +43,7 @@ from ingestion.pipeline import (
     load_to_warehouse,
     run_consolidation,
     run_ingestion,
+    run_prix_entreprises_ingestion,
     run_tempo_ingestion,
     tempo_days_for_month,
 )
@@ -79,6 +82,16 @@ def _parse_puissance(value: str) -> float:
     if puissance < 0:
         raise argparse.ArgumentTypeError("la puissance doit être positive")
     return puissance
+
+
+def _parse_conso(value: str) -> float:
+    try:
+        conso = float(value.replace(",", ".").replace(" ", ""))
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"consommation invalide : {value!r} (MWh/an)") from None
+    if conso <= 0:
+        raise argparse.ArgumentTypeError("la consommation doit être strictement positive")
+    return conso
 
 
 def _add_dataset_option(parser: argparse.ArgumentParser, default: str) -> None:
@@ -137,6 +150,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--puissance", type=_parse_puissance, help="puissance du projet en MW (ex. 0.5, 12)"
     )
     diagnose.add_argument(
+        "--conso",
+        type=_parse_conso,
+        help="consommation annuelle en MWh (ex. 350) : prix de la tranche Eurostat",
+    )
+    diagnose.add_argument(
         "--format",
         choices=["texte", "md", "pdf", "json"],
         default="texte",
@@ -159,6 +177,11 @@ def build_parser() -> argparse.ArgumentParser:
     tempo.add_argument("--start", type=date.fromisoformat, help="premier jour (inclus)")
     tempo.add_argument("--end", type=date.fromisoformat, help="dernier jour (exclu)")
     tempo.add_argument("--run-id", default="manual", help="suffixe du fichier Parquet")
+
+    prix = subparsers.add_parser(
+        "prix", help="charge les prix de l'electricite des entreprises (Eurostat)"
+    )
+    prix.add_argument("--run-id", default="manual", help="suffixe du fichier Parquet")
 
     report = subparsers.add_parser("report", help="génère le rapport d'un mois (PDF ou Markdown)")
     report.add_argument("--month", type=_parse_month, required=True, help="mois AAAA-MM")
@@ -232,7 +255,10 @@ def main(argv: list[str] | None = None) -> int:
             try:
                 territoire = geocode(args.adresse, settings=settings)
                 diagnostic = lire_diagnostic(
-                    territoire, puissance_mw=args.puissance, settings=settings
+                    territoire,
+                    puissance_mw=args.puissance,
+                    conso_mwh=args.conso,
+                    settings=settings,
                 )
             except (GeocodingError, DiagnosticIndisponibleError) as error:
                 logger.error("diagnostic impossible : %s", error)
@@ -271,6 +297,9 @@ def main(argv: list[str] | None = None) -> int:
                 logger.error("%s", error)
                 return 1
             logger.info("tempo charge %s %s", outcome, result.as_dict())
+        case "prix":
+            outcome, result = run_prix_entreprises_ingestion(settings=settings, run_id=args.run_id)
+            logger.info("prix entreprises charges %s %s", outcome, result.as_dict())
         case "report":
             # Import paresseux : matplotlib et reportlab ne servent qu'ici.
             from reporting.monthly import generate_monthly_report
