@@ -77,6 +77,7 @@ def test_rows_depend_on_the_address_only(medallion_db: Path) -> None:
         "Contraintes RTE (3-5 ans)",
         "Postes RTE du département",
         "Zone prioritaire RTE",
+        "Site clé en main (France 2030)",
     ]  # pas de risques : Géorisques n'a pas été consulté
     assert _valeurs(tableau, "Contraintes RTE (3-5 ans)") == [
         "3, dont 2 plus de 75 fois par an",

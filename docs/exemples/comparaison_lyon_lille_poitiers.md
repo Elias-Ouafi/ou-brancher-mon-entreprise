@@ -12,9 +12,10 @@
 | Contraintes RTE (3-5 ans) | aucune | 4, dont 0 plus de 75 fois par an | 21, dont 8 plus de 75 fois par an |
 | Postes RTE du département | 91 (HTB1 64, HTB2 19, HTB3 3) | 103 (HTB1 54, HTB2 45, HTB3 3) | 55 (HTB1 49, HTB2 3, HTB3 3) |
 | Zone prioritaire RTE | Vallée de la chimie (P2), à 7 km ; capacité 2029, si les projets se concrétisent | Valenciennes (P2), à 44 km ; capacité 2030, si les projets se concrétisent | Loire-Estuaire (P2), à 202 km ; capacité 2030, si les projets se concrétisent |
-| Risques naturels | Inondation, Remontée de nappe, Séisme (faible), Retrait-gonflement des argiles (modéré), Radon (faible) | Remontée de nappe, Séisme (faible), Retrait-gonflement des argiles (modéré), Radon (faible) | commune seulement : Séisme, zone 3 (modérée), Inondation, Affaissements et effondrements d'origine anthropique (anciennes carrières souterraines, hors mines), Tassements différentiels, Tempête et grains (vent) |
-| Risques technologiques | Pollution des sols | Pollution des sols | commune seulement : Transport de marchandises dangereuses |
-| Non évalués à l'adresse | Rupture de barrage | Inondation, Mouvements de terrain | — |
+| Site clé en main (France 2030) | Salaise-sur-Sanne, à 47 km ; prêt en 2026 - 2027 | Noyelles-Godault, à 24 km ; prêt en 2027 - 2030 | Alloinay, à 56 km ; prêt en 2024 |
+| Risques naturels | Inondation, Remontée de nappe, Séisme (faible), Retrait-gonflement des argiles (modéré), Radon (faible) | Remontée de nappe, Séisme (faible), Retrait-gonflement des argiles (modéré), Radon (faible) | Inondation, Séisme (modéré), Mouvements de terrain, Retrait-gonflement des argiles (modéré), Radon (faible) |
+| Risques technologiques | Pollution des sols | Pollution des sols | Pollution des sols |
+| Non évalués à l'adresse | Rupture de barrage | Inondation, Mouvements de terrain | Remontée de nappe |
 
 ## Identique pour toutes les adresses
 
@@ -37,6 +38,7 @@
 - Contraintes de transit liées à l'accueil des énergies renouvelables (injection), que RTE prévoit de gérer par de la flexibilité plutôt que par de nouveaux ouvrages ; données indicatives et non engageantes. Elles ne mesurent pas la capacité disponible pour un consommateur. Ni les ouvrages ni les postes ne sont géolocalisés en open data : la maille est le département, pas l'adresse, et une liaison entre deux départements compte dans les deux.
 - Repère de densité du réseau de transport, pas une capacité de raccordement : un poste proche peut être saturé. Les postes ne sont pas géolocalisés en open data, et environ 3 % d'entre eux n'ont pas de département publié.
 - Zones et années cibles du schéma décennal de RTE, sous réserve des autorisations administratives et, pour les zones P2, de la concrétisation des projets industriels ; les zones P3 sont de simples exemples, sans date. Distance à vol d'oiseau jusqu'à la commune de référence de la zone, pas jusqu'au poste. Être proche d'une zone ne donne aucun droit d'accès au réseau : la capacité est attribuée selon les procédures de RTE. Concerne surtout les raccordements au réseau de transport (au-delà de quelques dizaines de MW).
+- Distance à vol d'oiseau jusqu'au point de la commune, pas jusqu'au site lui-même. La période de maturité est celle annoncée pour un site prêt à accueillir une activité ; elle ne garantit ni la disponibilité du foncier à la date voulue, ni la puissance électrique raccordable, à confirmer auprès de l'aménageur et du gestionnaire de réseau.
 - Croisement de la position géocodée avec les zonages réglementaires et les cartographies d'aléas disponibles : le résultat dépend de la précision du géocodage et de la couverture des cartes, et un risque « non évalué » à l'adresse n'est pas un risque absent. Ce n'est ni l'état des risques réglementaire, obligatoire pour une vente ou une location, ni une étude de sol ou de vulnérabilité du site.
 - Indicatif : 1 kVA est assimilé à 1 kW. Le domaine de tension réel est fixé par le gestionnaire lors de l'étude de raccordement.
 - La capacité de raccordement disponible pour la consommation n'est pas publiée en open data (Caparéseau ne couvre que l'injection). Seule une étude de raccordement RTE ou Enedis fait foi.
