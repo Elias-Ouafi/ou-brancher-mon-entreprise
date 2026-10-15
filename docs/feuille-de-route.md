@@ -55,6 +55,7 @@ dépôt, lance une commande et passe l'adresse en argument.
 | 2.7 | ~~Risques naturels et technologiques à l'adresse~~ — **fait** (15 oct.) : API Géorisques, statut à l'adresse distingué du statut communal ; repli sur la commune (GASPAR, zonage sismique) car le rapport à l'adresse coupe souvent les connexions ; `--sans-risques` | ~~Chaque diagnostic dit à quels risques l'adresse est exposée~~ |
 | 2.8 | ~~Contraintes prospectives et postes RTE autour du site~~ — **fait** (15 oct.) : jeux ODRÉ `contraintes-region` et `postes-electriques-rte`, à la maille du département (ni ouvrages ni postes géolocalisés en open data), rattachement par les codes de postes | ~~Le diagnostic situe le site dans son réseau de transport~~ |
 | 2.9 | ~~Zone industrielle prioritaire de RTE la plus proche~~ — **fait** (15 oct.), première priorité de la revue des besoins : seed des zones P1, P2 et P3 du SDDR 2025, distance à vol d'oiseau, calendrier et condition de chaque zone | ~~Le diagnostic dit où la puissance sera disponible, et quand~~ |
+| 2.10 | ~~Site industriel clé en main le plus proche~~ — **fait** (15 oct.) : liste ANCT/DGE de 55 sites (data.gouv.fr), seed repéré par commune, recherche limitée au même territoire (métropole, ou département pour la Corse et l'outre-mer) | ~~Le diagnostic signale le foncier industriel labellisé le plus proche~~ |
 
 ### Lot 3 — Coût horaire d'un profil
 
