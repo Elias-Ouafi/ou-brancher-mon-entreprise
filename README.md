@@ -1,915 +1,186 @@
 # Où brancher mon entreprise
 
-**Diagnostic d'implantation électrique par adresse.** À partir d'une adresse française, le
-projet restitue le contexte électrique du territoire — pression industrielle locale, tension du
-réseau régional, mix et intensité carbone au pas 15 minutes — et chiffre le **coût horaire**
-d'un profil de consommation selon le calendrier **Tempo**.
-
-Les données viennent de **RTE**, de la plateforme **ODRÉ** (API Opendatasoft Explore v2.1),
-d'**Eurostat** pour le prix de l'électricité payé par les entreprises, et de **Géorisques**
-pour les risques naturels et technologiques à l'adresse.
-Elles sont organisées en **architecture médaillon** (bronze → silver → gold) dans **DuckDB**,
-transformées par **dbt** et orchestrées par **Airflow** (Astro CLI) — le tout **100 % en local**,
-sans aucun service cloud.
-
-Le préfixe de configuration (`ECO2MIX_*`), le fichier de base (`eco2mix.duckdb`) et le projet
-dbt (`eco2mix`) gardent le nom de la source de données : ils désignent la donnée, pas le produit.
-
-> ### Pourquoi ce cadrage, et pas « le prix et le CO₂ à votre adresse »
->
-> Le [cadrage produit](docs/cadrage-besoins-entreprises.md) a invalidé la formulation
-> intuitive, et c'est ce qui définit le périmètre actuel :
->
-> - **le prix n'est pas géographique en France.** La péréquation tarifaire rend le TURPE
->   identique en tout point du territoire, Corse et outre-mer compris. Un « prix moyen à cette
->   adresse » renverrait la même valeur partout.
-> - **il n'existe pas de facteur d'émission régional opposable.** Le réseau est interconnecté :
->   l'ADEME ne publie qu'un facteur national, et RTE ne publie le `taux_co2` qu'au niveau
->   national. Une intensité carbone « locale » serait une fausse précision.
-> - **la capacité de raccordement pour la consommation n'est pas en open data.** Caparéseau ne
->   couvre que l'injection ; seule une étude RTE ou Enedis fait foi.
->
-> Le projet livre donc ce qui est réellement mesurable : un **diagnostic de contexte et de
-> risque**, limites affichées à côté de chaque chiffre — une exigence autant méthodologique que
-> réglementaire (directive EmpCo sur les allégations environnementales).
-
-Le diagnostic s'imprime en terminal ou s'exporte en **rapport d'implantation** PDF ou Markdown,
-graphiques compris — [exemple réel pour Lyon](docs/exemples/implantation_lyon.md)
-([PDF](docs/exemples/implantation_lyon.pdf)) — ou en JSON pour un autre outil. Un **rapport
-mensuel** sur les pics de carbone et les créneaux Tempo complète l'ensemble (voir
-[Rapport mensuel](#rapport-mensuel--pics-de-carbone-et-créneaux-tempo)).
-
-L'exigence technique est inchangée : ingestion idempotente, gestion explicite des changements
-d'heure, quota d'API suivi et documenté, tests sans réseau, CI sur runner nu.
-
-
-### Interface : une commande, pas une application
-
-**Aucun site, aucune application.** L'outil s'utilise en clonant le dépôt et en lançant une
-commande, l'adresse étant passée en argument :
+**Diagnostic d'implantation électrique par adresse.** Une adresse française en entrée ; en
+sortie, ce que les données publiques disent de l'électricité à cet endroit — réseau, prix,
+risques — chaque chiffre accompagné de sa limite. Une commande, pas d'application.
 
 ```bash
 uv run python -m ingestion.cli diagnose --adresse "20 rue de la République, 69002 Lyon" --puissance 12 --conso 60000
 ```
 
-La commande écrit le diagnostic dans le terminal ([exemple réel](#diagnostiquer-une-adresse)),
-ou, avec `--format pdf`, `md` ou `json`, un rapport d'implantation ou une sortie machine. C'est
-un choix assumé : le livrable est un pipeline de données et son interface en ligne de commande,
-pas une vitrine web.
+Exemples réels : [diagnostic de Lyon](docs/exemples/implantation_lyon.md) ([PDF](docs/exemples/implantation_lyon.pdf)) ·
+[comparaison Lyon, Lille, Poitiers](docs/exemples/comparaison_lyon_lille_poitiers.md).
 
----
+## Ce que dit le diagnostic
 
-## Architecture médaillon
+| Bloc | Indicateurs | Source | Maille |
+|---|---|---|---|
+| 1. Pression industrielle | Sites raccordés au transport et leur consommation ; rang du département | ODRÉ (RTE, GRTgaz, Teréga) | commune, département |
+| 2. Tension du réseau | Couverture production / consommation sur 12 mois, rang de dépendance ; contraintes d'évacuation ; contraintes prospectives RTE à 3-5 ans | ODRÉ (RTE) | région, département |
+| 3. Raccordement | Niveau de tension et gestionnaire selon la puissance ; postes RTE ; zone prioritaire RTE la plus proche et sa date de capacité ; site industriel clé en main le plus proche | arrêté de 2003, ODRÉ, SDDR 2025 de RTE, ANCT | adresse, département |
+| 4. Prix | Prix de la tranche de consommation sur 12 mois, repères depuis 2007, scénarios à 3 ans et leur contrôle sur le passé | Eurostat `nrg_pc_205` | national, par tranche |
+| 5. Coût d'un profil type | Bureau 36 kVA chiffré heure par heure (HP/HC), carbone, gain d'un report vers les heures creuses | CRE, éCO2mix | national |
+| 6. Risques | Risques naturels et technologiques à l'adresse ; repli sur la commune si le rapport ne répond pas | Géorisques | adresse |
 
-```mermaid
-flowchart LR
-    ODRE[("API ODRÉ<br/>national-tr · national-cons-def")]
-    RTE[("API RTE<br/>calendrier Tempo")]
-    EUROSTAT[("API Eurostat<br/>prix entreprises nrg_pc_205")]
+**Les limites tiennent au cadrage**, établi dans [`docs/cadrage-besoins-entreprises.md`](docs/cadrage-besoins-entreprises.md) :
 
-    subgraph BRONZE["Bronze — fidèle à la source (Python)"]
-        direction TB
-        PARQUET[("<b>data/bronze/</b><br/>Parquet immuables<br/>ingest_date=YYYY-MM-DD")]
-        BTABLES[("<b>bronze.national_tr</b><br/><b>bronze.national_cons_def</b><br/><b>bronze.rte_tempo</b><br/>MERGE sur date_heure")]
-        PARQUET --> BTABLES
-    end
+- **le prix n'est pas géographique** : la péréquation rend le tarif identique partout. Il
+  dépend de la taille de l'entreprise, pas de l'adresse ;
+- **pas d'intensité carbone régionale opposable** : RTE ne publie le `taux_co2` qu'au
+  national, l'ADEME n'a pas de facteur régional ;
+- **la capacité de raccordement en soutirage n'est pas en open data** : seule une étude RTE ou
+  Enedis fait foi.
 
-    subgraph SILVER["Silver — nettoyé, conforme (dbt)"]
-        direction TB
-        STR["silver.national_tr<br/>silver.national_cons_def<br/>silver.tempo_jours"]
-        MIX["<b>silver.mix_unifie</b><br/>consolidé puis temps réel"]
-        STR --> MIX
-    end
+Chaque indicateur affiche donc sa source, sa maille et ce qu'il ne dit pas
+(`dbt/seeds/limites_methodologiques.csv`) : une exigence de méthode, et de conformité aux
+règles sur les allégations environnementales (directive EmpCo).
 
-    subgraph GOLD["Gold — métier (dbt)"]
-        direction TB
-        FCT["<b>gold.fct_mix</b><br/>gold.fct_production_filiere<br/>gold.fct_mix_journalier<br/><b>gold.fct_creneau_horaire</b><br/>gold.dim_filiere · gold.tarifs_tempo"]
-    end
+## Utilisation
 
-    ODRE -->|"extract_odre.py<br/>transform.py"| PARQUET
-    RTE -->|"extract_rte.py<br/>OAuth2"| PARQUET
-    EUROSTAT -->|"extract_eurostat.py<br/>JSON-stat"| PARQUET
-    BTABLES --> STR
-    MIX --> FCT
-    STR --> FCT
-    FCT --> RAPPORT(["<b>Rapport mensuel</b><br/>PDF · Markdown<br/>reporting/"])
-    FCT --> USE(["Analyses SQL<br/>(DuckDB)"])
-```
-
-| Couche | Où | Construite par | Contenu | Règle |
-|---|---|---|---|---|
-| **Bronze** | `data/bronze/*.parquet` + schéma `bronze` | `ingestion/` (Python) | Une table par dataset ODRÉ, colonnes de la source, horodatage en UTC | Jamais de règle métier. Les Parquet gardent **toutes** les révisions ; les tables, la dernière version de chaque pas de temps |
-| **Silver** | schéma `silver` | `dbt/models/silver/` | Une ligne = une mesure réelle ; qualité (`temps_reel` / `consolidee` / `definitive`) et pas de temps explicites ; série unifiée | Nettoyage et conformité, pas d'agrégat |
-| **Gold** | schéma `gold` | `dbt/models/gold/` | Faits au pas de mesure et au jour, production par filière, référentiel des filières | Prêt à consommer : unités dans les noms de colonnes, regroupements issus de `dim_filiere` |
-
-Les pipelines Airflow, en clair :
-
-```
-eco2mix_hourly_ingest          extract ──► load_bronze ──► dbt_build ──► freshness_check
-eco2mix_monthly_consolidation  extract ──► load_bronze ──► dbt_build ──► coverage_check
-eco2mix_monthly_report         resolve_month ──► extract_tempo ──► load_tempo ──► dbt_build ──► generate_report
-  (manuel, sans planification)
-
-load_*, dbt_build, contrôles et rapport passent par le pool duckdb_writer (1 slot).
-```
-
-### Composants
-
-| Composant | Fichier | Rôle |
-|---|---|---|
-| Datasets | [`ingestion/datasets.py`](ingestion/datasets.py) | `DatasetSpec` : identifiant ODRÉ, table bronze et schéma de chaque dataset |
-| Client API | [`ingestion/extract_odre.py`](ingestion/extract_odre.py) | Fenêtre paramétrable, bascule `/records` ↔ `/exports/csv`, retry exponentiel, comptage du quota |
-| Client Tempo | [`ingestion/extract_rte.py`](ingestion/extract_rte.py) | API RTE en OAuth2 (jeton réutilisé), plages découpées par an, dates futures tronquées |
-| Normalisation | [`ingestion/transform.py`](ingestion/transform.py) | `date_heure` → UTC (changements d'heure gérés), schéma pyarrow, écriture Parquet bronze |
-| Warehouse | [`ingestion/warehouse.py`](ingestion/warehouse.py) | Interface `WarehouseLoader` + `DuckDBLoader` (MERGE sur `date_heure` dans `bronze`) |
-| Étapes métier | [`ingestion/pipeline.py`](ingestion/pipeline.py) | `extract` / `load` / `freshness` / `coverage`, appelables par les DAGs **et** par la CLI |
-| Diagnostic | [`ingestion/diagnostic.py`](ingestion/diagnostic.py) | Géocodage → une requête sur la couche gold → diagnostic texte, chaque chiffre suivi de sa limite |
-| Silver + gold | [`dbt/`](dbt/) | Modèles, référentiel `dim_filiere`, tests de données ([détail](dbt/README.md)) |
-| Rapport | [`reporting/`](reporting/) | Chiffres du mois (`data.py`), graphiques (`charts.py`), mise en page PDF (`pdf.py`) |
-| Orchestration | [`airflow/dags/`](airflow/dags/) | DAG horaire (temps réel), mensuel (consolidé) et rapport à la demande, pool `duckdb_writer` |
-
-### Pile technique
-
-| Outil | Rôle | Pourquoi celui-là |
-|---|---|---|
-| **Python 3.12** | Extraction, normalisation, CLI, rapports | — |
-| **dbt (dbt-duckdb)** | Couches silver et gold, tests de données | Le SQL versionné et testé est la forme la plus lisible pour des transformations analytiques |
-| **Airflow** (Astro CLI) | Orchestration des trois DAGs | Standard de fait ; le projet Astro rend la stack reproductible en local |
-| **DuckDB** | Warehouse local, schémas bronze / silver / gold | Un seul fichier, pas de serveur, du SQL analytique complet. L'interface `WarehouseLoader` isole ce choix pour une bascule BigQuery ultérieure |
-| **Parquet** (pyarrow) | Zone bronze immuable, partitionnée par date d'ingestion | Format colonne typé, lisible par DuckDB aujourd'hui et par BigQuery demain |
-| **httpx** + **tenacity** | Appels HTTP, retry exponentiel, timeouts | `tenacity` évite d'écrire une boucle de retry à la main |
-| **pydantic-settings** | Configuration typée depuis l'environnement | Valide les réglages au démarrage plutôt qu'au premier appel |
-| **pytest** + **pytest-httpx** | 290 tests, aucun appel réseau réel | L'interception au niveau du transport garantit qu'aucun test ne sort |
-| **ruff** | Lint et format | Un seul outil pour les deux |
-| **matplotlib** + **reportlab** | Graphiques et PDF du rapport | Importés paresseusement : ils ne pèsent que sur la commande de rapport |
-
-**Pas de Spark, volontairement.** Le plus gros jeu fait 2,86 millions de lignes et le dépôt
-complet tient dans 150 Mo : DuckDB traite ces volumes en quelques secondes sur un poste de
-travail. Mobiliser un moteur distribué ici serait un contresens d'ingénierie, et la couche dbt
-reste transposable à un moteur Spark sans réécriture du modèle si les volumes changeaient.
-
-### Hors périmètre
-
-- **Site web ou dashboard public** : écarté volontairement. Le livrable visible est le rapport
-  mensuel, en PDF ou en Markdown ;
-- envoi automatique des rapports (email) et rapports personnalisés par utilisateur ;
-- `infra/` — Terraform GCP, pour une migration cloud ultérieure (voir plus bas).
-
----
-
-## État d'avancement
-
-*Mis à jour le 10 octobre 2026 — diagnostic par adresse opérationnel, rapport PDF / Markdown / JSON. Le 9 octobre : réorientation du projet vers le diagnostic d'implantation
-(voir le [cadrage produit](docs/cadrage-besoins-entreprises.md), § 7 « Décision »).*
-
-**Objectif du MVP** : une adresse française en entrée, un diagnostic de contexte électrique et
-un coût horaire de profil en sortie, produits par un pipeline qui tourne sans intervention.
-
-### Fait et testé
-
-| Brique | Vérifié par |
+| Commande | Effet |
 |---|---|
-| Ingestion éCO2mix (temps réel, consolidé/définitif) : API ODRÉ → Parquet → DuckDB | Tests sans réseau ; exécutée contre l'API réelle |
-| Architecture médaillon : bronze (Python), silver et gold (dbt-duckdb) | 154 tests de données dbt, verts sur les données réelles |
-| Historique complet 2012 → aujourd'hui (2 appels API) | Série continue, bilans annuels conformes aux chiffres publiés par RTE |
-| Calendrier Tempo (API RTE, OAuth2) et grille tarifaire | Tests sur réponses simulées |
-| Rapport mensuel PDF et Markdown (`report --format pdf/md`) | Tests de bout en bout ; généré sur septembre 2026 réel, sans prix |
-| Trois DAGs Airflow (horaire, consolidation mensuelle, rapport à la demande) | Import et structure vérifiés en CI (Airflow 2.10) |
-| **Diagnostic par adresse** (`diagnose --adresse --puissance`) : pression industrielle, tension régionale, seuil de raccordement, limites | 33 tests ; exécuté sur des adresses réelles (Lyon, Fos-sur-Mer, Ajaccio) |
-| **Coût horaire d'un profil type** : bureau 36 kVA chiffré heure par heure sur la grille HP/HC non résidentielle officielle (CRE), carbone, gain d'un décalage vers les heures creuses | 8 tests ; chiffré sur février → septembre 2026 réels |
-| **Rapport d'implantation par adresse** (`diagnose --format pdf/md/json`) : mêmes blocs et limites que le terminal, quatre graphiques de mise en perspective | 17 tests, dont les territoires sans donnée (outre-mer, Corse, commune sans site) ; [exemple réel commité](docs/exemples/implantation_lyon.pdf) |
-| **Prix de l'électricité de l'entreprise** (`diagnose --conso`) : prix Eurostat de sa tranche sur 12 mois, repères depuis 2007, prix moyen des 3 prochaines années en trois scénarios tirés de l'historique et **calibrés sur les erreurs passées de la méthode**, contrôle sur le passé affiché | 40 tests, dont chaque éventail passé et le backtest recalculés indépendamment ; série réelle chargée (494 valeurs, 1 appel), 7 tranches |
-| **Risques naturels et technologiques à l'adresse** (Géorisques) : statut à l'adresse distingué du statut communal, repli sur la commune si le rapport ne répond pas, diagnostic jamais bloqué | 25 tests sur de vraies réponses de Géorisques (Lyon, Ajaccio), coupures et repli simulés ; exécuté sur Lyon et Ajaccio réels |
-| **Réseau de transport autour du site** : contraintes prospectives RTE (3 à 5 ans) et postes RTE par domaine de tension, rattachés au département par les codes de postes | 13 tests (clé à postes optionnels, rattachement, liaisons interdépartementales, Corse) ; 407 contraintes et 5 042 postes réels chargés |
-| **Zone industrielle prioritaire de RTE la plus proche** (SDDR 2025) : distance, priorité P1 ou P2, année de capacité et ouvrages prévus | 9 tests (zone à plusieurs points, P3 plus proche, Corse) ; exécuté sur Lyon, Lille, Poitiers, Montpellier, Ajaccio |
-| **Comparaison d'adresses** (`compare`) : 2 à 6 adresses côte à côte, sans classement ; communs et limites donnés une fois ; texte, Markdown, CSV, JSON | 12 tests ; exécuté sur Lyon, Lille et Poitiers réels |
-| **Site industriel clé en main le plus proche** (France 2030, 55 sites) : distance et période de maturité, dans le même territoire | 5 tests (outre-mer, Corse) ; exécuté sur Lyon, Poitiers, Ajaccio, Saint-Denis de La Réunion |
-| Grilles tarifaires Tempo et HP/HC vérifiées sur les barèmes officiels de la CRE (délibérations n° 2026-06 et 2026-147) | Les 12 prix Tempo du seed retrouvés au dix-millième d'euro près depuis les prix HT |
-| Qualité | 290 tests pytest, ruff, CI GitHub Actions verte |
+| `diagnose --adresse "…"` | Diagnostic dans le terminal |
+| `… --puissance 12` | Niveau de tension et gestionnaire pour un projet de 12 MW |
+| `… --conso 60000` | Prix de la tranche Eurostat pour 60 000 MWh par an |
+| `… --format pdf\|md\|json [--output fichier]` | Rapport PDF ou Markdown (graphiques compris), ou JSON |
+| `… --sans-risques` | Sans appel à Géorisques (hors ligne) |
+| `compare --adresse "A" --adresse "B" …` | 2 à 6 adresses côte à côte, **sans classement** ; formats `texte`, `md`, `csv` (Excel), `json` |
+| `geocode --adresse "…"` | Résolution de l'adresse seule (BAN), score et précision |
+| `report --month 2026-09 [--format md]` | Rapport mensuel carbone et créneaux Tempo (voir plus bas) |
 
-### Pas encore validé en conditions réelles
+Toutes les commandes : `uv run python -m ingestion.cli <commande>`.
 
-- **Airflow n'a jamais tourné** : `astro dev start` n'a pas encore été lancé (Docker Desktop
-  manquait sur le poste de développement). Le projet Astro est prêt (`airflow/.astro/config.yaml`).
-- **Les prix Tempo n'ont jamais été calculés sur des données réelles** : il faut des identifiants
-  de l'API RTE. Le client n'est testé que sur des réponses simulées. Le MVP s'en passe : le coût
-  horaire est chiffré sur l'option Heures Creuses, qui ne dépend d'aucun calendrier.
+## Installation
 
-### Reste à faire
-
-Le socle technique est réutilisé tel quel ; ce qui change est le périmètre fonctionnel.
-
-| # | Étape | Fini quand |
-|---|---|---|
-| 1 | Lancer la stack Airflow (`astro dev start`) | Le DAG horaire est vert plusieurs heures de suite et le DAG rapport produit un document depuis l'UI |
-| 2 | **Ingérer les jeux territoriaux** — *fait pour les trois jeux du MVP* (9 oct.) : sources dbt déclarées, 17 656 lignes IRIS (2012→2023), 1 872 équilibres régionaux, 12 relevés de contraintes, 74 tests dbt verts. *Reporté hors MVP* : `eco2mix-regional-cons-def` (2,86 M lignes) | Les jeux du MVP sont en bronze, testés |
-| 3 | ~~**Géocodage d'adresse**~~ — **fait** (9 octobre 2026) : `ingestion/geocode.py`, commande `geocode --adresse`, 17 tests, vérifié contre la BAN réelle | ~~Une adresse résout son territoire, hors ligne en test~~ |
-| 4 | ~~**Gold : table de diagnostic par territoire**~~ — **fait** (10 octobre 2026) : référentiel commune → département → région, `fct_diagnostic_territoire` (une ligne par département, la commune en complément), seuils de raccordement, limites méthodologiques ; commande `diagnose`. *Mix régional* reporté avec `eco2mix-regional-cons-def` | ~~Une requête par code INSEE renvoie le diagnostic complet~~ |
-| 5 | ~~**Coût horaire sur profil**~~ — **fait** (10 octobre 2026) sur un profil type et l'option HP/HC, sans compte RTE ; grilles vérifiées sur les barèmes CRE. *Reste* : les autres profils et le TURPE détaillé pour les sites > 36 kVA | ~~Un profil donné est chiffré créneau par créneau, avec le gain d'un décalage~~ |
-| 6 | ~~**Rapport d'implantation par adresse**~~ — **fait** (10 octobre 2026) : `diagnose --format pdf/md/json`, styles du rapport mensuel réutilisés | ~~Un PDF est produit pour une adresse saisie, limites méthodologiques affichées~~ |
-| 7 | Fiabilité : alerte en cas d'échec d'une tâche, `main` protégée (CI obligatoire) | Un échec simulé déclenche l'alerte |
-| 8 | Exploitation sur 7 jours, puis chiffres clés restants | Le tableau des [chiffres clés](#chiffres-clés) est complet |
-| 9 | Vitrine : ~~exemple de rapport~~ (**fait**, [docs/exemples/](docs/exemples/)) et captures dans ce README | Le dépôt se comprend sans rien installer |
-
-**Écarté explicitement** (et pourquoi, cf. cadrage) : le prix moyen par adresse (péréquation
-tarifaire), l'intensité carbone régionale présentée comme opposable (pas de facteur ADEME
-régional), la capacité de raccordement chiffrée (absente de l'open data pour la consommation).
-
----
-
-## Démarrage
-
-### Prérequis
-
-- Python 3.12, [uv](https://docs.astral.sh/uv/)
-- Docker Desktop (moteur WSL2 sous Windows) + [Astro CLI](https://www.astronomer.io/docs/astro/cli/install-cli)
-  (pour Airflow)
-
-### Socle Python
+Python 3.12 et [uv](https://docs.astral.sh/uv/). Tout tourne en local, sans service cloud ni
+compte (sauf le calendrier Tempo, optionnel).
 
 ```bash
 uv sync --group dev --group dbt --group report
 cp .env.example .env
+
+# Données (une dizaine d'appels API au total)
+uv run python -m ingestion.cli consolidate --months 180      # éCO2mix consolidé, depuis 2012
+uv run python -m ingestion.cli ingest                        # éCO2mix temps réel
+for jeu in consommation-annuelle-par-iris equilibre-regional-mensuel-prod-conso-brute \
+           energies-et-puissances-regionales-liees-au-contraintes contraintes-region postes-electriques-rte; do
+  uv run python -m ingestion.cli ingest --dataset "$jeu"
+done
+uv run python -m ingestion.cli prix                          # Eurostat
+uv run dbt build --project-dir dbt --profiles-dir dbt        # silver et gold, ~10 s
 ```
 
-Un run complet à la main, sans Airflow — bronze, puis silver et gold :
+La BAN (géocodage) et Géorisques sont appelés au moment du diagnostic. Airflow est optionnel :
+voir [Exploitation](#exploitation).
 
-```bash
-uv run python -m ingestion.cli ingest
-uv run python -m ingestion.cli consolidate
-uv run python -m ingestion.cli prix          # prix des entreprises (Eurostat)
-uv run dbt build --project-dir dbt --profiles-dir dbt
+## Architecture
+
+```mermaid
+flowchart LR
+    SRC[("ODRÉ · Eurostat · RTE Tempo")] -->|"ingestion/ (Python)"| B
+    subgraph B["Bronze"]
+        P[("Parquet immuables")] --> T[("DuckDB : MERGE idempotent")]
+    end
+    B -->|"dbt"| S["Silver : nettoyé, codes INSEE"]
+    S -->|"dbt"| G["Gold : diagnostic, prix, scénarios"]
+    SEEDS[("Seeds : référentiels, tarifs, limites,<br/>zones RTE, sites clés en main")] --> G
+    G --> CLI(["diagnose · compare · report"])
+    BAN[("BAN · Géorisques<br/>(à la demande)")] --> CLI
 ```
 
-Puis, pour un rapport mensuel (le calendrier Tempo exige des identifiants RTE, voir
-[plus bas](#calendrier-tempo--identifiants-rte)) :
-
-```bash
-uv run python -m ingestion.cli tempo --month 2026-09
-uv run dbt build --project-dir dbt --profiles-dir dbt
-uv run python -m ingestion.cli report --month 2026-09               # PDF
-uv run python -m ingestion.cli report --month 2026-09 --format md   # Markdown
-```
-
-`dbt build` se lance depuis la racine du dépôt : `dbt/profiles.yml` lit
-`ECO2MIX_DUCKDB_PATH`, avec le même défaut que le package Python.
-
-Vérification du résultat (critère de recette) :
-
-```bash
-duckdb data/warehouse/eco2mix.duckdb "SELECT count(*) AS lignes, count(DISTINCT date_heure) AS cles, max(date_heure) AS derniere FROM bronze.national_tr"
-```
-
-`lignes` et `cles` doivent être **égaux** : c'est la preuve qu'aucun doublon n'a été créé.
-Relancer la commande d'ingestion ne doit pas faire bouger `lignes`.
-
-### Airflow
-
-```bash
-cd airflow
-astro dev start
-```
-
-L'UI est sur <http://localhost:8080> (`admin` / `admin`). Les trois DAGs apparaissent :
-`eco2mix_hourly_ingest` (horaire), `eco2mix_monthly_consolidation` (mensuel) et
-`eco2mix_monthly_report` (sans planification, à déclencher). `astro dev stop` arrête la stack.
-
-`airflow/.astro/config.yaml` identifie le dossier comme projet Astro ; les identifiants RTE se
-placent dans `airflow/.env` (gitignoré), qu'Astro injecte dans les conteneurs.
-
-`docker-compose.override.yml` monte trois volumes dans les conteneurs :
-
-| Hôte | Conteneur | Mode |
+| Couche | Construite par | Règle |
 |---|---|---|
-| `ingestion/` | `/usr/local/airflow/ingestion` | lecture seule |
-| `reporting/` | `/usr/local/airflow/reporting` | lecture seule |
-| `dbt/` | `/usr/local/airflow/dbt` | lecture seule (artefacts dbt dans `/tmp/dbt`) |
-| `data/` | `/usr/local/airflow/data` | lecture-écriture |
-
-dbt est installé dans un environnement virtuel dédié de l'image
-(`/usr/local/airflow/dbt_venv`, voir [`airflow/Dockerfile`](airflow/Dockerfile)) : ses
-dépendances épinglées entrent en conflit avec celles d'Airflow.
-
-Le contexte de build Docker d'Astro se limite au dossier `airflow/`, il ne peut donc pas
-copier `../ingestion` : le code est monté à l'exécution et `PYTHONPATH=/usr/local/airflow`
-le rend importable. Une image de production devrait, elle, installer le package
-(`pip install ou-brancher-mon-entreprise`) plutôt que le monter.
-
-### Géocoder une adresse
-
-Premier maillon du diagnostic : l'adresse est résolue en codes administratifs, qui servent de
-clés de jointure avec les jeux territoriaux.
-
-```bash
-uv run python -m ingestion.cli geocode --adresse "12 rue de la Paix, 69003 Lyon"
-```
-
-```
-adresse           : 12 Rue de la Caille 69003 Lyon
-commune           : Lyon (69383)
-departement       : Rhône (69)
-region            : Auvergne-Rhône-Alpes (84)
-coordonnees       : 45.75185, 4.89474
-precision / score : housenumber / 0.63
-```
-
-Deux points de méthode. La BAN ne renvoie **pas** le code IRIS : l'obtenir supposerait une
-jointure spatiale avec les contours INSEE, inutile ici puisque le jeu
-`consommation-annuelle-par-iris` porte déjà `code_insee_commune`. Et elle renvoie le *nom* de la
-région quand ODRÉ attend son code INSEE : la correspondance est reconstituée localement sur un
-nom normalisé, sans accent ni casse, parce que les deux sources n'écrivent pas
-« Provence-Alpes-Côte d'Azur » de la même façon.
-
-Le score et la précision sont affichés et journalisés : dans l'exemple ci-dessus, « rue de la
-Paix » n'existe pas à Lyon 3e et la BAN a retenu la voie la plus proche, avec un score de 0,63.
-C'est exactement le genre d'approximation qu'un diagnostic doit montrer plutôt que masquer.
-
-### Diagnostiquer une adresse
-
-```bash
-uv run dbt build --project-dir dbt --profiles-dir dbt   # une fois, après chargement des jeux
-uv run python -m ingestion.cli diagnose --adresse "20 rue de la République, 69002 Lyon" --puissance 12 --conso 60000
-```
-
-Sortie réelle, le 15 octobre 2026 :
-
-```
-DIAGNOSTIC D'IMPLANTATION — 20 Rue de la République 69002 Lyon
-Commune Lyon (69123) · Rhône (69) · Auvergne-Rhône-Alpes (84)
-
-1. Pression industrielle locale (sites raccordés au réseau de transport, 2021)
-   Commune     : 1 site(s), 49,6 GWh/an
-   Département : 23 site(s) dans 19 commune(s), 1 309 GWh/an — rang 11 sur 90 départements
-   ↳ Limite : Ne compte que les sites raccordés au réseau de transport (HTB) : les consommateurs raccordés à Enedis n'y figurent pas. Depuis 2022, environ 40 % des IRIS sont masqués par le secret statistique : le millésime retenu est donc le dernier publié en entier, au prix de quelques années d'ancienneté.
-
-2. Tension du réseau régional (01/2025 – 12/2025, 12 mois)
-   Production 119 231 GWh, consommation 62 405 GWh : couverture 191 % → région excédentaire
-   Rang de dépendance : 10 sur 13 (1 = la plus déficitaire)
-   ↳ Limite : Le réseau est interconnecté : une région déficitaire importe sans difficulté de ses voisines. Le solde décrit une dépendance structurelle, pas une pénurie ni un risque de coupure.
-   Contraintes d'évacuation (RTE) : 14 575 MW d'EnR installés ou en projet, 187 MW à compenser, 2 777 MWh non évacués par an
-   ↳ Limite : Contraintes d'évacuation de la production renouvelable (injection), données à titre indicatif par RTE. Elles ne mesurent pas la capacité disponible pour un consommateur (soutirage). Pas de donnée pour la Corse ni l'outre-mer.
-   Contraintes prospectives (RTE, d'ici 3 à 5 ans) : aucune sur les ouvrages reliés aux postes du département.
-   ↳ Limite : Contraintes de transit liées à l'accueil des énergies renouvelables (injection), que RTE prévoit de gérer par de la flexibilité plutôt que par de nouveaux ouvrages ; données indicatives et non engageantes. Elles ne mesurent pas la capacité disponible pour un consommateur. Ni les ouvrages ni les postes ne sont géolocalisés en open data : la maille est le département, pas l'adresse, et une liaison entre deux départements compte dans les deux.
-
-3. Raccordement
-   Puissance 12 MW → HTA, Enedis (ou ELD) : Raccordement en moyenne tension (20 kV), souvent sur un départ dédié au-delà de quelques MW
-   ↳ Limite : Indicatif : 1 kVA est assimilé à 1 kW. Le domaine de tension réel est fixé par le gestionnaire lors de l'étude de raccordement.
-   Postes RTE en exploitation dans le département : 91, dont 64 en HTB1 (63 à 150 kV), 19 en HTB2 (225 kV) et 3 en HTB3 (400 kV)
-   ↳ Limite : Repère de densité du réseau de transport, pas une capacité de raccordement : un poste proche peut être saturé. Les postes ne sont pas géolocalisés en open data, et environ 3 % d'entre eux n'ont pas de département publié.
-   Zone industrielle prioritaire de RTE la plus proche : Vallée de la chimie (P2), à 7 km (Saint-Fons) : capacité supplémentaire possible à partir de 2029, si les projets industriels de la zone se concrétisent ; ouvrages prévus : nouveau poste 225 kV « Rhôna » raccordé au poste 400 kV de Mions
-   ↳ Limite : Zones et années cibles du schéma décennal de RTE, sous réserve des autorisations administratives et, pour les zones P2, de la concrétisation des projets industriels ; les zones P3 sont de simples exemples, sans date. Distance à vol d'oiseau jusqu'à la commune de référence de la zone, pas jusqu'au poste. Être proche d'une zone ne donne aucun droit d'accès au réseau : la capacité est attribuée selon les procédures de RTE. Concerne surtout les raccordements au réseau de transport (au-delà de quelques dizaines de MW).
-   Site industriel clé en main (France 2030) le plus proche : Salaise-sur-Sanne, à 47 km ; annoncé prêt en 2026 - 2027
-   ↳ Limite : Distance à vol d'oiseau jusqu'au point de la commune, pas jusqu'au site lui-même. La période de maturité est celle annoncée pour un site prêt à accueillir une activité ; elle ne garantit ni la disponibilité du foncier à la date voulue, ni la puissance électrique raccordable, à confirmer auprès de l'aménageur et du gestionnaire de réseau.
-   ↳ Limite : La capacité de raccordement disponible pour la consommation n'est pas publiée en open data (Caparéseau ne couvre que l'injection). Seule une étude de raccordement RTE ou Enedis fait foi.
-
-4. Prix de l'électricité pour l'entreprise (identique sur tout le territoire)
-   Consommation 60 000 MWh/an → tranche IE (de 20 000 à 70 000 MWh par an), prix moyen constaté par Eurostat
-   12 derniers mois (S2 2025 – S1 2026) : 0,0916 €/kWh HTVA, dont 0,0079 €/kWh de taxes non récupérables → facture d'environ 5 500 000 € par an
-   Repères depuis S2 2007 : moyenne sur 5 ans 0,1122 €/kWh, plus bas 0,0553 (S2 2007), plus haut 0,1676 (S1 2023)
-   Prix moyen des 3 prochaines années, d'après l'historique de la tranche et les erreurs passées de la méthode : de 0,0762 à 0,1413 €/kWh, 0,0961 au centre → facture de 4 570 000 € à 8 480 000 € par an (5 760 000 € au centre)
-   Contrôle sur le passé : appliquée à chaque semestre de S2 2019 à S1 2023, la méthode a encadré le prix moyen réel des 3 années suivantes 1 fois sur 8 (12 %, contre 80 % pour une méthode bien calibrée) ; il a dépassé le scénario haut 6 fois et est passé sous le scénario bas 1 fois. Ces périodes de 3 ans se chevauchent : ce ne sont pas des essais indépendants. Leurs écarts font désormais partie des erreurs qui calibrent la fourchette affichée.
-   ↳ Limite : Prix moyen national constaté pour la tranche, hors TVA et taxes récupérables : identique en tout point du territoire (péréquation), il ne dépend pas de l'adresse. C'est une moyenne déclarée par les fournisseurs : un contrat donné peut s'en écarter nettement selon sa date de signature, sa durée et le profil du site. Les scénarios à 3 ans ne sont pas une prévision : le scénario central applique au prix des 12 derniers mois la variation médiane observée sur la tranche, et la fourchette reprend les erreurs passées de cette méthode (10e centile, médiane, 90e centile de l'écart entre prix réel et scénario central), crise de 2022-2023 comprise. Une rupture jamais observée la dépasserait encore.
-
-5. Coût horaire d'un profil type (identique sur tout le territoire)
-   Bureau tertiaire, 36 kVA, septembre 2026, option Heures Creuses du tarif bleu non résidentiel
-   9 600 kWh, dont 15 % en heures creuses : 1 586 € HTVA, soit 0,1652 €/kWh ; 22 gCO₂/kWh en moyenne
-   Décaler 528 kWh flexibles vers les heures creuses : 22 € économisés, mais 1,4 kgCO₂ émis en plus : les heures creuses de nuit sont plus carbonées que la mi-journée solaire
-   ↳ Limite : Le prix est identique en tout point du territoire (péréquation tarifaire) : ce coût ne dépend pas de l'adresse. Profil illustratif, heures creuses supposées de 22 h à 6 h (en réalité fixées localement par le gestionnaire de réseau), jours fériés comptés comme ouvrés, abonnement exclu. Carbone : intensité nationale, faute d'intensité régionale opposable.
-
-6. Risques naturels et technologiques à l'adresse (Géorisques)
-   Naturels, à l'adresse : Inondation, Remontée de nappe, Séisme (faible), Retrait-gonflement des argiles (modéré), Radon (faible)
-   Technologiques, à l'adresse : Pollution des sols
-   Présents dans la commune, non évalués à l'adresse : Rupture de barrage
-   Présents dans la commune, mais l'adresse n'est pas concernée : Installations industrielles classées (ICPE), Canalisations de matières dangereuses
-   Rapport officiel : https://www.georisques.gouv.fr/mes-risques/connaitre-les-risques-pres-de-chez-moi/rapport2?typeForm=adresse&city=Lyon&codeInsee=69123&lon=4.835685&lat=45.763721&adresse=20+Rue+de+la+R%C3%A9publique%2C+69002+Lyon
-   ↳ Limite : Croisement de la position géocodée avec les zonages réglementaires et les cartographies d'aléas disponibles : le résultat dépend de la précision du géocodage et de la couverture des cartes, et un risque « non évalué » à l'adresse n'est pas un risque absent. Ce n'est ni l'état des risques réglementaire, obligatoire pour une vente ou une location, ni une étude de sol ou de vulnérabilité du site.
-```
-
-Ce que la sortie fait, et pourquoi :
-
-- **Commune, puis département.** Seules ~1 300 communes ont un site raccordé au transport ;
-  ailleurs, le diagnostic le dit et se replie sur le département, la plus fine maille
-  renseignée partout. Lyon 2e (`69382`) est ramené à Lyon (`69123`), code sous lequel ODRÉ
-  publie Paris, Lyon et Marseille.
-- **Millésime 2021, pas 2023.** Depuis 2022, ~40 % des IRIS sont masqués par le secret
-  statistique : sur 2023, le Nord tomberait de 8,7 à 2,3 TWh et la Savoie de 3,8 à 0,9 TWh. Le
-  millésime retenu est le dernier publié en entier, calculé par dbt, pas codé en dur.
-- **Le prix ne dépend pas de l'adresse, et la sortie le dit.** Le tarif est péréqué : le bloc 4
-  donne le prix de la tranche de l'entreprise, le bloc 5 chiffre un profil type, les mêmes
-  partout. Le report vers les heures creuses fait gagner de
-  l'argent, mais en été il **augmente** les émissions : la nuit est plus carbonée que la
-  mi-journée solaire. Le diagnostic l'affiche au lieu de promettre un CO₂ évité.
-- **Pas de chiffre sans sa limite.** Chaque bloc est suivi de la limite lue dans
-  `gold.limites_methodologiques`, et la capacité de raccordement, absente de l'open data,
-  renvoie toujours vers l'étude RTE ou Enedis.
-
-#### Prix de l'électricité de l'entreprise (`--conso`)
-
-```bash
-uv run python -m ingestion.cli prix    # 1 appel Eurostat, sans compte, puis dbt build
-```
-
-Au-delà de 36 kVA, il n'existe plus de tarif réglementé et les contrats de fourniture sont
-confidentiels. La seule série publique, longue et officielle de prix **effectivement payés** par
-les entreprises françaises est celle d'**Eurostat** (`nrg_pc_205`) : un prix moyen semestriel,
-tout compris (énergie, acheminement, part fixe), hors TVA et taxes récupérables, par tranche de
-consommation annuelle (IA, moins de 20 MWh, à IG, 150 000 MWh et plus), depuis 2007.
-
-`--conso` (en MWh par an, lue sur la facture) place l'entreprise dans sa tranche. Le bloc 4
-donne alors :
-
-- **le prix des 12 derniers mois** (moyenne des deux derniers semestres) et la facture annuelle
-  qui en découle, arrondie à trois chiffres significatifs ;
-- **des repères** : moyenne sur 5 ans, plus bas et plus haut depuis 2007 ;
-- **le prix moyen des 3 prochaines années**, en trois scénarios **tirés de l'historique de la
-  tranche, sans hypothèse extérieure**, construits en deux temps pour chaque horizon (1, 2, 3 ans) :
-  1. **le scénario central brut** applique au prix des 12 derniers mois la variation médiane
-     observée depuis 2007 entre deux semestres de même saison ;
-  2. **la fourchette** reprend les **erreurs passées de cette méthode** : à chaque semestre de
-     l'histoire, on a calculé le central brut avec les seules données de l'époque, puis mesuré
-     l'écart avec le prix réellement payé ensuite. Le 10e centile, la médiane et le 90e centile
-     de ces écarts donnent les scénarios bas, central et haut.
-
-Ce n'est pas une prévision, et la sortie le dit. La fourchette intègre ce que la méthode a déjà
-manqué, crise de 2022-2023 comprise ; une rupture jamais observée la dépasserait encore. Il faut
-au moins 10 erreurs passées par horizon : une tranche à l'historique trop court n'a pas de
-scénario. Le rapport ajoute le graphique de la tranche depuis 2007, prolongé par l'éventail.
-
-**Pourquoi cette méthode : un premier contrôle sur le passé.** La première version tirait la
-fourchette des seules variations de prix. Rejouée à chaque semestre depuis 2015 avec les données
-de l'époque, elle n'encadrait le prix moyen réel des 3 années suivantes que 3 à 9 fois sur 17
-selon la tranche, contre 8 fois sur 10 attendues : avant 2020, l'historique était calme et les
-fourchettes étroites, et la crise les a crevées par le haut.
-
-**Le contrôle reste affiché sous chaque scénario.** La méthode actuelle est rejouée de la même
-façon (`gold.fct_prix_entreprise_eventails`, `fct_prix_entreprise_backtest`,
-`fct_prix_entreprise_calibration`). Comme il faut d'abord accumuler 10 erreurs passées, seules
-8 périodes sont contrôlables, de S2 2019 à S1 2023 — toutes à cheval sur la crise :
-
-| Tranche | Prix réel dans la fourchette | Au-dessus | En dessous | Fourchette affichée à 3 ans (€/kWh) |
-|---|---|---|---|---|
-| IA (< 20 MWh) | 1 / 8 | 7 | 0 | 0,2612 – 0,3419 |
-| IB (20–500 MWh) | 2 / 8 | 6 | 0 | 0,1918 – 0,2848 |
-| IC (500–2 000 MWh) | 0 / 8 | 7 | 1 | 0,1404 – 0,2399 |
-| ID (2 000–20 000 MWh) | 0 / 8 | 7 | 1 | 0,1048 – 0,1970 |
-| IE (20 000–70 000 MWh) | 1 / 8 | 6 | 1 | 0,0762 – 0,1413 |
-| IF (70 000–150 000 MWh) | 1 / 8 | 5 | 2 | 0,0600 – 0,1251 |
-
-*Au 15 octobre 2026. Les périodes se chevauchent et ne sont pas des essais indépendants. IG :
-historique trop court.*
-
-Ces chiffres ne disent pas que la fourchette affichée aujourd'hui est fausse : ils disent qu'en
-2019-2021, une méthode fondée sur le seul passé de la tranche ne pouvait pas anticiper 2022. Les écarts de ces
-périodes calibrent désormais la fourchette affichée, plus large et moins orientée à la hausse
-qu'avec la première version (IB : 0,1918–0,2848 €/kWh contre 0,1949–0,2725). Les tests le
-vérifient sur deux séries synthétiques : avec une crise récente, les fourchettes contrôlées
-l'ont manquée ; avec une crise ancienne, ses erreurs élargissent les fourchettes suivantes, qui
-encadrent alors le prix réel bien plus souvent.
-
-#### Réseau de transport autour du site (contraintes prospectives, postes RTE)
-
-Deux jeux ODRÉ complètent les blocs 2 et 3 :
-
-- **les contraintes prospectives** (`contraintes-region`, 407 contraintes, vision décembre 2024) :
-  les ouvrages où RTE prévoit, d'ici 3 à 5 ans, des limitations liées à l'accueil des énergies
-  renouvelables, avec leur fréquence, la durée des épisodes et leur pérennité. Le diagnostic
-  compte celles du département et détaille les trois plus fréquentes ;
-- **les postes RTE** (`postes-electriques-rte`, environ 5 000 postes) : leur nombre dans le
-  département, par domaine de tension (HTB1 63–150 kV, HTB2 225 kV, HTB3 400 kV), et ceux en projet.
-
-**Pourquoi le département et pas l'adresse.** Les champs géographiques du jeu des contraintes
-existent mais sont **tous vides**, et les postes n'ont pas de coordonnées. Une contrainte est donc
-rattachée à un département par les postes qu'elle relie (code poste → département publié en
-toutes lettres → code via le référentiel) : 405 contraintes sur 407 par leur premier poste,
-toutes par l'un de leurs trois postes. Une liaison entre deux départements compte dans les deux.
-En Corse et outre-mer, le réseau n'est pas exploité par RTE : le diagnostic le dit.
-
-**Limites affichées** : ce sont des contraintes d'**injection**, indicatives et non engageantes,
-qui ne mesurent pas la capacité disponible pour un consommateur ; et un poste proche peut être
-saturé. Seule une étude de raccordement fait foi.
-
-#### Zones industrielles prioritaires de RTE (SDDR 2025)
-
-Pour un gros projet, la question n'est pas seulement « à quel réseau me raccorder ? » mais
-« où la puissance sera-t-elle disponible, et quand ? ». Le schéma décennal de RTE (SDDR 2025,
-fiche 5) y répond pour dix zones où le réseau est renforcé en priorité :
-
-- **P1** (Dunkerque, Le Havre, Fos-sur-Mer) : capacité annoncée à partir de 2028-2029, travaux
-  lancés dès l'obtention des autorisations ;
-- **P2** (Vallée de la chimie, Plan-de-Campagne, Loire-Estuaire, Valenciennes, Sud Alsace,
-  Saint-Avold, Sud Île-de-France) : capacité possible en 2029-2030, travaux lancés seulement si
-  les projets industriels de la zone se concrétisent ;
-- **P3** : exemples cités par RTE (Port-la-Nouvelle, Lacq, Châteauroux), sans date, sous
-  engagement financier des industriels.
-
-Le bloc 3 donne la zone P1 ou P2 la plus proche de l'adresse, sa distance à vol d'oiseau, son
-calendrier et les ouvrages prévus ; une zone P3 n'est citée que si elle est plus proche encore.
-Les zones sont dans un seed (`zones_raccordement_rte`), chacune repérée par la commune du poste
-ou du secteur cité par RTE : document daté, à mettre à jour à chaque édition du SDDR. La limite
-affichée rappelle qu'être proche d'une zone ne donne aucun droit d'accès au réseau.
-
-#### Site industriel clé en main le plus proche (France 2030)
-
-Le foncier viabilisé et raccordé est le deuxième besoin des entreprises qui s'implantent
-(voir la [revue des besoins](docs/revue-besoins-entreprises.md)). Le bloc 3 donne le site
-labellisé « clé en main » France 2030 le plus proche de l'adresse, sa distance et la période
-où il est annoncé prêt. La liste vient de l'ANCT et de la DGE (data.gouv.fr, 55 sites, version
-du 19 septembre 2025, Licence Ouverte) ; elle est repérée par commune, dans un seed
-(`sites_cles_en_main`). Une adresse de métropole ne regarde que la métropole, une adresse en
-Corse ou outre-mer que son propre département. La limite rappelle que la date annoncée ne
-garantit ni le foncier ni la puissance raccordable.
-
-#### Risques naturels et technologiques à l'adresse (Géorisques)
-
-Le bloc 6 est le seul **propre à l'adresse exacte** : le prix est national, la tension du réseau
-régionale, la pression industrielle départementale. Il interroge l'API publique de
-[Géorisques](https://www.georisques.gouv.fr/doc-api) (ministère de la Transition écologique,
-BRGM), sans clé, avec les coordonnées déjà fournies par le géocodage.
-
-Pour chaque risque, Géorisques publie un statut dans la commune et un statut à l'adresse. Le
-diagnostic les range en quatre cas : présent **à l'adresse** (avec son niveau quand il est
-publié), présent dans la commune mais **non évalué** à l'adresse, présent dans la commune mais
-**l'adresse n'est pas concernée**, ou absent. Un risque non évalué n'est jamais présenté comme
-absent, et le lien vers le rapport officiel est donné.
-
-**Une API instable, gérée comme telle.** Le 15 octobre 2026, le rapport à l'adresse coupait la
-plupart des connexions sans réponse, alors que les points d'accès communaux répondaient. D'où
-trois niveaux :
-
-1. plusieurs tentatives sur le rapport à l'adresse ;
-2. à défaut, **repli sur la commune** : risques recensés dans la base GASPAR et zone de
-   sismicité, annoncés comme tels (« recensés dans la commune, sans évaluation à l'adresse ») ;
-3. si rien ne répond, le diagnostic sort quand même et dit que les risques n'ont pas été évalués.
-
-`--sans-risques` saute l'appel (usage hors ligne). La limite affichée rappelle que ce n'est ni
-l'état des risques réglementaire, obligatoire pour une vente ou une location, ni une étude de sol.
-
-#### Rapport d'implantation et sortie machine
-
-```bash
-uv run python -m ingestion.cli diagnose --adresse "20 rue de la République, 69002 Lyon" --puissance 12 --format pdf
-uv run python -m ingestion.cli diagnose --adresse "..." --format md                # graphiques en PNG à côté
-uv run python -m ingestion.cli diagnose --adresse "..." --format json > lyon.json  # sortie standard
-```
-
-Le fichier est écrit dans `data/reports/implantation_<code commune>_<adresse>.<format>`, ou
-au chemin donné par `--output`. Exemple commité : [Markdown](docs/exemples/implantation_lyon.md)
-et [PDF](docs/exemples/implantation_lyon.pdf).
-
-- **Même contenu que le terminal.** Les cinq blocs et leurs limites viennent d'une seule
-  fonction (`ingestion.diagnostic.sections`) : aucun format ne peut afficher un chiffre sans sa
-  limite, ni diverger des autres.
-- **Quatre graphiques de mise en perspective** : les 15 départements à plus forte pression
-  industrielle (celui de l'adresse ajouté et surligné s'il est plus loin, ou signalé « aucun
-  site »), la couverture de chaque région, le prix de la tranche depuis 2007 avec ses
-  scénarios (avec `--conso`), et la courbe journalière du profil chiffré.
-- **JSON** : les champs du diagnostic sous leurs noms Python, dates ISO, limites indexées par
-  indicateur — de quoi brancher l'outil sur un tableur ou un autre pipeline.
-
----
-
-### Comparer plusieurs adresses
-
-```bash
-uv run python -m ingestion.cli compare --adresse "20 rue de la République, 69002 Lyon" \
-    --adresse "1 place du Général de Gaulle, Lille" --adresse "1 place du Maréchal Leclerc, Poitiers" \
-    --puissance 12 --conso 60000                      # tableau dans le terminal
-uv run python -m ingestion.cli compare --adresse "..." --adresse "..." --format csv --output sites.csv
-```
-
-De deux à six adresses, **côte à côte et sans classement** : une ligne par indicateur qui
-dépend de l'adresse (territoire, qualité du géocodage, pression industrielle, couverture
-régionale, contraintes et postes RTE, zone prioritaire RTE, risques à l'adresse). Ce qui ne
-dépend pas de l'adresse — niveau de tension selon la puissance, prix de la tranche, coût du
-profil type — est donné une seule fois sous le tableau. Les limites de tous les indicateurs
-sont listées à la fin, une fois chacune.
-
-Pas de note ni de verdict : pondérer un risque d'inondation contre une distance à un poste est
-un choix de l'entreprise, pas une donnée. Formats : texte, Markdown, CSV (avec BOM, pour Excel)
-et JSON. Exemple réel commité : [Lyon, Lille, Poitiers](docs/exemples/comparaison_lyon_lille_poitiers.md)
-— avec le rapport Géorisques à l'adresse pour les trois ; quand Géorisques ne répond pas,
-le tableau indique « commune seulement » pour l'adresse concernée.
-
----
-
-### Qualité
-
-```bash
-uv run ruff check .
-uv run ruff format --check .
-uv run pytest
-```
-
----
-
-## Modèle de données
-
-Table bronze `bronze.national_tr` (DuckDB), clé primaire `date_heure` — `bronze.national_cons_def`
-suit le même schéma, enrichi du détail par sous-filière (`gaz_ccg`, `hydraulique_lacs`, …) :
-
-| Colonne | Type | Commentaire |
-|---|---|---|
-| `date_heure` | `TIMESTAMPTZ` | **Clé du MERGE**, normalisée en UTC |
-| `perimetre`, `nature` | `VARCHAR` | Métadonnées du dataset |
-| `consommation`, `prevision_j1`, `prevision_j` | `DOUBLE` | MW |
-| `nucleaire`, `eolien`, `solaire`, `hydraulique`, `gaz`, `fioul`, `charbon`, `bioenergies`, `pompage` | `DOUBLE` | Production par filière, MW |
-| `ech_physiques`, `ech_comm_*` | `DOUBLE` | Échanges frontaliers, MW |
-| `taux_co2` | `DOUBLE` | gCO₂/kWh |
-| `ingested_at_utc` | `TIMESTAMPTZ` | Horodatage du run — arbitre les révisions |
-| `source_dataset` | `VARCHAR` | Dataset ODRÉ d'origine |
-
-Les mesures sont typées `DOUBLE` et non entières : l'API renvoie des valeurs nulles sur les
-filières non renseignées, et des chaînes via l'export CSV.
-
-### Idempotence
-
-Les données temps réel de RTE sont **révisées en continu**. Le pipeline en tient compte à
-trois niveaux :
-
-1. **Fenêtre glissante de 3 h** — chaque run horaire relit les 3 dernières heures, pas la
-   seule heure écoulée, pour capter les révisions.
-2. **Dédoublonnage du lot** — si un même `date_heure` apparaît deux fois dans un fichier, seule
-   la ligne au `ingested_at_utc` le plus récent est retenue.
-3. **MERGE, jamais d'INSERT** — les clés du lot sont supprimées puis réinsérées dans une
-   transaction unique, ce qui écrase les valeurs révisées sans jamais dupliquer.
-
-La clé primaire sur `date_heure` rend cette garantie structurelle : même en cas de régression
-du code de fusion, la base refuserait le doublon.
-
-### Fuseau horaire et changements d'heure
-
-`date_heure` est normalisé en UTC **dès l'extraction**. Le parseur accepte les deux formes que
-peut renvoyer Opendatasoft :
-
-- **ISO avec décalage** (`2026-03-29T01:45:00+01:00`) — l'instant est déjà non ambigu ;
-- **heure locale naïve** (`2026-03-29 01:45:00`) — interprétée en `Europe/Paris`, avec :
-  - **fin mars** — une heure locale inexistante (02:00–02:59) lève une erreur explicite plutôt
-    que d'être devinée ;
-  - **fin octobre** — l'heure locale 02:00–02:59 existe deux fois. L'instant précédent de la
-    série tranche : première passe en heure d'été (UTC+2), seconde en heure d'hiver (UTC+1).
-
-Les deux bascules sont couvertes par des tests dédiés
-([`test_transform.py`](ingestion/tests/test_transform.py)).
-
----
-
-## Consommation du quota API
-
-L'API ODRÉ est limitée à **50 000 appels par dataset et par mois**, remis à zéro le 1er du mois.
-Le client suit cette consommation de deux façons et journalise les deux en fin de run : ses
-propres appels (retries compris) et le compteur renvoyé par l'API dans ses en-têtes
-`X-RateLimit-dataset-*`, qui fait autorité.
-
-```
-INFO ingestion.extract_odre odre_api_calls=1 dataset=eco2mix-national-tr quota_remaining=49997/50000 quota_reset=2026-10-01 00:00:00+00:00
-```
-
-| Usage | Appels par run | Runs / mois | Total |
-|---|---|---|---|
-| DAG horaire (`/records`, 1 page) | 1 | 730 | **730** |
-| Retries (hypothèse : 5 % des runs, 1 tentative de plus) | 1 | 37 | 37 |
-| Rejeux et mise au point | 1 | ~100 | 100 |
-| Backfill d'un an (`/exports/csv`) | 1 | ponctuel | ~10 |
-| | | **Total** | **≈ 880 / 50 000 → 1,8 %** |
-
-Deux décisions maintiennent ce chiffre bas :
-
-- **une seule page par run.** La fenêtre de 3 h représente une douzaine de lignes, très en deçà
-  de la page de 100 : aucune pagination n'est déclenchée en régime nominal ;
-- **l'export pour les gros volumes.** Au-delà de ~900 lignes estimées, le client bascule
-  automatiquement sur `/exports/csv`, qui ramène toute la fenêtre en **un seul appel**. La
-  pagination de `/records` est de toute façon plafonnée (`limit` + `offset` ≤ 10 000) et ne
-  permet pas un backfill.
-
-Marge disponible : même en passant le DAG au quart d'heure (4 runs/h), la consommation
-resterait autour de 3 000 appels par mois, soit 6 % du quota.
-
-### Backfill
-
-```bash
-uv run python -m ingestion.cli ingest --start 2025-01-01 --end 2026-01-01
-```
-
-La bascule vers `/exports/csv` est automatique — un seul appel API pour l'année.
-
----
-
-## Rapport mensuel : pics de carbone et créneaux Tempo
-
-Un rapport pour un particulier au tarif Tempo, généré **à la demande** pour un mois civil, en
-deux formats aux chiffres identiques :
-
-- **PDF** de 3 à 4 pages, prêt à imprimer ou à envoyer ;
-- **Markdown** : un document texte (tableaux, liens) lisible sur GitHub ou dans un éditeur, avec
-  ses graphiques en PNG dans un dossier voisin `eco2mix_rapport_AAAA-MM_graphiques/`
-  (`--sans-graphiques` pour du texte seul).
-
-Le rapport ne recalcule aucune règle métier : tout vient de `gold.fct_creneau_horaire` (une
-ligne par heure : intensité CO₂, couleur Tempo, période tarifaire, prix TTC).
-
-| Section | Contenu |
-|---|---|
-| En bref | Intensité CO₂ moyenne, heure la plus propre, pic maximal, jours rouges/blancs/bleus, meilleur créneau, économie estimée |
-| 1. Pics de carbone | Courbe horaire, seuil de pic (9e décile du mois), épisodes les plus intenses, jours les plus carbonés, carte jour × heure |
-| 2. Calendrier Tempo et prix | Calendrier coloré du mois, jours rouges, prix et CO₂ moyens par couleur × période |
-| 3. Meilleurs créneaux | Profil horaire CO₂ / prix, 5 créneaux de 3 h à privilégier, 3 à éviter, économie en déplaçant un usage flexible (7 kWh/jour par défaut) |
-| Méthodologie | Définitions, sources, limites |
-
-### Le déclencher
-
-Dans l'UI Airflow, **Trigger DAG w/ config** sur `eco2mix_monthly_report` :
-
-```json
-{"mois": "2026-09", "tempo": true, "heures_creneau": 3, "usage_flexible_kwh": 7, "format": "pdf"}
-```
-
-Sans `mois`, le rapport porte sur le mois précédent. Il est écrit dans
-`data/reports/eco2mix_rapport_AAAA-MM.pdf` (ou `.md` avec `"format": "md"`) et son chemin est
-remonté en XCom. En dehors d'Airflow, la commande `report` de la CLI produit le même document.
-
-### Calendrier Tempo : identifiants RTE
-
-La couleur des jours vient de l'API RTE « Tempo Like Supply Contract », gratuite mais
-authentifiée :
-
-1. créer un compte sur [data.rte-france.com](https://data.rte-france.com) ;
-2. s'abonner à l'API *Tempo Like Supply Contract* et créer une application ;
-3. reporter ses identifiants dans `airflow/.env` (et `.env` pour la CLI) :
-   `ECO2MIX_RTE_CLIENT_ID=...` et `ECO2MIX_RTE_CLIENT_SECRET=...`.
-
-Sans identifiants, `extract_tempo` échoue avec un message explicite. Avec `"tempo": false`, le
-rapport est produit sur le seul critère carbone et le signale en tête de document.
-
-### Grille tarifaire
-
-Les prix TTC du kWh Tempo sont dans le seed [`dbt/seeds/tarifs_tempo.csv`](dbt/seeds/tarifs_tempo.csv)
-(grilles du 1er février et du 1er août 2026). **Ils doivent être mis à jour à chaque mouvement
-tarifaire** (en général 1er février et 1er août) : hors grille, les prix restent nuls et le
-rapport bascule sur le critère carbone plutôt que d'afficher un prix faux.
-
----
-
-## Contrôle de fraîcheur
-
-La dernière tâche du DAG lit DuckDB **en lecture seule** et échoue si la donnée la plus récente
-a plus de 2 h de retard (`ECO2MIX_FRESHNESS_MAX_LAG_HOURS`). Une base vide ou absente échoue
-aussi : au premier run, l'absence de donnée est une anomalie, pas un état neutre.
-
-Le contrôle porte sur le dernier horodatage **effectivement mesuré**, pas sur `max(date_heure)`.
-RTE publie en effet la ligne la plus récente « à blanc » — horodatage et échanges frontaliers
-présents, consommation et production encore nulles, remplies quelques minutes plus tard. Un
-contrôle basé sur `max(date_heure)` resterait donc au vert si le flux se mettait à publier des
-horodatages sans jamais les remplir : précisément l'incident qu'il est censé détecter. Le log
-distingue les deux :
-
-```
-INFO ingestion.pipeline freshness ok latest_measured=2026-09-08T17:45:00+00:00 latest_row=2026-09-08T18:00:00+00:00 lag_hours=0.488 rows=4
-```
-
-Ce décalage structurel (~15 à 30 min) reste très en deçà du seuil de 2 h.
-
-### Le point de friction Airflow / DuckDB
-
-DuckDB n'accepte **qu'un seul writer** sur un fichier, et refuse un lecteur externe tant qu'un
-writer détient le verrou. Trois garde-fous :
-
-1. `max_active_runs=1` — jamais deux runs du DAG en parallèle ;
-2. pool Airflow **`duckdb_writer` (1 slot)** sur `load_bronze`, `dbt_build` et les contrôles — la
-   sérialisation tient même si un autre DAG venait à écrire dans la base ;
-3. connexion `read_only=True` pour le contrôle de fraîcheur.
-
-Conséquence pratique : ne gardez pas de session `duckdb` interactive ouverte sur
-`data/warehouse/eco2mix.duckdb` pendant qu'un run tourne, elle prendrait le verrou.
-
----
+| Bronze (`data/bronze/*.parquet` + schéma `bronze`) | `ingestion/` | Miroir de la source, horodatage en UTC ; les Parquet gardent toutes les révisions, les tables la dernière |
+| Silver | `dbt/models/silver/` | Nettoyage et conformité (codes INSEE, classes ordonnées), pas d'agrégat |
+| Gold | `dbt/models/gold/` | Prêt à lire : une requête par diagnostic, unités dans les noms de colonnes |
+
+Choix structurants :
+- **DuckDB, pas de Spark** : le plus gros jeu fait 500 000 lignes, la base 235 Mo ; un
+  `dbt build` complet (229 nœuds, tests compris) prend une dizaine de secondes.
+- **Reconstruction complète** de silver et gold à chaque run : plus simple qu'un incrémental
+  à ce volume.
+- **Interface `WarehouseLoader`** : seul point où DuckDB est nommé, pour une bascule BigQuery
+  ultérieure (`BigQueryLoader` à écrire).
+
+Détail des modèles : [`dbt/README.md`](dbt/README.md) ; stockage : [`data/README.md`](data/README.md).
+
+## Fiabilité des données
+
+- **Changements d'heure** : `date_heure` normalisé en UTC dès l'extraction ; l'heure de mars
+  inexistante lève une erreur, l'heure d'octobre doublée est tranchée par l'instant précédent.
+  RTE publie 24 h par jour : 4 lignes en double par an absorbées, 1 h manquante par an signalée
+  (`est_complet = false`).
+- **Révisions** : fenêtre glissante de 3 h, dédoublonnage du lot, MERGE sur la clé (jamais
+  d'INSERT) ; une clé peut être composite et comporter des colonnes optionnelles.
+- **Quota ODRÉ** (50 000 appels par jeu et par mois) : environ 900 appels par mois en
+  exploitation horaire, journalisés avec le compteur renvoyé par l'API ; bascule automatique
+  sur l'export CSV (un appel) au-delà de 900 lignes.
+- **Pièges des sources**, traités et testés : BOM des exports CSV, ligne temps réel publiée
+  « à blanc », codes IRIS tronqués, communes non publiées, millésimes masqués par le secret
+  statistique (millésime retenu : 2021), champs géographiques vides des contraintes RTE.
+- **API instables** : nouvelles tentatives exponentielles partout ; Géorisques coupe souvent
+  ses connexions, d'où un repli communal annoncé, et un diagnostic qui sort même sans lui.
+
+## Exploitation
+
+Trois DAGs Airflow (projet Astro dans `airflow/`, `astro dev start`) : ingestion horaire,
+consolidation mensuelle, rapport mensuel à la demande. Les tâches qui écrivent dans DuckDB
+passent par le pool `duckdb_writer` (1 slot) : DuckDB n'accepte qu'un writer. Un contrôle
+de fraîcheur échoue si la dernière mesure a plus de 2 h de retard.
+
+**Rapport mensuel Tempo** : `report --month AAAA-MM` produit un PDF ou un Markdown sur les pics
+de carbone et les meilleurs créneaux Tempo d'un mois. Les couleurs Tempo exigent un compte
+gratuit sur [data.rte-france.com](https://data.rte-france.com) (`ECO2MIX_RTE_CLIENT_ID` et
+`_SECRET` dans `.env`) ; sans elles, le rapport se limite au carbone.
 
 ## Tests et CI
 
 ```bash
-uv run pytest
+uv run ruff check . && uv run ruff format --check . && uv run pytest
 ```
 
-| Suite | Couvre |
+290 tests pytest, **aucun appel réseau réel** (`pytest-httpx`, sockets condamnées), dont un
+`dbt build` complet sur une base synthétique qui reproduit les pièges des sources. Les tests de
+données dbt (unicité, bornes, intégrité référentielle, cohérence des scénarios) tournent à
+chaque build. La CI GitHub Actions rejoue ruff, pytest et `dbt build`, puis importe les DAGs
+avec Airflow 2.10, sans credential.
+
+## État
+
+**Fait** : tout ce que décrit ce README, testé et exécuté sur des adresses réelles.
+
+**Pas encore validé en conditions réelles** :
+- Airflow n'a jamais tourné (Docker Desktop absent du poste de développement) ;
+- les prix Tempo n'ont été calculés que sur des réponses simulées (pas de compte RTE).
+
+Suite et décisions : [`docs/feuille-de-route.md`](docs/feuille-de-route.md).
+
+## Documentation
+
+| Document | Contenu |
 |---|---|
-| [`test_extract_odre.py`](ingestion/tests/test_extract_odre.py) | Pagination, bascule vers l'export, retry, non-rejeu des 4xx, comptage du quota |
-| [`test_transform.py`](ingestion/tests/test_transform.py) | Changements d'heure de mars et d'octobre, typage, partitionnement |
-| [`test_warehouse.py`](ingestion/tests/test_warehouse.py) | Idempotence du MERGE, révisions, dédoublonnage, clé primaire |
-| [`test_pipeline.py`](ingestion/tests/test_pipeline.py) | Bout-en-bout API simulée → Parquet → DuckDB, contrôles de fraîcheur et de complétude |
-| [`test_extract_rte.py`](ingestion/tests/test_extract_rte.py) | Jeton OAuth (Basic, réutilisé), découpage des plages, dates futures, retry, couleurs inconnues |
-| [`test_report.py`](ingestion/tests/test_report.py) | Épisodes de pic, meilleur créneau bleu HC, économie estimée, repli sans prix, PDF et Markdown écrits (graphiques, liens relatifs, version texte seul) |
-| [`test_diagnostic.py`](ingestion/tests/test_diagnostic.py) | Codes IRIS tronqués et doublons vides, communes reconstituées, arrondissements, Corse, millésime sans secret, fenêtre de 12 mois, seuils de raccordement aux bornes, limites toutes affichées, commande `diagnose` de bout en bout |
-| [`test_cout_profil.py`](ingestion/tests/test_cout_profil.py) | Prix HP et HC aux bonnes heures, dimanche de 25 h compté en entier, mois hors grille sans coût, gain de décalage, CO₂ « évité » négatif affiché comme tel |
-| [`test_dbt.py`](ingestion/tests/test_dbt.py) | `dbt build` de bronze à gold : lignes vides écartées, bascule consolidé → temps réel sans double comptage, jour de 25 h, premier run sans consolidé |
-
-Les 154 tests de données dbt (unicité, valeurs admises, bornes, intégrité référentielle, absence
-de chevauchement entre mesures, hiérarchie territoriale conforme aux codes publiés) tournent à chaque `dbt build`, donc à chaque run des DAGs.
-
-**Aucun test n'appelle l'API réelle** : `pytest-httpx` intercepte au niveau du transport, et un
-test condamne explicitement les sockets pour le prouver. DuckDB tourne en mémoire.
-
-La CI GitHub Actions ([`ci.yml`](.github/workflows/ci.yml)) tourne sur un runner nu, **sans
-aucun credential** :
-
-- `ruff check` + `ruff format --check` + `pytest`, `dbt build` compris ;
-- import du `DagBag` avec Airflow 2.10 — les erreurs d'import des trois DAGs, leurs tâches,
-  l'usage du pool `duckdb_writer` et l'absence de planification du DAG de rapport sont vérifiés
-  sans Docker.
-
----
-
-## Chiffres clés
-
-Mesurés lors du premier run de validation contre l'API (2026-09-08, fenêtre d'une heure) :
-
-| Indicateur | Valeur |
-|---|---|
-| Pas de temps du dataset | **15 min** (4 lignes/heure) |
-| Appels API par run horaire | **1** (`/records`, une seule page) |
-| Durée d'un cycle extract + load | **~0,5 s** |
-| Retard de la donnée mesurée à l'instant du contrôle | **~0,5 h** (seuil : 2 h) |
-| Taille d'un fichier Parquet (4 lignes, zstd) | 8,1 ko |
-
-Historique complet, chargé le 2026-10-04 (2 appels API au total) :
-
-| Indicateur | Valeur |
-|---|---|
-| Profondeur d'historique | **1er janvier 2012 → aujourd'hui** (définitif jusqu'à fin 2024, consolidé jusqu'à juin 2026, temps réel ensuite) |
-| Lignes en bronze | **508 260** (consolidé/définitif) + **9 200** (temps réel, ~96 jours) |
-| Mesures dans la série unifiée (`silver.mix_unifie`) | **263 322** |
-| Production par filière (`gold.fct_production_filiere`) | **2,1 millions** de lignes |
-| Continuité | **14 h manquantes en 15 ans**, toutes à la source (voir [particularités](#particularités-de-la-source-rte)) |
-| Backfill du consolidé (export d'un seul appel, 508 320 lignes) | **~1 min 30**, Parquet de 14 Mo |
-| `dbt build` complet (66 nœuds) sur tout l'historique | **~22 s** |
-| Base DuckDB (trois couches) | **139 Mo** |
-
-<!-- À compléter après 7 jours d'exécution continue des DAGs. -->
-
-| Indicateur | Valeur |
-|---|---|
-| Appels API consommés sur 30 jours | _à compléter_ (budget : ~880) |
-| Taux de succès des runs du DAG horaire | _à compléter_ |
-
-### Particularités de la source RTE
-
-**BOM dans les exports CSV.** ODRÉ préfixe ses réponses `/exports/csv` d'un BOM UTF-8. Décodé
-naïvement, il se colle au nom de la première colonne (`﻿perimetre`), qui devient
-introuvable : la colonne part à `null` sans la moindre erreur, et si cette première colonne est
-une clé de MERGE, **toutes les lignes sont écartées**. Le client décode donc en `utf-8-sig`
-(corrigé le 9 octobre 2026, test de non-régression dans `test_extract_odre.py`).
-
-> Si votre base a été chargée avant ce correctif, `perimetre` y est NULL partout. Un backfill
-> relancé le répare en place (un appel API par dataset), le MERGE écrasant les lignes par clé.
-
-
-RTE publie **24 heures d'horloge par jour**, y compris aux changements d'heure :
-
-- **fin mars**, l'heure locale 2 h–3 h, qui n'existe pas, est quand même publiée et retombe sur
-  les mêmes instants UTC que 3 h–4 h, avec des valeurs identiques. Le dédoublonnage du
-  chargement l'absorbe (4 lignes par an) ;
-- **fin octobre**, l'heure locale 2 h–3 h, qui existe deux fois, n'est publiée qu'**une seule
-  fois** : la première occurrence (0 h–1 h UTC) manque, sur tout l'historique. Ces journées
-  ressortent avec `est_complet = false` dans `gold.fct_mix_journalier` (24 h couvertes sur 25),
-  plutôt que d'être complétées par une valeur inventée.
-
----
-
-## Migration BigQuery (ultérieure)
-
-Hors périmètre actuel : la plateforme reste 100 % locale. Le code est néanmoins prêt.
-
-Aucune logique métier ne dépend de DuckDB. Le contrat est
-[`WarehouseLoader`](ingestion/warehouse.py) — un `Protocol` volontairement aligné sur ce que
-les deux moteurs savent faire nativement : charger **un Parquet désigné par un chemin ou une
-URI**, et fusionner sur `date_heure`.
-
-La migration se limite donc à :
-
-1. écrire `BigQueryLoader` (`MERGE` natif, source `gs://.../*.parquet`) ;
-2. l'enregistrer dans `build_loader()` — seul endroit du code où un moteur est nommé ;
-3. basculer `ECO2MIX_WAREHOUSE_BACKEND=bigquery` et faire pointer la couche bronze sur GCS ;
-4. provisionner le tout depuis `infra/`.
-
-Le DAG, le client API et la normalisation restent inchangés.
-
----
+| [Feuille de route](docs/feuille-de-route.md) | Fait, à faire, décisions datées, écarté |
+| [Cadrage](docs/cadrage-besoins-entreprises.md) | 9 oct. 2026 : pourquoi un diagnostic de contexte et non « le prix et le CO₂ à l'adresse » |
+| [Revue des besoins](docs/revue-besoins-entreprises.md) | 15 oct. 2026 : ce que cherchent les entreprises qui choisissent un site |
+| [Veille](docs/veille-projets-similaires.md) | 15 oct. 2026 : projets similaires sur GitHub et idées retenues |
 
 ## Structure du dépôt
 
 ```
-ou-brancher-mon-entreprise/
-├── ingestion/              # clients API (ODRÉ, RTE), normalisation, warehouse, CLI
-│   └── tests/              # pytest — aucun appel réseau
-├── reporting/              # rapports PDF / Markdown : mensuel et implantation (matplotlib + reportlab)
-├── airflow/                # projet Astro (Airflow 2.10, Python 3.12)
-│   └── dags/               # ingestion horaire, consolidation mensuelle, rapport à la demande
-├── dbt/                    # couches silver et gold (dbt-duckdb)
-├── docs/                   # cadrage, feuille de route, exemples/ : rapport d'implantation réel
-├── infra/                  # à venir : Terraform GCP
-├── data/                   # gitignoré — voir data/README.md
-└── .github/workflows/      # CI : ruff, pytest, import du DagBag
+ingestion/   clients API (ODRÉ, RTE, Eurostat, BAN, Géorisques), chargement, diagnostic, comparaison, CLI
+  tests/     pytest, sans réseau
+dbt/         silver et gold (dbt-duckdb), seeds de référence
+reporting/   rapports PDF et Markdown (implantation, mensuel)
+airflow/     projet Astro, trois DAGs
+docs/        cadrage, revue, veille, feuille de route, exemples réels
+data/        gitignoré : Parquet, base DuckDB, rapports
 ```
 
-## Source des données
+## Sources et licences
 
-[éCO2mix — données nationales temps réel](https://odre.opendatasoft.com/explore/dataset/eco2mix-national-tr/)
-· ODRÉ (Open Data Réseaux Énergies) · Licence Ouverte / Open Licence Etalab.
+[ODRÉ](https://odre.opendatasoft.com) (éCO2mix, consommation par IRIS, équilibre régional,
+contraintes et postes RTE) · [Eurostat](https://ec.europa.eu/eurostat) `nrg_pc_205` ·
+[Géorisques](https://www.georisques.gouv.fr) · [Base Adresse Nationale](https://adresse.data.gouv.fr)
+(Géoplateforme IGN) · [sites clés en main France 2030](https://www.data.gouv.fr/datasets/les-sites-cles-en-main-france-2030)
+(ANCT) · SDDR 2025 de RTE · barèmes de la CRE. Licence Ouverte / Etalab pour les données
+françaises publiques.

@@ -1,5 +1,9 @@
 # Veille : projets similaires sur GitHub
 
+> **Statut** : étude datée. Pistes réalisées depuis : backtest des scénarios (2), risques
+> Géorisques (1), contraintes et postes RTE (4, 8), comparaison d'adresses (5). État actuel :
+> [feuille de route](feuille-de-route.md).
+
 > Établie le 15 octobre 2026. But : repérer les projets proches d'« Où brancher mon
 > entreprise » et noter les fonctionnalités qui valent d'être reprises.
 
