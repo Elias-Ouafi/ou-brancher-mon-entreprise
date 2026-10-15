@@ -1,5 +1,8 @@
 # Revue bibliographique : les besoins des entreprises qui choisissent un site
 
+> **Statut** : étude datée. Priorités 1, 2 et 5 réalisées le 15 octobre ; la suite est dans la
+> [feuille de route](feuille-de-route.md).
+
 > Établie le 15 octobre 2026. Complète le [cadrage produit](cadrage-besoins-entreprises.md),
 > qui traitait déjà le carbone horaire et le Scope 2, le raccordement, le risque d'allégation
 > environnementale et la structure du prix. Ici : **ce que disent les enquêtes auprès des

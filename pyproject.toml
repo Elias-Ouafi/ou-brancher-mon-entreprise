@@ -1,7 +1,7 @@
 [project]
 name = "ou-brancher-mon-entreprise"
 version = "0.1.0"
-description = "Plateforme eCO2mix (RTE) en architecture medaillon et rapports mensuels carbone / Tempo"
+description = "Diagnostic d'implantation electrique par adresse : reseau, prix et risques, d'apres les donnees publiques (RTE, ODRE, Eurostat, Georisques)"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [

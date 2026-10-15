@@ -1,5 +1,10 @@
 # Cadrage : de quoi les entreprises ont-elles réellement besoin ?
 
+> **Statut** : étude datée, conservée comme trace de la décision. Retenu ensuite (§ 7) :
+> le diagnostic d'implantation par adresse ; le Scope 2 horaire a été écarté, et le prix est
+> désormais donné par tranche de consommation (Eurostat). État actuel :
+> [feuille de route](feuille-de-route.md).
+
 > Recherche menée le 9 octobre 2026 pour arbitrer le nouvel objectif du projet.
 > Hypothèse de départ à tester : *« les entreprises cherchent où l'électricité est
 > la moins chère et la plus décarbonée, pour appuyer une stratégie de
