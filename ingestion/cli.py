@@ -21,8 +21,7 @@
     python -m ingestion.cli report --month 2026-09       # rapport PDF du mois
     python -m ingestion.cli report --month 2026-09 --format md   # même rapport en Markdown
 
-Les mêmes fonctions sont appelées par les DAGs : ce qui tourne en production est
-exactement ce qui tourne à la main.
+Tout tourne en local, à la demande : aucune exécution planifiée.
 """
 
 from __future__ import annotations

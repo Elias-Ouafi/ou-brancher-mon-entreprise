@@ -24,7 +24,7 @@ observés sur les API :
   crise récente, l'autre avec une crise ancienne.
 
 Silver et gold sont ensuite construites par `dbt build`, lancé en sous-processus
-comme le fait le DAG : dbt-duckdb garde sa connexion ouverte dans le processus
+comme le fait `refresh` : dbt-duckdb garde sa connexion ouverte dans le processus
 appelant, ce qui empêcherait de relire la base.
 """
 

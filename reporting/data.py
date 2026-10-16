@@ -31,7 +31,7 @@ COULEURS = ("bleu", "blanc", "rouge")
 
 @dataclass(frozen=True, slots=True)
 class Options:
-    """Paramètres du rapport, exposés dans le DAG et la CLI."""
+    """Paramètres du rapport, exposés dans la CLI."""
 
     #: Durée d'un créneau, en heures.
     heures_creneau: int = 3

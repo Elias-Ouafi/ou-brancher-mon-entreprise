@@ -1,9 +1,8 @@
-"""Étapes du pipeline, appelables depuis les DAGs comme depuis la ligne de commande.
+"""Étapes du pipeline, appelées par la ligne de commande et par `refresh`.
 
-Les DAGs Airflow ne contiennent que du câblage : toute la logique vit ici, ce qui
-la rend testable sans Airflow et rejouable à la main en cas d'incident. Chaque
-étape est paramétrée par un `DatasetSpec`, si bien que les deux flux — temps réel
-horaire et consolidé mensuel — partagent exactement le même code.
+Toute la logique vit ici, testable sans réseau. Chaque étape est paramétrée par un
+`DatasetSpec`, si bien que les deux flux — temps réel et consolidé — partagent
+exactement le même code.
 """
 
 from __future__ import annotations
@@ -48,7 +47,7 @@ class IncompleteMonthError(RuntimeError):
 
 @dataclass(frozen=True, slots=True)
 class ExtractionOutcome:
-    """Résultat d'une extraction, remonté en XCom par les DAGs."""
+    """Résultat d'une extraction, journalisé par la ligne de commande."""
 
     dataset_id: str
     parquet_path: str
@@ -243,9 +242,9 @@ def ensure_bronze_tables(*, settings: Settings | None = None) -> None:
     """Crée, vides, les tables bronze de tous les datasets connus.
 
     La couche silver (dbt) lit toutes les sources bronze à chaque run. Sans
-    cela, le premier run horaire échouerait tant que le DAG mensuel n'a pas
-    créé `bronze.national_cons_def` — une dépendance d'ordre de déploiement
-    qu'aucun des deux DAGs ne devrait porter.
+    cela, `dbt build` échouerait tant que la consolidation n'a pas créé
+    `bronze.national_cons_def` — une dépendance d'ordre entre commandes que
+    rien ne devrait imposer.
     """
     settings = settings or get_settings()
     for spec in BRONZE_SPECS:
@@ -280,8 +279,8 @@ def check_freshness(
 ) -> FreshnessReport:
     """Vérifie le retard de la donnée la plus récente, en lecture seule.
 
-    Lève `StaleDataError` si le warehouse est vide ou en retard : c'est ce qui
-    fait échouer la tâche Airflow et déclenche l'alerte.
+    Lève `StaleDataError` si le warehouse est vide ou en retard : la commande
+    `freshness` sort alors en code 1.
     """
     settings = settings or get_settings()
     reference = (now or datetime.now(UTC)).astimezone(UTC)

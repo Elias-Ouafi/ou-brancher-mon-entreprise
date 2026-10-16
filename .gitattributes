@@ -1,4 +1,4 @@
-# Le depot est clone sous Linux par la CI et par les conteneurs Astro :
+# Le depot est clone sous Linux par la CI :
 # les fins de ligne sont normalisees en LF dans l'index.
 * text=auto eol=lf
 *.parquet binary

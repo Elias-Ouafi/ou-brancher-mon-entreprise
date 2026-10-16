@@ -8,7 +8,7 @@ from datetime import timedelta
 
 import matplotlib
 
-matplotlib.use("Agg")  # aucun serveur graphique dans les conteneurs Airflow
+matplotlib.use("Agg")  # aucun serveur graphique requis (CI, terminal)
 
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
