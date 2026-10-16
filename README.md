@@ -19,15 +19,16 @@ Exemples réels : [diagnostic de Lyon](docs/exemples/implantation_lyon.md) ([PDF
 | 2. Tension du réseau | Couverture production / consommation sur 12 mois, rang de dépendance ; contraintes d'évacuation ; contraintes prospectives RTE à 3-5 ans | ODRÉ (RTE) | région, département |
 | 3. Raccordement | Niveau de tension et gestionnaire selon la puissance ; postes RTE ; zone prioritaire RTE la plus proche et sa date de capacité ; site industriel clé en main le plus proche | arrêté de 2003, ODRÉ, SDDR 2025 de RTE, ANCT | adresse, département |
 | 4. Prix | Prix de la tranche de consommation sur 12 mois, repères depuis 2007, scénarios à 3 ans et leur contrôle sur le passé | Eurostat `nrg_pc_205` | national, par tranche |
-| 5. Coût d'un profil type | Bureau 36 kVA chiffré heure par heure (HP/HC), carbone, gain d'un report vers les heures creuses | CRE, éCO2mix | national |
+| 5. Carbone et coût d'un profil type | Électricité décarbonée ou non (seuil de 100 gCO₂e/kWh de la taxonomie européenne) ; bureau 36 kVA chiffré heure par heure (HP/HC), gain d'un report vers les heures creuses | ADEME Base Carbone, CRE, éCO2mix | système électrique (continent, Corse, chaque DROM) ; national |
 | 6. Risques | Risques naturels et technologiques à l'adresse ; repli sur la commune si le rapport ne répond pas | Géorisques | adresse |
 
 **Les limites tiennent au cadrage**, établi dans [`docs/cadrage-besoins-entreprises.md`](docs/cadrage-besoins-entreprises.md) :
 
 - **le prix n'est pas géographique** : la péréquation rend le tarif identique partout. Il
   dépend de la taille de l'entreprise, pas de l'adresse ;
-- **pas d'intensité carbone régionale opposable** : RTE ne publie le `taux_co2` qu'au
-  national, l'ADEME n'a pas de facteur régional ;
+- **le carbone ne change qu'entre systèmes électriques** : le continent est un seul réseau
+  (51,9 gCO₂e/kWh en cycle de vie, ADEME 2024) ; seules la Corse et l'outre-mer, non
+  interconnectés, ont leur propre facteur, six à dix-huit fois plus élevé ;
 - **la capacité de raccordement en soutirage n'est pas en open data** : seule une étude RTE ou
   Enedis fait foi.
 
@@ -95,7 +96,7 @@ flowchart LR
 | Gold | `dbt/models/gold/` | Prêt à lire : une requête par diagnostic, unités dans les noms de colonnes |
 
 Choix structurants :
-- **DuckDB, pas de Spark** : le plus gros jeu fait 500 000 lignes, la base 235 Mo ; un
+- **DuckDB, pas de PySpark** : le plus gros jeu fait 500 000 lignes, la base 235 Mo ; un
   `dbt build` complet (229 nœuds, tests compris) prend une dizaine de secondes.
 - **Reconstruction complète** de silver et gold à chaque run : plus simple qu'un incrémental
   à ce volume.
@@ -139,7 +140,7 @@ gratuit sur [data.rte-france.com](https://data.rte-france.com) (`ECO2MIX_RTE_CLI
 uv run ruff check . && uv run ruff format --check . && uv run pytest
 ```
 
-290 tests pytest, **aucun appel réseau réel** (`pytest-httpx`, sockets condamnées), dont un
+300 tests pytest, **aucun appel réseau réel** (`pytest-httpx`, sockets condamnées), dont un
 `dbt build` complet sur une base synthétique qui reproduit les pièges des sources. Les tests de
 données dbt (unicité, bornes, intégrité référentielle, cohérence des scénarios) tournent à
 chaque build. La CI GitHub Actions rejoue ruff, pytest et `dbt build`, puis importe les DAGs
@@ -149,17 +150,23 @@ avec Airflow 2.10, sans credential.
 
 **Fait** : tout ce que décrit ce README, testé et exécuté sur des adresses réelles.
 
+**Prochaine étape, le MVP** : répondre directement, pour une adresse, à deux questions — le
+prix moyen de l'électricité et si elle est décarbonée (oui ou non, avec le seuil). Les données
+sont là ; manquent un
+prix par défaut sans `--conso` et une commande courte. Le verdict carbone par territoire est
+fait (16 oct.). Détail et ordre des étapes :
+[`docs/feuille-de-route.md`](docs/feuille-de-route.md).
+
 **Pas encore validé en conditions réelles** :
 - Airflow n'a jamais tourné (Docker Desktop absent du poste de développement) ;
 - les prix Tempo n'ont été calculés que sur des réponses simulées (pas de compte RTE).
-
-Suite et décisions : [`docs/feuille-de-route.md`](docs/feuille-de-route.md).
 
 ## Documentation
 
 | Document | Contenu |
 |---|---|
-| [Feuille de route](docs/feuille-de-route.md) | Fait, à faire, décisions datées, écarté |
+| [Feuille de route](docs/feuille-de-route.md) | État des lieux, étapes du MVP, décisions datées, écarté |
+| [Extension internationale](docs/extension-internationale.md) | 16 oct. 2026 : pistes pour d'autres pays, après le MVP |
 | [Cadrage](docs/cadrage-besoins-entreprises.md) | 9 oct. 2026 : pourquoi un diagnostic de contexte et non « le prix et le CO₂ à l'adresse » |
 | [Revue des besoins](docs/revue-besoins-entreprises.md) | 15 oct. 2026 : ce que cherchent les entreprises qui choisissent un site |
 | [Veille](docs/veille-projets-similaires.md) | 15 oct. 2026 : projets similaires sur GitHub et idées retenues |
@@ -182,5 +189,5 @@ data/        gitignoré : Parquet, base DuckDB, rapports
 contraintes et postes RTE) · [Eurostat](https://ec.europa.eu/eurostat) `nrg_pc_205` ·
 [Géorisques](https://www.georisques.gouv.fr) · [Base Adresse Nationale](https://adresse.data.gouv.fr)
 (Géoplateforme IGN) · [sites clés en main France 2030](https://www.data.gouv.fr/datasets/les-sites-cles-en-main-france-2030)
-(ANCT) · SDDR 2025 de RTE · barèmes de la CRE. Licence Ouverte / Etalab pour les données
+(ANCT) · [Base Carbone de l'ADEME](https://data.ademe.fr/datasets/base-carboner) · SDDR 2025 de RTE · barèmes de la CRE. Licence Ouverte / Etalab pour les données
 françaises publiques.

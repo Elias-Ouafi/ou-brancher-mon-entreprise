@@ -151,6 +151,36 @@ models:
                 to: ref('dim_departement')
                 field: code_departement
 
+  - name: fct_carbone_territoire
+    description: >
+      Intensité carbone de l'électricité et verdict « décarboné », une ligne par région :
+      facteur ADEME en cycle de vie du système électrique (continent, Corse ou territoire
+      d'outre-mer) comparé au seuil de 100 gCO2e/kWh de la taxonomie européenne ; intensité
+      directe observée par RTE sur 12 mois en complément, pour le continent seulement.
+    columns:
+      - name: code_insee_region
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_region')
+                field: code_insee_region
+      - name: intensite_acv_g_co2e_kwh
+        data_tests: [not_null]
+      - name: est_decarbone
+        description: Vrai si l'intensité en cycle de vie est sous le seuil.
+        data_tests: [not_null]
+      - name: intensite_directe_rte_g_co2_kwh
+        description: Émissions directes de la production (RTE), hors amont et réseau ; vide en ZNI.
+        data_tests:
+          - accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 200
+              config:
+                severity: warn
+
   - name: fct_cout_horaire_profil
     description: >
       Coût (€ HTVA, option Heures Creuses non résidentielle) et carbone d'un profil type,
