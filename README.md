@@ -23,8 +23,8 @@ Exemples réels : [recette sur 11 adresses](docs/exemples/recette_mvp.md) ·
 
 ## Trois points forts pour un data engineer
 
-1. **Une ingestion PySpark idempotente, éprouvée sur les pièges réels des sources.** PySpark
-   type, normalise et filtre chaque lot ; bronze en Parquet immuables (toutes les révisions
+1. **Une ingestion Python idempotente, éprouvée sur les pièges réels des sources.** Chaque lot
+   est typé, normalisé et filtré avec pyarrow ; bronze en Parquet immuables (toutes les révisions
    gardées) puis `MERGE` sur clé dans DuckDB, jamais d'`INSERT` : relancer ne duplique rien. Changements d'heure normalisés en UTC, révisions de RTE rattrapées,
    quota d'API suivi, bascule automatique sur l'export CSV, nouvelles tentatives exponentielles ;
    BOM, codes IRIS tronqués et secret statistique traités et testés.
@@ -32,17 +32,16 @@ Exemples réels : [recette sur 11 adresses](docs/exemples/recette_mvp.md) ·
    complet sur une base synthétique qui reproduit ces pièges ; tests de données dbt (unicité,
    bornes, intégrité référentielle) à chaque build ; CI GitHub Actions à chaque PR. Les scénarios
    de prix sont contrôlés sur le passé, sans regard vers le futur.
-3. **Des choix proportionnés et des chiffres honnêtes.** PySpark pour la transformation, dbt et
-   DuckDB pour le stockage et la lecture (`essentiel` répond en 1,5 s, sans démarrer Spark),
+3. **Des choix proportionnés et des chiffres honnêtes.** Python uniquement : pyarrow pour
+   l'ingestion, dbt et DuckDB pour le stockage et la lecture (`essentiel` répond en 1,5 s),
    reconstruction complète plutôt qu'incrémental, interface `WarehouseLoader` prête pour BigQuery. Chaque indicateur porte sa source, sa maille et sa
    limite (`limites_methodologiques.csv`), conformément aux règles sur les allégations
    environnementales (directive EmpCo).
 
 ## Installation et mise à jour
 
-Python 3.12 et Java 17 (pour PySpark). Tout tourne en local, sans compte (sauf le calendrier
-Tempo, optionnel). Spark n'écrit aucun fichier lui-même : pas besoin de `winutils` ni de
-`HADOOP_HOME` sous Windows.
+Python 3.12 suffit : aucune autre dépendance système. Tout tourne en local, sans compte (sauf le
+calendrier Tempo, optionnel).
 
 ```powershell
 python -m venv .venv
@@ -83,7 +82,7 @@ Le raisonnement complet est dans le [cadrage](docs/cadrage-besoins-entreprises.m
 
 ```mermaid
 flowchart LR
-    SRC[("ODRÉ · Eurostat · RTE")] -->|"ingestion/ (PySpark)"| B["Bronze : Parquet + DuckDB (MERGE)"]
+    SRC[("ODRÉ · Eurostat · RTE")] -->|"ingestion/ (Python)"| B["Bronze : Parquet + DuckDB (MERGE)"]
     B -->|dbt| S["Silver : nettoyé, codes INSEE"]
     S -->|dbt| G["Gold : prix, carbone, diagnostic"]
     SEEDS[("Seeds : ADEME, tarifs, référentiels, limites")] --> G
@@ -114,3 +113,7 @@ Détail : [modèles dbt](dbt/README.md) · [stockage](data/README.md).
 [Base Adresse Nationale](https://adresse.data.gouv.fr) · [Géorisques](https://www.georisques.gouv.fr) ·
 [sites clés en main France 2030](https://www.data.gouv.fr/datasets/les-sites-cles-en-main-france-2030) ·
 SDDR 2025 de RTE · barèmes de la CRE. Licence Ouverte / Etalab.
+
+## Licence
+
+Code sous [licence MIT](LICENSE). Les données restent sous la licence de leurs producteurs.
