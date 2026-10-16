@@ -1,9 +1,3 @@
-"""Chargement warehouse : idempotence du MERGE, révisions, contrat d'interface.
-
-Les tests tournent sur DuckDB en mémoire (ou sur un fichier temporaire pour le
-scénario `read_only`) : aucune base du dépôt n'est touchée.
-"""
-
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
@@ -27,9 +21,9 @@ def utc(*args: int) -> datetime:
     return datetime(*args, tzinfo=UTC)
 
 
+# Fabrique un Parquet brut à partir de couples (records, ingested_at)
 @pytest.fixture
 def make_parquet(tmp_path: Path):
-    """Fabrique un Parquet brut à partir de couples (records, ingested_at)."""
     counter = 0
 
     def _make(*batches: tuple[list[dict[str, Any]], datetime]) -> Path:
@@ -49,18 +43,15 @@ def make_parquet(tmp_path: Path):
     return _make
 
 
+# Loader sur base en mémoire
 @pytest.fixture
 def loader() -> DuckDBLoader:
-    """Loader sur base en mémoire."""
     with DuckDBLoader(":memory:") as instance:
         yield instance
 
 
-# --- Contrat ---------------------------------------------------------------
-
-
+# Aucune logique métier ne doit dépendre de DuckDB : le protocole fait foi
 def test_duckdb_loader_satisfies_the_warehouse_protocol(loader: DuckDBLoader) -> None:
-    """Aucune logique métier ne doit dépendre de DuckDB : le protocole fait foi."""
     assert isinstance(loader, WarehouseLoader)
 
 
@@ -72,9 +63,6 @@ def test_build_loader_returns_the_configured_backend(tmp_path: Path) -> None:
     assert isinstance(built, WarehouseLoader)
     assert isinstance(built, DuckDBLoader)
     assert built.qualified_table == "bronze.national_tr"
-
-
-# --- Schéma ----------------------------------------------------------------
 
 
 def test_ensure_table_is_idempotent(loader: DuckDBLoader) -> None:
@@ -90,14 +78,14 @@ def test_ensure_table_is_idempotent(loader: DuckDBLoader) -> None:
     assert ("ingested_at_utc",) in columns
 
 
+# Le contrôle de fraîcheur peut s'exécuter avant tout chargement
 def test_counters_are_safe_before_the_first_load(loader: DuckDBLoader) -> None:
-    """Le contrôle de fraîcheur peut s'exécuter avant tout chargement."""
     assert loader.row_count() == 0
     assert loader.latest_timestamp() is None
 
 
+# L'unicité est structurelle, pas seulement procédurale
 def test_primary_key_forbids_duplicate_keys(loader: DuckDBLoader) -> None:
-    """L'unicité est structurelle, pas seulement procédurale."""
     loader.ensure_table()
     insert = (
         "INSERT INTO bronze.national_tr (date_heure, ingested_at_utc, source_dataset) "
@@ -107,9 +95,6 @@ def test_primary_key_forbids_duplicate_keys(loader: DuckDBLoader) -> None:
 
     with pytest.raises(duckdb.ConstraintException):
         loader.connection.execute(insert)
-
-
-# --- MERGE -----------------------------------------------------------------
 
 
 def test_merge_inserts_new_rows(loader: DuckDBLoader, make_parquet) -> None:
@@ -136,8 +121,8 @@ def test_merge_inserts_new_rows(loader: DuckDBLoader, make_parquet) -> None:
     assert loader.latest_timestamp() == utc(2026, 9, 7, 3, 15)
 
 
+# Rejouer une fenêtre déjà chargée ne crée aucun doublon
 def test_merge_is_idempotent_when_replayed(loader: DuckDBLoader, make_parquet) -> None:
-    """Rejouer une fenêtre déjà chargée ne crée aucun doublon."""
     parquet = make_parquet(
         (
             [
@@ -159,8 +144,8 @@ def test_merge_is_idempotent_when_replayed(loader: DuckDBLoader, make_parquet) -
     ).fetchone() == (2,)
 
 
+# Les données temps réel sont révisées : la dernière version gagne
 def test_merge_overwrites_revised_values(loader: DuckDBLoader, make_parquet) -> None:
-    """Les données temps réel sont révisées : la dernière version gagne."""
     initial = make_parquet(([{"date_heure": T0, "consommation": 42000}], utc(2026, 9, 7, 6, 0)))
     revised = make_parquet(([{"date_heure": T0, "consommation": 42500}], utc(2026, 9, 7, 7, 0)))
 
@@ -175,10 +160,10 @@ def test_merge_overwrites_revised_values(loader: DuckDBLoader, make_parquet) -> 
     assert row == (42500.0, utc(2026, 9, 7, 7, 0))
 
 
+# Un même `date_heure` deux fois dans le fichier : une seule ligne insérée
 def test_merge_keeps_the_latest_revision_within_a_single_batch(
     loader: DuckDBLoader, make_parquet
 ) -> None:
-    """Un même `date_heure` deux fois dans le fichier : une seule ligne insérée."""
     parquet = make_parquet(
         ([{"date_heure": T0, "consommation": 42000}], utc(2026, 9, 7, 6, 0)),
         ([{"date_heure": T0, "consommation": 42500}], utc(2026, 9, 7, 7, 0)),
@@ -195,8 +180,8 @@ def test_merge_keeps_the_latest_revision_within_a_single_batch(
     )
 
 
+# Une fenêtre sans donnée publiée ne doit pas faire échouer le chargement
 def test_merge_accepts_an_empty_batch(loader: DuckDBLoader, make_parquet) -> None:
-    """Une fenêtre sans donnée publiée ne doit pas faire échouer le chargement."""
     parquet = make_parquet(([], utc(2026, 9, 7, 6, 0)))
 
     result = loader.merge_parquet(parquet)
@@ -205,13 +190,13 @@ def test_merge_accepts_an_empty_batch(loader: DuckDBLoader, make_parquet) -> Non
     assert loader.row_count() == 0
 
 
+# RTE publie l'horodatage le plus récent avant d'en avoir les mesures
 def test_latest_timestamp_can_ignore_unmeasured_rows(loader: DuckDBLoader, make_parquet) -> None:
-    """RTE publie l'horodatage le plus récent avant d'en avoir les mesures."""
     parquet = make_parquet(
         (
             [
                 {"date_heure": T0, "consommation": 42000},
-                {"date_heure": T1, "consommation": None},  # ligne encore « à blanc »
+                {"date_heure": T1, "consommation": None},
             ],
             utc(2026, 9, 7, 6, 0),
         )
@@ -222,19 +207,16 @@ def test_latest_timestamp_can_ignore_unmeasured_rows(loader: DuckDBLoader, make_
     assert loader.latest_timestamp(measure="consommation") == utc(2026, 9, 7, 3, 0)
 
 
+# Le nom est interpolé dans le SQL : il doit appartenir au schéma
 def test_latest_timestamp_rejects_an_unknown_measure(loader: DuckDBLoader) -> None:
-    """Le nom est interpolé dans le SQL : il doit appartenir au schéma."""
     loader.ensure_table()
 
     with pytest.raises(ValueError, match="colonne inconnue"):
         loader.latest_timestamp(measure="1=1; DROP TABLE bronze.national_tr")
 
 
-# --- Base sur fichier ------------------------------------------------------
-
-
+# Le contrôle de fraîcheur lit sans prendre le verrou d'écriture de DuckDB
 def test_file_database_is_created_and_readable_in_read_only(tmp_path: Path, make_parquet) -> None:
-    """Le contrôle de fraîcheur lit sans prendre le verrou d'écriture de DuckDB."""
     database = tmp_path / "warehouse" / "eco2mix.duckdb"
     parquet = make_parquet(([{"date_heure": T0, "consommation": 42000}], utc(2026, 9, 7, 6, 0)))
 

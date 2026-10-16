@@ -1,9 +1,3 @@
-"""Sites industriels clés en main (France 2030) : seed, site le plus proche, bloc 3.
-
-Le seed est la vraie liste de l'ANCT (`dbt/seeds/sites_cles_en_main.csv`),
-construite dans la base synthétique comme tous les seeds.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -36,7 +30,7 @@ def test_seed_holds_the_55_sites_of_the_anct_list(medallion_db: Path) -> None:
             "SELECT count(*), count(*) FILTER (WHERE code_departement LIKE '97%')"
             " FROM gold.sites_cles_en_main"
         ).fetchone()
-    assert (total, hors_metropole) == (55, 1)  # un seul site outre-mer : Saint-Paul (974)
+    assert (total, hors_metropole) == (55, 1)
 
 
 @dbt_requis
@@ -54,13 +48,13 @@ def test_overseas_address_only_looks_at_its_own_territory(medallion_db: Path) ->
     assert reunion is not None and reunion.commune == "Saint-Paul"
     assert reunion.distance_km < 30
 
-    # La Corse n'a aucun site : le plus proche du continent ne compte pas.
+    # La Corse n'a aucun site : le plus proche du continent ne compte pas
     assert _diagnostic(medallion_db, "2A004", (41.9192, 8.7386)).site_cle_en_main is None
 
 
 @dbt_requis
 def test_mainland_address_never_gets_an_overseas_site(medallion_db: Path) -> None:
-    # Un point au large de l'océan Indien, rattaché au Rhône : le site retenu reste en métropole.
+    # Un point au large de l'océan Indien, rattaché au Rhône : le site retenu reste en métropole
     site = _diagnostic(medallion_db, "69123", SAINT_DENIS_REUNION).site_cle_en_main
     assert site is not None and site.code_insee_commune != "97415"
 

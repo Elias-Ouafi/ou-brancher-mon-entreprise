@@ -1,10 +1,3 @@
-"""Recette du MVP : 11 communes de référence, une par système électrique au moins.
-
-Les communes sont celles des adresses réelles vérifiées le 16 octobre 2026
-(`docs/exemples/recette_mvp.md`) ; les facteurs carbone sont le vrai seed ADEME, le prix
-celui de la base synthétique. Le test fige les deux réponses du MVP pour chacune.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path

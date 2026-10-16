@@ -1,13 +1,4 @@
-{#-
-    Prix semestriel de l'électricité des entreprises, une ligne par semestre et
-    par tranche de consommation, les deux niveaux de fiscalité côte à côte.
-
-    `prix_htva_eur_kwh` (hors TVA et taxes récupérables) est le prix réellement
-    payé par une entreprise ; l'écart avec `prix_ht_eur_kwh` isole les taxes non
-    récupérables, dont l'accise, quasi supprimée en 2022-2023 (bouclier tarifaire)
-    puis rétablie. `rang_semestre` numérote les semestres sans trou, pour calculer
-    des écarts « n semestres plus tard » par simple soustraction.
--#}
+-- Prix semestriel de l'électricité des entreprises
 with source as (
     select * from {{ source('bronze', 'eurostat_nrg_pc_205') }}
 ),

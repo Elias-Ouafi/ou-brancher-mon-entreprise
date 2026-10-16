@@ -1,19 +1,3 @@
-"""Rapport d'implantation par adresse : Markdown, PDF ou JSON.
-
-Le contenu est celui de `diagnose` en terminal, bloc pour bloc et limite pour
-limite : les trois formats partent des mêmes `sections` de
-`ingestion.diagnostic`. Le rapport y ajoute quatre graphiques de mise en
-perspective, lus dans les couches silver et gold en lecture seule :
-
-* la couverture de chaque région (production / consommation), la région de
-  l'adresse surlignée ;
-* les départements à plus forte pression industrielle, celui de l'adresse
-  surligné même s'il est hors du classement affiché ;
-* le prix de la tranche de l'entreprise depuis 2007, prolongé par l'éventail
-  des scénarios à 3 ans (seulement avec `--conso`) ;
-* la courbe journalière du profil type chiffré, heures creuses en fond.
-"""
-
 from __future__ import annotations
 
 import json
@@ -42,7 +26,7 @@ logger = logging.getLogger(__name__)
 Format = Literal["md", "pdf", "json"]
 FORMATS: tuple[Format, ...] = ("md", "pdf", "json")
 
-#: Nombre de départements affichés dans le graphique de pression industrielle.
+# Nombre de départements affichés dans le graphique de pression industrielle
 NB_DEPARTEMENTS_AFFICHES = 15
 
 SOURCES = [
@@ -58,10 +42,9 @@ SOURCES = [
 ]
 
 
+# Une plage du profil type : puissance appelée sur `[heure_debut, heure_fin)`
 @dataclass(frozen=True, slots=True)
 class PlageProfil:
-    """Une plage du profil type : puissance appelée sur `[heure_debut, heure_fin)`."""
-
     type_jour: str
     heure_debut: int
     heure_fin: int
@@ -69,25 +52,24 @@ class PlageProfil:
     puissance_flexible_kw: float
 
 
+# Séries nationales qui situent l'adresse parmi les autres territoires
 @dataclass(frozen=True, slots=True)
 class Comparaisons:
-    """Séries nationales qui situent l'adresse parmi les autres territoires."""
-
-    #: (région, taux de couverture), de la plus déficitaire à la plus excédentaire.
+    # (région, taux de couverture), de la plus déficitaire à la plus excédentaire
     regions: list[tuple[str, float]]
-    #: (code, nom, GWh/an), par rang national de pression industrielle.
+    # (code, nom, GWh/an), par rang national de pression industrielle
     departements: list[tuple[str, str, float]]
     profil: list[PlageProfil]
-    #: (début du semestre, prix HTVA €/kWh) de la tranche de l'entreprise, sinon vide.
+    # (début du semestre, prix HTVA €/kWh) de la tranche de l'entreprise, sinon vide
     historique_prix: list[tuple[date, float]] = field(default_factory=list)
-    #: (horizon en années, prix bas, central, haut) de la tranche, sinon vide.
+    # (horizon en années, prix bas, central, haut) de la tranche, sinon vide
     scenarios_prix: list[tuple[int, float, float, float]] = field(default_factory=list)
 
 
+# Séries de comparaison ; `tranche` ajoute l'historique et les scénarios de prix
 def lire_comparaisons(
     connection: duckdb.DuckDBPyConnection, *, tranche: str | None = None
 ) -> Comparaisons:
-    """Séries de comparaison ; `tranche` ajoute l'historique et les scénarios de prix."""
     regions = connection.execute(
         """
         select region, taux_couverture
@@ -143,8 +125,8 @@ def lire_comparaisons(
     )
 
 
+# `implantation_69123_20-rue-de-la-republique-69002-lyon.pdf` : stable et lisible
 def nom_fichier(diagnostic: Diagnostic, format: Format) -> str:
-    """`implantation_69123_20-rue-de-la-republique-69002-lyon.pdf` : stable et lisible."""
     ascii_ = (
         unicodedata.normalize("NFKD", diagnostic.territoire.adresse)
         .encode("ascii", "ignore")
@@ -154,6 +136,7 @@ def nom_fichier(diagnostic: Diagnostic, format: Format) -> str:
     return f"implantation_{diagnostic.code_insee_commune}_{slug}.{format}"
 
 
+# Écrit le rapport d'une adresse déjà diagnostiquée et renvoie son chemin
 def generer_rapport_implantation(
     diagnostic: Diagnostic,
     *,
@@ -163,11 +146,6 @@ def generer_rapport_implantation(
     graphiques: bool = True,
     now: datetime | None = None,
 ) -> Path:
-    """Écrit le rapport d'une adresse déjà diagnostiquée et renvoie son chemin.
-
-    `graphiques` ne concerne que le Markdown : le PDF embarque toujours les
-    siens, le JSON n'en a pas.
-    """
     if format not in FORMATS:
         raise ValueError(f"format inconnu : {format!r} (attendu : {', '.join(FORMATS)})")
     settings = settings or get_settings()
@@ -185,7 +163,7 @@ def generer_rapport_implantation(
         if format == "md":
             rendre_markdown(diagnostic, comparaisons, chemin, graphiques=graphiques, now=genere_le)
         else:
-            # Import paresseux : reportlab n'est utile qu'au PDF.
+            # Import paresseux : reportlab n'est utile qu'au PDF
             from reporting import implantation_pdf
 
             implantation_pdf.rendre(diagnostic, comparaisons, chemin, now=genere_le)
@@ -202,17 +180,15 @@ def en_json(diagnostic: Diagnostic) -> str:
     return json.dumps(diagnostic_en_dict(diagnostic), ensure_ascii=False, indent=2)
 
 
-# ---------------------------------------------------------------------------
 # Markdown
-# ---------------------------------------------------------------------------
 
 
+# Retire l'alignement en colonnes du terminal (« Commune : »)
 def texte_compact(contenu: str) -> str:
-    """Retire l'alignement en colonnes du terminal (« Commune     : »)."""
     return " ".join(contenu.split())
 
 
-#: Graphique placé après chaque section, par numéro de section (1 à 4).
+# Graphique placé après chaque section, par numéro de section (1 à 4)
 GRAPHIQUES = {
     1: ("pression_departements", "Pression industrielle des départements"),
     2: ("couverture_regions", "Couverture de la consommation par la production, par région"),
@@ -221,6 +197,7 @@ GRAPHIQUES = {
 }
 
 
+# Écrit le rapport Markdown, graphiques en PNG dans `<nom>_graphiques/`
 def rendre_markdown(
     diagnostic: Diagnostic,
     comparaisons: Comparaisons,
@@ -229,7 +206,6 @@ def rendre_markdown(
     graphiques: bool = True,
     now: datetime,
 ) -> Path:
-    """Écrit le rapport Markdown, graphiques en PNG dans `<nom>_graphiques/`."""
     dossier = chemin.with_name(f"{chemin.stem}_graphiques")
     blocs = [
         f"# Diagnostic d'implantation — {diagnostic.territoire.adresse}",
@@ -253,7 +229,7 @@ def rendre_markdown(
         blocs.append("")
         if graphiques and numero in GRAPHIQUES:
             nom, legende = GRAPHIQUES[numero]
-            # Import paresseux : sans graphiques, matplotlib n'est pas nécessaire.
+            # Import paresseux : sans graphiques, matplotlib n'est pas nécessaire
             from reporting import implantation_charts
 
             png = getattr(implantation_charts, nom)(diagnostic, comparaisons)
@@ -262,6 +238,6 @@ def rendre_markdown(
                 (dossier / f"{nom}.png").write_bytes(png)
                 blocs += [f"![{legende}]({dossier.name}/{nom}.png)", ""]
     blocs += ["## Sources", "", *[f"- {source}" for source in SOURCES], ""]
-    # Les limites ajoutent leurs propres lignes vides : une seule suffit entre deux blocs.
+    # Les limites ajoutent leurs propres lignes vides : une seule suffit entre deux blocs
     chemin.write_text(re.sub(r"\n{3,}", "\n\n", "\n".join(blocs)), encoding="utf-8")
     return chemin

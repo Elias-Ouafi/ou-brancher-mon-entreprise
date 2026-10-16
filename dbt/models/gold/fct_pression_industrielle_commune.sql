@@ -1,15 +1,4 @@
-{#-
-    Pression industrielle locale : une ligne par commune ayant au moins un IRIS
-    publié pour le millésime de référence (macro `annee_reference_pression` :
-    dernière année sans secret statistique).
-
-    Seules ~1 300 communes y figurent : l'immense majorité des communes n'a aucun
-    site raccordé au réseau de transport, et c'est une information en soi. Le
-    diagnostic se replie alors sur le département (`fct_pression_industrielle_departement`).
-
-    `est_minorant` signale qu'au moins un IRIS de la commune est sous secret
-    statistique : la consommation affichée est une borne basse.
--#}
+-- Pression industrielle locale : une ligne par commune ayant au moins un IRIS publié
 with iris as (
     select * from {{ ref('conso_industrielle_iris') }}
 ),

@@ -1,19 +1,3 @@
-"""Client de l'API RTE « Tempo Like Supply Contract » : couleur Tempo de chaque jour.
-
-Points de conception :
-
-* **OAuth2 client credentials.** Un jeton est demandé au premier appel puis
-  réutilisé jusqu'à son expiration (2 h chez RTE), avec une marge pour ne jamais
-  émettre une requête avec un jeton sur le point d'expirer.
-* **Fenêtres bornées.** L'API refuse les plages de plus d'un an et les dates au-delà
-  du lendemain (la couleur de J+1 est publiée vers 11 h). Une fenêtre longue est
-  découpée en tranches, une fenêtre future est tronquée à J+1 inclus.
-* **Même robustesse que le client ODRÉ.** Timeout explicite, retry exponentiel sur
-  erreurs réseau et statuts transitoires, jamais sur une 4xx définitive.
-
-Documentation : https://data.rte-france.com/catalog/-/api/consumption/Tempo-Like-Supply-Contract/v1.1
-"""
-
 from __future__ import annotations
 
 import logging
@@ -39,24 +23,24 @@ logger = logging.getLogger(__name__)
 TOKEN_PATH = "/token/oauth/"
 CALENDAR_PATH = "/open_api/tempo_like_supply_contract/v1/tempo_like_calendars"
 
-#: Plage maximale acceptée par l'API en un appel.
+# Plage maximale acceptée par l'API en un appel
 MAX_DAYS_PER_CALL = 366
 
-#: Marge de renouvellement du jeton avant son expiration annoncée.
+# Marge de renouvellement du jeton avant son expiration annoncée
 TOKEN_EXPIRY_MARGIN_SECONDS = 60
 
-#: Couleurs publiées par RTE.
+# Couleurs publiées par RTE
 TEMPO_COLORS = frozenset({"BLUE", "WHITE", "RED"})
 
 
+# Les identifiants de l'API RTE ne sont pas configurés
 class RteCredentialsMissingError(ExtractionError):
-    """Les identifiants de l'API RTE ne sont pas configurés."""
+    pass
 
 
+# Plage de jours civils `[start, end)`, en heure de Paris
 @dataclass(frozen=True, slots=True)
 class DayRange:
-    """Plage de jours civils `[start, end)`, en heure de Paris."""
-
     start: date
     end: date
 
@@ -69,8 +53,8 @@ class DayRange:
         next_year, next_month = (year + 1, 1) if month == 12 else (year, month + 1)
         return cls(start=date(year, month, 1), end=date(next_year, next_month, 1))
 
+    # Découpe la plage en tranches d'au plus `max_days` jours
     def chunks(self, max_days: int = MAX_DAYS_PER_CALL) -> list[DayRange]:
-        """Découpe la plage en tranches d'au plus `max_days` jours."""
         result = []
         current = self.start
         while current < self.end:
@@ -83,14 +67,13 @@ class DayRange:
         return f"[{self.start.isoformat()} -> {self.end.isoformat()})"
 
 
+# Minuit heure de Paris, au format ISO avec décalage attendu par l'API
 def _paris_midnight(day: date) -> str:
-    """Minuit heure de Paris, au format ISO avec décalage attendu par l'API."""
     return datetime(day.year, day.month, day.day, tzinfo=PARIS_TZ).isoformat()
 
 
+# Client HTTP du calendrier Tempo, utilisable comme context manager
 class RteTempoClient:
-    """Client HTTP du calendrier Tempo, utilisable comme context manager."""
-
     def __init__(self, settings: Settings | None = None, *, client: httpx.Client | None = None):
         self.settings = settings or get_settings()
         if not (self.settings.rte_client_id and self.settings.rte_client_secret):
@@ -118,8 +101,6 @@ class RteTempoClient:
             reraise=True,
         )
 
-    # -- Cycle de vie -------------------------------------------------------
-
     def close(self) -> None:
         logger.info("rte_api_calls=%d", self.calls)
         if self._owns_client:
@@ -131,14 +112,8 @@ class RteTempoClient:
     def __exit__(self, *exc_info: object) -> None:
         self.close()
 
-    # -- Extraction ---------------------------------------------------------
-
+    # Couleur de chaque jour de la plage, sous forme d'enregistrements bronze
     def fetch_calendar(self, days: DayRange, *, today: date | None = None) -> list[dict[str, Any]]:
-        """Couleur de chaque jour de la plage, sous forme d'enregistrements bronze.
-
-        Les jours postérieurs à J+1 sont ignorés : leur couleur n'existe pas encore.
-        Chaque enregistrement porte `date_heure` (début du jour civil) et `couleur`.
-        """
         today = today or datetime.now(PARIS_TZ).date()
         horizon = today + timedelta(days=2)
         if days.start >= horizon:
@@ -165,18 +140,15 @@ class RteTempoClient:
                     continue
                 records.append({"date_heure": value["start_date"], "couleur": color})
 
-        # L'API renvoie les jours du plus récent au plus ancien : on remet dans
-        # l'ordre chronologique attendu par la normalisation des horodatages.
+        # L'API renvoie les jours du plus récent au plus ancien
         records.sort(key=lambda record: record["date_heure"])
         return records
-
-    # -- Couche HTTP --------------------------------------------------------
 
     def _access_token(self) -> str:
         if self._token is not None and time.monotonic() < self._token_expires_at:
             return self._token
 
-        assert self.settings.rte_client_secret is not None  # vérifié à l'initialisation
+        assert self.settings.rte_client_secret is not None
 
         def _send() -> httpx.Response:
             self.calls += 1
@@ -207,7 +179,7 @@ class RteTempoClient:
                 path, params=params, headers={"Authorization": f"Bearer {token}"}
             )
             if response.status_code == 401:
-                # Jeton révoqué ou expiré côté serveur : on en redemandera un.
+                # Jeton révoqué ou expiré côté serveur : on en redemandera un
                 self._token = None
             if response.status_code in RETRYABLE_STATUS_CODES:
                 raise RetryableStatusError(response.status_code)

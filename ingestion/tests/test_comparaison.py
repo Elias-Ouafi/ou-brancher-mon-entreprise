@@ -1,8 +1,3 @@
-"""Comparaison d'adresses côte à côte : lignes, éléments communs, limites, rendus et CLI.
-
-Base synthétique de `medallion.py` ; la BAN est simulée. Aucun appel réseau.
-"""
-
 from __future__ import annotations
 
 import csv
@@ -41,8 +36,8 @@ def _rapport_lyon():
     )
 
 
+# Lyon (sites, contraintes, postes) et la Corse-du-Sud (hors réseau RTE)
 def _diagnostics(medallion_db: Path, **options: Any) -> list[Diagnostic]:
-    """Lyon (sites, contraintes, postes) et la Corse-du-Sud (hors réseau RTE)."""
     return [
         lire_diagnostic(
             territoire("69123", "Lyon", latitude=45.7637, longitude=4.8357),
@@ -61,9 +56,6 @@ def _valeurs(tableau: list[Any], indicateur: str) -> list[str]:
     return next(ligne.valeurs for ligne in tableau if ligne.indicateur == indicateur)
 
 
-# --- Contenu du tableau --------------------------------------------------------------------
-
-
 @dbt_requis
 def test_rows_depend_on_the_address_only(medallion_db: Path) -> None:
     tableau = lignes(_diagnostics(medallion_db))
@@ -79,7 +71,7 @@ def test_rows_depend_on_the_address_only(medallion_db: Path) -> None:
         "Zone prioritaire RTE",
         "Site clé en main (France 2030)",
         "Électricité décarbonée",
-    ]  # pas de risques : Géorisques n'a pas été consulté
+    ]
     assert _valeurs(tableau, "Contraintes RTE (3-5 ans)") == [
         "3, dont 2 plus de 75 fois par an",
         "réseau hors RTE",
@@ -135,9 +127,9 @@ def test_address_independent_figures_are_given_once(medallion_db: Path) -> None:
     assert texte.count("Puissance 12 MW → HTA") == 1
     assert "Prix de l'électricité pour l'entreprise" in texte
     assert "Carbone du réseau et coût horaire d'un profil type" in texte
-    # Le verdict carbone dépend du territoire : il n'est pas répété sous le tableau.
+    # Le verdict carbone dépend du territoire : il n'est pas répété sous le tableau
     assert "Électricité du réseau" not in texte
-    # Une adresse en Corse : les prix communs valent pour la métropole continentale.
+    # Une adresse en Corse : les prix communs valent pour la métropole continentale
     assert "valent pour la métropole continentale" in texte
 
 
@@ -151,9 +143,6 @@ def test_every_limit_is_listed_once(medallion_db: Path) -> None:
     assert len(codes) == len(set(codes))
     assert {"pression_industrielle", "zones_raccordement_rte", "risques_site",
             "capacite_raccordement", "prix_entreprise"} <= set(codes)  # fmt: skip
-
-
-# --- Rendus ---------------------------------------------------------------------------------
 
 
 @dbt_requis
@@ -172,12 +161,12 @@ def test_markdown_csv_and_json_carry_the_same_rows(medallion_db: Path) -> None:
     nb_lignes = len(lignes(diagnostics))
 
     markdown = comparaison_en_markdown(diagnostics)
-    assert markdown.count("\n| ") == nb_lignes + 1  # en-tête et une ligne par indicateur
+    assert markdown.count("\n| ") == nb_lignes + 1
 
     lecteur = list(csv.reader(io.StringIO(comparaison_en_csv(diagnostics)), delimiter=";"))
     assert lecteur[0] == ["indicateur", "1 rue de test, Lyon", "1 rue de test, Ajaccio", "limite"]
     assert len(lecteur) == nb_lignes + 1
-    assert lecteur[1][3] == ""  # le territoire n'a pas de limite
+    assert lecteur[1][3] == ""
     assert lecteur[3][3].startswith("Ne compte que les sites raccordés")
 
     contenu = json.loads(comparaison_en_json(diagnostics))
@@ -203,9 +192,6 @@ def test_gaspar_subtypes_read_alone_get_their_type() -> None:
         "Inondation par une crue lente",
         "Tempête et grains (vent)",
     ]
-
-
-# --- Ligne de commande ----------------------------------------------------------------------
 
 
 def _ban(httpx_mock: HTTPXMock, label: str, citycode: str, city: str, context: str) -> None:
@@ -253,7 +239,7 @@ def test_compare_command_writes_a_spreadsheet(
     )  # fmt: skip
 
     assert code == 0
-    assert sortie.read_bytes().startswith(b"\xef\xbb\xbf")  # BOM : Excel lit l'UTF-8
+    assert sortie.read_bytes().startswith(b"\xef\xbb\xbf")
     entete = sortie.read_text(encoding="utf-8-sig").splitlines()[0]
     assert entete == "indicateur;10 Rue A 69003 Lyon;1 Cours B 20000 Ajaccio;limite"
 

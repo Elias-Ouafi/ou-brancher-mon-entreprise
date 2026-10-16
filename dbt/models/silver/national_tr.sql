@@ -1,10 +1,4 @@
-{#-
-    Temps réel nettoyé : une ligne par quart d'heure effectivement mesuré.
-
-    RTE publie l'horodatage le plus récent avant ses mesures : une ligne sans
-    consommation n'est pas une mesure, elle est écartée ici plutôt que de
-    propager des zéros ou des trous dans les agrégats.
--#}
+-- Temps réel nettoyé : une ligne par quart d'heure effectivement mesuré
 select
     date_heure,
     {{ qualite_depuis_nature('nature') }} as qualite,

@@ -1,11 +1,4 @@
-{#-
-    Bilan journalier, jour civil en heure de Paris.
-
-    Les énergies sont des sommes `puissance × durée` et non des moyennes × 24 :
-    un jour de changement d'heure dure 23 ou 25 h, et le pas varie entre le
-    consolidé (30 min) et le temps réel (15 min). `est_complet` signale les jours
-    partiels — typiquement le jour en cours — dont les totaux sont tronqués.
--#}
+-- Bilan journalier, jour civil en heure de Paris
 with mesures as (
     select
         *,
@@ -16,7 +9,7 @@ with mesures as (
 jours as (
     select
         jour,
-        -- La qualité d'une journée est celle de sa mesure la moins fiable.
+        -- La qualité d'une journée est celle de sa mesure la moins fiable
         arg_min(qualite, rang_qualite) as qualite,
         count(*) as nb_mesures,
         sum(heures) as heures_couvertes,
@@ -36,7 +29,7 @@ jours as (
 
         sum(solde_echanges_mw * heures) / 1000 as solde_echanges_gwh,
 
-        -- gCO2/kWh x MWh = kgCO2 ; / 1000 pour des tonnes.
+        -- gCO2/kWh x MWh = kgCO2 ; / 1000 pour des tonnes
         sum(taux_co2_g_kwh * production_totale_mw * heures) / 1000 as emissions_tco2,
         sum(taux_co2_g_kwh * production_totale_mw * heures) / nullif(
             sum(production_totale_mw * heures) filter (where taux_co2_g_kwh is not null), 0

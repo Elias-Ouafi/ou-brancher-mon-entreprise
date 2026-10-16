@@ -30,7 +30,7 @@ class NonExistentLocalTimeError(ValueError):
     pass
 
 
-# Valeur brute en texte : Spark reçoit une table homogène, le typage se fait ensuite.
+# Valeur brute en texte : Spark reçoit une table homogène, le typage se fait ensuite
 def _brut(value: Any) -> str | None:
     if value is None or isinstance(value, bool):
         return None
@@ -41,8 +41,7 @@ def _texte(colonne: SparkColumn) -> SparkColumn:
     return F.when(F.trim(colonne) != "", F.trim(colonne))
 
 
-# Instant ODRÉ en UTC : avec décalage il est déjà absolu ; sans, c'est l'heure de Paris, et la
-# 2e occurrence d'une heure d'octobre dans un même groupe est l'heure d'hiver.
+# Instant ODRÉ en UTC : avec décalage il est déjà absolu ; sans, c'est l'heure de Paris
 def _instant_utc(df: DataFrame, name: str, groupe: Sequence[str]) -> DataFrame:
     texte = F.regexp_replace(F.regexp_replace(F.trim(F.col(name)), " ", "T"), "[zZ]$", "+00:00")
     absolu = texte.rlike(r"[+-]\d{2}:?\d{2}$")
@@ -67,7 +66,7 @@ def _instant_utc(df: DataFrame, name: str, groupe: Sequence[str]) -> DataFrame:
     return df.drop(name, f"_{name}_inexistant").withColumnRenamed(f"_{name}_utc", name)
 
 
-# Mesure en double ; une valeur illisible devient nulle et est signalée.
+# Mesure en double ; une valeur illisible devient nulle et est signalée
 def _mesure(df: DataFrame, name: str) -> DataFrame:
     valeur = F.expr(f"try_cast(trim(`{name}`) as double)")
     illisibles = df.filter(_texte(F.col(name)).isNotNull() & valeur.isNull())
@@ -83,8 +82,7 @@ def _table_brute(records: Sequence[dict[str, Any]], spec: DatasetSpec) -> pa.Tab
     return pa.table(colonnes)
 
 
-# Enregistrements bruts → table typée du spec, en PySpark : clés complètes, instants en UTC,
-# mesures en double, textes nettoyés, métadonnées d'ingestion, tri par clé.
+# Enregistrements bruts → table typée du spec, en PySpark : clés complètes, instants en UTC
 def records_to_table(
     records: Sequence[dict[str, Any]],
     *,
@@ -138,12 +136,10 @@ def _tout(conditions: list[SparkColumn]) -> SparkColumn:
 
 
 def _au_schema(table: pa.Table, schema: pa.Schema) -> pa.Table:
-    return pa.Table.from_arrays(
-        [table.column(f.name).cast(f.type) for f in schema], schema=schema
-    )
+    return pa.Table.from_arrays([table.column(f.name).cast(f.type) for f in schema], schema=schema)
 
 
-# Conversion d'une série d'horodatages ODRÉ, dans l'ordre : même règle que `records_to_table`.
+# Conversion d'une série d'horodatages ODRÉ, dans l'ordre : même règle que `records_to_table`
 def normalize_datetimes(raw_values: Iterable[str]) -> list[datetime]:
     valeurs = list(raw_values)
     if not valeurs:
@@ -157,12 +153,12 @@ def to_utc(raw: str) -> datetime:
     return normalize_datetimes([raw])[0]
 
 
-# `run_id` utilisable comme nom de fichier sous Windows et Linux.
+# `run_id` utilisable comme nom de fichier sous Windows et Linux
 def _safe_run_id(run_id: str) -> str:
     return _UNSAFE_FILENAME_CHARS.sub("-", run_id).strip("-") or "run"
 
 
-# Bronze immuable : un fichier par exécution, partitionné par date d'ingestion.
+# Bronze immuable : un fichier par exécution, partitionné par date d'ingestion
 def write_parquet(
     table: pa.Table,
     *,

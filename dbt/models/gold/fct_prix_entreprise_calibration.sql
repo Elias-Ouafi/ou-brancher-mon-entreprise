@@ -1,13 +1,4 @@
-{#-
-    Calibration de la méthode des scénarios, par tranche : combien de fois le
-    **prix moyen des 3 années suivantes** — le chiffre affiché par le diagnostic —
-    est tombé dans l'éventail bas–haut calculé au départ.
-
-    Une période est contrôlée si ses trois horizons le sont. Les périodes
-    commencent chaque semestre et durent 3 ans : elles se chevauchent, et ne
-    sont donc pas indépendantes. Avec un éventail du 10e au 90e centile, une
-    méthode bien calibrée encadrerait le prix réel environ 8 fois sur 10.
--#}
+-- Calibration de la méthode des scénarios, par tranche
 with periodes as (
     select
         tranche,

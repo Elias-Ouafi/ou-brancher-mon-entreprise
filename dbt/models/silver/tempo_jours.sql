@@ -1,11 +1,4 @@
-{#-
-    Calendrier Tempo : une ligne par jour Tempo, couleur normalisée en français.
-
-    Un jour Tempo court de 6 h à 6 h le lendemain : la couleur du jour J
-    s'applique aussi aux heures creuses de 0 h à 6 h de J+1. Ce décalage est
-    appliqué dans `gold.fct_creneau_horaire`, pas ici : silver reste le miroir
-    nettoyé du calendrier publié.
--#}
+-- Calendrier Tempo : une ligne par jour Tempo, couleur normalisée en français
 select
     cast(timezone('Europe/Paris', date_heure) as date) as jour_tempo,
     case couleur

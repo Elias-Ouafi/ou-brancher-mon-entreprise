@@ -1,15 +1,4 @@
-{#-
-    Intensité carbone de l'électricité et verdict « décarboné », une ligne par région.
-
-    Le réseau continental est un seul système : ses 12 régions partagent le même facteur.
-    La Corse et l'outre-mer, non interconnectés, ont chacun le leur. Le verdict compare le
-    facteur ADEME en cycle de vie au seuil de la taxonomie européenne (100 gCO2e/kWh, variable
-    `seuil_decarbone_g_co2e_kwh`), qui porte lui aussi sur le cycle de vie.
-
-    En complément, pour le continent seulement, l'intensité observée par RTE sur les 12 derniers
-    mois complets : émissions directes de la production (`taux_co2`), hors amont et réseau, donc
-    plus basse que le facteur ADEME et non comparable au seuil.
--#}
+-- Intensité carbone de l'électricité et verdict « décarboné », une ligne par région
 {%- set seuil = var('seuil_decarbone_g_co2e_kwh', 100) %}
 
 with dernier_jour as (

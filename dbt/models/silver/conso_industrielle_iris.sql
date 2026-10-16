@@ -1,27 +1,4 @@
-{#-
-    Consommation électrique annuelle des sites raccordés au transport, par IRIS.
-
-    Trois réparations, toutes déduites de la source elle-même :
-
-    * **`code_iris` sur 9 caractères.** ODRÉ publie certaines lignes avec un
-      code à 8 caractères : le zéro de tête a été perdu en amont (« 20030000 »
-      pour l'IRIS 020030000 de l'Aisne). Le code est complété à gauche. En 2022
-      et 2023, une vingtaine de ces lignes doublonnent, entièrement vides, une
-      ligne correctement codée : la ligne publiée sur 9 caractères est retenue,
-      sinon le doublon vide passerait pour du secret statistique.
-    * **Commune reconstituée.** Ces mêmes lignes n'ont ni commune ni
-      département. Les 5 premiers caractères d'un code IRIS sont le code de la
-      commune : on les reprend. Il s'agit souvent d'une commune fusionnée depuis,
-      que la BAN ne renverra plus, mais la ligne compte bien dans son département.
-    * **Arrondissements ramenés à la commune.** Paris, Lyon et Marseille sont
-      publiés sous le code de la commune (75056, 69123, 13055) ; les IRIS
-      reconstitués le sont de même.
-
-    Le département est déduit du code commune, et la région du référentiel
-    `dim_departement` : un `code_insee_commune` résout toute sa hiérarchie sans
-    appel réseau. La consommation est en MWh ; une valeur nulle signale le
-    secret statistique (depuis 2022), pas une absence de consommation.
--#}
+-- Consommation électrique annuelle des sites raccordés au transport, par IRIS
 with source as (
     select
         cast(annee as integer) as annee,

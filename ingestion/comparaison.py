@@ -1,17 +1,3 @@
-"""Comparaison de plusieurs adresses, côte à côte, sans classement.
-
-Le tableau ne garde que les indicateurs **qui dépendent de l'adresse** : territoire,
-pression industrielle, tension régionale, contraintes et postes RTE, zone
-prioritaire la plus proche, carbone du réseau (continent, Corse ou outre-mer), risques à
-l'adresse. Le reste — niveau de tension
-selon la puissance, prix de la tranche, coût du profil type — est le même
-partout (péréquation) : il est donné une fois, sous le tableau.
-
-Pas de note ni de verdict : pondérer des critères aussi différents qu'un risque
-d'inondation et une distance à un poste est un choix de l'entreprise, pas une
-donnée. Chaque indicateur garde sa limite, listée une fois à la fin.
-"""
-
 from __future__ import annotations
 
 import csv
@@ -33,15 +19,14 @@ from ingestion.diagnostic import (
 )
 from ingestion.georisques import Exposition
 
-#: Bornes du nombre d'adresses comparées : au-delà de six, le tableau devient illisible.
+# Bornes du nombre d'adresses comparées : au-delà de six, le tableau devient illisible
 NB_ADRESSES_MIN = 2
 NB_ADRESSES_MAX = 6
 
 
+# Un indicateur, sa valeur pour chaque adresse, et la limite qui l'accompagne
 @dataclass(frozen=True, slots=True)
 class Ligne:
-    """Un indicateur, sa valeur pour chaque adresse, et la limite qui l'accompagne."""
-
     indicateur: str
     valeurs: list[str]
     limite: str | None = None
@@ -150,8 +135,8 @@ def _non_evalues(d: Diagnostic) -> str:
     return _liste_risques(d.risques.selon(Exposition.INCONNU)) or "aucun"
 
 
+# Les indicateurs qui dépendent de l'adresse, une valeur par diagnostic
 def lignes(diagnostics: list[Diagnostic]) -> list[Ligne]:
-    """Les indicateurs qui dépendent de l'adresse, une valeur par diagnostic."""
 
     def ligne(
         indicateur: str, valeur: Callable[[Diagnostic], str], limite: str | None = None
@@ -179,8 +164,8 @@ def lignes(diagnostics: list[Diagnostic]) -> list[Ligne]:
     return resultat
 
 
+# Ce qui ne dépend pas de l'adresse : niveau de tension, prix, coût du profil
 def communs(diagnostics: list[Diagnostic]) -> list[str]:
-    """Ce qui ne dépend pas de l'adresse : niveau de tension, prix, coût du profil."""
     reference = next((d for d in diagnostics if not d.est_zni), diagnostics[0])
     blocs = sections(reference)
     resultat = []
@@ -193,7 +178,7 @@ def communs(diagnostics: list[Diagnostic]) -> list[str]:
     for bloc in blocs:
         if bloc.titre.startswith(("4.", "5.")):
             resultat.append(bloc.titre[3:])
-            # Le verdict carbone dépend du territoire : il est dans le tableau.
+            # Le verdict carbone dépend du territoire : il est dans le tableau
             resultat += [
                 f"  {c}"
                 for nature, c in bloc.elements
@@ -207,8 +192,8 @@ def communs(diagnostics: list[Diagnostic]) -> list[str]:
     return resultat
 
 
+# Limites des indicateurs du tableau et des éléments communs, chacune une seule fois
 def limites(diagnostics: list[Diagnostic], tableau: list[Ligne]) -> list[tuple[str, str]]:
-    """Limites des indicateurs du tableau et des éléments communs, chacune une seule fois."""
     references = diagnostics[0].limites
     codes: list[str] = []
     for ligne in tableau:
@@ -219,15 +204,13 @@ def limites(diagnostics: list[Diagnostic], tableau: list[Ligne]) -> list[tuple[s
     return [(code, references[code]) for code in codes if code in references]
 
 
-# ---------------------------------------------------------------------------
 # Rendus
-# ---------------------------------------------------------------------------
 
 LARGEUR_INDICATEUR = 26
 
 
+# Tableau en texte, colonnes repliées pour tenir dans `largeur` caractères
 def formater_comparaison(diagnostics: list[Diagnostic], *, largeur: int = 120) -> str:
-    """Tableau en texte, colonnes repliées pour tenir dans `largeur` caractères."""
     tableau = lignes(diagnostics)
     n = len(diagnostics)
     colonne = max(18, (largeur - LARGEUR_INDICATEUR - 3 * n) // n)
@@ -284,8 +267,8 @@ def comparaison_en_markdown(diagnostics: list[Diagnostic]) -> str:
     return "\n".join(texte) + "\n"
 
 
+# Une ligne par indicateur, une colonne par adresse : prêt pour un tableur
 def comparaison_en_csv(diagnostics: list[Diagnostic]) -> str:
-    """Une ligne par indicateur, une colonne par adresse : prêt pour un tableur."""
     sortie = io.StringIO()
     ecrivain = csv.writer(sortie, delimiter=";", lineterminator="\n")
     ecrivain.writerow(["indicateur", *(d.territoire.adresse for d in diagnostics), "limite"])
@@ -295,8 +278,8 @@ def comparaison_en_csv(diagnostics: list[Diagnostic]) -> str:
     return sortie.getvalue()
 
 
+# Le tableau, et le diagnostic complet de chaque adresse
 def comparaison_en_json(diagnostics: list[Diagnostic]) -> str:
-    """Le tableau, et le diagnostic complet de chaque adresse."""
     tableau = lignes(diagnostics)
     contenu = {
         "adresses": [d.territoire.adresse for d in diagnostics],

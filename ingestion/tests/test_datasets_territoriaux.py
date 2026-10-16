@@ -1,11 +1,3 @@
-"""Clé de MERGE composite et datasets territoriaux.
-
-Tous les datasets ne sont pas des séries temporelles : un équilibre régional est
-identifié par `(mois, code_insee_region)`, un relevé de contraintes par la seule
-`region`. Ces tests vérifient que l'idempotence, les contrôles et l'extraction
-tiennent sur ces formes-là. Aucun appel réseau réel.
-"""
-
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
@@ -54,16 +46,13 @@ def build_parquet(
     )
 
 
-# --- Déclaration des specs -------------------------------------------------
-
-
 def test_a_spec_must_declare_a_key() -> None:
     with pytest.raises(ValueError, match="au moins une colonne"):
         DatasetSpec(dataset_id="x", keys=(), attributes=(), measures=(), description="sans cle")
 
 
+# Deux instants dans la clé rendraient la normalisation du fuseau ambiguë
 def test_a_spec_accepts_only_one_instant() -> None:
-    """Deux instants dans la clé rendraient la normalisation du fuseau ambiguë."""
     with pytest.raises(ValueError, match="une seule colonne d'instant"):
         DatasetSpec(
             dataset_id="x",
@@ -96,29 +85,22 @@ def test_time_series_detection() -> None:
     assert CONTRAINTES_REGIONALES.key_names == ("region",)
 
 
+# L'unicité du MERGE repose sur des clés toujours renseignées
 def test_key_columns_are_not_nullable() -> None:
-    """L'unicité du MERGE repose sur des clés toujours renseignées."""
     schema = EQUILIBRE_REGIONAL.schema
     for name in EQUILIBRE_REGIONAL.key_names:
         assert not schema.field(name).nullable, name
     assert schema.field("production_totale").nullable
 
 
+# RTE ne publie pas de `taux_co2` régional : le spec ne doit pas en inventer un
 def test_regional_dataset_has_no_carbon_intensity() -> None:
-    """RTE ne publie pas de `taux_co2` régional : le spec ne doit pas en inventer un."""
     assert "taux_co2" in NATIONAL_TR.schema.names
     assert "taux_co2" not in REGIONAL_CONS_DEF.schema.names
 
 
-# --- Normalisation du fuseau, par groupe -----------------------------------
-
-
+# Le même instant local est publié pour chaque région : le groupe tranche
 def test_october_ambiguity_is_resolved_per_region() -> None:
-    """Le même instant local est publié pour chaque région : le groupe tranche.
-
-    Sans groupement, la deuxième région d'un instant répété serait vue comme un
-    retour en arrière et basculerait à tort en heure d'hiver.
-    """
     records = [
         {"date_heure": "2026-10-25 02:00:00", "code_insee_region": "11"},
         {"date_heure": "2026-10-25 02:00:00", "code_insee_region": "84"},
@@ -132,7 +114,7 @@ def test_october_ambiguity_is_resolved_per_region() -> None:
     for row in table.select(["date_heure", "code_insee_region"]).to_pylist():
         par_region.setdefault(row["code_insee_region"], []).append(row["date_heure"])
 
-    # Chaque région voit l'heure d'été (00:00 UTC) puis l'heure d'hiver (01:00 UTC).
+    # Chaque région voit l'heure d'été (00:00 UTC) puis l'heure d'hiver (01:00 UTC)
     for region, instants in par_region.items():
         assert instants == [
             datetime(2026, 10, 25, 0, 0, tzinfo=UTC),
@@ -143,8 +125,8 @@ def test_october_ambiguity_is_resolved_per_region() -> None:
 def test_records_missing_part_of_the_key_are_dropped() -> None:
     records = [
         {"mois": "2026-06", "code_insee_region": "11", "consommation_brute": 1.0},
-        {"mois": "2026-06", "consommation_brute": 2.0},  # région manquante
-        {"code_insee_region": "11", "consommation_brute": 3.0},  # mois manquant
+        {"mois": "2026-06", "consommation_brute": 2.0},
+        {"code_insee_region": "11", "consommation_brute": 3.0},
     ]
 
     table = records_to_table(records, spec=EQUILIBRE_REGIONAL, ingested_at=INGESTED_AT)
@@ -152,8 +134,8 @@ def test_records_missing_part_of_the_key_are_dropped() -> None:
     assert table.num_rows == 1
 
 
+# La couche bronze reste le miroir de la source : `mois` n'est pas casté
 def test_period_keys_are_kept_as_published() -> None:
-    """La couche bronze reste le miroir de la source : `mois` n'est pas casté."""
     table = records_to_table(
         [{"mois": "2014-06", "code_insee_region": "84"}],
         spec=EQUILIBRE_REGIONAL,
@@ -162,9 +144,6 @@ def test_period_keys_are_kept_as_published() -> None:
 
     assert table.column("mois").to_pylist() == ["2014-06"]
     assert EQUILIBRE_REGIONAL.keys[0].kind is ColumnKind.PERIOD
-
-
-# --- MERGE sur clé composite -----------------------------------------------
 
 
 def test_composite_merge_keeps_one_row_per_region_and_instant(tmp_path: Path) -> None:
@@ -197,8 +176,8 @@ def test_composite_merge_keeps_one_row_per_region_and_instant(tmp_path: Path) ->
         assert loader.row_count() == 3
 
 
+# Une révision sur une région ne doit pas toucher les autres
 def test_composite_merge_revises_only_the_matching_key(tmp_path: Path) -> None:
-    """Une révision sur une région ne doit pas toucher les autres."""
     initial = build_parquet(
         [
             {
@@ -244,8 +223,8 @@ def test_composite_merge_revises_only_the_matching_key(tmp_path: Path) -> None:
         assert rows == {"11": 5000.0, "84": 4200.0}
 
 
+# La clé primaire composite rend l'unicité structurelle, pas seulement procédurale
 def test_primary_key_covers_the_whole_tuple(tmp_path: Path) -> None:
-    """La clé primaire composite rend l'unicité structurelle, pas seulement procédurale."""
     with DuckDBLoader(":memory:", spec=EQUILIBRE_REGIONAL) as loader:
         loader.ensure_table()
         keys = loader.connection.execute(
@@ -258,15 +237,9 @@ def test_primary_key_covers_the_whole_tuple(tmp_path: Path) -> None:
         assert "mois" in keys[0] and "code_insee_region" in keys[0]
 
 
+# ODRÉ publie parfois un doublon dont toutes les mesures sont nulles
 @pytest.mark.parametrize("ordre", [("pleine", "vide"), ("vide", "pleine")])
 def test_duplicate_key_keeps_the_most_complete_row(tmp_path: Path, ordre: tuple[str, str]) -> None:
-    """ODRÉ publie parfois un doublon dont toutes les mesures sont nulles.
-
-    Les deux lignes partageant le même `ingested_at_utc`, un départage sur ce seul
-    horodatage serait arbitraire et perdrait la ligne renseignée une fois sur deux
-    (constaté : 118 clés sur 233 dans `consommation-annuelle-par-iris`).
-    Le résultat ne doit pas dépendre de l'ordre d'arrivée.
-    """
     lignes = {
         "pleine": {
             "annee": "2023",
@@ -294,9 +267,6 @@ def test_duplicate_key_keeps_the_most_complete_row(tmp_path: Path, ordre: tuple[
         ).fetchone() == (13503.25,)
 
 
-# --- Dataset sans dimension temporelle -------------------------------------
-
-
 def test_merge_works_without_any_instant(tmp_path: Path) -> None:
     parquet = build_parquet(
         [
@@ -316,8 +286,8 @@ def test_merge_works_without_any_instant(tmp_path: Path) -> None:
         assert replay.rows_updated == 2
 
 
+# Mieux vaut une erreur explicite qu'un contrôle de fraîcheur qui ne veut rien dire
 def test_temporal_checks_fail_clearly_on_a_territorial_dataset() -> None:
-    """Mieux vaut une erreur explicite qu'un contrôle de fraîcheur qui ne veut rien dire."""
     with DuckDBLoader(":memory:", spec=CONTRAINTES_REGIONALES) as loader:
         loader.ensure_table()
 
@@ -325,14 +295,11 @@ def test_temporal_checks_fail_clearly_on_a_territorial_dataset() -> None:
             loader.latest_timestamp()
 
 
-# --- Extraction intégrale --------------------------------------------------
-
-
+# Un `where` sur `date_heure` ferait une 400 sur un dataset qui n'a pas ce champ
 def test_full_extraction_sends_no_window_and_sorts_on_the_key(
     httpx_mock: HTTPXMock,
     settings: Settings,
 ) -> None:
-    """Un `where` sur `date_heure` ferait une 400 sur un dataset qui n'a pas ce champ."""
     httpx_mock.add_response(
         url=(
             f"{settings.api_base_url}/catalog/datasets/"
@@ -361,8 +328,8 @@ def test_a_window_is_refused_on_a_territorial_dataset(settings: Settings) -> Non
         )
 
 
+# Garde-fou contre une faute de frappe : toute mesure doit être un float64
 def test_territorial_specs_declare_only_known_measures() -> None:
-    """Garde-fou contre une faute de frappe : toute mesure doit être un float64."""
     for spec in (CONTRAINTES_REGIONALES, EQUILIBRE_REGIONAL):
         for column in spec.measures:
             assert column.kind is ColumnKind.MEASURE

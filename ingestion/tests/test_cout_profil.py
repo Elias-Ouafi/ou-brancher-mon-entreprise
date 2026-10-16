@@ -1,11 +1,3 @@
-"""Coût horaire d'un profil type : grille HP/HC, carbone et gain de décalage.
-
-Le profil `bureau_36kva` (seed) appelle 28 kW de 8 h à 12 h les jours ouvrés,
-dont 6 kW flexibles, et 6 kW la nuit et le week-end. Les données horaires sont
-celles de `medallion.py` : le 30 juin 2026 (mardi, grille de février 2026) et
-le 26 octobre 2025 (dimanche de 25 h, avant toute grille HP/HC).
-"""
-
 from __future__ import annotations
 
 import dataclasses
@@ -23,7 +15,7 @@ from ingestion.tests.test_diagnostic import territoire
 
 pytestmark = pytest.mark.skipif(DBT_BIN is None, reason="dbt non installé (uv sync --group dbt)")
 
-#: Grille du 1er février 2026, € HTVA = prix HT + accise de 30,85 €/MWh.
+# Grille du 1er février 2026, € HTVA = prix HT + accise de 30,85 €/MWh
 PRIX_HP = 0.1351 + 0.03085
 PRIX_HC = 0.0989 + 0.03085
 
@@ -49,7 +41,7 @@ def _heure(warehouse: duckdb.DuckDBPyConnection, heure_utc: str) -> tuple[Any, .
 
 
 def test_weekday_morning_is_priced_at_peak_rate(warehouse: duckdb.DuckDBPyConnection) -> None:
-    # 30 juin 2026, 10 h à Paris : 28 kW, dont 6 flexibles, en heures pleines.
+    # 30 juin 2026, 10 h à Paris : 28 kW, dont 6 flexibles, en heures pleines
     type_jour, periode, kwh, flexible, prix, cout, emissions = _heure(
         warehouse, "2026-06-30 08:00:00+00"
     )
@@ -60,7 +52,7 @@ def test_weekday_morning_is_priced_at_peak_rate(warehouse: duckdb.DuckDBPyConnec
 
 
 def test_weekday_night_is_priced_at_off_peak_rate(warehouse: duckdb.DuckDBPyConnection) -> None:
-    # 30 juin 2026, 23 h à Paris.
+    # 30 juin 2026, 23 h à Paris
     assert _heure(warehouse, "2026-06-30 21:00:00+00")[1:5] == (
         "hc",
         6.0,
@@ -90,7 +82,7 @@ def test_month_outside_tariff_grid_has_no_cost(warehouse: duckdb.DuckDBPyConnect
 def test_shifting_flexible_load_saves_the_peak_off_peak_gap(
     warehouse: duckdb.DuckDBPyConnection,
 ) -> None:
-    # Juin 2026 : seul le 30 est mesuré. 6 kW flexibles x 4 h = 24 kWh reportés.
+    # Juin 2026 : seul le 30 est mesuré
     kwh, gain, co2, complet = _rows(
         warehouse,
         "SELECT kwh_decales, gain_decalage_eur, co2_evite_kg, est_complet"
@@ -98,7 +90,7 @@ def test_shifting_flexible_load_saves_the_peak_off_peak_gap(
     )[0]
     assert kwh == 24.0
     assert gain == pytest.approx(24 * (PRIX_HP - PRIX_HC))
-    # 20 gCO2/kWh le matin comme la nuit : rien d'évité.
+    # 20 gCO2/kWh le matin comme la nuit : rien d'évité
     assert co2 == pytest.approx(0.0)
     assert complet is False
 

@@ -1,19 +1,4 @@
-{#-
-    Bilan mensuel d'un profil type : consommation, coût, carbone, et gain d'un
-    décalage de la part flexible vers les heures creuses.
-
-    **Gain de décalage.** Chaque jour, la consommation flexible tombée en heures
-    pleines est reportée en heures creuses du même jour civil. Le gain en euros
-    est l'écart de prix HP/HC ; le CO₂ évité compare l'intensité des heures où la
-    consommation avait lieu à l'intensité **moyenne** des heures creuses du jour
-    — pas à la meilleure heure, pour ne pas promettre plus que ce qu'un
-    programmateur simple obtiendrait.
-
-    **Coût nul** si une heure du mois est hors grille tarifaire : un total
-    partiel serait pris pour un total. `est_complet` exige que toutes les heures
-    du mois (heure de Paris, 23 ou 25 h les jours de changement d'heure) soient
-    mesurées.
--#}
+-- Bilan mensuel d'un profil type : consommation, coût, carbone
 with horaire as (
     select * from {{ ref('fct_cout_horaire_profil') }}
 ),

@@ -1,5 +1,3 @@
-"""Commande `refresh` : ordre des étapes, et une source en panne n'arrête pas les autres."""
-
 from __future__ import annotations
 
 from typing import Any

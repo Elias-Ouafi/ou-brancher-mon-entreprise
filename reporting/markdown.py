@@ -1,11 +1,3 @@
-"""Version Markdown du rapport mensuel : mêmes chiffres que le PDF, en texte brut.
-
-Le document est lisible tel quel (GitHub, VS Code, Obsidian…) et se versionne
-ou se colle facilement dans un autre outil. Les graphiques, optionnels, sont
-écrits en PNG dans un dossier voisin `<nom>_graphiques/` et référencés par des
-liens relatifs : le dossier se déplace d'un bloc avec le document.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -26,7 +18,7 @@ from reporting.formats import (
 
 def _tableau(entetes: list[str], lignes: list[list[str]]) -> str:
     def _ligne(cellules: list[str]) -> str:
-        # Une barre verticale dans une cellule casserait le tableau.
+        # Une barre verticale dans une cellule casserait le tableau
         return "| " + " | ".join(str(c).replace("|", "\\|") for c in cellules) + " |"
 
     return "\n".join(
@@ -35,19 +27,18 @@ def _tableau(entetes: list[str], lignes: list[list[str]]) -> str:
     )
 
 
+# Écrit les graphiques à côté du document et renvoie leur lien Markdown relatif
 class _Graphiques:
-    """Écrit les graphiques à côté du document et renvoie leur lien Markdown relatif."""
-
     def __init__(self, document: Path, rapport: RapportMensuel, actif: bool) -> None:
         self.rapport = rapport
         self.actif = actif
         self.dossier = document.with_name(f"{document.stem}_graphiques")
 
+    # `nom` est une fonction de `reporting.charts`, rendue en `<nom>.png`
     def image(self, nom: str, legende: str) -> list[str]:
-        """`nom` est une fonction de `reporting.charts`, rendue en `<nom>.png`."""
         if not self.actif:
             return []
-        # Import paresseux : sans graphiques, matplotlib n'est pas nécessaire.
+        # Import paresseux : sans graphiques, matplotlib n'est pas nécessaire
         from reporting import charts
 
         self.dossier.mkdir(parents=True, exist_ok=True)
@@ -279,8 +270,8 @@ def _methodologie(rapport: RapportMensuel) -> list[str]:
     ]
 
 
+# Écrit le rapport Markdown (et ses graphiques si demandé) ; renvoie son chemin
 def rendre(rapport: RapportMensuel, chemin: Path, *, graphiques: bool = True) -> Path:
-    """Écrit le rapport Markdown (et ses graphiques si demandé) ; renvoie son chemin."""
     chemin.parent.mkdir(parents=True, exist_ok=True)
     figures = _Graphiques(chemin, rapport, graphiques)
     blocs = [

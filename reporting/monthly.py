@@ -1,9 +1,3 @@
-"""Point d'entrée du rapport mensuel, appelé par la CLI.
-
-Deux formats, mêmes chiffres : `pdf` (mise en page imprimable) et `md`
-(document Markdown, graphiques en PNG dans un dossier voisin).
-"""
-
 from __future__ import annotations
 
 import logging
@@ -22,8 +16,8 @@ Format = Literal["pdf", "md"]
 FORMATS: tuple[Format, ...] = ("pdf", "md")
 
 
+# `2026-09` -> 1er septembre 2026
 def parse_month(value: str) -> date:
-    """`2026-09` -> 1er septembre 2026."""
     try:
         return datetime.strptime(value, "%Y-%m").date()
     except ValueError:
@@ -35,6 +29,7 @@ def report_path(mois: date, *, settings: Settings | None = None, format: Format 
     return settings.reports_dir / f"eco2mix_rapport_{mois:%Y-%m}.{format}"
 
 
+# Génère le rapport d'un mois à partir de la couche gold, en lecture seule
 def generate_monthly_report(
     mois: date,
     *,
@@ -45,10 +40,6 @@ def generate_monthly_report(
     graphiques: bool = True,
     now: datetime | None = None,
 ) -> Path:
-    """Génère le rapport d'un mois à partir de la couche gold, en lecture seule.
-
-    `graphiques` ne concerne que le Markdown : le PDF embarque toujours les siens.
-    """
     if format not in FORMATS:
         raise ValueError(f"format inconnu : {format!r} (attendu : {', '.join(FORMATS)})")
     settings = settings or get_settings()
@@ -59,7 +50,7 @@ def generate_monthly_report(
         connection.close()
 
     chemin = output or report_path(mois, settings=settings, format=format)
-    # Imports à la demande : reportlab n'est utile qu'au PDF, matplotlib qu'aux graphiques.
+    # Imports à la demande : reportlab n'est utile qu'au PDF, matplotlib qu'aux graphiques
     if format == "md":
         from reporting import markdown
 
