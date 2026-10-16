@@ -283,3 +283,37 @@ seeds:
                 field: code_departement
       - name: maturite_site
         data_tests: [not_null]
+
+  - name: facteurs_carbone_territoire
+    description: >
+      Intensité carbone moyenne de l'électricité consommée, en analyse de cycle de vie
+      (combustion, amont, transport et distribution), par système électrique : France
+      continentale, puis chaque zone non interconnectée, repérée par son code région. Facteurs
+      « mix moyen, consommation » de la Base Carbone de l'ADEME (Base Empreinte), relevés le
+      16 octobre 2026 sur data.ademe.fr (jeu `base-carboner`) ; `id_base_carbone` est
+      l'identifiant de l'élément. Les facteurs des ZNI datent de décembre 2020 : à mettre à jour
+      dès que l'ADEME publie un millésime plus récent.
+    config:
+      column_types:
+        zone_carbone: varchar
+        code_insee_region: varchar
+        intensite_acv_g_co2e_kwh: double
+        id_base_carbone: integer
+    columns:
+      - name: zone_carbone
+        data_tests: [unique, not_null]
+      - name: code_insee_region
+        description: Vide pour la France continentale, qui regroupe les 12 régions interconnectées.
+        data_tests:
+          - unique
+          - relationships:
+              arguments:
+                to: ref('dim_region')
+                field: code_insee_region
+      - name: intensite_acv_g_co2e_kwh
+        data_tests:
+          - not_null
+          - accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1500
