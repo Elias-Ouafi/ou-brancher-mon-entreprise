@@ -1,14 +1,25 @@
 # Où brancher mon entreprise
 
-**Diagnostic d'implantation électrique par adresse.** Une adresse française en entrée ; en
-sortie, ce que les données publiques disent de l'électricité à cet endroit — réseau, prix,
-risques — chaque chiffre accompagné de sa limite. Une commande, pas d'application.
+**Prix et carbone de l'électricité à une adresse française.** Une adresse en entrée ; en
+sortie, le prix moyen de l'électricité pour l'entreprise et si l'électricité du réseau y est
+décarbonée, puis, si on le souhaite, un diagnostic d'implantation complet (réseau, prix,
+risques), chaque chiffre accompagné de sa limite. Une commande, pas d'application.
 
 ```bash
-uv run python -m ingestion.cli diagnose --adresse "20 rue de la République, 69002 Lyon" --puissance 12 --conso 60000
+uv run python -m ingestion.cli essentiel --adresse "1 cours Napoléon, 20000 Ajaccio" --conso 60000
 ```
 
-Exemples réels : [diagnostic de Lyon](docs/exemples/implantation_lyon.md) ([PDF](docs/exemples/implantation_lyon.pdf)) ·
+```
+1 Cours Napoléon 20000 Ajaccio
+Commune Ajaccio (2A004) · Corse-du-Sud (2A) · Corse (94)
+
+Prix moyen : 0,0916 €/kWh HTVA, soit environ 5 500 000 € par an pour 60 000 MWh (tranche IE ; Eurostat, S2 2025 – S1 2026)
+Électricité décarbonée : non (Corse), 594 gCO₂e/kWh en cycle de vie, au-dessus du seuil de 100 gCO₂e/kWh
+À savoir : Le prix ne dépend pas de l'adresse mais de la consommation (péréquation, Corse et outre-mer compris). […]
+```
+
+Exemples réels : [recette sur 11 adresses](docs/exemples/recette_mvp.md) ·
+[diagnostic de Lyon](docs/exemples/implantation_lyon.md) ([PDF](docs/exemples/implantation_lyon.pdf)) ·
 [comparaison Lyon, Lille, Poitiers](docs/exemples/comparaison_lyon_lille_poitiers.md).
 
 ## Ce que dit le diagnostic
@@ -40,12 +51,14 @@ règles sur les allégations environnementales (directive EmpCo).
 
 | Commande | Effet |
 |---|---|
-| `diagnose --adresse "…"` | Diagnostic dans le terminal |
+| `essentiel --adresse "…" [--conso N] [--format json]` | Prix moyen et verdict carbone, en 5 lignes ; sans `--conso`, tranche des petites entreprises (IA, moins de 20 MWh par an) |
+| `diagnose --adresse "…"` | Diagnostic complet dans le terminal, l'essentiel en tête |
 | `… --puissance 12` | Niveau de tension et gestionnaire pour un projet de 12 MW |
 | `… --conso 60000` | Prix de la tranche Eurostat pour 60 000 MWh par an |
 | `… --format pdf\|md\|json [--output fichier]` | Rapport PDF ou Markdown (graphiques compris), ou JSON |
 | `… --sans-risques` | Sans appel à Géorisques (hors ligne) |
 | `compare --adresse "A" --adresse "B" …` | 2 à 6 adresses côte à côte, **sans classement** ; formats `texte`, `md`, `csv` (Excel), `json` |
+| `refresh [--months 180]` | Rafraîchit toutes les sources puis lance `dbt build` (180 mois au premier chargement) |
 | `geocode --adresse "…"` | Résolution de l'adresse seule (BAN), score et précision |
 | `report --month 2026-09 [--format md]` | Rapport mensuel carbone et créneaux Tempo (voir plus bas) |
 
@@ -60,19 +73,16 @@ compte (sauf le calendrier Tempo, optionnel).
 uv sync --group dev --group dbt --group report
 cp .env.example .env
 
-# Données (une dizaine d'appels API au total)
-uv run python -m ingestion.cli consolidate --months 180      # éCO2mix consolidé, depuis 2012
-uv run python -m ingestion.cli ingest                        # éCO2mix temps réel
-for jeu in consommation-annuelle-par-iris equilibre-regional-mensuel-prod-conso-brute \
-           energies-et-puissances-regionales-liees-au-contraintes contraintes-region postes-electriques-rte; do
-  uv run python -m ingestion.cli ingest --dataset "$jeu"
-done
-uv run python -m ingestion.cli prix                          # Eurostat
-uv run dbt build --project-dir dbt --profiles-dir dbt        # silver et gold, ~10 s
+# Données : une dizaine d'appels API, puis dbt build (une minute environ)
+uv run python -m ingestion.cli refresh --months 180          # éCO2mix depuis 2012, territoire, prix
 ```
 
-La BAN (géocodage) et Géorisques sont appelés au moment du diagnostic. Airflow est optionnel :
-voir [Exploitation](#exploitation).
+`refresh` enchaîne l'éCO2mix consolidé puis temps réel, les cinq jeux territoriaux, les prix
+Eurostat et `dbt build` ; chaque étape existe aussi seule (`consolidate`, `ingest --dataset`,
+`prix`).
+
+La BAN (géocodage) et Géorisques sont appelés au moment du diagnostic ; `essentiel` n'appelle
+que la BAN.
 
 ## Architecture
 
@@ -124,7 +134,20 @@ Détail des modèles : [`dbt/README.md`](dbt/README.md) ; stockage : [`data/READ
 
 ## Exploitation
 
-Trois DAGs Airflow (projet Astro dans `airflow/`, `astro dev start`) : ingestion horaire,
+**MVP : `refresh` chaque semaine.** Le workflow [`refresh.yml`](.github/workflows/refresh.yml)
+le lance chaque lundi sur les vraies API, garde le warehouse en cache, vérifie Lyon (décarbonée)
+et Ajaccio (non décarbonée) sur la vraie base, et publie la base en artefact : un run rouge
+signale une source en panne ou qui a changé. En local, une tâche planifiée suffit, par exemple
+sous Windows, dans l'invite de commandes :
+
+```bat
+schtasks /create /tn "Ou brancher - refresh" /sc weekly /d MON /st 06:00 /tr "uv --directory \"C:\chemin\du\depot\" run python -m ingestion.cli refresh"
+```
+
+Une source en échec n'arrête pas les autres : sa dernière version reste en bronze, et la
+commande sort en code 1.
+
+**Plus tard : Airflow.** Trois DAGs Airflow (projet Astro dans `airflow/`, `astro dev start`) : ingestion horaire,
 consolidation mensuelle, rapport mensuel à la demande. Les tâches qui écrivent dans DuckDB
 passent par le pool `duckdb_writer` (1 slot) : DuckDB n'accepte qu'un writer. Un contrôle
 de fraîcheur échoue si la dernière mesure a plus de 2 h de retard.
@@ -140,7 +163,7 @@ gratuit sur [data.rte-france.com](https://data.rte-france.com) (`ECO2MIX_RTE_CLI
 uv run ruff check . && uv run ruff format --check . && uv run pytest
 ```
 
-300 tests pytest, **aucun appel réseau réel** (`pytest-httpx`, sockets condamnées), dont un
+318 tests pytest, **aucun appel réseau réel** (`pytest-httpx`, sockets condamnées), dont un
 `dbt build` complet sur une base synthétique qui reproduit les pièges des sources. Les tests de
 données dbt (unicité, bornes, intégrité référentielle, cohérence des scénarios) tournent à
 chaque build. La CI GitHub Actions rejoue ruff, pytest et `dbt build`, puis importe les DAGs
@@ -150,14 +173,13 @@ avec Airflow 2.10, sans credential.
 
 **Fait** : tout ce que décrit ce README, testé et exécuté sur des adresses réelles.
 
-**Prochaine étape, le MVP** : répondre directement, pour une adresse, à deux questions — le
-prix moyen de l'électricité et si elle est décarbonée (oui ou non, avec le seuil). Les données
-sont là ; manquent un
-prix par défaut sans `--conso` et une commande courte. Le verdict carbone par territoire est
-fait (16 oct.). Détail et ordre des étapes :
+**MVP atteint le 16 octobre 2026** : `essentiel` répond pour toute adresse française, Corse
+et outre-mer compris, et `refresh` tient les données à jour. Suite : protéger `main`, puis
+[l'extension à d'autres pays](docs/extension-internationale.md). Détail :
 [`docs/feuille-de-route.md`](docs/feuille-de-route.md).
 
 **Pas encore validé en conditions réelles** :
+- le workflow `refresh.yml` n'a pas encore tourné sur GitHub (`refresh` a tourné en local) ;
 - Airflow n'a jamais tourné (Docker Desktop absent du poste de développement) ;
 - les prix Tempo n'ont été calculés que sur des réponses simulées (pas de compte RTE).
 
@@ -174,7 +196,7 @@ fait (16 oct.). Détail et ordre des étapes :
 ## Structure du dépôt
 
 ```
-ingestion/   clients API (ODRÉ, RTE, Eurostat, BAN, Géorisques), chargement, diagnostic, comparaison, CLI
+ingestion/   clients API (ODRÉ, RTE, Eurostat, BAN, Géorisques), chargement, refresh, diagnostic, comparaison, CLI
   tests/     pytest, sans réseau
 dbt/         silver et gold (dbt-duckdb), seeds de référence
 reporting/   rapports PDF et Markdown (implantation, mensuel)

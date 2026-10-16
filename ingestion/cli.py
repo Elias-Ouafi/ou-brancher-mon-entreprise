@@ -8,10 +8,14 @@
     python -m ingestion.cli freshness
     python -m ingestion.cli coverage
     python -m ingestion.cli geocode --adresse "12 rue de la Paix, 69003 Lyon"
+    python -m ingestion.cli essentiel --adresse "12 rue de la Paix, 69003 Lyon"   # prix, carbone
+    python -m ingestion.cli essentiel --adresse "..." --conso 350 --format json
     python -m ingestion.cli diagnose --adresse "12 rue de la Paix, 69003 Lyon" --puissance 5
     python -m ingestion.cli diagnose --adresse "..." --puissance 5 --format pdf   # rapport
     python -m ingestion.cli diagnose --adresse "..." --conso 350   # prix de la tranche
     python -m ingestion.cli compare --adresse "A" --adresse "B"    # côte à côte
+    python -m ingestion.cli refresh                      # toutes les sources, puis dbt build
+    python -m ingestion.cli refresh --months 180         # premier chargement, depuis 2012
     python -m ingestion.cli tempo --month 2026-09        # calendrier Tempo (API RTE)
     python -m ingestion.cli prix                         # prix entreprises (Eurostat)
     python -m ingestion.cli report --month 2026-09       # rapport PDF du mois
@@ -24,6 +28,7 @@ exactement ce qui tourne à la main.
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import sys
 from datetime import UTC, date, datetime
@@ -34,12 +39,14 @@ from ingestion.datasets import NATIONAL_CONS_DEF, NATIONAL_TR, SPECS, get_spec
 from ingestion.diagnostic import (
     DiagnosticIndisponibleError,
     completer_risques,
+    essentiel_en_dict,
     formater_diagnostic,
+    formater_essentiel,
     lire_diagnostic,
 )
 from ingestion.extract_odre import ExtractionWindow
 from ingestion.extract_rte import DayRange, RteCredentialsMissingError
-from ingestion.geocode import GeocodingError, geocode
+from ingestion.geocode import AdresseIntrouvableError, GeocodingError, geocode
 from ingestion.pipeline import (
     IncompleteMonthError,
     StaleDataError,
@@ -132,6 +139,13 @@ def build_parser() -> argparse.ArgumentParser:
     consolidate.add_argument("--run-id", default="manual", help="suffixe du fichier Parquet")
     _add_dataset_option(consolidate, NATIONAL_CONS_DEF.dataset_id)
 
+    refresh = subparsers.add_parser(
+        "refresh", help="rafraîchit toutes les sources du diagnostic, puis lance dbt build"
+    )
+    refresh.add_argument(
+        "--months", type=int, help="profondeur relue dans l'éCO2mix consolidé (180 : depuis 2012)"
+    )
+
     load = subparsers.add_parser("load", help="charge un Parquet déjà extrait")
     load.add_argument("parquet_path", help="chemin du fichier Parquet")
     _add_dataset_option(load, NATIONAL_TR.dataset_id)
@@ -146,6 +160,19 @@ def build_parser() -> argparse.ArgumentParser:
     )
     geocode_cmd.add_argument(
         "--adresse", required=True, help="adresse à résoudre, entre guillemets"
+    )
+
+    essentiel = subparsers.add_parser(
+        "essentiel", help="prix moyen de l'électricité et verdict carbone d'une adresse"
+    )
+    essentiel.add_argument("--adresse", required=True, help="adresse, entre guillemets")
+    essentiel.add_argument(
+        "--conso",
+        type=_parse_conso,
+        help="consommation annuelle en MWh (défaut : tranche des petites entreprises)",
+    )
+    essentiel.add_argument(
+        "--format", choices=["texte", "json"], default="texte", help="texte ou json"
     )
 
     diagnose = subparsers.add_parser(
@@ -255,6 +282,17 @@ def main(argv: list[str] | None = None) -> int:
                 settings=settings, spec=spec, months=args.months, run_id=args.run_id
             )
             logger.info("consolidation terminee %s %s", outcome, result.as_dict())
+        case "refresh":
+            from ingestion.refresh import run_refresh
+
+            bilan = run_refresh(settings=settings, months=args.months)
+            echecs = [etape for etape in bilan if not etape.reussie]
+            logger.info(
+                "refresh : %d etape(s) sur %d reussie(s)", len(bilan) - len(echecs), len(bilan)
+            )
+            if echecs:
+                logger.error("refresh incomplet : %s", ", ".join(e.nom for e in echecs))
+                return 1
         case "load":
             result = load_to_warehouse(args.parquet_path, settings=settings, spec=spec)
             logger.info("chargement %s", result)
@@ -286,6 +324,29 @@ def main(argv: list[str] | None = None) -> int:
                 f"precision / score : {territoire.precision} / {territoire.score:.2f}",
             ]
             print("\n".join(lignes))
+        case "essentiel":
+            try:
+                territoire = geocode(args.adresse, settings=settings)
+                diagnostic = lire_diagnostic(territoire, conso_mwh=args.conso, settings=settings)
+            except AdresseIntrouvableError as error:
+                logger.error(
+                    "adresse introuvable : %s. Preciser le numero, la rue et la commune"
+                    " (adresse en France uniquement).",
+                    error,
+                )
+                return 1
+            except GeocodingError as error:
+                logger.error("geocodage impossible : %s", error)
+                return 1
+            except DiagnosticIndisponibleError as error:
+                logger.error("donnees indisponibles : %s", error)
+                return 1
+            if hasattr(sys.stdout, "reconfigure"):
+                sys.stdout.reconfigure(encoding="utf-8")
+            if args.format == "json":
+                print(json.dumps(essentiel_en_dict(diagnostic), ensure_ascii=False, indent=2))
+            else:
+                print(formater_essentiel(diagnostic))
         case "diagnose":
             try:
                 territoire = geocode(args.adresse, settings=settings)

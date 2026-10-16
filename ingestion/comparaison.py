@@ -2,7 +2,8 @@
 
 Le tableau ne garde que les indicateurs **qui dépendent de l'adresse** : territoire,
 pression industrielle, tension régionale, contraintes et postes RTE, zone
-prioritaire la plus proche, risques à l'adresse. Le reste — niveau de tension
+prioritaire la plus proche, carbone du réseau (continent, Corse ou outre-mer), risques à
+l'adresse. Le reste — niveau de tension
 selon la puissance, prix de la tranche, coût du profil type — est le même
 partout (péréquation) : il est donné une fois, sous le tableau.
 
@@ -26,6 +27,7 @@ from ingestion.diagnostic import (
     _gwh,
     _liste_risques,
     _nombre,
+    _nombre_court,
     diagnostic_en_dict,
     sections,
 )
@@ -132,6 +134,16 @@ def _risques(d: Diagnostic, famille: str) -> str:
     return _liste_risques(d.risques.selon(Exposition.EXPOSE, famille)) or "aucun recensé"
 
 
+def _carbone(d: Diagnostic) -> str:
+    if d.carbone is None:
+        return "n.d."
+    c = d.carbone
+    verdict = "oui" if c.est_decarbone else "non"
+    return (
+        f"{verdict}, {_nombre_court(c.intensite_acv_g_co2e_kwh)} gCO₂e/kWh ({c.systeme_electrique})"
+    )
+
+
 def _non_evalues(d: Diagnostic) -> str:
     if d.risques is None or d.risques.maille == "commune":
         return "—"
@@ -156,6 +168,7 @@ def lignes(diagnostics: list[Diagnostic]) -> list[Ligne]:
         ligne("Postes RTE du département", _postes, "postes_rte"),
         ligne("Zone prioritaire RTE", _zone, "zones_raccordement_rte"),
         ligne("Site clé en main (France 2030)", _site, "sites_cles_en_main"),
+        ligne("Électricité décarbonée", _carbone, "carbone_territoire"),
     ]
     if any(d.risques is not None or d.risques_erreur is not None for d in diagnostics):
         resultat += [
@@ -180,7 +193,12 @@ def communs(diagnostics: list[Diagnostic]) -> list[str]:
     for bloc in blocs:
         if bloc.titre.startswith(("4.", "5.")):
             resultat.append(bloc.titre[3:])
-            resultat += [f"  {c}" for nature, c in bloc.elements if nature == "texte"]
+            # Le verdict carbone dépend du territoire : il est dans le tableau.
+            resultat += [
+                f"  {c}"
+                for nature, c in bloc.elements
+                if nature == "texte" and not c.startswith("Électricité du réseau")
+            ]
     if any(d.est_zni for d in diagnostics):
         resultat.append(
             "La Corse et l'outre-mer ont leurs propres barèmes réglementés : les prix ci-dessus"

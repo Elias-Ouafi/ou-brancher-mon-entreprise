@@ -256,6 +256,8 @@ def contraintes_regionales() -> list[dict[str, Any]]:
 PRIX_IB_DEPART = 0.10
 PRIX_IB_PAS = 0.005
 TAXES_IB = 0.02
+#: Tranche IA (moins de 20 MWh par an), prix constant sur 2 ans.
+PRIX_IA = 0.25
 
 
 def _serie_avec_crise(debut_crise: int) -> list[float]:
@@ -284,8 +286,11 @@ def semestres(premier: int, dernier: int) -> list[str]:
 
 
 def prix_entreprises() -> list[dict[str, Any]]:
-    """IB sur 10 ans, IG sur 2 ans : trop peu pour des scénarios. ID et IE sur 20 ans."""
+    """IB sur 10 ans, IA et IG sur 2 ans : trop peu pour des scénarios. ID et IE sur 20 ans.
+
+    IA est la tranche affichée sans `--conso`."""
     series = {
+        "MWH_LT20": [(semestre, PRIX_IA, 0.03) for semestre in semestres(2024, 2025)],
         "MWH20-499": [
             (semestre, PRIX_IB_DEPART + PRIX_IB_PAS * i, TAXES_IB)
             for i, semestre in enumerate(semestres(2016, 2025))

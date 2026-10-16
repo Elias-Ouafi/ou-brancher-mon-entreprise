@@ -13,6 +13,7 @@
 | Postes RTE du département | 91 (HTB1 64, HTB2 19, HTB3 3) | 103 (HTB1 54, HTB2 45, HTB3 3) | 55 (HTB1 49, HTB2 3, HTB3 3) |
 | Zone prioritaire RTE | Vallée de la chimie (P2), à 7 km ; capacité 2029, si les projets se concrétisent | Valenciennes (P2), à 44 km ; capacité 2030, si les projets se concrétisent | Loire-Estuaire (P2), à 202 km ; capacité 2030, si les projets se concrétisent |
 | Site clé en main (France 2030) | Salaise-sur-Sanne, à 47 km ; prêt en 2026 - 2027 | Noyelles-Godault, à 24 km ; prêt en 2027 - 2030 | Alloinay, à 56 km ; prêt en 2024 |
+| Électricité décarbonée | oui, 51,9 gCO₂e/kWh (France continentale) | oui, 51,9 gCO₂e/kWh (France continentale) | oui, 51,9 gCO₂e/kWh (France continentale) |
 | Risques naturels | Inondation, Remontée de nappe, Séisme (faible), Retrait-gonflement des argiles (modéré), Radon (faible) | Remontée de nappe, Séisme (faible), Retrait-gonflement des argiles (modéré), Radon (faible) | Inondation, Séisme (modéré), Mouvements de terrain, Retrait-gonflement des argiles (modéré), Radon (faible) |
 | Risques technologiques | Pollution des sols | Pollution des sols | Pollution des sols |
 | Non évalués à l'adresse | Rupture de barrage | Inondation, Mouvements de terrain | Remontée de nappe |
@@ -26,7 +27,7 @@
 - Repères depuis S2 2007 : moyenne sur 5 ans 0,1122 €/kWh, plus bas 0,0553 (S2 2007), plus haut 0,1676 (S1 2023)
 - Prix moyen des 3 prochaines années, d'après l'historique de la tranche et les erreurs passées de la méthode : de 0,0762 à 0,1413 €/kWh, 0,0961 au centre → facture de 4 570 000 € à 8 480 000 € par an (5 760 000 € au centre)
 - Contrôle sur le passé : appliquée à chaque semestre de S2 2019 à S1 2023, la méthode a encadré le prix moyen réel des 3 années suivantes 1 fois sur 8 (12 %, contre 80 % pour une méthode bien calibrée) ; il a dépassé le scénario haut 6 fois et est passé sous le scénario bas 1 fois. Ces périodes de 3 ans se chevauchent : ce ne sont pas des essais indépendants. Leurs écarts font désormais partie des erreurs qui calibrent la fourchette affichée.
-- Coût horaire d'un profil type (identique sur tout le territoire)
+- Carbone du réseau et coût horaire d'un profil type
 - Bureau tertiaire, 36 kVA, septembre 2026, option Heures Creuses du tarif bleu non résidentiel
 - 9 600 kWh, dont 15 % en heures creuses : 1 586 € HTVA, soit 0,1652 €/kWh ; 22 gCO₂/kWh en moyenne
 - Décaler 528 kWh flexibles vers les heures creuses : 22 € économisés, mais 1,4 kgCO₂ émis en plus : les heures creuses de nuit sont plus carbonées que la mi-journée solaire
@@ -39,6 +40,7 @@
 - Repère de densité du réseau de transport, pas une capacité de raccordement : un poste proche peut être saturé. Les postes ne sont pas géolocalisés en open data, et environ 3 % d'entre eux n'ont pas de département publié.
 - Zones et années cibles du schéma décennal de RTE, sous réserve des autorisations administratives et, pour les zones P2, de la concrétisation des projets industriels ; les zones P3 sont de simples exemples, sans date. Distance à vol d'oiseau jusqu'à la commune de référence de la zone, pas jusqu'au poste. Être proche d'une zone ne donne aucun droit d'accès au réseau : la capacité est attribuée selon les procédures de RTE. Concerne surtout les raccordements au réseau de transport (au-delà de quelques dizaines de MW).
 - Distance à vol d'oiseau jusqu'au point de la commune, pas jusqu'au site lui-même. La période de maturité est celle annoncée pour un site prêt à accueillir une activité ; elle ne garantit ni la disponibilité du foncier à la date voulue, ni la puissance électrique raccordable, à confirmer auprès de l'aménageur et du gestionnaire de réseau.
+- Intensité moyenne du réseau sur l'année, en cycle de vie (méthode location-based) : elle ne dit rien du contrat de fourniture ni des garanties d'origine achetées (méthode market-based), ni des heures de consommation, l'intensité variant fortement d'une heure à l'autre. Toutes les adresses du continent partagent la même valeur : le réseau y est interconnecté. Le seuil de 100 gCO2e/kWh est celui de la taxonomie européenne pour la production d'électricité ; « décarbonée » qualifie le réseau, pas l'entreprise, et ne permet pas à elle seule une allégation environnementale.
 - Croisement de la position géocodée avec les zonages réglementaires et les cartographies d'aléas disponibles : le résultat dépend de la précision du géocodage et de la couverture des cartes, et un risque « non évalué » à l'adresse n'est pas un risque absent. Ce n'est ni l'état des risques réglementaire, obligatoire pour une vente ou une location, ni une étude de sol ou de vulnérabilité du site.
 - Indicatif : 1 kVA est assimilé à 1 kW. Le domaine de tension réel est fixé par le gestionnaire lors de l'étude de raccordement.
 - La capacité de raccordement disponible pour la consommation n'est pas publiée en open data (Caparéseau ne couvre que l'injection). Seule une étude de raccordement RTE ou Enedis fait foi.
