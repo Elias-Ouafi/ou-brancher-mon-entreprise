@@ -1,11 +1,4 @@
-{#-
-    Consolidé/définitif nettoyé : une ligne par demi-heure mesurée.
-
-    Le dataset publie une ligne par quart d'heure, mais seules celles de :00 et
-    :30 portent des mesures — les autres sont vides. Les garder ferait croire à
-    un pas de 15 min et fausserait toute somme d'énergie : le pas réel est de
-    30 min, et il est porté explicitement par `pas_minutes`.
--#}
+-- Consolidé/définitif nettoyé : une ligne par demi-heure mesurée
 select
     date_heure,
     {{ qualite_depuis_nature('nature') }} as qualite,

@@ -1,9 +1,4 @@
-{#-
-    Postes électriques RTE par département et par domaine de tension : un repère
-    de la densité du réseau de transport autour du site, pas une capacité de
-    raccordement. Postes en exploitation seulement ; ceux qui n'ont qu'un accord
-    administratif sont comptés à part (`nb_postes_en_projet`).
--#}
+-- Postes électriques RTE par département et par domaine de tension
 select
     departement.code_departement,
     count(postes.code_poste) filter (where postes.est_en_exploitation) as nb_postes,

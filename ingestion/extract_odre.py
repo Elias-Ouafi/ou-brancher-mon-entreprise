@@ -1,20 +1,3 @@
-"""Client de l'API Explore v2.1 d'Opendatasoft, pour le dataset éCO2mix d'ODRÉ.
-
-Points de conception :
-
-* **Deux endpoints, une seule méthode.** `fetch_window()` choisit entre
-  `/records` (paginé, plafonné par l'API) et `/exports/csv` (un seul appel, pas
-  de plafond) selon le volume estimé de la fenêtre. L'appelant n'a pas à savoir
-  lequel est utilisé.
-* **Quota.** L'API ODRÉ est limitée à 50 000 appels par dataset et par mois.
-  Chaque requête HTTP réellement émise — y compris les tentatives de retry —
-  incrémente `client.calls`. Le quota restant annoncé par l'API dans ses
-  en-têtes `X-RateLimit-dataset-*` est relevé au passage : les deux chiffres
-  sont journalisés en fin de run.
-* **Robustesse.** Timeout explicite, retry exponentiel sur les erreurs réseau et
-  les statuts transitoires (429, 5xx). Une 4xx définitive n'est jamais rejouée.
-"""
-
 from __future__ import annotations
 
 import csv
@@ -32,18 +15,16 @@ from ingestion.config import Settings, get_settings
 
 logger = logging.getLogger(__name__)
 
-#: Le dataset national temps réel est publié au pas 15 minutes : 4 lignes/heure.
-#: Sert uniquement à estimer le volume d'une fenêtre pour choisir l'endpoint ;
-#: une valeur trop haute est sans danger (on bascule sur l'export plus tôt).
+# Le dataset national temps réel est publié au pas 15 minutes : 4 lignes/heure
 EXPECTED_ROWS_PER_HOUR = 4
 
-#: Taille de page maximale de `/records` en API v2.1.
+# Taille de page maximale de `/records` en API v2.1
 RECORDS_PAGE_SIZE = 100
 
-#: `offset` maximal accepté par `/records` (limit + offset <= 10 000).
+# `offset` maximal accepté par `/records` (limit + offset <= 10 000)
 RECORDS_MAX_OFFSET = 10_000 - RECORDS_PAGE_SIZE
 
-#: Statuts HTTP considérés comme transitoires, donc rejouables.
+# Statuts HTTP considérés comme transitoires, donc rejouables
 RETRYABLE_STATUS_CODES = frozenset({408, 425, 429, 500, 502, 503, 504})
 
 USER_AGENT = (
@@ -51,30 +32,25 @@ USER_AGENT = (
 )
 
 
+# Erreur non récupérable pendant l'extraction
 class ExtractionError(RuntimeError):
-    """Erreur non récupérable pendant l'extraction."""
+    pass
 
 
+# La fenêtre demandée dépasse la profondeur de pagination de `/records`
 class PaginationLimitExceededError(ExtractionError):
-    """La fenêtre demandée dépasse la profondeur de pagination de `/records`."""
+    pass
 
 
+# Statut HTTP transitoire : la requête peut être rejouée
 class RetryableStatusError(ExtractionError):
-    """Statut HTTP transitoire : la requête peut être rejouée."""
-
     def __init__(self, status_code: int) -> None:
         super().__init__(f"statut HTTP transitoire {status_code}")
         self.status_code = status_code
 
 
+# Compteur d'appels HTTP, pour suivre la consommation du quota mensuel
 class ApiCallCounter:
-    """Compteur d'appels HTTP, pour suivre la consommation du quota mensuel.
-
-    Deux sources : nos propres appels (`count`, retries compris) et le compteur
-    d'ODRÉ lui-même, renvoyé en en-tête de chaque réponse. Le second est
-    l'autorité — il agrège tous les clients derrière la même adresse.
-    """
-
     REMAINING_HEADER = "X-RateLimit-dataset-Remaining"
     LIMIT_HEADER = "X-RateLimit-dataset-Limit"
     RESET_HEADER = "X-RateLimit-dataset-Reset"
@@ -89,8 +65,8 @@ class ApiCallCounter:
         self.count += 1
         return self.count
 
+    # Mémorise le quota restant annoncé par l'API, si l'en-tête est présent
     def record_quota(self, headers: Mapping[str, str]) -> None:
-        """Mémorise le quota restant annoncé par l'API, si l'en-tête est présent."""
         self.quota_remaining = _optional_int(headers.get(self.REMAINING_HEADER))
         self.quota_limit = _optional_int(headers.get(self.LIMIT_HEADER))
         self.quota_reset = headers.get(self.RESET_HEADER) or None
@@ -102,22 +78,21 @@ class ApiCallCounter:
         return f"ApiCallCounter(count={self.count}, quota_remaining={self.quota_remaining})"
 
 
+# Retire les paramètres à `None` : un `where` ou un `order_by` vide ferait une 400
 def _compact(params: dict[str, Any]) -> dict[str, Any]:
-    """Retire les paramètres à `None` : un `where` ou un `order_by` vide ferait une 400."""
     return {k: v for k, v in params.items() if v is not None}
 
 
 def _optional_int(value: str | None) -> int | None:
     try:
         return None if value is None else int(value)
-    except ValueError:  # en-tête présent mais illisible : on ne casse pas le run
+    except ValueError:
         return None
 
 
+# Fenêtre temporelle `[start, end)` exprimée en UTC
 @dataclass(frozen=True, slots=True)
 class ExtractionWindow:
-    """Fenêtre temporelle `[start, end)` exprimée en UTC."""
-
     start: datetime
     end: datetime
 
@@ -127,9 +102,9 @@ class ExtractionWindow:
         if self.start >= self.end:
             raise ValueError(f"fenêtre vide ou inversée : {self.start} -> {self.end}")
 
+    # Fenêtre glissante des `hours` dernières heures, bornée à maintenant
     @classmethod
     def last_hours(cls, hours: int, *, now: datetime | None = None) -> ExtractionWindow:
-        """Fenêtre glissante des `hours` dernières heures, bornée à maintenant."""
         end = (now or datetime.now(UTC)).astimezone(UTC)
         return cls(start=end - timedelta(hours=hours), end=end)
 
@@ -137,12 +112,12 @@ class ExtractionWindow:
     def duration_hours(self) -> float:
         return (self.end - self.start).total_seconds() / 3600
 
+    # Majorant du nombre de lignes attendues, utilisé pour choisir l'endpoint
     def estimated_rows(self, rows_per_hour: int = EXPECTED_ROWS_PER_HOUR) -> int:
-        """Majorant du nombre de lignes attendues, utilisé pour choisir l'endpoint."""
         return int(self.duration_hours * rows_per_hour) + 1
 
+    # Traduit la fenêtre en filtre ODSQL (`where=`), bornes en UTC explicites
     def to_odsql(self, column: str = "date_heure") -> str:
-        """Traduit la fenêtre en filtre ODSQL (`where=`), bornes en UTC explicites."""
         start = self.start.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         end = self.end.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         return f"{column} >= date'{start}' AND {column} < date'{end}'"
@@ -151,9 +126,8 @@ class ExtractionWindow:
         return f"[{self.start.isoformat()} -> {self.end.isoformat()})"
 
 
+# Client HTTP du dataset éCO2mix, utilisable comme context manager
 class OdreClient:
-    """Client HTTP du dataset éCO2mix, utilisable comme context manager."""
-
     def __init__(
         self,
         settings: Settings | None = None,
@@ -162,7 +136,7 @@ class OdreClient:
         client: httpx.Client | None = None,
     ) -> None:
         self.settings = settings or get_settings()
-        #: Un client cible un dataset ; par defaut celui du temps reel.
+        # Un client cible un dataset ; par defaut celui du temps reel
         self.dataset_id = dataset_id or self.settings.dataset_id
         self.calls = ApiCallCounter()
         self._owns_client = client is None
@@ -182,10 +156,8 @@ class OdreClient:
             reraise=True,
         )
 
-    # -- Cycle de vie -------------------------------------------------------
-
+    # Ferme le client HTTP et journalise la consommation du quota
     def close(self) -> None:
-        """Ferme le client HTTP et journalise la consommation du quota."""
         logger.info(
             "odre_api_calls=%d dataset=%s quota_remaining=%s/%s quota_reset=%s",
             self.calls.count,
@@ -203,20 +175,13 @@ class OdreClient:
     def __exit__(self, *exc_info: object) -> None:
         self.close()
 
-    # -- Extraction ---------------------------------------------------------
-
+    # Extrait l'intégralité du dataset en un seul appel
     def fetch_all(self, *, order_by: str | None = None) -> list[dict[str, Any]]:
-        """Extrait l'intégralité du dataset en un seul appel.
-
-        Pour les datasets sans dimension temporelle (contraintes régionales,
-        consommation annuelle par IRIS), filtrer sur une fenêtre n'a pas de sens :
-        on passe directement par l'export, qui n'a pas de plafond de pagination.
-        """
         logger.info("extraction integrale de %s : /exports/csv", self.dataset_id)
         return self.fetch_export_csv(None, order_by=order_by)
 
+    # Récupère tous les enregistrements de la fenêtre, endpoint choisi automatiquement
     def fetch_window(self, window: ExtractionWindow) -> list[dict[str, Any]]:
-        """Récupère tous les enregistrements de la fenêtre, endpoint choisi automatiquement."""
         estimated = window.estimated_rows()
         if estimated > self.settings.records_row_threshold:
             logger.info("fenetre %s (~%d lignes) : bascule sur /exports/csv", window, estimated)
@@ -224,17 +189,13 @@ class OdreClient:
         logger.info("fenetre %s (~%d lignes) : /records", window, estimated)
         return self.fetch_records(window)
 
+    # Pagine `/records` jusqu'à épuisement de la fenêtre
     def fetch_records(
         self,
         window: ExtractionWindow | None,
         *,
         order_by: str | None = "date_heure",
     ) -> list[dict[str, Any]]:
-        """Pagine `/records` jusqu'à épuisement de la fenêtre.
-
-        Lève `PaginationLimitExceededError` si la fenêtre dépasse la profondeur
-        maximale de l'endpoint : c'est le signal qu'il faut passer par l'export.
-        """
         path = f"catalog/datasets/{self.dataset_id}/records"
         records: list[dict[str, Any]] = []
         offset = 0
@@ -265,17 +226,13 @@ class OdreClient:
                     f"(offset max {RECORDS_MAX_OFFSET}) : utiliser /exports/csv"
                 )
 
+    # Récupère la fenêtre en un seul appel via `/exports/csv`
     def fetch_export_csv(
         self,
         window: ExtractionWindow | None,
         *,
         order_by: str | None = "date_heure",
     ) -> list[dict[str, Any]]:
-        """Récupère la fenêtre en un seul appel via `/exports/csv`.
-
-        Les valeurs sont des chaînes (les vides valent `null`) ; `transform`
-        se charge du typage.
-        """
         path = f"catalog/datasets/{self.dataset_id}/exports/csv"
         response = self._get(
             path,
@@ -289,17 +246,13 @@ class OdreClient:
                 }
             ),
         )
-        # ODRÉ préfixe ses exports CSV d'un BOM UTF-8 : décodé en `utf-8` simple,
-        # il se collerait au nom de la première colonne (`﻿region`), qui
-        # deviendrait introuvable. `utf-8-sig` le retire.
+        # ODRÉ préfixe ses exports CSV d'un BOM UTF-8 : décodé en `utf-8` simple
         text = response.content.decode("utf-8-sig")
         reader = csv.DictReader(io.StringIO(text), delimiter=";")
         return [dict(row) for row in reader]
 
-    # -- Couche HTTP --------------------------------------------------------
-
+    # GET avec comptage d'appels et retry exponentiel sur erreurs transitoires
     def _get(self, path: str, params: dict[str, Any]) -> httpx.Response:
-        """GET avec comptage d'appels et retry exponentiel sur erreurs transitoires."""
 
         def _send() -> httpx.Response:
             self.calls.increment()

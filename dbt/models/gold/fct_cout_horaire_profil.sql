@@ -1,19 +1,4 @@
-{#-
-    Coût et carbone d'un profil de consommation type, heure par heure.
-
-    * **Profil** : puissance appelée par plage horaire, jours ouvrés et
-      week-end (seed `profils_consommation`). Une heure dure une heure, donc
-      l'énergie de l'heure en kWh vaut la puissance en kW ; un jour de 25 h
-      compte bien 25 heures. Les jours fériés sont traités comme des jours ouvrés.
-    * **Prix** : option Heures Creuses du tarif bleu non résidentiel 36 kVA
-      (seed `tarifs_hphc`), en € HTVA = prix HT + accise. Une entreprise récupère
-      la TVA : c'est son coût réel. Hors grille, le prix reste nul.
-    * **Heures creuses de 22 h à 6 h**, la plage la plus répandue : en réalité
-      fixée localement par le gestionnaire de réseau (voir `limites_methodologiques`).
-    * **Carbone** : intensité nationale de l'heure (`fct_creneau_horaire`). Il
-      n'existe pas d'intensité régionale opposable, et le prix est identique en
-      tout point du territoire (péréquation) : ce coût ne dépend pas de l'adresse.
--#}
+-- Coût et carbone d'un profil de consommation type, heure par heure
 with creneaux as (
     select
         heure_utc,

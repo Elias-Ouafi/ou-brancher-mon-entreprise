@@ -1,16 +1,3 @@
-"""Rafraîchissement complet des données du diagnostic, en une commande.
-
-Enchaîne les extractions (éCO2mix consolidé puis temps réel, jeux territoriaux, prix
-Eurostat), puis `dbt build`. C'est l'exploitation du MVP : lancée à la main, en local, sans
-planification.
-
-Une source en échec n'arrête pas les autres : son ancienne version reste en bronze, et
-dbt reconstruit silver et gold avec ce qui est disponible. Le code de sortie signale
-l'échec.
-
-Le calendrier Tempo n'en fait pas partie : il exige un compte RTE (commande `tempo`).
-"""
-
 from __future__ import annotations
 
 import logging
@@ -38,7 +25,7 @@ DBT_DIR = Path(__file__).resolve().parents[1] / "dbt"
 @dataclass(frozen=True, slots=True)
 class Etape:
     nom: str
-    #: Message d'erreur, `None` si l'étape a réussi.
+    # Message d'erreur, `None` si l'étape a réussi
     erreur: str | None = None
 
     @property
@@ -46,8 +33,8 @@ class Etape:
         return self.erreur is None
 
 
+# `dbt build` sur le warehouse configuré ; lève une erreur si un nœud échoue
 def dbt_build(settings: Settings) -> None:
-    """`dbt build` sur le warehouse configuré ; lève une erreur si un nœud échoue."""
     dbt = shutil.which("dbt", path=str(Path(sys.executable).parent)) or shutil.which("dbt")
     if dbt is None:
         raise RuntimeError("dbt introuvable (uv sync --group dbt)")
@@ -63,14 +50,10 @@ def dbt_build(settings: Settings) -> None:
         raise RuntimeError(f"dbt build en echec : {derniere_ligne}")
 
 
+# Toutes les extractions, puis dbt ; une étape en échec n'arrête pas les suivantes
 def run_refresh(
     *, settings: Settings | None = None, months: int | None = None, run_id: str = "refresh"
 ) -> list[Etape]:
-    """Toutes les extractions, puis dbt ; une étape en échec n'arrête pas les suivantes.
-
-    `months` : profondeur relue dans l'éCO2mix consolidé (180 pour un premier chargement,
-    depuis 2012 ; par défaut, la fenêtre de consolidation des réglages).
-    """
     settings = settings or get_settings()
     etapes: list[tuple[str, Callable[[], object]]] = [
         (
@@ -100,7 +83,7 @@ def run_refresh(
     for nom, executer in etapes:
         try:
             executer()
-        except Exception as error:  # une source en panne n'arrête pas les autres
+        except Exception as error:
             logger.error("refresh %s en echec : %s", nom, error)
             bilan.append(Etape(nom, str(error) or type(error).__name__))
         else:

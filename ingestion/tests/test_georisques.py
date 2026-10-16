@@ -1,10 +1,3 @@
-"""Risques à l'adresse (Géorisques) : lecture des rapports, client, repli et bloc 6.
-
-Les jeux de test sont de vraies réponses de Géorisques, enregistrées le
-15 octobre 2026 : rapport à l'adresse pour Lyon 2e et Ajaccio, risques
-communaux (GASPAR) pour Ajaccio. Aucun appel réseau réel.
-"""
-
 from __future__ import annotations
 
 import json
@@ -46,9 +39,6 @@ def libelles(risques: list[Any]) -> list[str]:
 @pytest.fixture
 def reglages(settings: Settings) -> Settings:
     return settings.model_copy(update={"georisques_base_url": GEORISQUES_URL})
-
-
-# --- Lecture des statuts et des rapports ------------------------------------------------
 
 
 @pytest.mark.parametrize(
@@ -96,8 +86,8 @@ def test_lyon_report_separates_address_from_commune() -> None:
     assert seisme.niveau == "faible"
 
 
+# Ajaccio : risque côtier existant dans la commune, « non connu » à l'adresse
 def test_risk_unknown_at_the_address_is_not_reported_absent() -> None:
-    """Ajaccio : risque côtier existant dans la commune, « non connu » à l'adresse."""
     rapport = lire_rapport(fixture("georisques_rapport_ajaccio.json"))
     cotier = next(r for r in rapport.risques if r.code == "risqueCotier")
     assert cotier.exposition is Exposition.INCONNU
@@ -113,7 +103,7 @@ def test_report_without_its_blocks_is_rejected() -> None:
 
 def test_commune_fallback_keeps_the_most_specific_subtypes() -> None:
     risques = lire_gaspar(fixture("georisques_gaspar_ajaccio.json"), {"2A004"})
-    # 17 « Phénomène lié à l'atmosphère » s'efface devant son sous-type 172.
+    # 17 « Phénomène lié à l'atmosphère » s'efface devant son sous-type 172
     assert [(r.code, r.famille) for r in risques] == [
         ("gaspar_16", "naturel"),
         ("gaspar_172", "naturel"),
@@ -150,9 +140,6 @@ def test_seismic_zone_is_read(zone: str, libelle: str, intensite: str) -> None:
     assert lire_zonage({"data": []}) is None
 
 
-# --- Client : nouvelles tentatives et repli ------------------------------------------------
-
-
 def test_report_is_asked_at_the_exact_point(httpx_mock: HTTPXMock, reglages: Settings) -> None:
     httpx_mock.add_response(json=fixture("georisques_rapport_lyon.json"))
 
@@ -163,12 +150,12 @@ def test_report_is_asked_at_the_exact_point(httpx_mock: HTTPXMock, reglages: Set
     assert rapport.maille == "adresse"
     requete = httpx_mock.get_requests()[0]
     assert requete.url.path == "/api/v1/resultats_rapport_risque"
-    assert requete.url.params["latlon"] == "4.835685,45.763721"  # longitude d'abord
+    assert requete.url.params["latlon"] == "4.835685,45.763721"
     assert requete.headers["User-Agent"].startswith("ou-brancher-mon-entreprise")
 
 
+# Constaté en réel : plusieurs connexions coupées avant une réponse
 def test_dropped_connections_are_retried(httpx_mock: HTTPXMock, reglages: Settings) -> None:
-    """Constaté en réel : plusieurs connexions coupées avant une réponse."""
     for _ in range(2):
         httpx_mock.add_exception(httpx.RemoteProtocolError("Server disconnected"))
     httpx_mock.add_response(json=fixture("georisques_rapport_lyon.json"))
@@ -209,8 +196,6 @@ def test_nothing_reachable_raises(httpx_mock: HTTPXMock, reglages: Settings) -> 
     with pytest.raises(GeorisquesError, match="gaspar/risques"):
         lire_risques(latitude=41.9, longitude=8.7, codes_commune=set(), settings=reglages)
 
-
-# --- Bloc 6 du diagnostic ----------------------------------------------------------------
 
 dbt_requis = pytest.mark.skipif(DBT_BIN is None, reason="dbt non installé (uv sync --group dbt)")
 

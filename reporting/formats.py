@@ -1,5 +1,3 @@
-"""Mise en forme française des valeurs du rapport, commune au PDF et au Markdown."""
-
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
@@ -12,7 +10,7 @@ MOIS = [
 ]  # fmt: skip
 JOURS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
 
-#: Espace insécable : « 13 h » ne doit jamais être coupé en fin de ligne.
+# Espace insécable : « 13 h » ne doit jamais être coupé en fin de ligne
 NBSP = chr(0xA0)
 
 
@@ -49,7 +47,7 @@ def plage(debut: datetime, fin: datetime) -> str:
     if debut.date() == fin.date():
         return f"{jour(debut.date())}, {heure(debut)}–{heure(fin)}"
     if fin.hour == 0 and fin.date() - debut.date() == timedelta(days=1):
-        # Se termine à minuit : on reste sur le jour de début.
+        # Se termine à minuit : on reste sur le jour de début
         return f"{jour(debut.date())}, {heure(debut)}–{heure(24)}"
     return f"{jour(debut.date())} {heure(debut)} → {jour(fin.date())} {heure(fin)}"
 

@@ -1,16 +1,4 @@
-{#-
-    Une ligne par heure : intensité carbone, couleur Tempo, période tarifaire et prix.
-
-    C'est la table qui répond à « quand consommer ? » pour un particulier :
-
-    * **Heure en UTC comme clé.** Tronquer l'heure locale dupliquerait 2 h–3 h le
-      jour du retour à l'heure d'hiver ; l'heure de Paris est un attribut.
-    * **Jour Tempo décalé de 6 h.** La couleur du jour J vaut de J 6 h à J+1 6 h :
-      les heures creuses de 0 h à 6 h prennent la couleur de la veille.
-    * **Heures creuses Tempo fixes**, de 22 h à 6 h, quel que soit le compteur.
-    * **Prix nul si inconnu.** Hors grille tarifaire (`tarifs_tempo`) ou sans
-      couleur publiée, le prix reste nul : le rapport le signale au lieu de deviner.
--#}
+-- Une ligne par heure : intensité carbone, couleur Tempo, période tarifaire et prix
 with mesures as (
     select
         date_trunc('hour', date_heure) as heure_utc,
@@ -29,7 +17,7 @@ heures as (
         count(*) as nb_mesures,
         sum(pas_minutes) as minutes_couvertes,
         avg(consommation_mw) as consommation_mw,
-        -- Intensité de l'heure pondérée par la production de chaque mesure.
+        -- Intensité de l'heure pondérée par la production de chaque mesure
         sum(taux_co2_g_kwh * production_totale_mw)
             / nullif(sum(production_totale_mw) filter (where taux_co2_g_kwh is not null), 0)
             as taux_co2_g_kwh,

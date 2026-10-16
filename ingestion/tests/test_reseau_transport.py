@@ -1,9 +1,3 @@
-"""Réseau de transport autour du site : postes RTE et contraintes prospectives.
-
-Données synthétiques décrites dans `medallion.py` : postes repérés par le nom de
-leur département, contraintes localisées par leurs postes. Aucun appel réseau.
-"""
-
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -30,15 +24,12 @@ def _lignes(medallion_db: Path, sql: str) -> list[tuple[Any, ...]]:
         return connection.execute(sql).fetchall()
 
 
-# --- Bronze : clé à postes optionnels ---------------------------------------------------
-
-
 def test_missing_optional_key_columns_become_empty_strings() -> None:
     table = records_to_table(
         contraintes_ouvrages(), spec=CONTRAINTES_OUVRAGES, ingested_at=MAINTENANT
     )
     lignes = table.select(["ouvrage", "poste_2", "poste_3"]).to_pylist()
-    assert len(lignes) == 4  # aucune contrainte écartée faute de deuxième poste
+    assert len(lignes) == 4
     assert {"ouvrage": "ORPHELINE", "poste_2": "", "poste_3": ""} in lignes
 
 
@@ -48,8 +39,8 @@ def test_record_without_its_required_key_is_still_dropped() -> None:
     assert table.num_rows == 0
 
 
+# `'' = ''` est vrai, `NULL = NULL` ne l'est pas : la chaîne vide rend le MERGE stable
 def test_reloading_constraints_is_idempotent(tmp_path: Path) -> None:
-    """`'' = ''` est vrai, `NULL = NULL` ne l'est pas : la chaîne vide rend le MERGE stable."""
     table = records_to_table(
         contraintes_ouvrages(), spec=CONTRAINTES_OUVRAGES, ingested_at=MAINTENANT
     )
@@ -67,9 +58,6 @@ def test_reloading_constraints_is_idempotent(tmp_path: Path) -> None:
         )
 
 
-# --- Silver et gold -----------------------------------------------------------------------
-
-
 @dbt_requis
 def test_substations_get_their_department_code_from_its_name(medallion_db: Path) -> None:
     postes = dict(
@@ -81,9 +69,9 @@ def test_substations_get_their_department_code_from_its_name(medallion_db: Path)
     )
     assert postes["LYON1"] == ("69", "HTB1")
     assert postes["LYON2"] == ("69", "HTB2")
-    assert postes["LYON3"] == ("69", "HTB3")  # « RHONE » sans accent retrouvé aussi
+    assert postes["LYON3"] == ("69", "HTB3")
     assert postes["BOURG"] == ("01", "HTB1")
-    assert postes["PIQUA"] == (None, None)  # pas de département publié, tension < 45 kV
+    assert postes["PIQUA"] == (None, None)
 
 
 @dbt_requis
@@ -111,11 +99,11 @@ def test_constraints_are_attached_to_every_department_of_their_substations(
         " ORDER BY code_departement, ouvrage, poste_3 NULLS FIRST",
     )
     assert rattachements == [
-        ("01", "BOURGLYON1", None),  # liaison Ain-Rhône, comptée dans les deux
+        ("01", "BOURGLYON1", None),
         ("69", "BOURGLYON1", None),
         ("69", "LYON2LYON3", None),
         ("69", "LYON2LYON3", "LYON1"),
-    ]  # ORPHELINE : postes inconnus, rattachée à aucun département
+    ]
 
 
 @dbt_requis
@@ -127,9 +115,6 @@ def test_substations_are_counted_by_voltage_domain(medallion_db: Path) -> None:
         " WHERE code_departement IN ('01', '69', '2A') ORDER BY code_departement",
     )
     assert lignes == [("01", 1, 1, 0, 0, 0), ("2A", 0, 0, 0, 0, 0), ("69", 3, 1, 1, 1, 1)]
-
-
-# --- Diagnostic ---------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(

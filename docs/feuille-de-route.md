@@ -45,6 +45,8 @@ le calendrier Tempo n'a tourné que sur des réponses simulées (pas de compte R
 | 16 oct. | Verdict sur le facteur ADEME en cycle de vie, au seuil de 100 gCO₂e/kWh de la taxonomie européenne ; le `taux_co2` RTE (émissions directes) reste un complément |
 | 16 oct. | Sans `--conso`, tranche IA ; interface en ligne de commande |
 | 16 oct. | Local et à la demande uniquement : aucune exécution planifiée ; Airflow supprimé |
+| 16 oct. | Ingestion en PySpark (typage, UTC, clés du lot) ; Spark calcule et Arrow écrit, sans `winutils` sous Windows ; silver et gold restent en dbt-duckdb |
+| 16 oct. | Commentaires réduits au strict nécessaire : une ligne au-dessus d'une fonction ou d'un bloc |
 
 ## Écarté
 
@@ -53,5 +55,5 @@ le calendrier Tempo n'a tourné que sur des réponses simulées (pas de compte R
 | Prix « à l'adresse » | Péréquation : identique partout |
 | Carbone régional en métropole | Un seul réseau continental, pas de facteur régional opposable |
 | Capacité de raccordement chiffrée, distance au poste RTE | Absentes de l'open data |
-| PySpark, BigQuery | Aucun gain à ce volume (500 000 lignes) ; `WarehouseLoader` prêt si besoin |
+| Spark pour silver, gold et la lecture | dbt-duckdb suffit à ce volume ; démarrer Spark ferait passer `essentiel` de 1,5 s à 6 s |
 | Site web, exécution planifiée | Hors périmètre : ligne de commande, en local |

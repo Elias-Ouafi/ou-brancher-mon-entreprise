@@ -1,34 +1,4 @@
-{#-
-    Éventail de prix à 1, 2 et 3 ans, calculé à **chaque** semestre de l'histoire
-    d'une tranche avec les seules données connues à ce moment-là. L'éventail est
-    **calibré sur les erreurs passées de la méthode**, pas sur les seules
-    variations de prix.
-
-    Pour un semestre d'origine `t` et un horizon `h` (en années), en deux temps :
-
-    1. **Scénario central brut** : le prix de référence de `t` (moyenne des
-       semestres `t - 1` et `t`, soit les 12 mois qui s'achèvent en `t`) multiplié
-       par la variation médiane `prix(s + 2h) / prix(s)` parmi celles dont
-       l'arrivée `s + 2h` est au plus `t`. Même saison au départ et à l'arrivée,
-       aucune information postérieure à `t`. Il faut au moins
-       `prix_nb_variations_min` variations (4 par défaut : une médiane est stable).
-    2. **Éventail** : à chaque origine passée `u` dont le résultat est connu en `t`
-       (`u + 2h <= t`), l'erreur de la méthode est `prix réalisé / central brut`.
-       Le 10e centile, la médiane et le 90e centile de ces erreurs, appliqués au
-       central brut de `t`, donnent les prix bas, central et haut. Il faut au moins
-       `prix_nb_erreurs_min` erreurs (10 par défaut).
-
-    Pourquoi : un éventail tiré des seules variations de prix n'encadrait le prix
-    réel que 3 à 9 fois sur 17 (contrôle du 15 octobre 2026). Calibré sur les
-    erreurs, il intègre ce que la méthode a déjà manqué, crise de 2022 comprise.
-
-    Le prix réalisé à l'horizon `h` est la moyenne des 12 mois qui s'achèvent
-    `2h` semestres après l'origine : la même définition que le prix de référence.
-
-    Une seule définition sert deux usages : les scénarios affichés
-    (`fct_prix_entreprise_scenarios`, origine = dernier semestre publié) et le
-    contrôle de la méthode sur le passé (`fct_prix_entreprise_backtest`).
--#}
+-- Éventail de prix à 1, 2 et 3 ans, calculé à chaque semestre de l'histoire d'une tranche
 with prix as (
     select tranche, semestre, rang_semestre, prix_htva_eur_kwh
     from {{ ref('prix_entreprises') }}
@@ -38,7 +8,7 @@ horizons as (
     select unnest([1, 2, 3]) as horizon_annees
 ),
 
--- Toutes les variations de la tranche, datées par leur semestre d'arrivée.
+-- Toutes les variations de la tranche, datées par leur semestre d'arrivée
 variations as (
     select
         depart.tranche,
@@ -52,8 +22,7 @@ variations as (
         and arrivee.rang_semestre = depart.rang_semestre + 2 * horizons.horizon_annees
 ),
 
--- Moyenne des 12 mois qui s'achèvent à chaque semestre ; `complet` si les deux
--- semestres sont publiés (exigé pour un prix réalisé, pas pour une référence).
+-- Moyenne des 12 mois qui s'achèvent à chaque semestre
 annuel as (
     select
         fin.tranche,
@@ -67,7 +36,7 @@ annuel as (
     group by fin.tranche, fin.rang_semestre
 ),
 
--- 1. Central brut à chaque origine, avec les seules variations déjà observables.
+-- Central brut à chaque origine, avec les seules variations déjà observables
 centraux as (
     select
         origine.tranche,
@@ -102,7 +71,7 @@ centraux_dates as (
         and realise.complet
 ),
 
--- 2. Erreurs passées de la méthode, connues à chaque origine.
+-- Erreurs passées de la méthode, connues à chaque origine
 erreurs as (
     select
         origine.tranche,
@@ -125,7 +94,7 @@ erreurs as (
     group by origine.tranche, origine.rang_origine, origine.horizon_annees
 ),
 
--- Éventail publié seulement s'il repose sur assez d'erreurs passées.
+-- Éventail publié seulement s'il repose sur assez d'erreurs passées
 publiables as (
     select
         centraux_dates.*,

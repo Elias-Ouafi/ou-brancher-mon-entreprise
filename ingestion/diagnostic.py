@@ -1,25 +1,3 @@
-"""Diagnostic d'implantation pour une adresse géocodée.
-
-Lit la couche gold en lecture seule et ne recalcule aucune règle métier : la
-pression industrielle, la tension régionale, les seuils de raccordement et les
-limites méthodologiques sont tous construits par dbt. Ce module ne fait que
-sélectionner, assembler et mettre en forme.
-
-Points de conception :
-
-* **Le département, maille garantie.** `gold.fct_diagnostic_territoire` a une
-  ligne par département ; la commune s'y ajoute par jointure quand elle figure
-  dans `gold.fct_pression_industrielle_commune` (environ 1 300 communes sur
-  35 000). Sinon, le diagnostic le dit et s'en tient au département.
-* **Arrondissements.** La BAN renvoie le code de l'arrondissement (69383 pour
-  Lyon 3e) ; ODRÉ publie Paris, Lyon et Marseille sous le code de la commune.
-* **Coût d'un profil type, pas d'une adresse.** Le prix est péréqué : le
-  coût horaire d'un profil (`gold.fct_cout_mensuel_profil`) est le même partout,
-  et le diagnostic le présente comme tel, sur le dernier mois complet et tarifé.
-* **Aucun chiffre sans sa limite.** Chaque bloc de la sortie texte est suivi de
-  la limite correspondante, lue dans `gold.limites_methodologiques`.
-"""
-
 from __future__ import annotations
 
 import logging
@@ -37,7 +15,7 @@ from ingestion.georisques import Exposition, GeorisquesError, Risque, RisquesSit
 
 logger = logging.getLogger(__name__)
 
-#: Arrondissements municipaux (3 premiers caractères du code) -> code de la commune.
+# Arrondissements municipaux (3 premiers caractères du code) -> code de la commune
 ARRONDISSEMENTS: dict[str, str] = {"751": "75056", "693": "69123", "132": "13055"}
 
 _DIAGNOSTIC_SQL = """
@@ -61,7 +39,7 @@ where $puissance >= puissance_min_mw
 """
 
 
-#: Profil type chiffré par défaut (seed `profils_consommation`).
+# Profil type chiffré par défaut (seed `profils_consommation`)
 PROFIL_DEFAUT = "bureau_36kva"
 
 _COUT_SQL = """
@@ -88,7 +66,7 @@ limit 1
 """
 
 
-#: Nombre de contraintes prospectives détaillées dans le diagnostic.
+# Nombre de contraintes prospectives détaillées dans le diagnostic
 NB_CONTRAINTES_AFFICHEES = 3
 
 _CONTRAINTES_SQL = """
@@ -99,8 +77,7 @@ order by rang_occurrence desc, rang_perennite desc, puissance_max_mw desc, nom_d
 limit $limite
 """
 
-#: Distance à vol d'oiseau (haversine, rayon terrestre de 6 371 km) entre le
-#: point de la ligne (`latitude`, `longitude`) et l'adresse (`$latitude`, `$longitude`).
+# Distance à vol d'oiseau (haversine, rayon terrestre de 6 371 km) entre le point de la ligne
 _DISTANCE_KM_SQL = """
     2 * 6371 * asin(sqrt(
         power(sin(radians(latitude - $latitude) / 2), 2)
@@ -109,8 +86,7 @@ _DISTANCE_KM_SQL = """
     ))
 """
 
-#: Zones industrielles prioritaires de RTE, de la plus proche à la plus lointaine,
-#: jusqu'au point de référence le plus proche de la zone (une zone peut en avoir plusieurs).
+# Zones industrielles prioritaires de RTE, de la plus proche à la plus lointaine
 _ZONES_SQL = f"""
 with distances as (
     select *, {_DISTANCE_KM_SQL} as distance_km
@@ -128,8 +104,7 @@ group by zone, priorite, annee_capacite, ouvrages
 order by distance_km
 """
 
-#: Site clé en main le plus proche. Une adresse de métropole ne regarde que la
-#: métropole ; une adresse en Corse ou outre-mer, que son propre département.
+# Site clé en main le plus proche
 _SITE_SQL = f"""
 select
     id_site,
@@ -167,8 +142,7 @@ where $conso >= conso_min_mwh
   and (conso_max_mwh is null or $conso < conso_max_mwh)
 """
 
-#: Tranche Eurostat affichée sans `--conso` : moins de 20 MWh par an, celle des TPE et
-#: des commerces (décision du 16 octobre 2026).
+# Tranche Eurostat affichée sans `--conso` : moins de 20 MWh par an
 TRANCHE_DEFAUT = "IA"
 
 _PRIX_DEFAUT_SQL = """
@@ -178,54 +152,49 @@ where code_tranche = $code
 """
 
 
+# Le warehouse ne permet pas de produire le diagnostic
 class DiagnosticIndisponibleError(RuntimeError):
-    """Le warehouse ne permet pas de produire le diagnostic."""
+    pass
 
 
+# Ramène un arrondissement de Paris, Lyon ou Marseille au code de sa commune
 def code_commune_parent(code_insee: str) -> str:
-    """Ramène un arrondissement de Paris, Lyon ou Marseille au code de sa commune."""
     if len(code_insee) == 5 and code_insee[:3] in ARRONDISSEMENTS:
         return ARRONDISSEMENTS[code_insee[:3]]
     return code_insee
 
 
+# Code département d'un code commune : 3 caractères outre-mer, 2 ailleurs
 def code_departement(code_commune: str) -> str:
-    """Code département d'un code commune : 3 caractères outre-mer, 2 ailleurs.
-
-    Pendant Python de la macro dbt `code_departement`.
-    """
     return code_commune[:3] if code_commune.startswith("97") else code_commune[:2]
 
 
+# Domaine de tension et gestionnaire applicables à une puissance
 @dataclass(frozen=True, slots=True)
 class Seuil:
-    """Domaine de tension et gestionnaire applicables à une puissance."""
-
     puissance_mw: float
     domaine_tension: str
     gestionnaire: str
     commentaire: str
 
 
+# Intensité carbone du système électrique de l'adresse et verdict « décarboné »
 @dataclass(frozen=True, slots=True)
 class Carbone:
-    """Intensité carbone du système électrique de l'adresse et verdict « décarboné »."""
-
     systeme_electrique: str
     intensite_acv_g_co2e_kwh: float
     validite_source: str
     seuil_decarbone_g_co2e_kwh: float
     est_decarbone: bool
-    #: Émissions directes observées par RTE sur 12 mois ; absentes en ZNI.
+    # Émissions directes observées par RTE sur 12 mois ; absentes en ZNI
     intensite_directe_rte_g_co2_kwh: float | None
     rte_jour_debut: date | None
     rte_jour_fin: date | None
 
 
+# Bilan du dernier mois complet et tarifé d'un profil type
 @dataclass(frozen=True, slots=True)
 class CoutProfil:
-    """Bilan du dernier mois complet et tarifé d'un profil type."""
-
     mois: date
     libelle: str
     conso_kwh: float
@@ -238,10 +207,9 @@ class CoutProfil:
     co2_evite_kg: float
 
 
+# Zone industrielle où RTE renforce en priorité le réseau (SDDR 2025)
 @dataclass(frozen=True, slots=True)
 class ZoneRte:
-    """Zone industrielle où RTE renforce en priorité le réseau (SDDR 2025)."""
-
     zone: str
     priorite: str
     annee_capacite: int | None
@@ -250,10 +218,9 @@ class ZoneRte:
     distance_km: float
 
 
+# Site industriel « clé en main » de France 2030, repéré par sa commune
 @dataclass(frozen=True, slots=True)
 class SiteCleEnMain:
-    """Site industriel « clé en main » de France 2030, repéré par sa commune."""
-
     id_site: str
     commune: str
     code_insee_commune: str
@@ -261,10 +228,9 @@ class SiteCleEnMain:
     distance_km: float
 
 
+# Une contrainte prospective du réseau de transport (RTE, horizon 3 à 5 ans)
 @dataclass(frozen=True, slots=True)
 class ContrainteOuvrage:
-    """Une contrainte prospective du réseau de transport (RTE, horizon 3 à 5 ans)."""
-
     nom_de_l_ouvrage: str
     occurrence: str
     duree: str
@@ -273,11 +239,10 @@ class ContrainteOuvrage:
     est_en_journee: bool
 
 
+# Prix de l'électricité de la tranche de consommation de l'entreprise (Eurostat)
 @dataclass(frozen=True, slots=True)
 class PrixEntreprise:
-    """Prix de l'électricité de la tranche de consommation de l'entreprise (Eurostat)."""
-
-    #: Consommation déclarée ; `None` pour la tranche par défaut, sans facture.
+    # Consommation déclarée ; `None` pour la tranche par défaut, sans facture
     conso_mwh: float | None
     tranche: str
     code_tranche: str
@@ -307,12 +272,8 @@ class PrixEntreprise:
     derniere_origine_controlee: str | None
     ecart_median_au_central: float | None
 
+    # Facture annuelle HTVA à ce prix
     def facture_eur(self, prix_eur_kwh: float) -> float:
-        """Facture annuelle HTVA à ce prix.
-
-        Le prix Eurostat est un prix moyen tout compris (énergie, acheminement,
-        part fixe), rapporté au kWh : il donne directement la facture.
-        """
         if self.conso_mwh is None:
             raise ValueError("facture inconnue sans consommation annuelle")
         return self.conso_mwh * 1000 * prix_eur_kwh
@@ -322,10 +283,9 @@ class PrixEntreprise:
         return self.conso_mwh is None
 
 
+# Diagnostic complet d'une adresse : une ligne de gold, plus la commune
 @dataclass(frozen=True, slots=True)
 class Diagnostic:
-    """Diagnostic complet d'une adresse : une ligne de gold, plus la commune."""
-
     territoire: Territoire
     code_insee_commune: str
     # Territoire
@@ -369,15 +329,15 @@ class Diagnostic:
     nb_contraintes_departement: int
     nb_contraintes_frequentes_departement: int | None
     contraintes: list[ContrainteOuvrage]
-    #: Zone prioritaire RTE (P1 ou P2) la plus proche de l'adresse.
+    # Zone prioritaire RTE (P1 ou P2) la plus proche de l'adresse
     zone_rte: ZoneRte | None
-    #: Exemple de zone P3 cité par RTE, seulement s'il est plus proche que `zone_rte`.
+    # Exemple de zone P3 cité par RTE, seulement s'il est plus proche que `zone_rte`
     zone_rte_p3: ZoneRte | None
-    #: Site industriel clé en main le plus proche, dans le même territoire.
+    # Site industriel clé en main le plus proche, dans le même territoire
     site_cle_en_main: SiteCleEnMain | None
     # Raccordement et limites
     seuil: Seuil | None
-    #: Consommation annuelle déclarée (`--conso`), même sans prix publié pour sa tranche.
+    # Consommation annuelle déclarée (`--conso`), même sans prix publié pour sa tranche
     conso_mwh: float | None
     prix: PrixEntreprise | None
     cout: CoutProfil | None
@@ -385,7 +345,7 @@ class Diagnostic:
     limites: dict[str, str]
     # Risques à l'adresse (Géorisques), ajoutés par `completer_risques`
     risques: RisquesSite | None = None
-    #: Raison pour laquelle Géorisques n'a pas pu être consulté, le cas échéant.
+    # Raison pour laquelle Géorisques n'a pas pu être consulté, le cas échéant
     risques_erreur: str | None = None
 
     @property
@@ -393,6 +353,7 @@ class Diagnostic:
         return bool(self.nb_sites_commune)
 
 
+# Assemble le diagnostic d'un territoire depuis la couche gold
 def lire_diagnostic(
     territoire: Territoire,
     *,
@@ -401,11 +362,6 @@ def lire_diagnostic(
     settings: Settings | None = None,
     database: Path | None = None,
 ) -> Diagnostic:
-    """Assemble le diagnostic d'un territoire depuis la couche gold.
-
-    Lève `DiagnosticIndisponibleError` si le warehouse est absent ou si la
-    couche gold n'a pas été construite (`dbt build`).
-    """
     path = database or (settings or get_settings()).duckdb_path
     if not Path(path).exists():
         raise DiagnosticIndisponibleError(
@@ -507,9 +463,7 @@ def _prix_defaut(connection: duckdb.DuckDBPyConnection) -> PrixEntreprise | None
     return None if ligne is None else PrixEntreprise(conso_mwh=None, **ligne)
 
 
-# ---------------------------------------------------------------------------
 # Sortie texte
-# ---------------------------------------------------------------------------
 
 
 def _nombre(valeur: float, decimales: int = 0) -> str:
@@ -520,21 +474,16 @@ def _gwh(valeur: float) -> str:
     return f"{_nombre(valeur, 1 if valeur < 100 else 0)} GWh"
 
 
+# Un bloc du diagnostic : un titre, puis des lignes de texte et de limites
 @dataclass(frozen=True, slots=True)
 class Section:
-    """Un bloc du diagnostic : un titre, puis des lignes de texte et de limites.
-
-    Les limites restent à leur place, juste après le chiffre qu'elles nuancent :
-    chaque format (terminal, Markdown, PDF) les met en forme à sa façon.
-    """
-
     titre: str
-    #: Couples (`"texte"` ou `"limite"`, contenu), dans l'ordre d'affichage.
+    # Couples (`"texte"` ou `"limite"`, contenu), dans l'ordre d'affichage
     elements: list[tuple[str, str]]
 
 
+# Hiérarchie territoriale, et l'avertissement si l'adresse est imprécise
 def entete(diagnostic: Diagnostic) -> list[str]:
-    """Hiérarchie territoriale, et l'avertissement si l'adresse est imprécise."""
     d = diagnostic
     t = d.territoire
     lignes = [
@@ -546,7 +495,7 @@ def entete(diagnostic: Diagnostic) -> list[str]:
     return lignes
 
 
-#: Rappel affiché sous l'essentiel : ce que l'adresse change, et ce qu'elle ne change pas.
+# Rappel affiché sous l'essentiel : ce que l'adresse change, et ce qu'elle ne change pas
 A_SAVOIR = (
     "Le prix ne dépend pas de l'adresse mais de la consommation (péréquation, Corse et"
     " outre-mer compris). Le carbone est la moyenne annuelle du réseau de ce territoire, pas"
@@ -554,8 +503,8 @@ A_SAVOIR = (
 )
 
 
+# Les deux réponses du MVP : prix moyen et verdict carbone, en quelques lignes
 def essentiel(diagnostic: Diagnostic) -> Section:
-    """Les deux réponses du MVP : prix moyen et verdict carbone, en quelques lignes."""
     d = diagnostic
     section = Section("L'essentiel : prix et carbone à cette adresse", [])
     section.elements.append(("texte", f"Prix moyen : {_prix_court(d)}"))
@@ -594,15 +543,15 @@ def _prix_court(d: Diagnostic) -> str:
     )
 
 
+# L'essentiel seul, pour le terminal
 def formater_essentiel(diagnostic: Diagnostic) -> str:
-    """L'essentiel seul, pour le terminal."""
     lignes = [diagnostic.territoire.adresse, *entete(diagnostic), ""]
     lignes += [contenu for _, contenu in essentiel(diagnostic).elements]
     return "\n".join(lignes)
 
 
+# L'essentiel en JSON : les deux réponses, leurs sources et la position de l'adresse
 def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
-    """L'essentiel en JSON : les deux réponses, leurs sources et la position de l'adresse."""
     d = diagnostic
     t = d.territoire
     p = d.prix
@@ -648,8 +597,8 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
     }
 
 
+# Les quatre blocs du diagnostic, communs à tous les formats de sortie
 def sections(diagnostic: Diagnostic) -> list[Section]:
-    """Les quatre blocs du diagnostic, communs à tous les formats de sortie."""
     d = diagnostic
     resultat: list[Section] = []
 
@@ -664,7 +613,7 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
         if contenu := d.limites.get(indicateur):
             section.elements.append(("limite", contenu))
 
-    # 1. Pression industrielle
+    # Pression industrielle
     s = bloc(
         "1. Pression industrielle locale"
         f" (sites raccordés au réseau de transport, {d.annee_pression or '?'})"
@@ -693,7 +642,7 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
         texte(s, "Département : aucun site raccordé au transport")
     limite(s, "pression_industrielle")
 
-    # 2. Tension du réseau régional
+    # Tension du réseau régional
     if d.taux_couverture_region is None:
         zni = " (zone non interconnectée)" if d.est_zni else ""
         s = bloc("2. Tension du réseau régional")
@@ -756,7 +705,7 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
             )
         limite(s, "contraintes_prospectives")
 
-    # 3. Raccordement
+    # Raccordement
     s = bloc("3. Raccordement")
     if d.seuil is not None:
         texte(
@@ -816,7 +765,7 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
         texte(s, "Site industriel clé en main (France 2030) : aucun dans ce territoire.")
     limite(s, "capacite_raccordement")
 
-    # 4. Prix de l'électricité pour l'entreprise
+    # Prix de l'électricité pour l'entreprise
     s = bloc("4. Prix de l'électricité pour l'entreprise (identique sur tout le territoire)")
     if d.prix is None and d.conso_mwh is not None:
         texte(
@@ -900,7 +849,7 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
             )
         limite(s, "prix_entreprise")
 
-    # 5. Carbone et coût d'un profil type
+    # Carbone et coût d'un profil type
     s = bloc("5. Carbone du réseau et coût horaire d'un profil type")
     if d.carbone is not None:
         texte(s, _verdict_carbone(d.carbone))
@@ -933,7 +882,7 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
             )
     limite(s, "cout_profil")
 
-    # 6. Risques à l'adresse
+    # Risques à l'adresse
     s = bloc("6. Risques naturels et technologiques à l'adresse (Géorisques)")
     if d.risques_erreur is not None:
         texte(
@@ -985,17 +934,13 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
     return resultat
 
 
+# « Séisme (faible), Inondation » : le niveau entre parenthèses quand il est publié
 def _liste_risques(risques: list[Risque]) -> str:
-    """« Séisme (faible), Inondation » : le niveau entre parenthèses quand il est publié."""
     return ", ".join(f"{r.libelle} ({r.niveau})" if r.niveau else r.libelle for r in risques)
 
 
+# Ajoute le rapport Géorisques de l'adresse ; ne fait jamais échouer le diagnostic
 def completer_risques(diagnostic: Diagnostic, *, settings: Settings | None = None) -> Diagnostic:
-    """Ajoute le rapport Géorisques de l'adresse ; ne fait jamais échouer le diagnostic.
-
-    Géorisques coupe des connexions par intermittence : s'il reste injoignable
-    après les nouvelles tentatives, le diagnostic sort quand même et le dit.
-    """
     t = diagnostic.territoire
     try:
         risques = lire_risques(
@@ -1010,8 +955,8 @@ def completer_risques(diagnostic: Diagnostic, *, settings: Settings | None = Non
     return replace(diagnostic, risques=risques)
 
 
+# Diagnostic lisible en terminal, chaque bloc suivi de sa limite
 def formater_diagnostic(diagnostic: Diagnostic) -> str:
-    """Diagnostic lisible en terminal, chaque bloc suivi de sa limite."""
     lignes = [f"DIAGNOSTIC D'IMPLANTATION — {diagnostic.territoire.adresse}"]
     lignes += entete(diagnostic)
     for section in [essentiel(diagnostic), *sections(diagnostic)]:
@@ -1023,8 +968,8 @@ def formater_diagnostic(diagnostic: Diagnostic) -> str:
     return "\n".join(lignes)
 
 
+# Diagnostic sérialisable en JSON : dates au format ISO, mêmes noms de champs
 def diagnostic_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
-    """Diagnostic sérialisable en JSON : dates au format ISO, mêmes noms de champs."""
 
     def convertir(valeur: Any) -> Any:
         if isinstance(valeur, date):
@@ -1062,8 +1007,8 @@ def _verdict_carbone(c: Carbone) -> str:
     return phrase
 
 
+# Le décalage vers la nuit peut augmenter les émissions en été (solaire de midi)
 def _co2_evite(kg: float) -> str:
-    """Le décalage vers la nuit peut **augmenter** les émissions en été (solaire de midi)."""
     if kg >= 0:
         return f"{_nombre(kg, 1)} kgCO₂ évités"
     return (
@@ -1075,8 +1020,8 @@ def _co2_evite(kg: float) -> str:
 _STATUTS = {"excedentaire": "excédentaire", "deficitaire": "déficitaire"}
 
 
+# Combien de fois la méthode des scénarios a encadré le prix réel, par le passé
 def _controle_sur_le_passe(p: PrixEntreprise) -> str:
-    """Combien de fois la méthode des scénarios a encadré le prix réel, par le passé."""
     if not p.nb_periodes_controlees or p.premiere_origine_controlee is None:
         return "Historique trop court pour contrôler la méthode sur le passé."
     total = p.nb_periodes_controlees
@@ -1094,10 +1039,10 @@ def _controle_sur_le_passe(p: PrixEntreprise) -> str:
     )
 
 
+# Zone P1 ou P2 la plus proche, et une zone P3 seulement si elle l'est davantage
 def _zones_rte(
     connection: duckdb.DuckDBPyConnection, territoire: Territoire
 ) -> tuple[ZoneRte | None, ZoneRte | None]:
-    """Zone P1 ou P2 la plus proche, et une zone P3 seulement si elle l'est davantage."""
     zones = [
         ZoneRte(*ligne)
         for ligne in connection.execute(
@@ -1123,14 +1068,13 @@ def _calendrier_zone(z: ZoneRte) -> str:
     )
 
 
+# « à 9 km » ; en deçà d'un kilomètre, la précision du point de référence ne suit pas
 def _distance(km: float) -> str:
-    """« à 9 km » ; en deçà d'un kilomètre, la précision du point de référence ne suit pas."""
     return "à moins d'un km" if km < 1 else f"à {_nombre(km)} km"
 
 
+# « LIAISON 90kV …
 def _contrainte(c: ContrainteOuvrage) -> str:
-    """« LIAISON 90kV … (très forte : plus de 150 fois par an, épisodes de 4 à 6 h,
-    pérennité moyenne, en journée) »."""
     details = [c.occurrence[:1].lower() + c.occurrence[1:], _duree(c.duree)]
     details.append(f"pérennité {c.perennite}")
     if c.est_en_journee:
@@ -1138,8 +1082,8 @@ def _contrainte(c: ContrainteOuvrage) -> str:
     return f"{c.nom_de_l_ouvrage} ({', '.join(d for d in details if d)})"
 
 
+# « ]4h-6h] » -> « épisodes de 4 à 6 h » ; « ]0h-2h] » -> « épisodes de moins de 2 h »
 def _duree(duree: str) -> str:
-    """« ]4h-6h] » -> « épisodes de 4 à 6 h » ; « ]0h-2h] » -> « épisodes de moins de 2 h »."""
     bornes = re.fullmatch(r"\](\d+)h-(\d+)h\]", duree.strip())
     if bornes is None:
         return f"durée {duree}" if duree else ""
@@ -1147,25 +1091,22 @@ def _duree(duree: str) -> str:
     return f"épisodes de moins de {fin} h" if debut == "0" else f"épisodes de {debut} à {fin} h"
 
 
+# « 2026-S1 » -> « S1 2026 » ; `precedent` donne le semestre d'avant
 def _semestre(code: str, *, precedent: bool = False) -> str:
-    """« 2026-S1 » -> « S1 2026 » ; `precedent` donne le semestre d'avant."""
     annee, numero = int(code[:4]), int(code[-1])
     if precedent:
         annee, numero = (annee, 1) if numero == 2 else (annee - 1, 2)
     return f"S{numero} {annee}"
 
 
+# Trois chiffres significatifs : 67 375 -> 67 400, 5 496 000 -> 5 500 000
 def _euros_arrondis(valeur: float) -> str:
-    """Trois chiffres significatifs : 67 375 -> 67 400, 5 496 000 -> 5 500 000.
-
-    Au-delà, la précision serait illusoire : le prix est une moyenne de tranche.
-    """
     if valeur <= 0:
         return f"{_nombre(valeur)} €"
     chiffres = len(str(int(valeur)))
     return f"{_nombre(round(valeur, min(0, 3 - chiffres)))} €"
 
 
+# « 0,5 », « 12 » : décimales utiles seulement
 def _nombre_court(valeur: float) -> str:
-    """« 0,5 », « 12 » : décimales utiles seulement."""
     return _nombre(valeur, 3).rstrip("0").rstrip(",")

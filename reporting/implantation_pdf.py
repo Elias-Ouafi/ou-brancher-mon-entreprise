@@ -1,10 +1,3 @@
-"""Mise en page PDF du rapport d'implantation (reportlab).
-
-Mêmes styles que le rapport mensuel. Les polices standard du PDF ne couvrent
-que le jeu Windows-1252 : les flèches et le « ≤ » du texte terminal sont
-remplacés, et le « 2 » de CO2 passe par la balise `<sub>`.
-"""
-
 from __future__ import annotations
 
 from datetime import datetime
@@ -20,12 +13,12 @@ from reporting import implantation_charts
 from reporting.implantation import GRAPHIQUES, SOURCES, Comparaisons, texte_compact
 from reporting.pdf import ALERTE, STYLES, _encadre, _image, _kpis, _pied_de_page
 
-#: Caractères hors Windows-1252, et leur équivalent lisible en Helvetica.
+# Caractères hors Windows-1252, et leur équivalent lisible en Helvetica
 SUBSTITUTIONS = {"→": "—", "↳": "", "≤": "&lt;=", "≥": "&gt;=", "₂": "<sub>2</sub>"}
 
 
+# Texte prêt pour un `Paragraph` : échappé, puis débarrassé des glyphes absents
 def _pdf(texte: str) -> str:
-    """Texte prêt pour un `Paragraph` : échappé, puis débarrassé des glyphes absents."""
     texte = escape(texte_compact(texte))
     for caractere, remplacement in SUBSTITUTIONS.items():
         texte = texte.replace(caractere, remplacement)
@@ -36,8 +29,8 @@ def _nombre(valeur: float, decimales: int = 0) -> str:
     return f"{valeur:,.{decimales}f}".replace(",", " ").replace(".", ",")
 
 
+# Bandeau de quatre indicateurs, ceux qu'on cherche en premier
 def _synthese(d: Diagnostic) -> list:
-    """Bandeau de quatre indicateurs, ceux qu'on cherche en premier."""
     cartes = []
     if d.rang_pression_departement:
         cartes.append(
@@ -80,10 +73,10 @@ def _synthese(d: Diagnostic) -> list:
     return [_kpis(cartes, par_ligne=2), Spacer(1, 8)]
 
 
+# Écrit le rapport PDF et renvoie son chemin
 def rendre(
     diagnostic: Diagnostic, comparaisons: Comparaisons, chemin: Path, *, now: datetime
 ) -> Path:
-    """Écrit le rapport PDF et renvoie son chemin."""
     titre = "Diagnostic d'implantation électrique"
     document = SimpleDocTemplate(
         str(chemin),
@@ -124,7 +117,7 @@ def rendre(
                 contenu.append(Spacer(1, 4))
             else:
                 contenu.append(Paragraph(_pdf(element), STYLES["texte"]))
-        # Le titre ne reste jamais seul en bas de page.
+        # Le titre ne reste jamais seul en bas de page
         blocs.append(KeepTogether(contenu[:2]))
         blocs += contenu[2:]
         if numero in GRAPHIQUES:

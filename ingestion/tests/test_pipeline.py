@@ -1,5 +1,3 @@
-"""Bout-en-bout du pipeline (API simulée -> Parquet -> DuckDB) et fraîcheur."""
-
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -27,9 +25,6 @@ def empty_payload() -> dict[str, Any]:
     return {"total_count": 0, "results": []}
 
 
-# --- Extraction ------------------------------------------------------------
-
-
 def test_extract_writes_a_partitioned_parquet(
     httpx_mock: HTTPXMock,
     settings: Settings,
@@ -44,17 +39,17 @@ def test_extract_writes_a_partitioned_parquet(
     assert path.parent.name == "ingest_date=2026-09-07"
     assert path.parent.parent == NATIONAL_TR.bronze_dataset_dir(settings.bronze_dir)
     assert outcome.rows == 2
-    # Une fenêtre horaire coûte un seul appel : c'est la base du calcul de quota.
+    # Une fenêtre horaire coûte un seul appel : c'est la base du calcul de quota
     assert outcome.api_calls == 1
     assert outcome.window_start == "2026-09-07T03:00:00+00:00"
 
 
+# Une fenêtre vide ne doit pas faire échouer l'extraction : c'est le rôle du contrôle
 def test_extract_writes_an_empty_file_when_nothing_is_published(
     httpx_mock: HTTPXMock,
     settings: Settings,
     empty_payload: dict[str, Any],
 ) -> None:
-    """Une fenêtre vide ne doit pas faire échouer l'extraction : c'est le rôle du contrôle."""
     httpx_mock.add_response(json=empty_payload)
 
     outcome = extract_to_parquet(settings=settings, now=NOW)
@@ -63,15 +58,12 @@ def test_extract_writes_an_empty_file_when_nothing_is_published(
     assert Path(outcome.parquet_path).exists()
 
 
-# --- Bout-en-bout ----------------------------------------------------------
-
-
+# Deux runs sur la même fenêtre : les révisions écrasent, rien ne se duplique
 def test_ingestion_is_idempotent_end_to_end(
     httpx_mock: HTTPXMock,
     settings: Settings,
     records_payload: dict[str, Any],
 ) -> None:
-    """Deux runs sur la même fenêtre : les révisions écrasent, rien ne se duplique."""
     httpx_mock.add_response(json=records_payload)
     httpx_mock.add_response(json=records_payload)
 
@@ -90,12 +82,12 @@ def test_ingestion_is_idempotent_end_to_end(
         loader.close()
 
 
+# Au premier run horaire, la table du consolidé doit exister (vide) pour dbt
 def test_loading_one_dataset_creates_every_bronze_table(
     httpx_mock: HTTPXMock,
     settings: Settings,
     records_payload: dict[str, Any],
 ) -> None:
-    """Au premier run horaire, la table du consolidé doit exister (vide) pour dbt."""
     httpx_mock.add_response(json=records_payload)
 
     run_ingestion(settings=settings, now=NOW)
@@ -107,9 +99,6 @@ def test_loading_one_dataset_creates_every_bronze_table(
         assert loader._table_exists()
     finally:
         loader.close()
-
-
-# --- Fraîcheur -------------------------------------------------------------
 
 
 def test_freshness_passes_within_the_threshold(
@@ -124,15 +113,15 @@ def test_freshness_passes_within_the_threshold(
 
     assert report.is_fresh
     assert report.row_count == 2
-    assert report.lag_hours == pytest.approx(1.75)  # 05:00 vs 03:15
+    assert report.lag_hours == pytest.approx(1.75)
 
 
+# Au-delà de 2 h de retard, le contrôle de fraîcheur doit échouer
 def test_freshness_fails_when_data_is_late(
     httpx_mock: HTTPXMock,
     settings: Settings,
     records_payload: dict[str, Any],
 ) -> None:
-    """Au-delà de 2 h de retard, le contrôle de fraîcheur doit échouer."""
     httpx_mock.add_response(json=records_payload)
     run_ingestion(settings=settings, now=NOW)
 
@@ -140,15 +129,11 @@ def test_freshness_fails_when_data_is_late(
         check_freshness(settings=settings, now=NOW + timedelta(hours=6))
 
 
+# La dernière ligne publiée par RTE n'a pas encore ses mesures : elle ne compte pas
 def test_freshness_ignores_the_unmeasured_leading_row(
     httpx_mock: HTTPXMock,
     settings: Settings,
 ) -> None:
-    """La dernière ligne publiée par RTE n'a pas encore ses mesures : elle ne compte pas.
-
-    Sans cette règle, un flux qui publierait des horodatages sans jamais les
-    remplir laisserait le contrôle au vert.
-    """
     httpx_mock.add_response(
         json={
             "total_count": 2,
@@ -167,11 +152,11 @@ def test_freshness_ignores_the_unmeasured_leading_row(
     assert report.lag_hours == pytest.approx(2.0)
 
 
+# Des horodatages sans aucune mesure : le flux est mort, la tâche doit échouer
 def test_freshness_fails_when_rows_have_no_measure(
     httpx_mock: HTTPXMock,
     settings: Settings,
 ) -> None:
-    """Des horodatages sans aucune mesure : le flux est mort, la tâche doit échouer."""
     httpx_mock.add_response(
         json={
             "total_count": 1,
@@ -184,8 +169,8 @@ def test_freshness_fails_when_rows_have_no_measure(
         check_freshness(settings=settings, now=NOW)
 
 
+# Avant le premier chargement, la base n'existe même pas : échec explicite
 def test_freshness_fails_on_an_empty_warehouse(settings: Settings) -> None:
-    """Avant le premier chargement, la base n'existe même pas : échec explicite."""
     assert not settings.duckdb_path.exists()
 
     with pytest.raises(StaleDataError, match="aucune donnee"):

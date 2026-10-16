@@ -1,10 +1,4 @@
-{#-
-    Équilibre mensuel production / consommation brute par région, en MWh.
-
-    `mois` devient une date (premier jour du mois). Le libellé de région est
-    abandonné : la région est identifiée par son code INSEE, et son nom vient du
-    référentiel `dim_region`.
--#}
+-- Équilibre mensuel production / consommation brute par région, en MWh
 select
     cast(strptime(mois || '-01', '%Y-%m-%d') as date) as mois,
     code_insee_region,

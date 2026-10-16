@@ -1,9 +1,4 @@
-{#-
-    La hiérarchie commune → département → région déduite localement (macro
-    `code_departement` + seed `dim_departement`) doit redonner exactement les
-    codes publiés par ODRÉ, partout où ODRÉ les publie. Un écart signalerait une
-    erreur du référentiel, qui fausserait le diagnostic sans bruit.
--#}
+-- La hiérarchie commune → département → région déduite localement
 select
     bronze.annee,
     bronze.code_iris,

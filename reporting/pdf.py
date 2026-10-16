@@ -1,10 +1,3 @@
-"""Mise en page PDF du rapport mensuel (reportlab).
-
-Les polices standard du PDF (Helvetica) ne couvrent que le jeu Latin-1 étendu :
-le « 2 » de CO2 passe donc par la balise `<sub>` dans les paragraphes, et les
-tableaux écrivent « CO2 » en clair.
-"""
-
 from __future__ import annotations
 
 import io
@@ -77,9 +70,6 @@ STYLES = {
 CO2 = "CO<sub>2</sub>"
 
 
-# --- Blocs ------------------------------------------------------------------
-
-
 def _image(png: bytes, largeur: float = LARGEUR) -> Image:
     image = Image(io.BytesIO(png))
     ratio = image.imageHeight / image.imageWidth
@@ -109,15 +99,15 @@ def _tableau(entetes: list[str], lignes: list[list], largeurs: list[float]) -> T
     return table
 
 
+# Bandeau d'indicateurs : valeur en gros, libellé dessous
 def _kpis(cartes: list[tuple[str, str]], par_ligne: int = 3) -> Table:
-    """Bandeau d'indicateurs : valeur en gros, libellé dessous."""
     cellules = [
         [Paragraph(valeur, STYLES["kpi_valeur"]), Paragraph(libelle, STYLES["kpi_libelle"])]
         for valeur, libelle in cartes
     ]
     lignes = [cellules[i : i + par_ligne] for i in range(0, len(cellules), par_ligne)]
     for ligne in lignes:
-        # Une cellule vide, pas une liste : reportlab lirait une liste de flowables.
+        # Une cellule vide, pas une liste : reportlab lirait une liste de flowables
         ligne.extend([""] * (par_ligne - len(ligne)))
     table = Table(lignes, colWidths=[LARGEUR / par_ligne] * par_ligne, hAlign="LEFT")
     table.setStyle(
@@ -150,9 +140,6 @@ def _encadre(texte: str, couleur: colors.Color = ACCENT) -> Table:
         )
     )
     return table
-
-
-# --- Sections ---------------------------------------------------------------
 
 
 def _avertissements(rapport: RapportMensuel) -> list:
@@ -444,8 +431,8 @@ def _pied_de_page(titre: str):
     return dessiner
 
 
+# Écrit le rapport PDF et renvoie son chemin
 def rendre(rapport: RapportMensuel, chemin: Path) -> Path:
-    """Écrit le rapport PDF et renvoie son chemin."""
     chemin.parent.mkdir(parents=True, exist_ok=True)
     titre = f"Électricité en France — {nom_mois(rapport.mois)}"
     document = SimpleDocTemplate(

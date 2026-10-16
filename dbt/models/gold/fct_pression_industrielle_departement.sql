@@ -1,16 +1,4 @@
-{#-
-    Pression industrielle par département, pour le millésime de référence
-    (dernière année publiée sans secret statistique, voir `annee_reference_pression`).
-
-    Une ligne pour **chacun** des 101 départements du référentiel, y compris ceux
-    sans aucun site raccordé au transport (consommation à 0) : l'absence est une
-    information, pas une donnée manquante.
-
-    `rang_national` classe les départements par consommation décroissante
-    (1 = la plus forte), parmi ceux qui consomment. Les IRIS dont la commune a été
-    reconstituée (fusion de communes) comptent ici, même si la commune n'est plus
-    géocodable.
--#}
+-- Pression industrielle par département, pour le millésime de référence
 with iris as (
     select * from {{ ref('conso_industrielle_iris') }}
 ),

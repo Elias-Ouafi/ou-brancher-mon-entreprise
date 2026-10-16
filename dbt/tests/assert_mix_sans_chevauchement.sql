@@ -1,9 +1,4 @@
-{#-
-    Aucune mesure ne doit empiéter sur la suivante : chaque ligne couvre
-    `[date_heure, date_heure + pas_minutes)`. Un chevauchement signifierait
-    qu'un même intervalle est compté deux fois dans les énergies journalières,
-    typiquement du temps réel glissé entre deux demi-heures consolidées.
--#}
+-- Aucune mesure ne doit empiéter sur la suivante : chaque ligne couvre `[date_heure
 with mesures as (
     select
         date_heure,

@@ -1,10 +1,4 @@
-{#-
-    Mix électrique au pas de mesure (30 min en consolidé, 15 min en temps réel).
-
-    Les regroupements bas-carbone, renouvelable et fossile viennent du seed
-    `dim_filiere`, via la table longue : aucune liste de familles n'est
-    recopiée ici.
--#}
+-- Mix électrique au pas de mesure (30 min en consolidé, 15 min en temps réel)
 with familles as (
     select
         date_heure,
@@ -43,7 +37,7 @@ select
     familles.production_renouvelable_mw / nullif(familles.production_totale_mw, 0)
         as part_renouvelable,
 
-    -- Convention RTE : un solde négatif est un export net.
+    -- Convention RTE : un solde négatif est un export net
     mix.ech_physiques as solde_echanges_mw,
     mix.taux_co2 as taux_co2_g_kwh
 from {{ ref('mix_unifie') }} as mix
