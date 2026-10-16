@@ -2,7 +2,7 @@
 
 Un `DatasetSpec` porte tout ce qui distingue un dataset d'un autre : son
 identifiant ODRÉ, sa table cible, et ses colonnes **typées par nature**. Le reste
-du code — extraction, typage Parquet, DDL DuckDB, MERGE, DAGs — est écrit une
+du code — extraction, typage Parquet, DDL DuckDB, MERGE, refresh — est écrit une
 seule fois et paramétré par le spec, si bien qu'ajouter un dataset est déclaratif.
 
 Les listes de colonnes ci-dessous ont été relevées sur l'API
@@ -441,8 +441,8 @@ TERRITORIAL_SPECS: tuple[DatasetSpec, ...] = (
 
 #: Tables bronze créées d'office à chaque chargement, parce que la couche silver
 #: (dbt) lit toutes ses sources à chaque run. Sans cela, un run échouerait tant
-#: qu'un autre DAG n'a pas créé sa table — une dépendance d'ordre de déploiement
-#: qu'aucun DAG ne devrait porter.
+#: qu'une autre commande n'a pas créé sa table — une dépendance d'ordre que rien
+#: ne devrait imposer.
 BRONZE_SPECS: tuple[DatasetSpec, ...] = (
     NATIONAL_TR,
     NATIONAL_CONS_DEF,

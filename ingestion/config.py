@@ -3,9 +3,7 @@
 Toutes les variables sont préfixées `ECO2MIX_` (voir `.env.example`). L'API
 ODRÉ est publique et anonyme ; seuls les identifiants de l'API RTE (calendrier
 Tempo) sont des secrets, typés `SecretStr` pour ne jamais apparaître dans un
-log. Les chemins sont résolus relativement au répertoire courant, ce qui permet
-de pointer sur le volume monté `/usr/local/airflow/data` dans les conteneurs
-Astro sans changer de code.
+log. Les chemins sont résolus relativement au répertoire courant, ou absolus.
 """
 
 from __future__ import annotations
@@ -77,7 +75,7 @@ class Settings(BaseSettings):
     bronze_dir: Path = Path("data/bronze")
     duckdb_path: Path = Path("data/warehouse/eco2mix.duckdb")
 
-    #: Rapports PDF générés à la demande (DAG `eco2mix_monthly_report`).
+    #: Rapports PDF générés à la demande (commandes `report` et `diagnose`).
     reports_dir: Path = Path("data/reports")
 
     #: Backend de chargement. `bigquery` sera ajouté lors de la migration cloud ;

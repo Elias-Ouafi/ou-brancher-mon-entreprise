@@ -12,7 +12,7 @@ test-paths: ["tests"]
 clean-targets: ["target", "logs"]
 
 flags:
-  # Pas d'écriture de `.user.yml` : le projet est monté en lecture seule dans Airflow.
+  # Pas de statistiques d'usage envoyées à dbt Labs : tout reste en local.
   send_anonymous_usage_stats: false
 
 models:

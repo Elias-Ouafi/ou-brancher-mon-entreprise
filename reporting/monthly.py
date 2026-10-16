@@ -1,4 +1,4 @@
-"""Point d'entrée du rapport mensuel, appelé par le DAG et par la CLI.
+"""Point d'entrée du rapport mensuel, appelé par la CLI.
 
 Deux formats, mêmes chiffres : `pdf` (mise en page imprimable) et `md`
 (document Markdown, graphiques en PNG dans un dossier voisin).
