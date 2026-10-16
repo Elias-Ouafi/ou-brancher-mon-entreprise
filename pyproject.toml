@@ -26,13 +26,11 @@ dev = [
     "pytest-httpx>=0.30",
     "ruff>=0.6",
 ]
-# Couches silver et gold (dbt/). Groupe séparé : dbt n'est pas nécessaire à
-# l'ingestion seule.
-# >= 1.10 pour la syntaxe `arguments:` des tests de données.
+# Silver et gold ; >= 1.10 pour la syntaxe `arguments:` des tests de données
 dbt = [
     "dbt-duckdb>=1.10,<2",
 ]
-# Rapports PDF et graphiques (reporting/) ; inutiles pour l'ingestion seule.
+# Rapports PDF et graphiques
 report = [
     "matplotlib>=3.8",
     "reportlab>=4.0",
@@ -51,9 +49,10 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "PTH", "RUF"]
-# Typographie française des textes du rapport (plages horaires « 6 h–22 h »).
+# Typographie française des rapports (« 6 h–22 h »)
 allowed-confusables = ["–"]
 
 [tool.pytest.ini_options]
 testpaths = ["ingestion/tests"]
 addopts = "-q --strict-markers"
+filterwarnings = ["ignore:PySpark does not yet fully support pandas:FutureWarning"]

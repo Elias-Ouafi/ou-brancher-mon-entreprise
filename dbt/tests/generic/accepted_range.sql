@@ -1,7 +1,4 @@
-{#-
-    Échoue sur les valeurs hors de `[min_value, max_value]`. Les `null` sont
-    ignorés : leur présence relève du test `not_null`.
--#}
+-- Échoue sur les valeurs hors de `[min_value, max_value]`
 {% test accepted_range(model, column_name, min_value=none, max_value=none) %}
 select {{ column_name }}
 from {{ model }}

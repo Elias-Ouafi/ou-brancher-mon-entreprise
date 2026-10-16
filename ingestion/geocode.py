@@ -1,27 +1,3 @@
-"""Géocodage d'une adresse française vers son territoire administratif.
-
-C'est le point d'entrée du diagnostic d'implantation : l'adresse passée en
-argument de la ligne de commande est résolue en codes administratifs, qui servent
-ensuite de clés de jointure avec les jeux territoriaux d'ODRÉ.
-
-Points de conception :
-
-* **API Adresse de la Géoplateforme (IGN).** L'ancien point d'accès
-  `api-adresse.data.gouv.fr` a été décommissionné fin janvier 2026 ; le service
-  vit désormais sur `https://data.geopf.fr/geocodage`. Limite d'usage : 50
-  requêtes par seconde et par adresse IP.
-* **Pas d'IRIS.** La BAN ne renvoie pas le code IRIS, et l'obtenir supposerait une
-  jointure spatiale avec les contours INSEE — donc une dépendance géospatiale.
-  Inutile ici : le jeu `consommation-annuelle-par-iris` porte déjà
-  `code_insee_commune`, qui suffit à agréger à la commune.
-* **Code région reconstitué.** La BAN renvoie le *nom* de la région, les jeux
-  ODRÉ sa clé INSEE. La correspondance est faite localement, sur un nom
-  normalisé (sans accent ni casse), parce que les deux sources n'écrivent pas
-  « Provence-Alpes-Côte d'Azur » de la même façon.
-* **Même robustesse que les clients ODRÉ et RTE.** Timeout explicite, retry
-  exponentiel sur erreurs réseau et statuts transitoires, jamais sur une 4xx.
-"""
-
 from __future__ import annotations
 
 import logging
@@ -37,12 +13,10 @@ from ingestion.extract_odre import RETRYABLE_STATUS_CODES, USER_AGENT, Retryable
 
 logger = logging.getLogger(__name__)
 
-#: En dessous, la BAN n'a pas trouvé grand-chose de ressemblant.
+# En dessous, la BAN n'a pas trouvé grand-chose de ressemblant
 SCORE_MINIMUM = 0.4
 
-#: Régions françaises : code INSEE -> nom de référence.
-#: Donnée de référence stable (dernière réforme : 2016), volontairement figée ici
-#: plutôt qu'appelée à chaque diagnostic.
+# Régions françaises : code INSEE -> nom de référence
 REGIONS: dict[str, str] = {
     "84": "Auvergne-Rhône-Alpes",
     "27": "Bourgogne-Franche-Comté",
@@ -65,20 +39,18 @@ REGIONS: dict[str, str] = {
 }
 
 
+# Le géocodage n'a pas abouti
 class GeocodingError(RuntimeError):
-    """Le géocodage n'a pas abouti."""
+    pass
 
 
+# Aucun résultat exploitable pour l'adresse demandée
 class AdresseIntrouvableError(GeocodingError):
-    """Aucun résultat exploitable pour l'adresse demandée."""
+    pass
 
 
+# Normalise un nom pour comparaison : sans accent, sans casse, sans ponctuation
 def normalise(valeur: str) -> str:
-    """Normalise un nom pour comparaison : sans accent, sans casse, sans ponctuation.
-
-    « Provence-Alpes-Côte d'Azur », « PROVENCE-ALPES-COTE D'AZUR » et
-    « Provence Alpes Cote dAzur » doivent se rejoindre.
-    """
     sans_accent = unicodedata.normalize("NFKD", valeur)
     sans_accent = "".join(c for c in sans_accent if not unicodedata.combining(c))
     return "".join(c for c in sans_accent.lower() if c.isalnum())
@@ -87,15 +59,14 @@ def normalise(valeur: str) -> str:
 _REGIONS_PAR_NOM: dict[str, str] = {normalise(nom): code for code, nom in REGIONS.items()}
 
 
+# Code INSEE d'une région à partir de son nom, quelle qu'en soit l'écriture
 def code_region(nom: str) -> str | None:
-    """Code INSEE d'une région à partir de son nom, quelle qu'en soit l'écriture."""
     return _REGIONS_PAR_NOM.get(normalise(nom))
 
 
+# Territoire administratif résolu, clés de jointure comprises
 @dataclass(frozen=True, slots=True)
 class Territoire:
-    """Territoire administratif résolu, clés de jointure comprises."""
-
     adresse: str
     code_insee_commune: str
     commune: str
@@ -107,12 +78,12 @@ class Territoire:
     latitude: float
     longitude: float
     score: float
-    #: Précision du résultat BAN : `housenumber`, `street`, `locality`, `municipality`.
+    # Précision du résultat BAN : `housenumber`, `street`, `locality`, `municipality`
     precision: str
 
+    # Vrai si la BAN a résolu une voie ou un numéro, pas seulement une commune
     @property
     def est_precis(self) -> bool:
-        """Vrai si la BAN a résolu une voie ou un numéro, pas seulement une commune."""
         return self.precision in {"housenumber", "street"}
 
     def __str__(self) -> str:
@@ -122,13 +93,8 @@ class Territoire:
         )
 
 
+# Découpe le champ `context` de la BAN : « 69, Rhône, Auvergne-Rhône-Alpes »
 def _contexte(valeur: str) -> tuple[str, str, str]:
-    """Découpe le champ `context` de la BAN : « 69, Rhône, Auvergne-Rhône-Alpes ».
-
-    Certaines réponses n'ont que deux segments (collectivités d'outre-mer, où le
-    département et la région portent le même nom) : la région reprend alors le
-    nom du département.
-    """
     parts = [p.strip() for p in valeur.split(",") if p.strip()]
     if len(parts) >= 3:
         return parts[0], parts[1], parts[-1]
@@ -137,9 +103,8 @@ def _contexte(valeur: str) -> tuple[str, str, str]:
     raise GeocodingError(f"champ context inattendu : {valeur!r}")
 
 
+# Client de l'API Adresse (Géoplateforme), utilisable comme context manager
 class BanClient:
-    """Client de l'API Adresse (Géoplateforme), utilisable comme context manager."""
-
     def __init__(
         self,
         settings: Settings | None = None,
@@ -165,8 +130,6 @@ class BanClient:
             reraise=True,
         )
 
-    # -- Cycle de vie -------------------------------------------------------
-
     def close(self) -> None:
         logger.info("ban_api_calls=%d", self.calls)
         if self._owns_client:
@@ -178,15 +141,8 @@ class BanClient:
     def __exit__(self, *exc_info: object) -> None:
         self.close()
 
-    # -- Géocodage ----------------------------------------------------------
-
+    # Résout une adresse en territoire administratif
     def geocode(self, adresse: str) -> Territoire:
-        """Résout une adresse en territoire administratif.
-
-        Lève `AdresseIntrouvableError` si la BAN ne renvoie rien. Un score faible
-        ou une résolution limitée à la commune passent, mais sont journalisés :
-        c'est à l'appelant de décider si le diagnostic reste pertinent.
-        """
         if not adresse.strip():
             raise AdresseIntrouvableError("adresse vide")
 
@@ -243,10 +199,8 @@ class BanClient:
             precision=precision,
         )
 
-    # -- Couche HTTP --------------------------------------------------------
-
+    # GET avec retry exponentiel sur les erreurs transitoires
     def _get(self, path: str, params: dict[str, Any]) -> httpx.Response:
-        """GET avec retry exponentiel sur les erreurs transitoires."""
 
         def envoyer() -> httpx.Response:
             self.calls += 1
@@ -259,7 +213,7 @@ class BanClient:
         return self._retrying(envoyer)
 
 
+# Géocode une adresse en ouvrant et fermant un client dédié
 def geocode(adresse: str, *, settings: Settings | None = None) -> Territoire:
-    """Géocode une adresse en ouvrant et fermant un client dédié."""
     with BanClient(settings) as client:
         return client.geocode(adresse)

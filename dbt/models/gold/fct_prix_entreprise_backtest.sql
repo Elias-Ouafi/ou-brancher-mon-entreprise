@@ -1,12 +1,4 @@
-{#-
-    Contrôle de la méthode des scénarios sur le passé : chaque éventail publiable
-    à un semestre d'origine est confronté au prix **réellement** observé ensuite,
-    la moyenne des 12 mois qui s'achèvent à l'horizon (même définition que le
-    prix de référence, pour comparer des moyennes annuelles entre elles).
-
-    L'éventail d'une origine n'utilise que des erreurs déjà connues à cette date :
-    le contrôle se fait dans les conditions où la méthode aurait été employée.
--#}
+-- Contrôle de la méthode des scénarios sur le passé
 select
     tranche,
     rang_origine,

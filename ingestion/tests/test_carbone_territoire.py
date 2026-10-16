@@ -1,9 +1,3 @@
-"""Intensité carbone par système électrique et verdict « décarboné » (`fct_carbone_territoire`).
-
-Les facteurs sont le vrai seed ADEME (`dbt/seeds/facteurs_carbone_territoire.csv`) ;
-l'intensité RTE vient de la base synthétique de `medallion.py`.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Iterator
@@ -49,7 +43,7 @@ def test_zni_non_decarbonees_avec_leur_propre_facteur(
 ) -> None:
     zone, acv, est_decarbone, _, directe, _, _ = carbone[region]
     assert (zone, acv, est_decarbone) == (region, intensite, False)
-    # RTE ne publie pas de taux_co2 pour les ZNI : pas d'intensité observée.
+    # RTE ne publie pas de taux_co2 pour les ZNI : pas d'intensité observée
     assert directe is None
 
 

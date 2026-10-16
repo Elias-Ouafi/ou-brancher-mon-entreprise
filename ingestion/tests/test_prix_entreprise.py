@@ -1,10 +1,3 @@
-"""Prix de l'électricité des entreprises : client Eurostat, couches dbt et bloc du diagnostic.
-
-Les prix synthétiques sont décrits dans `medallion.py` : la tranche IB monte de
-0,005 €/kWh par semestre à partir de 0,10 (2016-S1 à 2025-S2), la tranche IG n'a
-que deux ans d'historique. Aucun appel réseau réel (Eurostat est simulé).
-"""
-
 from __future__ import annotations
 
 import json
@@ -42,12 +35,12 @@ from reporting.implantation import generer_rapport_implantation
 
 EUROSTAT_URL = "https://eurostat.test/api"
 
-#: Prix HTVA synthétiques de la tranche IB, du plus ancien au plus récent.
+# Prix HTVA synthétiques de la tranche IB, du plus ancien au plus récent
 PRIX_IB = [PRIX_IB_DEPART + PRIX_IB_PAS * i for i in range(20)]
 
 
+# Cube JSON-stat minimal : 2 tranches, 2 fiscalités, 2 semestres (8 cellules)
 def cube(valeurs: dict[str, float], statuts: dict[str, str] | None = None) -> dict[str, Any]:
-    """Cube JSON-stat minimal : 2 tranches, 2 fiscalités, 2 semestres (8 cellules)."""
     dimension = {
         "freq": {"category": {"index": {"S": 0}, "label": {"S": "Semestriel"}}},
         "nrg_cons": {
@@ -68,11 +61,8 @@ def cube(valeurs: dict[str, float], statuts: dict[str, str] | None = None) -> di
     }
 
 
-# --- Client Eurostat --------------------------------------------------------------
-
-
 def test_json_stat_cube_is_flattened_by_position() -> None:
-    # Position = ((tranche * 2) + fiscalite) * 2 + semestre ; la cellule 6 n'est pas publiée.
+    # Position = ((tranche * 2) + fiscalite) * 2 + semestre ; la cellule 6 n'est pas publiée
     records = aplatir_json_stat(
         cube({"0": 0.18, "1": 0.17, "3": 0.20, "7": 0.25}, statuts={"7": "p"})
     )
@@ -139,13 +129,11 @@ def test_ingestion_merges_into_bronze_idempotently(
         )
 
 
-# --- Couches dbt ----------------------------------------------------------------------
-
 dbt_requis = pytest.mark.skipif(DBT_BIN is None, reason="dbt non installé (uv sync --group dbt)")
 
 
+# Interpolation linéaire entre rangs, comme `quantile_cont` de DuckDB
 def quantile_cont(valeurs: list[float], q: float) -> float:
-    """Interpolation linéaire entre rangs, comme `quantile_cont` de DuckDB."""
     tries = sorted(valeurs)
     position = q * (len(tries) - 1)
     bas = int(position)
@@ -169,7 +157,7 @@ def test_silver_pairs_tax_levels_and_numbers_semesters(medallion_db: Path) -> No
         ).fetchall()
     assert len(lignes) == 20
     rangs = [rang for _, _, rang, _ in lignes]
-    assert rangs == list(range(rangs[0], rangs[0] + 20))  # aucun trou
+    assert rangs == list(range(rangs[0], rangs[0] + 20))
     assert (lignes[1][0], str(lignes[1][1])) == ("2016-S2", "2016-07-01")
     assert all(taxes == pytest.approx(TAXES_IB) for *_, taxes in lignes)
 
@@ -190,21 +178,15 @@ def test_tranche_summary_reads_last_twelve_months_and_history(medallion_db: Path
     assert (minimum, maximum) == (pytest.approx(PRIX_IB[0]), pytest.approx(PRIX_IB[19]))
 
 
-# --- Scénarios et contrôle sur le passé -----------------------------------------------
-
-#: Semestres des tranches synthétiques ID et IE (2006-S1 à 2025-S2).
+# Semestres des tranches synthétiques ID et IE (2006-S1 à 2025-S2)
 SEMESTRES_LONGS = semestres(2006, 2025)
 TRANCHES_LONGUES = {"MWH2000-19999": PRIX_ID, "MWH20000-69999": PRIX_IE}
 
 
+# Recalcul indépendant de `fct_prix_entreprise_eventails`, série sans trou
 def eventails_attendus(
     prix: list[float], *, nb_variations_min: int = 4, nb_erreurs_min: int = 10
 ) -> tuple[dict[tuple[int, int], tuple[float, ...]], dict[tuple[int, int], float]]:
-    """Recalcul indépendant de `fct_prix_entreprise_eventails`, série sans trou.
-
-    Renvoie les éventails publiables `(t, h) -> (bas, central, haut, nb_erreurs)` et les
-    prix réalisés `(t, h) -> prix`.
-    """
     n = len(prix)
     central: dict[tuple[int, int], float] = {}
     realise: dict[tuple[int, int], float] = {}
@@ -232,8 +214,8 @@ def eventails_attendus(
     return eventails, realise
 
 
+# Recalcul indépendant de `fct_prix_entreprise_calibration`
 def calibration_attendue(prix: list[float]) -> dict[str, Any]:
-    """Recalcul indépendant de `fct_prix_entreprise_calibration`."""
     eventails, realise = eventails_attendus(prix)
     periodes = []
     for t in range(len(prix)):
@@ -252,12 +234,12 @@ def calibration_attendue(prix: list[float]) -> dict[str, Any]:
     }
 
 
+# Chaque éventail, à chaque origine, n'utilise que ce qui était connu à cette date
 @dbt_requis
 @pytest.mark.parametrize("tranche", sorted(TRANCHES_LONGUES))
 def test_every_past_fan_matches_an_independent_computation(
     medallion_db: Path, tranche: str
 ) -> None:
-    """Chaque éventail, à chaque origine, n'utilise que ce qui était connu à cette date."""
     attendus, _ = eventails_attendus(TRANCHES_LONGUES[tranche])
     with duckdb.connect(str(medallion_db), read_only=True) as connection:
         lignes = connection.execute(
@@ -296,10 +278,10 @@ def test_scenarios_are_the_fan_at_the_last_semester(medallion_db: Path) -> None:
     )
 
 
+# IB (10 ans) n'a pas 10 erreurs passées à 3 ans ; IG (2 ans) n'a rien
 @dbt_requis
 @pytest.mark.parametrize("tranche", ["MWH20-499", "MWH_GE150000"])
 def test_short_history_gives_no_scenario(medallion_db: Path, tranche: str) -> None:
-    """IB (10 ans) n'a pas 10 erreurs passées à 3 ans ; IG (2 ans) n'a rien."""
     ligne = _une_ligne(
         medallion_db,
         "SELECT prix_3_ans_central_eur_kwh, nb_erreurs_observees, nb_periodes_controlees"
@@ -321,12 +303,12 @@ def test_calibration_matches_an_independent_backtest(medallion_db: Path, tranche
     assert ligne == tuple(attendu.values())
 
 
+# Le sens de la méthode : une crise passée élargit les éventails qui la suivent
 def test_a_crisis_already_seen_is_absorbed_by_the_fans() -> None:
-    """Le sens de la méthode : une crise passée élargit les éventails qui la suivent."""
     recente, ancienne = calibration_attendue(PRIX_ID), calibration_attendue(PRIX_IE)
-    # Crise récente : aucun éventail contrôlé ne l'avait vue, les trois positions existent.
+    # Crise récente : aucun éventail contrôlé ne l'avait vue, les trois positions existent
     assert min(recente["nb_dans_eventail"], recente["nb_au_dessus"], recente["nb_en_dessous"])
-    # Crise ancienne : ses erreurs calibrent les éventails, qui encadrent bien plus souvent.
+    # Crise ancienne : ses erreurs calibrent les éventails, qui encadrent bien plus souvent
     assert ancienne["nb_dans_eventail"] > 2 * recente["nb_dans_eventail"]
 
 
@@ -345,9 +327,7 @@ def test_price_section_reports_the_past_check(medallion_db: Path) -> None:
     assert "calibrent la fourchette affichée" in texte
 
 
-# --- Diagnostic -------------------------------------------------------------------------
-
-
+# IC n'a pas de prix dans la base synthétique : pas de tranche renvoyée
 @dbt_requis
 @pytest.mark.parametrize(
     ("conso", "code"),
@@ -356,7 +336,6 @@ def test_price_section_reports_the_past_check(medallion_db: Path) -> None:
 def test_annual_consumption_selects_its_band(
     medallion_db: Path, conso: float, code: str | None
 ) -> None:
-    """IC n'a pas de prix dans la base synthétique : pas de tranche renvoyée."""
     diagnostic = lire_diagnostic(territoire("69123"), conso_mwh=conso, database=medallion_db)
     assert diagnostic.conso_mwh == conso
     assert (diagnostic.prix.code_tranche if diagnostic.prix else None) == code
@@ -372,10 +351,10 @@ def test_price_section_gives_bill_range_and_its_limit(medallion_db: Path) -> Non
     assert "Consommation 350 MWh/an → tranche IB" in bloc
     assert "12 derniers mois (S1 2025 – S2 2025) : 0,1925 €/kWh HTVA" in bloc
     assert "dont 0,0200 €/kWh de taxes non récupérables" in bloc
-    # 350 000 kWh à 0,1925 €/kWh = 67 375 €, arrondi à la centaine.
+    # 350 000 kWh à 0,1925 €/kWh = 67 375 €, arrondi à la centaine
     assert "facture d'environ 67 400 € par an" in bloc
     assert "plus bas 0,1000 (S1 2016), plus haut 0,1950 (S2 2025)" in bloc
-    # Dix ans d'historique ne fournissent pas 10 erreurs passées à 3 ans.
+    # Dix ans d'historique ne fournissent pas 10 erreurs passées à 3 ans
     assert "pas de scénario à 3 ans" in bloc
     assert diagnostic.limites["prix_entreprise"] in bloc
 
@@ -421,7 +400,7 @@ def test_report_adds_the_band_price_chart(medallion_db: Path, tmp_path: Path) ->
     )
     assert pdf.read_bytes().startswith(b"%PDF")
 
-    # Sans scénario (historique trop court), le graphique garde l'historique seul.
+    # Sans scénario (historique trop court), le graphique garde l'historique seul
     sans_scenario = replace(
         diagnostic,
         prix=lire_diagnostic(territoire("69123"), conso_mwh=200_000, database=medallion_db).prix,
@@ -442,9 +421,6 @@ def test_json_output_carries_the_price_block(medallion_db: Path) -> None:
     assert contenu["conso_mwh"] == 350
     assert contenu["prix"]["code_tranche"] == "IB"
     assert contenu["prix"]["dernier_semestre"] == "2025-S2"
-
-
-# --- Ligne de commande -------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(("saisie", "attendu"), [("350", 350.0), ("1 200,5", 1200.5)])

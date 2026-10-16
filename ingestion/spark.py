@@ -7,7 +7,7 @@ from functools import cache
 from pyspark.sql import SparkSession
 
 
-# Session locale unique (démarrage ~5 s) : fuseau UTC, sans interface web, échanges via Arrow.
+# Session locale unique (démarrage ~5 s) : fuseau UTC, sans interface web, échanges via Arrow
 @cache
 def session() -> SparkSession:
     os.environ.setdefault("PYSPARK_PYTHON", sys.executable)

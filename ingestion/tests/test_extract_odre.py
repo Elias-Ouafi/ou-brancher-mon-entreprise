@@ -1,9 +1,3 @@
-"""Client d'extraction : pagination, bascule vers l'export, retry, quota.
-
-Tous les échanges HTTP sont simulés par `pytest-httpx`, qui intercepte au niveau
-du transport : aucun octet ne sort de la machine.
-"""
-
 from __future__ import annotations
 
 import logging
@@ -25,9 +19,9 @@ from ingestion.extract_odre import (
 NOW = datetime(2026, 9, 7, 6, 0, tzinfo=UTC)
 
 
+# Fenêtre horaire par défaut : les 3 dernières heures
 @pytest.fixture
 def window() -> ExtractionWindow:
-    """Fenêtre horaire par défaut : les 3 dernières heures."""
     return ExtractionWindow.last_hours(3, now=NOW)
 
 
@@ -35,8 +29,8 @@ def query_of(request: httpx.Request) -> dict[str, str]:
     return dict(httpx.QueryParams(request.url.query.decode()))
 
 
+# Réponse `/records` synthétique de `count` enregistrements consécutifs
 def page(count: int, *, start: datetime = NOW) -> dict[str, Any]:
-    """Réponse `/records` synthétique de `count` enregistrements consécutifs."""
     return {
         "total_count": count,
         "results": [
@@ -47,9 +41,6 @@ def page(count: int, *, start: datetime = NOW) -> dict[str, Any]:
             for i in range(count)
         ],
     }
-
-
-# --- Fenêtre d'extraction --------------------------------------------------
 
 
 def test_window_last_hours_is_utc_and_bounded() -> None:
@@ -69,17 +60,14 @@ def test_window_translates_to_odsql_with_utc_bounds(window: ExtractionWindow) ->
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"start": NOW, "end": NOW},  # fenêtre vide
-        {"start": NOW, "end": NOW - timedelta(hours=1)},  # bornes inversées
-        {"start": datetime(2026, 9, 7, 3, 0), "end": NOW},  # borne naïve
+        {"start": NOW, "end": NOW},
+        {"start": NOW, "end": NOW - timedelta(hours=1)},
+        {"start": datetime(2026, 9, 7, 3, 0), "end": NOW},
     ],
 )
 def test_window_rejects_invalid_bounds(kwargs: dict[str, datetime]) -> None:
     with pytest.raises(ValueError):
         ExtractionWindow(**kwargs)
-
-
-# --- /records --------------------------------------------------------------
 
 
 def test_fetch_records_sends_expected_query(
@@ -102,7 +90,7 @@ def test_fetch_records_sends_expected_query(
         "order_by": "date_heure",
         "limit": "100",
         "offset": "0",
-        # Sans ce paramètre, l'interprétation du fuseau dépendrait du dataset.
+        # Sans ce paramètre, l'interprétation du fuseau dépendrait du dataset
         "timezone": "UTC",
     }
 
@@ -114,8 +102,8 @@ def test_fetch_records_paginates_until_partial_page(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(extract_odre, "RECORDS_PAGE_SIZE", 2)
-    httpx_mock.add_response(json=page(2))  # page pleine -> on continue
-    httpx_mock.add_response(json=page(1))  # page partielle -> on s'arrête
+    httpx_mock.add_response(json=page(2))
+    httpx_mock.add_response(json=page(1))
 
     with OdreClient(settings) as client:
         records = client.fetch_records(window)
@@ -127,13 +115,13 @@ def test_fetch_records_paginates_until_partial_page(
     assert offsets == ["0", "2"]
 
 
+# Au-delà de la profondeur de `/records`, on échoue au lieu de perdre des lignes
 def test_fetch_records_raises_beyond_pagination_depth(
     httpx_mock: HTTPXMock,
     settings: Settings,
     window: ExtractionWindow,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Au-delà de la profondeur de `/records`, on échoue au lieu de perdre des lignes."""
     monkeypatch.setattr(extract_odre, "RECORDS_PAGE_SIZE", 2)
     monkeypatch.setattr(extract_odre, "RECORDS_MAX_OFFSET", 2)
     httpx_mock.add_response(json=page(2))
@@ -144,9 +132,6 @@ def test_fetch_records_raises_beyond_pagination_depth(
         pytest.raises(PaginationLimitExceededError, match="exports/csv"),
     ):
         client.fetch_records(window)
-
-
-# --- /exports/csv ----------------------------------------------------------
 
 
 def test_fetch_export_csv_parses_semicolon_delimited_rows(
@@ -165,23 +150,20 @@ def test_fetch_export_csv_parses_semicolon_delimited_rows(
     assert len(records) == 2
     assert records[0]["date_heure"] == "2026-09-07T03:00:00+00:00"
     assert records[0]["consommation"] == "42000"
-    assert records[1]["solaire"] == ""  # valeur manquante, typée plus tard
+    assert records[1]["solaire"] == ""
     request = httpx_mock.get_requests()[0]
     assert request.url.path.endswith("/exports/csv")
     assert query_of(request)["delimiter"] == ";"
     assert query_of(request)["use_labels"] == "false"
 
 
-# --- Choix de l'endpoint ---------------------------------------------------
-
-
+# La fenêtre horaire par défaut coûte un seul appel `/records`
 def test_fetch_window_uses_records_for_hourly_window(
     httpx_mock: HTTPXMock,
     settings: Settings,
     window: ExtractionWindow,
     records_payload: dict[str, Any],
 ) -> None:
-    """La fenêtre horaire par défaut coûte un seul appel `/records`."""
     httpx_mock.add_response(json=records_payload)
 
     with OdreClient(settings) as client:
@@ -192,12 +174,12 @@ def test_fetch_window_uses_records_for_hourly_window(
     assert httpx_mock.get_requests()[0].url.path.endswith("/records")
 
 
+# Un backfill d'un an dépasse la pagination : un seul appel `/exports/csv`
 def test_fetch_window_switches_to_export_for_backfill(
     httpx_mock: HTTPXMock,
     settings: Settings,
     export_csv: str,
 ) -> None:
-    """Un backfill d'un an dépasse la pagination : un seul appel `/exports/csv`."""
     backfill = ExtractionWindow(start=NOW - timedelta(days=365), end=NOW)
     assert backfill.estimated_rows() > settings.records_row_threshold
     httpx_mock.add_response(text=export_csv)
@@ -208,9 +190,6 @@ def test_fetch_window_switches_to_export_for_backfill(
         assert client.calls.count == 1
 
     assert httpx_mock.get_requests()[0].url.path.endswith("/exports/csv")
-
-
-# --- Résilience ------------------------------------------------------------
 
 
 def test_transient_status_is_retried(
@@ -225,7 +204,7 @@ def test_transient_status_is_retried(
     with OdreClient(settings) as client:
         records = client.fetch_records(window)
 
-        # Les deux tentatives comptent dans le quota mensuel.
+        # Les deux tentatives comptent dans le quota mensuel
         assert client.calls.count == 2
 
     assert len(records) == 2
@@ -245,12 +224,12 @@ def test_transport_error_is_retried(
         assert client.calls.count == 2
 
 
+# Une 400 (filtre ODSQL invalide) est définitive : la rejouer gaspillerait le quota
 def test_client_error_is_not_retried(
     httpx_mock: HTTPXMock,
     settings: Settings,
     window: ExtractionWindow,
 ) -> None:
-    """Une 400 (filtre ODSQL invalide) est définitive : la rejouer gaspillerait le quota."""
     httpx_mock.add_response(status_code=400, json={"message": "invalid where clause"})
 
     with OdreClient(settings) as client:
@@ -280,9 +259,7 @@ def test_retry_gives_up_after_max_attempts(
         assert client.calls.count == 2
 
 
-# --- Quota -----------------------------------------------------------------
-
-
+# La consommation du quota doit être lisible dans les logs
 def test_call_count_is_logged_on_close(
     httpx_mock: HTTPXMock,
     settings: Settings,
@@ -290,7 +267,6 @@ def test_call_count_is_logged_on_close(
     records_payload: dict[str, Any],
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """La consommation du quota doit être lisible dans les logs."""
     httpx_mock.add_response(json=records_payload)
     caplog.set_level(logging.INFO, logger="ingestion.extract_odre")
 
@@ -300,17 +276,12 @@ def test_call_count_is_logged_on_close(
     assert "odre_api_calls=1" in caplog.text
 
 
+# ODRE prefixe ses exports d'un BOM, qui se colle au nom de la 1re colonne
 def test_export_csv_strips_the_utf8_bom(
     httpx_mock: HTTPXMock,
     settings: Settings,
     window: ExtractionWindow,
 ) -> None:
-    """ODRE prefixe ses exports d'un BOM, qui se colle au nom de la 1re colonne.
-
-    Non retire, `perimetre` devient `\ufeffperimetre` : la colonne part a `null`
-    sans aucune erreur, et si la 1re colonne est une cle de MERGE, toutes les
-    lignes sont ecartees. Ce test fige le decodage `utf-8-sig`.
-    """
     csv_text = "perimetre;date_heure;consommation\nFrance;2026-09-07T03:00:00+00:00;42000\n"
     httpx_mock.add_response(content=("\ufeff" + csv_text).encode("utf-8"))
 
@@ -326,13 +297,13 @@ def test_export_csv_strips_the_utf8_bom(
     ]
 
 
+# L'API annonce elle-même le quota restant : c'est le chiffre qui fait autorité
 def test_quota_headers_are_recorded(
     httpx_mock: HTTPXMock,
     settings: Settings,
     window: ExtractionWindow,
     records_payload: dict[str, Any],
 ) -> None:
-    """L'API annonce elle-même le quota restant : c'est le chiffre qui fait autorité."""
     httpx_mock.add_response(
         json=records_payload,
         headers={
@@ -350,13 +321,13 @@ def test_quota_headers_are_recorded(
         assert client.calls.quota_reset == "2026-10-01 00:00:00+00:00"
 
 
+# Les en-têtes de quota sont un bonus, jamais une dépendance
 def test_missing_quota_headers_do_not_break_the_run(
     httpx_mock: HTTPXMock,
     settings: Settings,
     window: ExtractionWindow,
     records_payload: dict[str, Any],
 ) -> None:
-    """Les en-têtes de quota sont un bonus, jamais une dépendance."""
     httpx_mock.add_response(json=records_payload, headers={"X-RateLimit-dataset-Remaining": "n/a"})
 
     with OdreClient(settings) as client:
@@ -366,6 +337,7 @@ def test_missing_quota_headers_do_not_break_the_run(
         assert client.calls.count == 1
 
 
+# Garde-fou : même avec les sockets condamnés, l'extraction fonctionne
 def test_suite_never_opens_a_socket(
     httpx_mock: HTTPXMock,
     settings: Settings,
@@ -373,7 +345,6 @@ def test_suite_never_opens_a_socket(
     records_payload: dict[str, Any],
     no_network: None,
 ) -> None:
-    """Garde-fou : même avec les sockets condamnés, l'extraction fonctionne."""
     httpx_mock.add_response(json=records_payload)
 
     with OdreClient(settings) as client:

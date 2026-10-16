@@ -1,7 +1,4 @@
-{#-
-    Échoue sur les valeurs dont la longueur diffère de `length`. Les `null` sont
-    ignorés : leur présence relève du test `not_null`.
--#}
+-- Échoue sur les valeurs dont la longueur diffère de `length`
 {% test exact_length(model, column_name, length) %}
 select {{ column_name }}
 from {{ model }}

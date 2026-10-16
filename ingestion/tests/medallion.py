@@ -1,33 +1,3 @@
-"""Base DuckDB de test, de bronze à gold, partagée par les tests dbt et du rapport.
-
-La couche bronze est construite par le vrai code d'ingestion (Parquet puis
-MERGE), à partir d'enregistrements synthétiques qui reproduisent les pièges
-observés sur les API :
-
-* le consolidé publie une ligne par quart d'heure mais ne mesure qu'à la
-  demi-heure ;
-* le temps réel publie sa ligne la plus récente « à blanc » ;
-* les deux datasets se recouvrent dans le temps ;
-* un jour de changement d'heure dure 25 h ;
-* un jour Tempo court de 6 h à 6 h, à cheval sur deux jours civils ;
-* des codes IRIS publiés sur 8 caractères (zéro de tête perdu), sans commune, et
-  parfois en doublon vide d'une ligne correctement codée ;
-* Paris, Lyon et Marseille publiés sous le code de la commune, pas de
-  l'arrondissement ;
-* une année récente partiellement masquée par le secret statistique ;
-* une région identifiée par son libellé en majuscules, et non par son code ;
-* des postes RTE repérés par le **nom** de leur département, parfois absent, et des
-  contraintes réseau sans géométrie, localisées par leurs postes (deuxième et
-  troisième postes parfois absents, même ouvrage portant deux contraintes) ;
-* des tranches de prix Eurostat à l'historique trop court pour des scénarios, et
-  deux autres assez longues pour contrôler la méthode sur le passé : l'une avec une
-  crise récente, l'autre avec une crise ancienne.
-
-Silver et gold sont ensuite construites par `dbt build`, lancé en sous-processus
-comme le fait `refresh` : dbt-duckdb garde sa connexion ouverte dans le processus
-appelant, ce qui empêcherait de relire la base.
-"""
-
 from __future__ import annotations
 
 import os
@@ -59,7 +29,7 @@ from ingestion.warehouse import DuckDBLoader
 DBT_DIR = Path(__file__).resolve().parents[2] / "dbt"
 DBT_BIN = shutil.which("dbt", path=str(Path(sys.executable).parent)) or shutil.which("dbt")
 
-#: Puissances constantes (MW) : les énergies attendues se calculent de tête.
+# Puissances constantes (MW) : les énergies attendues se calculent de tête
 MESURES = {
     "consommation": 50_000.0,
     "nucleaire": 40_000.0,
@@ -77,16 +47,16 @@ MESURES = {
 PRODUCTION_TOTALE = 50_500.0
 PRODUCTION_BAS_CARBONE = 49_500.0
 
-#: Jour de retour à l'heure d'hiver : 25 h en heure de Paris.
+# Jour de retour à l'heure d'hiver : 25 h en heure de Paris
 JOUR_25H = date(2025, 10, 26)
-#: Dernier jour couvert par le consolidé, recouvert ensuite par le temps réel.
+# Dernier jour couvert par le consolidé, recouvert ensuite par le temps réel
 JOUR_BASCULE = date(2026, 6, 30)
 
-#: Pic de carbone placé en soirée du jour de bascule (heures locales 19 h et 20 h).
+# Pic de carbone placé en soirée du jour de bascule (heures locales 19 h et 20 h)
 PIC_CO2 = 80.0
 HEURES_PIC = (19, 20)
 
-#: Calendrier Tempo : la veille du jour de bascule est bleue, le jour lui-même rouge.
+# Calendrier Tempo : la veille du jour de bascule est bleue, le jour lui-même rouge
 TEMPO = {
     date(2025, 10, 25): "BLUE",
     JOUR_25H: "BLUE",
@@ -125,8 +95,8 @@ def _record(instant: datetime, nature: str, *, mesure: bool, **overrides: float)
     return record
 
 
+# Mesures à :00 et :30 seulement, lignes vides à :15 et :45 (comme l'API)
 def consolide() -> list[dict[str, Any]]:
-    """Mesures à :00 et :30 seulement, lignes vides à :15 et :45 (comme l'API)."""
     records = []
     for jour, nature in ((JOUR_25H, "Données définitives"), (JOUR_BASCULE, "Données consolidées")):
         for instant in quarts_d_heure(*jour_utc(jour)):
@@ -134,32 +104,31 @@ def consolide() -> list[dict[str, Any]]:
     return records
 
 
+# Recouvre la fin du consolidé, puis le prolonge ; dernière ligne « à blanc »
 def temps_reel() -> list[dict[str, Any]]:
-    """Recouvre la fin du consolidé, puis le prolonge ; dernière ligne « à blanc »."""
     start = datetime(2026, 6, 30, 20, 0, tzinfo=UTC)
     end = datetime(2026, 7, 1, 2, 0, tzinfo=UTC)
     instants = list(quarts_d_heure(start, end))
-    # Une consommation distincte permet de reconnaître la source dans le résultat.
+    # Une consommation distincte permet de reconnaître la source dans le résultat
     return [
         _record(instant, "Données temps réel", mesure=instant != instants[-1], consommation=45_000)
         for instant in instants
     ]
 
 
+# Format renvoyé par `RteTempoClient.fetch_calendar` : minuit de Paris + couleur
 def tempo() -> list[dict[str, Any]]:
-    """Format renvoyé par `RteTempoClient.fetch_calendar` : minuit de Paris + couleur."""
     return [
         {"date_heure": datetime(j.year, j.month, j.day, tzinfo=PARIS_TZ).isoformat(), "couleur": c}
         for j, c in sorted(TEMPO.items())
     ]
 
 
-# --- Jeux territoriaux ---------------------------------------------------------
-
-#: Année complète, retenue comme millésime de référence : 2022 a du secret statistique.
+# Année complète, retenue comme millésime de référence : 2022 a du secret statistique
 ANNEE_REFERENCE = 2021
 
 
+# `commune` = (code commune, nom, code département, code région), ou rien
 def _iris(
     annee: int,
     code_iris: str,
@@ -168,7 +137,6 @@ def _iris(
     *,
     commune: tuple[str, str, str, str] | None = None,
 ) -> dict[str, Any]:
-    """`commune` = (code commune, nom, code département, code région), ou rien."""
     record: dict[str, Any] = {
         "annee": str(annee),
         "code_iris": code_iris,
@@ -192,29 +160,26 @@ AJACCIO = ("2A004", "Ajaccio", "2A", "94")
 SAINT_MAURICE = ("01376", "Saint-Maurice-de-Beynost", "01", "84")
 
 
+# MWh par an
 def conso_iris() -> list[dict[str, Any]]:
-    """MWh par an. Département 69 en 2021 : 40 000 + 60 000 MWh, 3 sites, 2 communes."""
     return [
-        # 2021, millésime complet.
-        _iris(2021, "693830101", 40_000.0, 1.0, commune=LYON),  # IRIS d'arrondissement
+        # 2021, millésime complet
+        _iris(2021, "693830101", 40_000.0, 1.0, commune=LYON),
         _iris(2021, "692660000", 60_000.0, 2.0, commune=VILLEURBANNE),
-        _iris(2021, "20030000", 10_000.0, 1.0),  # 020030000, Aisne, commune non publiée
-        _iris(2021, "751010101", 5_000.0, 1.0),  # Paris 1er, commune non publiée
+        _iris(2021, "20030000", 10_000.0, 1.0),
+        _iris(2021, "751010101", 5_000.0, 1.0),
         _iris(2021, "2A0040000", 3_000.0, 1.0, commune=AJACCIO),
-        # 2022, plus récent mais partiellement masqué.
+        # 2022, plus récent mais partiellement masqué
         _iris(2022, "693830101", None, None, commune=LYON),
         _iris(2022, "692660000", 99_000.0, 2.0, commune=VILLEURBANNE),
         _iris(2022, "013760000", 7_000.0, 1.0, commune=SAINT_MAURICE),
-        _iris(2022, "13760000", None, None),  # doublon vide du précédent
+        _iris(2022, "13760000", None, None),
     ]
 
 
+# 13 mois, de décembre 2024 à décembre 2025 : la fenêtre n'en retient que 12
 def equilibre_regional() -> list[dict[str, Any]]:
-    """13 mois, de décembre 2024 à décembre 2025 : la fenêtre n'en retient que 12.
-
-    Décembre 2024 porte une production aberrante, qui fausserait tout s'il était compté.
-    """
-    regions = {"84": 200.0, "11": 10.0, "94": 70.0}  # production mensuelle, conso = 100
+    regions = {"84": 200.0, "11": 10.0, "94": 70.0}
     mois = ["2024-12"] + [f"2025-{m:02d}" for m in range(1, 13)]
     return [
         {
@@ -251,18 +216,16 @@ def contraintes_regionales() -> list[dict[str, Any]]:
     ]
 
 
-#: Tranche IB : 20 semestres de 2016-S1 à 2025-S2, prix HTVA en hausse de 0,005 €/kWh
-#: par semestre à partir de 0,10 ; taxes non récupérables constantes de 0,02 €/kWh.
+# Tranche IB : 20 semestres de 2016-S1 à 2025-S2
 PRIX_IB_DEPART = 0.10
 PRIX_IB_PAS = 0.005
 TAXES_IB = 0.02
-#: Tranche IA (moins de 20 MWh par an), prix constant sur 2 ans.
+# Tranche IA (moins de 20 MWh par an), prix constant sur 2 ans
 PRIX_IA = 0.25
 
 
+# 40 semestres de 2006-S1 à 2025-S2 : +2 % par semestre, un bruit déterministe de ±10 % au plus
 def _serie_avec_crise(debut_crise: int) -> list[float]:
-    """40 semestres de 2006-S1 à 2025-S2 : +2 % par semestre, un bruit déterministe de
-    ±10 % au plus, et une « crise » de 30 % sur 4 semestres à partir de `debut_crise`."""
     return [
         0.10
         * 1.02**i
@@ -272,23 +235,19 @@ def _serie_avec_crise(debut_crise: int) -> list[float]:
     ]
 
 
-#: Tranche ID : crise tardive (2021-2022). Les éventails contrôlés ne l'avaient jamais
-#: vue : le contrôle sur le passé y trouve les trois positions.
+# Tranche ID : crise tardive (2021-2022)
 PRIX_ID = _serie_avec_crise(30)
-#: Tranche IE : même série, crise ancienne (2016-2017). Ses erreurs calibrent les
-#: éventails suivants, qui encadrent bien mieux le prix réel.
+# Tranche IE : même série, crise ancienne (2016-2017)
 PRIX_IE = _serie_avec_crise(20)
 
 
+# `semestres(2024, 2025)` -> 2024-S1, 2024-S2, 2025-S1, 2025-S2
 def semestres(premier: int, dernier: int) -> list[str]:
-    """`semestres(2024, 2025)` -> 2024-S1, 2024-S2, 2025-S1, 2025-S2."""
     return [f"{annee}-S{n}" for annee in range(premier, dernier + 1) for n in (1, 2)]
 
 
+# IB sur 10 ans, IA et IG sur 2 ans : trop peu pour des scénarios
 def prix_entreprises() -> list[dict[str, Any]]:
-    """IB sur 10 ans, IA et IG sur 2 ans : trop peu pour des scénarios. ID et IE sur 20 ans.
-
-    IA est la tranche affichée sans `--conso`."""
     series = {
         "MWH_LT20": [(semestre, PRIX_IA, 0.03) for semestre in semestres(2024, 2025)],
         "MWH20-499": [
@@ -331,15 +290,15 @@ def _poste(code: str, tension: str, departement: str, etat: str = "EN EXPLOITATI
     }
 
 
+# Rhône : 3 postes en exploitation (HTB1, HTB2, HTB3) et 1 en projet ; Ain : 1 poste
 def postes_rte() -> list[dict[str, Any]]:
-    """Rhône : 3 postes en exploitation (HTB1, HTB2, HTB3) et 1 en projet ; Ain : 1 poste."""
     return [
         _poste("LYON1", "63kV", "Rhône"),
         _poste("LYON2", "225kV", "Rhône"),
-        _poste("LYON3", "400kV", "RHONE"),  # casse et accent différents
+        _poste("LYON3", "400kV", "RHONE"),
         _poste("LYON4", "90kV", "Rhône", etat="ACCORD ADMINISTRATIF"),
         _poste("BOURG", "63kV", "Ain"),
-        _poste("PIQUA", "<45kV", ""),  # département non publié
+        _poste("PIQUA", "<45kV", ""),
     ]
 
 
@@ -375,17 +334,17 @@ FORTE = "Forte : entre 75 et 150 fois par an"
 FAIBLE = "Faible : entre 5 et 25 fois par an"
 
 
+# Rhône : 3 contraintes, dont une liaison vers l'Ain et un ouvrage à deux contraintes
 def contraintes_ouvrages() -> list[dict[str, Any]]:
-    """Rhône : 3 contraintes, dont une liaison vers l'Ain et un ouvrage à deux contraintes."""
     return [
-        # Liaison Ain-Rhône : comptée dans les deux départements.
+        # Liaison Ain-Rhône : comptée dans les deux départements
         _contrainte("BOURGLYON1", ("BOURG", "LYON1", None), FORTE, "ELEVEE", 80.0),
-        # Même ouvrage, deux contraintes qui diffèrent par leurs postes.
+        # Même ouvrage, deux contraintes qui diffèrent par leurs postes
         _contrainte("LYON2LYON3", ("LYON2", "LYON3", None), FAIBLE, "FAIBLE", 40.0),
         _contrainte(
             "LYON2LYON3", ("LYON2", "LYON3", "LYON1"), TRES_FORTE, "MOYENNE", 60.0, en_journee=True
         ),
-        # Postes inconnus : contrainte rattachée à aucun département.
+        # Postes inconnus : contrainte rattachée à aucun département
         _contrainte("ORPHELINE", ("XXXXX", None, None), FAIBLE, "FAIBLE", 10.0),
     ]
 
@@ -424,8 +383,8 @@ def dbt_build(database: Path, tmp_path: Path) -> None:
     assert result.returncode == 0, f"dbt build en échec :\n{result.stdout}\n{result.stderr}"
 
 
+# Bronze chargé par l'ingestion, silver et gold construits par `dbt build`
 def build_warehouse(tmp_path: Path, *, with_tempo: bool = True) -> Path:
-    """Bronze chargé par l'ingestion, silver et gold construits par `dbt build`."""
     database = tmp_path / "eco2mix.duckdb"
     load_bronze(database, tmp_path, NATIONAL_CONS_DEF, consolide())
     load_bronze(database, tmp_path, NATIONAL_TR, temps_reel())

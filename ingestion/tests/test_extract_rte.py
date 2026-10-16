@@ -1,5 +1,3 @@
-"""Client de l'API RTE Tempo : authentification, plages, parsing. Aucun appel réseau."""
-
 from __future__ import annotations
 
 from datetime import date
@@ -35,8 +33,8 @@ def rte_settings(settings: Settings) -> Settings:
     )
 
 
+# Réponse au format RTE, jours du plus récent au plus ancien comme l'API
 def _calendar(*days: tuple[str, str]) -> dict[str, Any]:
-    """Réponse au format RTE, jours du plus récent au plus ancien comme l'API."""
     values = [
         {
             "start_date": f"{start}T00:00:00+02:00",
@@ -74,7 +72,7 @@ def test_calendar_is_parsed_and_sorted(httpx_mock: HTTPXMock, rte_settings: Sett
     ]
     calendar_request = next(r for r in httpx_mock.get_requests() if _is_calendar(r))
     assert calendar_request.headers["Authorization"] == "Bearer jeton"
-    # Bornes en minuit heure de Paris, avec décalage explicite.
+    # Bornes en minuit heure de Paris, avec décalage explicite
     assert calendar_request.url.params["start_date"] == "2026-09-01T00:00:00+02:00"
     assert calendar_request.url.params["end_date"] == "2026-09-04T00:00:00+02:00"
 
@@ -100,7 +98,7 @@ def test_long_ranges_are_split_and_token_is_reused(
     with RteTempoClient(rte_settings) as client:
         client.fetch_calendar(DayRange(date(2024, 1, 1), date(2026, 1, 1)), today=TODAY)
 
-    # 731 jours -> 2 tranches de 366 jours au plus, un seul jeton pour les deux.
+    # 731 jours -> 2 tranches de 366 jours au plus, un seul jeton pour les deux
     assert len([r for r in httpx_mock.get_requests() if _is_calendar(r)]) == 2
     assert len(httpx_mock.get_requests(url=TOKEN_URL)) == 1
 
@@ -113,7 +111,7 @@ def test_future_days_are_not_requested(httpx_mock: HTTPXMock, rte_settings: Sett
         client.fetch_calendar(DayRange(date(2026, 10, 1), date(2026, 11, 1)), today=TODAY)
 
     calendar_request = next(r for r in httpx_mock.get_requests() if _is_calendar(r))
-    # La couleur de J+1 est la plus lointaine publiée : la plage s'arrête à J+2 exclu.
+    # La couleur de J+1 est la plus lointaine publiée : la plage s'arrête à J+2 exclu
     assert calendar_request.url.params["end_date"] == "2026-10-05T00:00:00+02:00"
 
 

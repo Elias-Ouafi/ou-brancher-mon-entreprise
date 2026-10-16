@@ -1,22 +1,3 @@
-"""Chiffres du rapport mensuel, calculés sur `gold.fct_creneau_horaire`.
-
-Toutes les requêtes lisent la couche gold en lecture seule : le rapport ne
-recalcule aucune règle métier (couleur Tempo, période tarifaire, prix), il ne
-fait que sélectionner, classer et résumer.
-
-Définitions retenues, reprises dans la section méthodologie du PDF :
-
-* **Pic de carbone** : heure dont l'intensité dépasse strictement le 9e décile du
-  mois (une égalité au seuil, fréquente sur un plateau, n'est pas un pic). Des
-  heures de pic consécutives forment un *épisode*.
-* **Créneau** : fenêtre de `heures_creneau` heures consécutives, toutes mesurées.
-  Les meilleurs créneaux sont classés par prix moyen puis par intensité carbone ;
-  sans calendrier Tempo, par intensité carbone seule.
-* **Usage flexible** : une consommation quotidienne déplaçable (recharge de
-  véhicule, électroménager programmable). Chaque jour, elle est placée sur le
-  meilleur créneau de la journée et comparée à un créneau de référence en soirée.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -29,17 +10,16 @@ from ingestion.transform import PARIS_TZ
 COULEURS = ("bleu", "blanc", "rouge")
 
 
+# Paramètres du rapport, exposés dans la CLI
 @dataclass(frozen=True, slots=True)
 class Options:
-    """Paramètres du rapport, exposés dans la CLI."""
-
-    #: Durée d'un créneau, en heures.
+    # Durée d'un créneau, en heures
     heures_creneau: int = 3
-    #: Consommation flexible déplacée chaque jour, en kWh.
+    # Consommation flexible déplacée chaque jour, en kWh
     usage_flexible_kwh: float = 7.0
-    #: Heure locale de début du créneau de référence (soirée, retour à domicile).
+    # Heure locale de début du créneau de référence (soirée, retour à domicile)
     heure_reference: int = 18
-    #: Quantile définissant un pic de carbone.
+    # Quantile définissant un pic de carbone
     quantile_pic: float = 0.9
 
 
@@ -52,10 +32,9 @@ class Heure:
     prix: float | None
 
 
+# Suite d'heures consécutives au-dessus du seuil de pic
 @dataclass(frozen=True, slots=True)
 class Episode:
-    """Suite d'heures consécutives au-dessus du seuil de pic."""
-
     debut: datetime
     fin: datetime
     co2_max: float
@@ -63,8 +42,7 @@ class Episode:
 
     @property
     def duree_heures(self) -> int:
-        # En UTC : entre deux heures de Paris de même tzinfo, Python soustrait
-        # l'heure murale et se tromperait d'une heure au changement d'heure.
+        # En UTC : entre deux heures de Paris de même tzinfo
         return round((self.fin.astimezone(UTC) - self.debut.astimezone(UTC)) / timedelta(hours=1))
 
 
@@ -87,10 +65,9 @@ class SyntheseTarif:
     co2_moyen: float | None
 
 
+# Usage flexible placé au meilleur créneau du jour, comparé à la soirée
 @dataclass(frozen=True, slots=True)
 class Economie:
-    """Usage flexible placé au meilleur créneau du jour, comparé à la soirée."""
-
     nb_jours: int
     kwh_par_jour: float
     cout_optimise: float | None
@@ -152,19 +129,20 @@ def _bornes_mois(mois: date) -> tuple[date, date]:
     return mois, suivant
 
 
+# Heures du mois civil en heure de Paris (743 ou 745 aux changements d'heure)
 def _heures_attendues(mois: date) -> int:
-    """Heures du mois civil en heure de Paris (743 ou 745 aux changements d'heure)."""
     debut, fin = _bornes_mois(mois)
     start = datetime(debut.year, debut.month, debut.day, tzinfo=PARIS_TZ).astimezone(UTC)
     end = datetime(fin.year, fin.month, fin.day, tzinfo=PARIS_TZ).astimezone(UTC)
     return round((end - start) / timedelta(hours=1))
 
 
+# DuckDB renvoie l'heure de Paris en TIMESTAMP naïf : on la rend explicite
 def _paris(value: datetime) -> datetime:
-    """DuckDB renvoie l'heure de Paris en TIMESTAMP naïf : on la rend explicite."""
     return value.replace(tzinfo=PARIS_TZ) if value.tzinfo is None else value.astimezone(PARIS_TZ)
 
 
+# Rassemble tous les chiffres du rapport d'un mois civil
 def collect(
     connection: duckdb.DuckDBPyConnection,
     mois: date,
@@ -172,7 +150,6 @@ def collect(
     *,
     now: datetime | None = None,
 ) -> RapportMensuel:
-    """Rassemble tous les chiffres du rapport d'un mois civil."""
     options = options or Options()
     mois = mois.replace(day=1)
     debut, fin = _bornes_mois(mois)
@@ -233,7 +210,7 @@ def _carbone(connection: duckdb.DuckDBPyConnection, rapport: RapportMensuel, par
         {**params, "q": rapport.options.quantile_pic},
     ).fetchone()[0]
 
-    # Îlots d'heures consécutives au-dessus du seuil (technique gaps and islands).
+    # Îlots d'heures consécutives au-dessus du seuil (technique gaps and islands)
     episodes = connection.execute(
         """
         WITH pics AS (
@@ -293,8 +270,8 @@ def _tarifs(connection: duckdb.DuckDBPyConnection, rapport: RapportMensuel, para
     ).fetchall()
 
 
+# Fenêtres glissantes de `n` heures
 def _fenetres_sql(n: int) -> str:
-    """Fenêtres glissantes de `n` heures. `n` est un entier : interpolation sûre."""
     if not isinstance(n, int) or n < 1:
         raise ValueError(f"durée de créneau invalide : {n!r}")
     return f"""
@@ -334,8 +311,7 @@ def _creneaux(connection: duckdb.DuckDBPyConnection, rapport: RapportMensuel, pa
             f"FROM ({_fenetres_sql(n)}) WHERE {filtre} ORDER BY {ordre}, heure_utc",
             params,
         ).fetchall()
-        # Sélection gloutonne de fenêtres disjointes : la meilleure, puis la
-        # meilleure qui ne la chevauche pas, etc.
+        # Sélection gloutonne de fenêtres disjointes : la meilleure
         retenus: list[Creneau] = []
         for debut, prix, co2, couleur, periode in rows:
             debut = _paris(debut)
@@ -386,7 +362,7 @@ def _economie(connection: duckdb.DuckDBPyConnection, rapport: RapportMensuel, pa
         kwh_par_jour=kwh,
         cout_optimise=None if prix_opt is None else prix_opt * kwh,
         cout_reference=None if prix_ref is None else prix_ref * kwh,
-        # g/kWh x kWh = g ; / 1000 pour des kilogrammes.
+        # g/kWh x kWh = g ; / 1000 pour des kilogrammes
         co2_optimise_kg=co2_opt * kwh / 1000,
         co2_reference_kg=co2_ref * kwh / 1000,
     )

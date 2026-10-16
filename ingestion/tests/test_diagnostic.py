@@ -1,10 +1,3 @@
-"""Diagnostic d'implantation : couches silver et gold territoriales, puis lecture et CLI.
-
-Les données synthétiques et leurs pièges sont décrits dans `medallion.py`. La
-base est construite une fois par session par `dbt build` ; aucun appel réseau
-réel (la BAN est simulée par `pytest-httpx`).
-"""
-
 from __future__ import annotations
 
 import json
@@ -64,9 +57,6 @@ def territoire(code_commune: str, commune: str = "Commune", **overrides: Any) ->
     return Territoire(**(valeurs | overrides))
 
 
-# --- Hiérarchie territoriale (Python) ----------------------------------------
-
-
 @pytest.mark.parametrize(
     ("code", "parent"),
     [("69383", "69123"), ("75101", "75056"), ("13216", "13055"), ("69266", "69266")],
@@ -82,9 +72,6 @@ def test_department_is_derived_from_commune_code(commune: str, departement: str)
     assert code_departement(commune) == departement
 
 
-# --- Silver ------------------------------------------------------------------
-
-
 def test_iris_codes_are_padded_and_empty_duplicates_dropped(
     warehouse: duckdb.DuckDBPyConnection,
 ) -> None:
@@ -93,7 +80,7 @@ def test_iris_codes_are_padded_and_empty_duplicates_dropped(
         "SELECT code_iris, consommation_electricite_mwh FROM silver.conso_industrielle_iris"
         " WHERE annee = 2022 ORDER BY code_iris",
     )
-    # « 13760000 » vide doublonnait « 013760000 » : la ligne publiée sur 9 caractères reste.
+    # « 13760000 » vide doublonnait « 013760000 » : la ligne publiée sur 9 caractères reste
     assert rows == [("013760000", 7_000.0), ("692660000", 99_000.0), ("693830101", None)]
 
 
@@ -105,8 +92,8 @@ def test_missing_commune_is_rebuilt_from_iris_code(warehouse: duckdb.DuckDBPyCon
         " WHERE est_commune_reconstituee AND annee = 2021 ORDER BY code_iris",
     )
     assert rows == [
-        ("020030000", "02003", "02", "32"),  # zéro de tête restauré
-        ("751010101", "75056", "75", "11"),  # arrondissement ramené à Paris
+        ("020030000", "02003", "02", "32"),
+        ("751010101", "75056", "75", "11"),
     ]
 
 
@@ -126,9 +113,6 @@ def test_constraints_region_label_is_matched_to_its_code(
         "SELECT code_insee_region, libelle_publie FROM silver.contraintes_reseau_region"
         " ORDER BY code_insee_region",
     ) == [("11", "ÎLE-DE-FRANCE"), ("84", "AUVERGNE-RHÔNE-ALPES")]
-
-
-# --- Gold : pression industrielle ---------------------------------------------
 
 
 def test_reference_year_is_last_one_without_statistical_secrecy(
@@ -154,7 +138,7 @@ def test_department_pressure_aggregates_communes_and_ranks(
     )
     assert rows == [
         ("69", 100_000.0, 3, 2, 1, 4),
-        ("02", 10_000.0, 1, 1, 2, 4),  # IRIS sans commune publiée : compté quand même
+        ("02", 10_000.0, 1, 1, 2, 4),
         ("75", 5_000.0, 1, 1, 3, 4),
         ("2A", 3_000.0, 1, 1, 4, 4),
     ]
@@ -168,9 +152,6 @@ def test_every_department_has_a_row_even_without_site(
         "SELECT count(*), count(*) FILTER (WHERE conso_industrielle_departement_gwh = 0)"
         " FROM gold.fct_diagnostic_territoire",
     ) == [(101, 97)]
-
-
-# --- Gold : tension du réseau régional ------------------------------------------
 
 
 def test_regional_balance_uses_last_twelve_months(warehouse: duckdb.DuckDBPyConnection) -> None:
@@ -202,9 +183,6 @@ def test_curtailed_energy_sums_the_four_seasons(warehouse: duckdb.DuckDBPyConnec
         "SELECT puissance_a_compenser_mw, energie_non_evacuee_mwh"
         " FROM gold.fct_tension_reseau_region WHERE code_insee_region = '84'",
     ) == [(187.0, 2_777.0)]
-
-
-# --- Lecture du diagnostic ------------------------------------------------------
 
 
 def test_diagnostic_for_a_lyon_arrondissement(medallion_db: Path) -> None:
@@ -286,9 +264,6 @@ def test_warehouse_without_gold_layer_is_reported(tmp_path: Path) -> None:
     duckdb.connect(str(database)).close()
     with pytest.raises(DiagnosticIndisponibleError, match="dbt build"):
         lire_diagnostic(territoire("69123"), database=database)
-
-
-# --- Ligne de commande -----------------------------------------------------------
 
 
 def test_diagnose_command_end_to_end(

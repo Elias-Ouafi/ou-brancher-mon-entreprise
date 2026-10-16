@@ -1,15 +1,4 @@
-{#-
-    Diagnostic de contexte d'implantation : une ligne par département.
-
-    **Pourquoi le département, et pas la commune.** Aucun jeu ouvert du projet ne
-    liste les ~35 000 communes, et seules ~1 300 ont un site raccordé au
-    transport : une table à la commune serait vide presque partout. Le
-    département est la plus fine maille renseignée partout ; la commune vient en
-    complément, par jointure sur `fct_pression_industrielle_commune` quand elle y
-    figure (voir `ingestion/diagnostic.py`, qui fait les deux en un `SELECT`).
-
-    Chaque indicateur a sa limite dans `limites_methodologiques`.
--#}
+-- Diagnostic de contexte d'implantation : une ligne par département
 select
     pression.code_departement,
     pression.departement,
@@ -58,7 +47,7 @@ left join (
     select
         code_departement,
         count(*) as nb_contraintes,
-        -- « Forte » ou « très forte » : plus de 75 fois par an.
+        -- « Forte » ou « très forte » : plus de 75 fois par an
         count(*) filter (where rang_occurrence >= 4) as nb_contraintes_frequentes
     from {{ ref('fct_contraintes_departement') }}
     group by code_departement

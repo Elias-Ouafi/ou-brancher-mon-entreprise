@@ -1,25 +1,3 @@
-"""Client de l'API de diffusion d'Eurostat : prix de l'électricité des entreprises.
-
-Jeu `nrg_pc_205` : prix moyen semestriel payé par les consommateurs non
-résidentiels, par tranche de consommation annuelle (IA à IG). C'est la seule
-série publique, longue et officielle de prix **effectivement payés** par les
-entreprises françaises : au-delà de 36 kVA, il n'existe plus de tarif réglementé
-et les contrats de fourniture sont confidentiels.
-
-Points de conception :
-
-* **Un seul appel**, sans compte ni clé : toutes les tranches, les deux niveaux
-  de fiscalité et tous les semestres depuis 2007 (la nomenclature IA–IG date de
-  2007 ; les tranches antérieures ne sont pas comparables).
-* **JSON-stat aplati.** La réponse est un cube : un tableau de valeurs indexé par
-  la position dans le produit des dimensions. Chaque cellule renseignée devient
-  un enregistrement bronze `(semestre, tranche, fiscalite)`.
-* **Même robustesse que les clients ODRÉ, RTE et BAN.** Timeout explicite, retry
-  exponentiel sur erreurs réseau et statuts transitoires, jamais sur une 4xx.
-
-Documentation : https://ec.europa.eu/eurostat/web/user-guides/data-browser/api-data-access
-"""
-
 from __future__ import annotations
 
 import itertools
@@ -42,7 +20,7 @@ logger = logging.getLogger(__name__)
 DATASET = "nrg_pc_205"
 DATA_PATH = f"/statistics/1.0/data/{DATASET}"
 
-#: Tranches de consommation annuelle de la nomenclature 2007 (IA à IG).
+# Tranches de consommation annuelle de la nomenclature 2007 (IA à IG)
 TRANCHES: tuple[str, ...] = (
     "MWH_LT20",
     "MWH20-499",
@@ -53,20 +31,20 @@ TRANCHES: tuple[str, ...] = (
     "MWH_GE150000",
 )
 
-#: `X_TAX` : hors taxes ; `X_VAT` : hors TVA et taxes récupérables.
+# `X_TAX` : hors taxes ; `X_VAT` : hors TVA et taxes récupérables
 FISCALITES: tuple[str, ...] = ("X_TAX", "X_VAT")
 
-#: Premier semestre de la nomenclature IA–IG.
+# Premier semestre de la nomenclature IA–IG
 PREMIER_SEMESTRE = "2007-S1"
 
 
+# La réponse d'Eurostat n'a pas la forme JSON-stat attendue
 class EurostatResponseError(ExtractionError):
-    """La réponse d'Eurostat n'a pas la forme JSON-stat attendue."""
+    pass
 
 
+# Client HTTP de l'API de diffusion d'Eurostat, utilisable comme context manager
 class EurostatClient:
-    """Client HTTP de l'API de diffusion d'Eurostat, utilisable comme context manager."""
-
     def __init__(
         self,
         settings: Settings | None = None,
@@ -92,8 +70,6 @@ class EurostatClient:
             reraise=True,
         )
 
-    # -- Cycle de vie -------------------------------------------------------
-
     def close(self) -> None:
         logger.info("eurostat_api_calls=%d", self.calls)
         if self._owns_client:
@@ -105,10 +81,8 @@ class EurostatClient:
     def __exit__(self, *exc_info: object) -> None:
         self.close()
 
-    # -- Extraction ---------------------------------------------------------
-
+    # Prix semestriels de toutes les tranches, sous forme d'enregistrements bronze
     def fetch_prix_entreprises(self, *, geo: str = "FR") -> list[dict[str, Any]]:
-        """Prix semestriels de toutes les tranches, sous forme d'enregistrements bronze."""
         params: list[tuple[str, str]] = [
             ("format", "JSON"),
             ("lang", "fr"),
@@ -120,8 +94,6 @@ class EurostatClient:
             *(("tax", fiscalite) for fiscalite in FISCALITES),
         ]
         return aplatir_json_stat(self._get(DATA_PATH, params).json())
-
-    # -- Couche HTTP --------------------------------------------------------
 
     def _get(self, path: str, params: list[tuple[str, str]]) -> httpx.Response:
         def envoyer() -> httpx.Response:
@@ -135,14 +107,8 @@ class EurostatClient:
         return self._retrying(envoyer)
 
 
+# Une ligne par cellule renseignée du cube `nrg_pc_205`
 def aplatir_json_stat(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    """Une ligne par cellule renseignée du cube `nrg_pc_205`.
-
-    Dans JSON-stat, la valeur de la combinaison `(i_1, …, i_n)` est rangée à la
-    position `((i_1 * s_2 + i_2) * s_3 + …)`, où `s_k` est la taille de la
-    dimension `k`. `value` (et `status`) sont des dictionnaires creux : une
-    cellule absente n'est pas publiée.
-    """
     try:
         dimensions: list[str] = payload["id"]
         tailles: list[int] = payload["size"]
@@ -153,11 +119,11 @@ def aplatir_json_stat(payload: dict[str, Any]) -> list[dict[str, Any]]:
     for attendue in ("nrg_cons", "tax", "time"):
         if attendue not in dimensions:
             raise EurostatResponseError(f"dimension {attendue!r} absente de la reponse")
-    if isinstance(valeurs, list):  # JSON-stat autorise aussi un tableau dense
+    if isinstance(valeurs, list):
         valeurs = {str(i): v for i, v in enumerate(valeurs) if v is not None}
     statuts: dict[str, str] = payload.get("status") or {}
 
-    # Codes de chaque dimension, rangés selon leur position dans le cube.
+    # Codes de chaque dimension, rangés selon leur position dans le cube
     codes = {nom: sorted(cat["index"], key=cat["index"].get) for nom, cat in categories.items()}
     if [len(codes[d]) for d in dimensions] != tailles:
         raise EurostatResponseError("tailles et dimensions incoherentes")
