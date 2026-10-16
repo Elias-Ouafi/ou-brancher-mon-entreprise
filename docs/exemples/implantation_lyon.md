@@ -2,7 +2,13 @@
 
 *Commune Lyon (69123) · Rhône (69) · Auvergne-Rhône-Alpes (84)*  
 
-Établi le 15/10/2026 à partir de données publiques ouvertes (RTE, ODRÉ, Eurostat, Géorisques). Chaque indicateur est suivi de sa limite méthodologique.
+Établi le 16/10/2026 à partir de données publiques ouvertes (RTE, ODRÉ, Eurostat, Géorisques). Chaque indicateur est suivi de sa limite méthodologique.
+
+## L'essentiel : prix et carbone à cette adresse
+
+- **Prix moyen : 0,0916 €/kWh HTVA, soit environ 5 500 000 € par an pour 60 000 MWh (tranche IE ; Eurostat, S2 2025 – S1 2026)**
+- **Électricité décarbonée : oui (France continentale), 51,9 gCO₂e/kWh en cycle de vie, sous le seuil de 100 gCO₂e/kWh**
+- **À savoir : Le prix ne dépend pas de l'adresse mais de la consommation (péréquation, Corse et outre-mer compris). Le carbone est la moyenne annuelle du réseau de ce territoire, pas celle d'un contrat de fourniture.**
 
 ## 1. Pression industrielle locale (sites raccordés au réseau de transport, 2021)
 
@@ -62,7 +68,11 @@
 
 ![Prix de la tranche depuis 2007 et scénarios à 3 ans](implantation_lyon_graphiques/prix_tranche.png)
 
-## 5. Coût horaire d'un profil type (identique sur tout le territoire)
+## 5. Carbone du réseau et coût horaire d'un profil type
+
+- Électricité du réseau décarbonée (France continentale) : 51,9 gCO₂e/kWh en cycle de vie (ADEME, année 2024), sous le seuil de 100 gCO₂e/kWh de la taxonomie européenne ; émissions directes observées par RTE sur 12 mois, jusqu'au 08/10/2026 : 19 gCO₂/kWh
+
+> **Limite.** Intensité moyenne du réseau sur l'année, en cycle de vie (méthode location-based) : elle ne dit rien du contrat de fourniture ni des garanties d'origine achetées (méthode market-based), ni des heures de consommation, l'intensité variant fortement d'une heure à l'autre. Toutes les adresses du continent partagent la même valeur : le réseau y est interconnecté. Le seuil de 100 gCO2e/kWh est celui de la taxonomie européenne pour la production d'électricité ; « décarbonée » qualifie le réseau, pas l'entreprise, et ne permet pas à elle seule une allégation environnementale.
 
 - Bureau tertiaire, 36 kVA, septembre 2026, option Heures Creuses du tarif bleu non résidentiel
 - 9 600 kWh, dont 15 % en heures creuses : 1 586 € HTVA, soit 0,1652 €/kWh ; 22 gCO₂/kWh en moyenne

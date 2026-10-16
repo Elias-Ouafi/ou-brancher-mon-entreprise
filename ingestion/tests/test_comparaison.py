@@ -78,10 +78,15 @@ def test_rows_depend_on_the_address_only(medallion_db: Path) -> None:
         "Postes RTE du département",
         "Zone prioritaire RTE",
         "Site clé en main (France 2030)",
+        "Électricité décarbonée",
     ]  # pas de risques : Géorisques n'a pas été consulté
     assert _valeurs(tableau, "Contraintes RTE (3-5 ans)") == [
         "3, dont 2 plus de 75 fois par an",
         "réseau hors RTE",
+    ]
+    assert _valeurs(tableau, "Électricité décarbonée") == [
+        "oui, 51,9 gCO₂e/kWh (France continentale)",
+        "non, 594 gCO₂e/kWh (Corse)",
     ]
     assert _valeurs(tableau, "Postes RTE du département") == [
         "3 (HTB1 1, HTB2 1, HTB3 1)",
@@ -129,7 +134,9 @@ def test_address_independent_figures_are_given_once(medallion_db: Path) -> None:
 
     assert texte.count("Puissance 12 MW → HTA") == 1
     assert "Prix de l'électricité pour l'entreprise" in texte
-    assert "Coût horaire d'un profil type" in texte
+    assert "Carbone du réseau et coût horaire d'un profil type" in texte
+    # Le verdict carbone dépend du territoire : il n'est pas répété sous le tableau.
+    assert "Électricité du réseau" not in texte
     # Une adresse en Corse : les prix communs valent pour la métropole continentale.
     assert "valent pour la métropole continentale" in texte
 

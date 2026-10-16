@@ -15,7 +15,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.platypus import KeepTogether, Paragraph, SimpleDocTemplate, Spacer
 
-from ingestion.diagnostic import Diagnostic, entete, sections
+from ingestion.diagnostic import Diagnostic, entete, essentiel, sections
 from reporting import implantation_charts
 from reporting.implantation import GRAPHIQUES, SOURCES, Comparaisons, texte_compact
 from reporting.pdf import ALERTE, STYLES, _encadre, _image, _kpis, _pied_de_page
@@ -109,6 +109,10 @@ def rendre(
             STYLES["note"],
         )
     )
+    blocs.append(Spacer(1, 6))
+    resume = essentiel(diagnostic)
+    blocs.append(Paragraph(_pdf(resume.titre), STYLES["h1"]))
+    blocs += [Paragraph(f"<b>{_pdf(c)}</b>", STYLES["texte"]) for _, c in resume.elements]
     blocs.append(Spacer(1, 6))
     blocs += _synthese(diagnostic)
 

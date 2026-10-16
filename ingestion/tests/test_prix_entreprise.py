@@ -351,12 +351,12 @@ def test_price_section_reports_the_past_check(medallion_db: Path) -> None:
 @dbt_requis
 @pytest.mark.parametrize(
     ("conso", "code"),
-    [(19.9, None), (20, "IB"), (499.9, "IB"), (500, None), (150_000, "IG"), (1e7, "IG")],
+    [(19.9, "IA"), (20, "IB"), (499.9, "IB"), (500, None), (150_000, "IG"), (1e7, "IG")],
 )
 def test_annual_consumption_selects_its_band(
     medallion_db: Path, conso: float, code: str | None
 ) -> None:
-    """IA et IC n'ont pas de prix dans la base synthétique : pas de tranche renvoyée."""
+    """IC n'a pas de prix dans la base synthétique : pas de tranche renvoyée."""
     diagnostic = lire_diagnostic(territoire("69123"), conso_mwh=conso, database=medallion_db)
     assert diagnostic.conso_mwh == conso
     assert (diagnostic.prix.code_tranche if diagnostic.prix else None) == code
@@ -368,7 +368,7 @@ def test_price_section_gives_bill_range_and_its_limit(medallion_db: Path) -> Non
     texte = formater_diagnostic(diagnostic)
     assert diagnostic.prix is not None
 
-    bloc = texte[texte.index("4. Prix") : texte.index("5. Coût")]
+    bloc = texte[texte.index("4. Prix") : texte.index("5. Carbone")]
     assert "Consommation 350 MWh/an → tranche IB" in bloc
     assert "12 derniers mois (S1 2025 – S2 2025) : 0,1925 €/kWh HTVA" in bloc
     assert "dont 0,0200 €/kWh de taxes non récupérables" in bloc
@@ -384,7 +384,6 @@ def test_price_section_gives_bill_range_and_its_limit(medallion_db: Path) -> Non
 @pytest.mark.parametrize(
     ("conso", "message"),
     [
-        (None, "Préciser --conso"),
         (1_000, "Aucun prix publié par Eurostat pour la tranche de 1 000 MWh/an."),
         (200_000, "Historique trop court pour cette tranche"),
     ],
@@ -395,7 +394,7 @@ def test_price_section_explains_missing_figures(
     texte = formater_diagnostic(
         lire_diagnostic(territoire("69123"), conso_mwh=conso, database=medallion_db)
     )
-    assert message in texte[texte.index("4. Prix") : texte.index("5. Coût")]
+    assert message in texte[texte.index("4. Prix") : texte.index("5. Carbone")]
 
 
 @dbt_requis
@@ -480,3 +479,25 @@ def test_bills_keep_three_significant_digits(valeur: float, texte: str) -> None:
     from ingestion.diagnostic import _euros_arrondis
 
     assert _euros_arrondis(valeur) == texte
+
+
+@dbt_requis
+def test_sans_conso_le_prix_est_celui_de_la_tranche_ia_sans_facture(medallion_db: Path) -> None:
+    diagnostic = lire_diagnostic(territoire("69123"), database=medallion_db)
+    assert diagnostic.prix is not None
+    assert (diagnostic.prix.code_tranche, diagnostic.prix.est_tranche_par_defaut) == ("IA", True)
+    texte = formater_diagnostic(diagnostic)
+    bloc = texte[texte.index("4. Prix") : texte.index("5. Carbone")]
+    assert "Consommation non précisée → tranche IA (moins de 20 MWh par an)" in bloc
+    assert "Préciser --conso" in bloc
+    assert "12 derniers mois (S1 2025 – S2 2025) : 0,2500 €/kWh HTVA" in bloc
+    assert "→ facture" not in bloc
+    with pytest.raises(ValueError, match="facture inconnue"):
+        diagnostic.prix.facture_eur(0.25)
+
+
+@dbt_requis
+def test_prix_par_defaut_rappelle_la_perequation_en_zni(medallion_db: Path) -> None:
+    texte = formater_diagnostic(lire_diagnostic(territoire("2A004"), database=medallion_db))
+    bloc = texte[texte.index("4. Prix") : texte.index("5. Carbone")]
+    assert "En Corse et outre-mer, les tarifs réglementés sont alignés" in bloc
