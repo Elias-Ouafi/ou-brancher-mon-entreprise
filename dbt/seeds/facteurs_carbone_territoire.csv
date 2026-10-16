@@ -1,0 +1,8 @@
+zone_carbone,code_insee_region,territoire,intensite_acv_g_co2e_kwh,validite_source,id_base_carbone
+continent,,France continentale,51.9,année 2024,43642
+94,94,Corse,594,déc. 2020,24308
+01,01,Guadeloupe,702,déc. 2020,24305
+02,02,Martinique,840,déc. 2020,24306
+03,03,Guyane,957,déc. 2020,24307
+04,04,La Réunion,780,déc. 2020,24303
+06,06,Mayotte,780,déc. 2020,24304

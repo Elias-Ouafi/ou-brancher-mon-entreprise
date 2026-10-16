@@ -146,6 +146,20 @@ order by distance_km
 limit 1
 """
 
+_CARBONE_SQL = """
+select
+    systeme_electrique,
+    intensite_acv_g_co2e_kwh,
+    validite_source,
+    seuil_decarbone_g_co2e_kwh,
+    est_decarbone,
+    intensite_directe_rte_g_co2_kwh,
+    rte_jour_debut,
+    rte_jour_fin
+from gold.fct_carbone_territoire
+where code_insee_region = $region
+"""
+
 _PRIX_SQL = """
 select *
 from gold.fct_prix_entreprise_tranche
@@ -181,6 +195,21 @@ class Seuil:
     domaine_tension: str
     gestionnaire: str
     commentaire: str
+
+
+@dataclass(frozen=True, slots=True)
+class Carbone:
+    """Intensité carbone du système électrique de l'adresse et verdict « décarboné »."""
+
+    systeme_electrique: str
+    intensite_acv_g_co2e_kwh: float
+    validite_source: str
+    seuil_decarbone_g_co2e_kwh: float
+    est_decarbone: bool
+    #: Émissions directes observées par RTE sur 12 mois ; absentes en ZNI.
+    intensite_directe_rte_g_co2_kwh: float | None
+    rte_jour_debut: date | None
+    rte_jour_fin: date | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -335,6 +364,7 @@ class Diagnostic:
     conso_mwh: float | None
     prix: PrixEntreprise | None
     cout: CoutProfil | None
+    carbone: Carbone | None
     limites: dict[str, str]
     # Risques à l'adresse (Géorisques), ajoutés par `completer_risques`
     risques: RisquesSite | None = None
@@ -393,6 +423,11 @@ def lire_diagnostic(
                 ).fetchall()
             ]
             cout_ligne = _une_ligne(connection, _COUT_SQL, {"profil": PROFIL_DEFAUT})
+            carbone = (
+                None
+                if ligne is None
+                else _une_ligne(connection, _CARBONE_SQL, {"region": ligne["code_insee_region"]})
+            )
             limites = dict(
                 connection.execute(
                     "select indicateur, limite from gold.limites_methodologiques"
@@ -418,6 +453,7 @@ def lire_diagnostic(
         zone_rte_p3=zone_rte_p3,
         site_cle_en_main=None if site is None else SiteCleEnMain(**site),
         cout=None if cout_ligne is None else CoutProfil(**cout_ligne),
+        carbone=None if carbone is None else Carbone(**carbone),
         limites=limites,
         **ligne,
     )
@@ -719,6 +755,9 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
 
     # 5. Coût d'un profil type
     s = bloc("5. Coût horaire d'un profil type (identique sur tout le territoire)")
+    if d.carbone is not None:
+        texte(s, _verdict_carbone(d.carbone))
+        limite(s, "carbone_territoire")
     if d.cout is None:
         texte(s, "Aucun mois complet et tarifé : charger les données nationales récentes.")
     else:
@@ -858,6 +897,22 @@ _MOIS = [
     "janvier", "février", "mars", "avril", "mai", "juin",
     "juillet", "août", "septembre", "octobre", "novembre", "décembre",
 ]  # fmt: skip
+
+
+def _verdict_carbone(c: Carbone) -> str:
+    verdict = "décarbonée" if c.est_decarbone else "non décarbonée"
+    phrase = (
+        f"Électricité du réseau {verdict} ({c.systeme_electrique}) :"
+        f" {_nombre_court(c.intensite_acv_g_co2e_kwh)} gCO₂e/kWh en cycle de vie (ADEME,"
+        f" {c.validite_source}), {'sous le' if c.est_decarbone else 'au-dessus du'} seuil de"
+        f" {_nombre_court(c.seuil_decarbone_g_co2e_kwh)} gCO₂e/kWh de la taxonomie européenne"
+    )
+    if c.intensite_directe_rte_g_co2_kwh is not None and c.rte_jour_fin is not None:
+        phrase += (
+            f" ; émissions directes observées par RTE sur 12 mois, jusqu'au"
+            f" {c.rte_jour_fin:%d/%m/%Y} : {_nombre(c.intensite_directe_rte_g_co2_kwh)} gCO₂/kWh"
+        )
+    return phrase
 
 
 def _co2_evite(kg: float) -> str:
