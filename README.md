@@ -23,24 +23,26 @@ Exemples réels : [recette sur 11 adresses](docs/exemples/recette_mvp.md) ·
 
 ## Trois points forts pour un data engineer
 
-1. **Une ingestion idempotente, éprouvée sur les pièges réels des sources.** Bronze en Parquet
-   immuables (toutes les révisions gardées) puis `MERGE` sur clé dans DuckDB, jamais d'`INSERT` :
-   relancer ne duplique rien. Changements d'heure normalisés en UTC, révisions de RTE rattrapées,
+1. **Une ingestion PySpark idempotente, éprouvée sur les pièges réels des sources.** PySpark
+   type, normalise et filtre chaque lot ; bronze en Parquet immuables (toutes les révisions
+   gardées) puis `MERGE` sur clé dans DuckDB, jamais d'`INSERT` : relancer ne duplique rien. Changements d'heure normalisés en UTC, révisions de RTE rattrapées,
    quota d'API suivi, bascule automatique sur l'export CSV, nouvelles tentatives exponentielles ;
    BOM, codes IRIS tronqués et secret statistique traités et testés.
 2. **Un médaillon dbt testé de bout en bout, sans réseau.** 318 tests pytest, dont un `dbt build`
    complet sur une base synthétique qui reproduit ces pièges ; tests de données dbt (unicité,
    bornes, intégrité référentielle) à chaque build ; CI GitHub Actions à chaque PR. Les scénarios
    de prix sont contrôlés sur le passé, sans regard vers le futur.
-3. **Des choix proportionnés et des chiffres honnêtes.** DuckDB plutôt que Spark (500 000 lignes,
-   `dbt build` en 10 s), reconstruction complète plutôt qu'incrémental, interface
-   `WarehouseLoader` prête pour BigQuery. Chaque indicateur porte sa source, sa maille et sa
+3. **Des choix proportionnés et des chiffres honnêtes.** PySpark pour la transformation, dbt et
+   DuckDB pour le stockage et la lecture (`essentiel` répond en 1,5 s, sans démarrer Spark),
+   reconstruction complète plutôt qu'incrémental, interface `WarehouseLoader` prête pour BigQuery. Chaque indicateur porte sa source, sa maille et sa
    limite (`limites_methodologiques.csv`), conformément aux règles sur les allégations
    environnementales (directive EmpCo).
 
 ## Installation et mise à jour
 
-Python 3.12. Tout tourne en local, sans compte (sauf le calendrier Tempo, optionnel).
+Python 3.12 et Java 17 (pour PySpark). Tout tourne en local, sans compte (sauf le calendrier
+Tempo, optionnel). Spark n'écrit aucun fichier lui-même : pas besoin de `winutils` ni de
+`HADOOP_HOME` sous Windows.
 
 ```powershell
 python -m venv .venv
@@ -81,7 +83,7 @@ Le raisonnement complet est dans le [cadrage](docs/cadrage-besoins-entreprises.m
 
 ```mermaid
 flowchart LR
-    SRC[("ODRÉ · Eurostat · RTE")] -->|"ingestion/ (Python)"| B["Bronze : Parquet + DuckDB (MERGE)"]
+    SRC[("ODRÉ · Eurostat · RTE")] -->|"ingestion/ (PySpark)"| B["Bronze : Parquet + DuckDB (MERGE)"]
     B -->|dbt| S["Silver : nettoyé, codes INSEE"]
     S -->|dbt| G["Gold : prix, carbone, diagnostic"]
     SEEDS[("Seeds : ADEME, tarifs, référentiels, limites")] --> G

@@ -52,10 +52,9 @@ toute l'UE ; hors UE, il faudra le justifier à nouveau.
 
 ## Volumes et outils
 
-Le passage à l'échelle ne justifie pas PySpark à court terme : l'Europe entière en horaire,
-par zone et par filière, représente de l'ordre de quelques dizaines de millions de lignes sur
-dix ans, ce que DuckDB traite sur un poste. À reconsidérer (`dbt-spark` ou BigQuery, derrière
-l'interface `WarehouseLoader`) si l'on descend au pas 15 min dans le monde entier.
+L'ingestion est déjà en PySpark : elle passera à l'échelle d'une Europe horaire (quelques
+dizaines de millions de lignes sur dix ans) sur un cluster sans changer de code. Silver et gold
+pourront suivre avec `dbt-spark`, et le stockage avec BigQuery derrière `WarehouseLoader`.
 
 ## Ordre proposé
 

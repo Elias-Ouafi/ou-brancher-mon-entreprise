@@ -1,19 +1,4 @@
-{#-
-    Prix de l'électricité d'une entreprise selon sa tranche de consommation
-    annuelle : une ligne par tranche, tout ce que le diagnostic affiche.
-
-    * **Prix de référence** : moyenne des deux derniers semestres publiés (les
-      12 derniers mois), hors TVA et taxes récupérables.
-    * **Repères historiques** : moyenne des 5 dernières années (10 semestres),
-      plus bas et plus haut depuis 2007 avec leur semestre.
-    * **Prix moyen des 3 prochaines années**, par scénario : moyenne des prix à
-      1, 2 et 3 ans de `fct_prix_entreprise_scenarios`. Ce n'est pas une prévision.
-    * **Contrôle sur le passé** : combien de fois la même méthode, appliquée à
-      chaque semestre de l'histoire, a encadré le prix moyen réel des 3 années
-      suivantes (`fct_prix_entreprise_calibration`).
-
-    Le prix est national (péréquation) : il ne dépend pas de l'adresse.
--#}
+-- Prix de l'électricité d'une entreprise selon sa tranche de consommation annuelle
 with prix as (
     select
         *,
@@ -42,8 +27,7 @@ historique as (
     group by tranche
 ),
 
--- Un horizon sans éventail publiable (pas assez d'erreurs passées pour le
--- calibrer) : les scénarios restent nuls.
+-- Un horizon sans éventail publiable (pas assez d'erreurs passées pour le calibrer)
 trois_ans as (
     select
         tranche,

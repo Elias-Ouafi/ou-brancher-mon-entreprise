@@ -1,5 +1,3 @@
-"""Graphiques du rapport mensuel, rendus en PNG (matplotlib, sans affichage)."""
-
 from __future__ import annotations
 
 import calendar
@@ -8,7 +6,7 @@ from datetime import timedelta
 
 import matplotlib
 
-matplotlib.use("Agg")  # aucun serveur graphique requis (CI, terminal)
+matplotlib.use("Agg")
 
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
@@ -17,7 +15,7 @@ from matplotlib.patches import Patch, Rectangle
 
 from reporting.data import RapportMensuel
 
-#: Couleurs Tempo, adoucies pour rester lisibles en fond de graphique.
+# Couleurs Tempo, adoucies pour rester lisibles en fond de graphique
 TEMPO_HEX = {"bleu": "#2F6DB5", "blanc": "#B8BEC6", "rouge": "#D0312D", None: "#EEEEEE"}
 ENCRE = "#1F2933"
 GRILLE = "#D9DEE3"
@@ -50,14 +48,14 @@ def _png(fig: plt.Figure) -> bytes:
     return buffer.getvalue()
 
 
+# Intensité carbone heure par heure, pics surlignés, couleur Tempo en fond
 def courbe_carbone(rapport: RapportMensuel) -> bytes:
-    """Intensité carbone heure par heure, pics surlignés, couleur Tempo en fond."""
     heures = [h for h in rapport.heures if h.taux_co2 is not None]
     x = [h.heure_paris.replace(tzinfo=None) for h in heures]
     y = [h.taux_co2 for h in heures]
 
     fig, ax = plt.subplots(figsize=(7.2, 2.6))
-    # Fond : couleur Tempo de chaque heure (jour Tempo de 6 h à 6 h).
+    # Fond : couleur Tempo de chaque heure (jour Tempo de 6 h à 6 h)
     for h in heures:
         if h.couleur is not None:
             debut = h.heure_paris.replace(tzinfo=None)
@@ -86,14 +84,13 @@ def courbe_carbone(rapport: RapportMensuel) -> bytes:
     return _png(fig)
 
 
+# Intensité carbone par jour (lignes) et heure locale (colonnes)
 def carte_chaleur(rapport: RapportMensuel) -> bytes:
-    """Intensité carbone par jour (lignes) et heure locale (colonnes)."""
     nb_jours = rapport.jours_du_mois
     grille = np.full((nb_jours, 24), np.nan)
     for h in rapport.heures:
         if h.taux_co2 is not None:
-            # Le jour du retour à l'heure d'hiver, l'heure 2 h apparaît deux fois :
-            # on garde la plus carbonée, c'est ce qu'un pic doit montrer.
+            # Le jour du retour à l'heure d'hiver, l'heure 2 h apparaît deux fois
             jour, heure = h.heure_paris.day - 1, h.heure_paris.hour
             grille[jour, heure] = np.fmax(grille[jour, heure], h.taux_co2)
 
@@ -108,8 +105,8 @@ def carte_chaleur(rapport: RapportMensuel) -> bytes:
     return _png(fig)
 
 
+# Intensité carbone moyenne par heure, prix moyen du kWh en surimpression
 def profil_horaire(rapport: RapportMensuel) -> bytes:
-    """Intensité carbone moyenne par heure, prix moyen du kWh en surimpression."""
     heures = [p[0] for p in rapport.profil_horaire]
     co2 = [p[1] if p[1] is not None else np.nan for p in rapport.profil_horaire]
     couleurs = ["#8FB3D9" if h >= 22 or h < 6 else "#C9D3DD" for h in heures]
@@ -138,8 +135,8 @@ def profil_horaire(rapport: RapportMensuel) -> bytes:
     return _png(fig)
 
 
+# Calendrier du mois, une case par jour colorée selon Tempo
 def calendrier_tempo(rapport: RapportMensuel) -> bytes:
-    """Calendrier du mois, une case par jour colorée selon Tempo."""
     semaines = calendar.Calendar().monthdatescalendar(rapport.mois.year, rapport.mois.month)
     fig, ax = plt.subplots(figsize=(4.2, 0.45 * len(semaines) + 0.5))
     for ligne, semaine in enumerate(semaines):

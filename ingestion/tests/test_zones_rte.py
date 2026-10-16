@@ -1,10 +1,3 @@
-"""Zones industrielles prioritaires de RTE (SDDR 2025) : seed, distance et bloc 3.
-
-Le seed est le vrai référentiel (`dbt/seeds/zones_raccordement_rte.csv`), construit
-dans la base synthétique comme tous les seeds. Les positions des adresses de test
-sont celles des communes de référence, à quelques décimales près.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -24,7 +17,7 @@ from ingestion.tests.test_diagnostic import territoire
 
 dbt_requis = pytest.mark.skipif(DBT_BIN is None, reason="dbt non installé (uv sync --group dbt)")
 
-# Positions (latitude, longitude) d'adresses réelles.
+# Positions (latitude, longitude) d'adresses réelles
 LYON = (45.7637, 4.8357)
 MELUN = (48.5421, 2.6552)
 POITIERS = (46.5802, 0.3404)
@@ -45,7 +38,7 @@ def test_seed_lists_the_ten_sddr_zones_and_three_p3_examples(medallion_db: Path)
             "SELECT priorite, count(DISTINCT zone), count(*) FROM gold.zones_raccordement_rte"
             " GROUP BY priorite ORDER BY priorite"
         ).fetchall()
-    # P2 : 7 zones, dont Sud Île-de-France sur deux points (Essonne, Seine-et-Marne).
+    # P2 : 7 zones, dont Sud Île-de-France sur deux points (Essonne, Seine-et-Marne)
     assert lignes == [("P1", 3, 3), ("P2", 7, 8), ("P3", 3, 3)]
 
 
@@ -56,7 +49,7 @@ def test_nearest_priority_zone_and_its_calendar(medallion_db: Path) -> None:
 
     assert zone is not None
     assert (zone.zone, zone.priorite, zone.annee_capacite) == ("Vallée de la chimie", "P2", 2029)
-    assert zone.distance_km == pytest.approx(7.2, abs=0.5)  # Lyon 2e – Saint-Fons
+    assert zone.distance_km == pytest.approx(7.2, abs=0.5)
     assert diagnostic.zone_rte_p3 is None
 
 
@@ -74,7 +67,7 @@ def test_p3_example_is_shown_only_when_nearer(medallion_db: Path) -> None:
     assert poitiers.zone_rte is not None and poitiers.zone_rte.zone == "Loire-Estuaire"
     assert poitiers.zone_rte_p3 is not None and poitiers.zone_rte_p3.zone == "Châteauroux"
 
-    # Montpellier : Fos-sur-Mer (P1, ~84 km) est plus proche que Port-la-Nouvelle (P3, ~95 km).
+    # Montpellier : Fos-sur-Mer (P1, ~84 km) est plus proche que Port-la-Nouvelle (P3, ~95 km)
     montpellier = _diagnostic(medallion_db, "34172", MONTPELLIER)
     assert montpellier.zone_rte is not None and montpellier.zone_rte.zone == "Fos-sur-Mer"
     assert montpellier.zone_rte_p3 is None

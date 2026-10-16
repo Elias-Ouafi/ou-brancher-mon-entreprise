@@ -1,29 +1,3 @@
-"""Point d'entrée en ligne de commande, pour les rejeux manuels et le backfill.
-
-    python -m ingestion.cli ingest                       # fenêtre glissante par défaut
-    python -m ingestion.cli ingest --hours 24            # rattrapage d'une journée
-    python -m ingestion.cli ingest --start 2025-01-01 --end 2026-01-01
-    python -m ingestion.cli consolidate --months 24      # dataset consolidé/définitif
-    python -m ingestion.cli load data/bronze/.../part-x.parquet
-    python -m ingestion.cli freshness
-    python -m ingestion.cli coverage
-    python -m ingestion.cli geocode --adresse "12 rue de la Paix, 69003 Lyon"
-    python -m ingestion.cli essentiel --adresse "12 rue de la Paix, 69003 Lyon"   # prix, carbone
-    python -m ingestion.cli essentiel --adresse "..." --conso 350 --format json
-    python -m ingestion.cli diagnose --adresse "12 rue de la Paix, 69003 Lyon" --puissance 5
-    python -m ingestion.cli diagnose --adresse "..." --puissance 5 --format pdf   # rapport
-    python -m ingestion.cli diagnose --adresse "..." --conso 350   # prix de la tranche
-    python -m ingestion.cli compare --adresse "A" --adresse "B"    # côte à côte
-    python -m ingestion.cli refresh                      # toutes les sources, puis dbt build
-    python -m ingestion.cli refresh --months 180         # premier chargement, depuis 2012
-    python -m ingestion.cli tempo --month 2026-09        # calendrier Tempo (API RTE)
-    python -m ingestion.cli prix                         # prix entreprises (Eurostat)
-    python -m ingestion.cli report --month 2026-09       # rapport PDF du mois
-    python -m ingestion.cli report --month 2026-09 --format md   # même rapport en Markdown
-
-Tout tourne en local, à la demande : aucune exécution planifiée.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -63,8 +37,8 @@ from ingestion.pipeline import (
 logger = logging.getLogger("ingestion")
 
 
+# Accepte `2026-09-07` ou `2026-09-07T05:00:00`, interprétés en UTC
 def _parse_instant(value: str) -> datetime:
-    """Accepte `2026-09-07` ou `2026-09-07T05:00:00`, interprétés en UTC."""
     parsed = datetime.fromisoformat(value)
     return parsed.replace(tzinfo=UTC) if parsed.tzinfo is None else parsed.astimezone(UTC)
 
@@ -114,7 +88,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="eco2mix",
         description=__doc__,
-        # Sans cela, argparse recompacte les exemples de la docstring en un pavé.
+        # Sans cela, argparse recompacte les exemples de la docstring en un pavé
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--verbose", action="store_true", help="passe les logs en DEBUG")
@@ -360,7 +334,7 @@ def main(argv: list[str] | None = None) -> int:
                 return 1
             if not args.sans_risques:
                 diagnostic = completer_risques(diagnostic, settings=settings)
-            # Sortie redirigée sous Windows : cp1252 ne connaît ni « → » ni « ≤ ».
+            # Sortie redirigée sous Windows : cp1252 ne connaît ni « → » ni « ≤ »
             if hasattr(sys.stdout, "reconfigure"):
                 sys.stdout.reconfigure(encoding="utf-8")
             if args.format == "texte":
@@ -370,7 +344,7 @@ def main(argv: list[str] | None = None) -> int:
 
                 print(en_json(diagnostic))
             else:
-                # Import paresseux : matplotlib et reportlab ne servent qu'au rapport.
+                # Import paresseux : matplotlib et reportlab ne servent qu'au rapport
                 from reporting.implantation import generer_rapport_implantation
 
                 path = generer_rapport_implantation(
@@ -417,7 +391,7 @@ def main(argv: list[str] | None = None) -> int:
             if args.output:
                 chemin = Path(args.output)
                 chemin.parent.mkdir(parents=True, exist_ok=True)
-                # BOM pour le CSV : Excel le lit alors en UTF-8 sans casser les accents.
+                # BOM pour le CSV : Excel le lit alors en UTF-8 sans casser les accents
                 encodage = "utf-8-sig" if args.format == "csv" else "utf-8"
                 chemin.write_text(sortie, encoding=encodage)
                 logger.info("comparaison ecrite %s", chemin)
@@ -442,7 +416,7 @@ def main(argv: list[str] | None = None) -> int:
             outcome, result = run_prix_entreprises_ingestion(settings=settings, run_id=args.run_id)
             logger.info("prix entreprises charges %s %s", outcome, result.as_dict())
         case "report":
-            # Import paresseux : matplotlib et reportlab ne servent qu'ici.
+            # Import paresseux : matplotlib et reportlab ne servent qu'ici
             from reporting.monthly import generate_monthly_report
 
             output = Path(args.output) if args.output else None

@@ -1,15 +1,4 @@
-{#-
-    Postes électriques RTE (postes de transformation et points de piquage).
-
-    La source ne publie ni coordonnées ni code de département, seulement le
-    **nom** du département : le code est retrouvé via `normalise_libelle` et le
-    référentiel `dim_departement`. Environ 3 % des postes n'ont pas de
-    département publié ; ils restent sans code.
-
-    Domaines de tension (arrêté du 17 mars 2003) : HTB1 jusqu'à 150 kV, HTB2 à
-    225 kV, HTB3 à 400 kV. Les tensions sous 45 kV, le courant continu et les
-    postes hors tension ne sont rangés dans aucun domaine.
--#}
+-- Postes électriques RTE (postes de transformation et points de piquage)
 with source as (
     select
         *,

@@ -1,7 +1,4 @@
-{#-
-    Production par filière au format long : une ligne par mesure et par filière.
-    Format attendu par les graphiques empilés et par les agrégats par famille.
--#}
+-- Production par filière au format long : une ligne par mesure et par filière
 with production as (
     unpivot (
         select date_heure, qualite, pas_minutes, {{ filieres() | join(', ') }}

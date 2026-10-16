@@ -23,12 +23,15 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      # uv installe via pip : aucune action tierce, aucun credential.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
       - name: Install uv
         run: pip install uv
 
-      # Les groupes dbt et report activent les tests de bout en bout des
-      # couches silver et gold et du rapport PDF, ignores sinon.
+      # dbt et report activent les tests de bout en bout
       - name: Install dependencies
         run: uv sync --group dev --group dbt --group report
 
@@ -38,8 +41,6 @@ jobs:
       - name: Format check
         run: uv run ruff format --check .
 
-      # Les appels HTTP sont simules par pytest-httpx : le runner n'atteint
-      # jamais l'API ODRE, et aucun secret n'est necessaire. dbt build tourne
-      # sur une base DuckDB temporaire alimentee par des donnees synthetiques.
+      # Sans reseau ni secret : API simulees, base DuckDB synthetique
       - name: Tests
         run: uv run pytest

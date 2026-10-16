@@ -1,9 +1,3 @@
-"""Graphiques du rapport d'implantation, rendus en PNG (matplotlib, sans affichage).
-
-Chaque fonction renvoie `None` quand la donnée manque : le rapport saute alors
-le graphique au lieu d'afficher un cadre vide.
-"""
-
 from __future__ import annotations
 
 import matplotlib.pyplot as plt
@@ -13,15 +7,15 @@ from ingestion.diagnostic import Diagnostic
 from reporting.charts import ENCRE, GRILLE, _png
 from reporting.implantation import NB_DEPARTEMENTS_AFFICHES, Comparaisons
 
-#: L'adresse diagnostiquée ressort en couleur, les autres territoires en gris.
+# L'adresse diagnostiquée ressort en couleur, les autres territoires en gris
 ICI = "#2F6DB5"
 AUTRES = "#C9D3DD"
 HC = "#E8EEF6"
 FLEXIBLE = "#E08A00"
 
 
+# Barres horizontales, la première valeur en haut
 def _barres(ax: plt.Axes, libelles: list[str], valeurs: list[float], ici: list[bool]) -> None:
-    """Barres horizontales, la première valeur en haut."""
     positions = range(len(valeurs))[::-1]
     ax.barh(list(positions), valeurs, color=[ICI if i else AUTRES for i in ici], height=0.7)
     ax.set_yticks(list(positions), libelles)
@@ -32,11 +26,11 @@ def _barres(ax: plt.Axes, libelles: list[str], valeurs: list[float], ici: list[b
     ax.grid(axis="y", visible=False)
 
 
+# Taux de couverture de chaque région, 100 % = production égale à la consommation
 def couverture_regions(diagnostic: Diagnostic, comparaisons: Comparaisons) -> bytes | None:
-    """Taux de couverture de chaque région, 100 % = production égale à la consommation."""
     if not comparaisons.regions:
         return None
-    regions = comparaisons.regions[::-1]  # la plus excédentaire en haut
+    regions = comparaisons.regions[::-1]
     fig, ax = plt.subplots(figsize=(7.2, 0.2 * len(regions) + 0.7))
     _barres(
         ax,
@@ -59,12 +53,8 @@ def couverture_regions(diagnostic: Diagnostic, comparaisons: Comparaisons) -> by
     return _png(fig)
 
 
+# Départements les plus consommateurs ; celui de l'adresse ajouté s'il est plus loin
 def pression_departements(diagnostic: Diagnostic, comparaisons: Comparaisons) -> bytes | None:
-    """Départements les plus consommateurs ; celui de l'adresse ajouté s'il est plus loin.
-
-    Un département sans site raccordé au transport n'est pas classé : il figure
-    quand même en dernière ligne, à zéro, pour que l'absence se voie.
-    """
     if not comparaisons.departements:
         return None
     affiches = comparaisons.departements[:NB_DEPARTEMENTS_AFFICHES]
@@ -90,8 +80,8 @@ def pression_departements(diagnostic: Diagnostic, comparaisons: Comparaisons) ->
     return _png(fig)
 
 
+# Puissance appelée heure par heure, jour ouvré et week-end, part flexible en couleur
 def profil_journalier(diagnostic: Diagnostic, comparaisons: Comparaisons) -> bytes | None:
-    """Puissance appelée heure par heure, jour ouvré et week-end, part flexible en couleur."""
     if not comparaisons.profil or diagnostic.cout is None:
         return None
     fig, axes = plt.subplots(1, 2, figsize=(7.2, 2.4), sharey=True)
@@ -130,13 +120,8 @@ def profil_journalier(diagnostic: Diagnostic, comparaisons: Comparaisons) -> byt
     return _png(fig)
 
 
+# Prix semestriel de la tranche depuis 2007, puis l'éventail des scénarios à 3 ans
 def prix_tranche(diagnostic: Diagnostic, comparaisons: Comparaisons) -> bytes | None:
-    """Prix semestriel de la tranche depuis 2007, puis l'éventail des scénarios à 3 ans.
-
-    L'éventail part du prix des 12 derniers mois, placé au dernier semestre
-    publié : la zone colorée va du scénario bas au scénario haut, la médiane en
-    pointillés. Rien n'y est extrapolé : ce sont les variations passées de la tranche.
-    """
     prix = diagnostic.prix
     if prix is None or not comparaisons.historique_prix:
         return None
@@ -159,7 +144,7 @@ def prix_tranche(diagnostic: Diagnostic, comparaisons: Comparaisons) -> bytes | 
                         label="scénarios bas – haut (10e – 90e centile)")  # fmt: skip
         ax.plot(horizons, centre, color=FLEXIBLE, linestyle="--", linewidth=1.2,
                 label="scénario central (médiane)")  # fmt: skip
-        # Point de départ : la moyenne des deux derniers semestres, pas le dernier seul.
+        # Point de départ : la moyenne des deux derniers semestres, pas le dernier seul
         ax.plot([depart], [reference], color=FLEXIBLE, marker="D", markersize=4,
                 linestyle="none", label="départ : moyenne des 12 derniers mois")  # fmt: skip
     ax.annotate(

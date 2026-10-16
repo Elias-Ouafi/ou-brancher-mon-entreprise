@@ -1,12 +1,4 @@
-{#-
-    Contraintes prospectives du réseau de transport rattachées à un département :
-    une ligne par département et par contrainte dont au moins un poste
-    (`poste_1` à `poste_3`) est situé dans le département.
-
-    C'est la maille la plus fine possible : ni les ouvrages ni les postes ne sont
-    géolocalisés dans les données ouvertes. Une liaison entre deux départements
-    apparaît dans les deux.
--#}
+-- Contraintes prospectives du réseau de transport rattachées à un département
 with postes_contraintes as (
     select ouvrage, poste_1, poste_2, poste_3, unnest([poste_1, poste_2, poste_3]) as code_poste
     from {{ ref('contraintes_ouvrages') }}

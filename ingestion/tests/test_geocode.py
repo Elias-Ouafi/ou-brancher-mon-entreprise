@@ -1,8 +1,3 @@
-"""Géocodage d'adresse : résolution du territoire et robustesse.
-
-Aucun appel réseau réel : `pytest-httpx` intercepte au niveau du transport.
-"""
-
 from __future__ import annotations
 
 from typing import Any
@@ -30,8 +25,8 @@ def ban_settings(settings: Settings) -> Settings:
     return settings.model_copy(update={"ban_base_url": BAN_URL})
 
 
+# Réponse BAN minimale, surchargeable champ par champ
 def feature(**props: Any) -> dict[str, Any]:
-    """Réponse BAN minimale, surchargeable champ par champ."""
     defaults = {
         "label": "12 Rue de la Paix 69003 Lyon",
         "score": 0.96,
@@ -53,11 +48,8 @@ def feature(**props: Any) -> dict[str, Any]:
     }
 
 
-# --- Normalisation des noms de région --------------------------------------
-
-
+# BAN et ODRÉ n'écrivent pas les régions de la même façon
 def test_region_names_match_whatever_the_spelling() -> None:
-    """BAN et ODRÉ n'écrivent pas les régions de la même façon."""
     assert code_region("Auvergne-Rhône-Alpes") == "84"
     assert code_region("AUVERGNE-RHONE-ALPES") == "84"
     assert code_region("Provence-Alpes-Côte d'Azur") == "93"
@@ -82,9 +74,6 @@ def test_every_region_code_is_unique_and_two_digits() -> None:
     assert len(set(REGIONS.values())) == len(REGIONS)
 
 
-# --- Résolution nominale ---------------------------------------------------
-
-
 def test_address_resolves_to_its_territory(httpx_mock: HTTPXMock, ban_settings: Settings) -> None:
     httpx_mock.add_response(json=feature())
 
@@ -96,7 +85,7 @@ def test_address_resolves_to_its_territory(httpx_mock: HTTPXMock, ban_settings: 
     assert territoire.code_departement == "69"
     assert territoire.departement == "Rhône"
     assert territoire.region == "Auvergne-Rhône-Alpes"
-    # La clé de jointure avec les jeux ODRÉ, absente de la réponse BAN.
+    # La clé de jointure avec les jeux ODRÉ, absente de la réponse BAN
     assert territoire.code_insee_region == "84"
     assert (territoire.latitude, territoire.longitude) == (45.7578, 4.8456)
     assert territoire.est_precis
@@ -116,8 +105,8 @@ def test_query_is_sent_with_the_address_and_a_single_result(
     assert request.url.params["index"] == "address"
 
 
+# Outre-mer, département et région portent le même nom
 def test_overseas_context_with_two_segments(httpx_mock: HTTPXMock, ban_settings: Settings) -> None:
-    """Outre-mer, département et région portent le même nom."""
     httpx_mock.add_response(
         json=feature(citycode="97411", city="Saint-Denis", context="974, La Réunion")
     )
@@ -129,10 +118,10 @@ def test_overseas_context_with_two_segments(httpx_mock: HTTPXMock, ban_settings:
     assert territoire.code_insee_region == "04"
 
 
+# 2A n'est pas un nombre : un code département reste du texte
 def test_corsica_department_codes_are_kept_as_text(
     httpx_mock: HTTPXMock, ban_settings: Settings
 ) -> None:
-    """2A n'est pas un nombre : un code département reste du texte."""
     httpx_mock.add_response(
         json=feature(citycode="2A004", city="Ajaccio", context="2A, Corse-du-Sud, Corse")
     )
@@ -143,9 +132,6 @@ def test_corsica_department_codes_are_kept_as_text(
     assert territoire.code_insee_region == "94"
 
 
-# --- Cas dégradés ----------------------------------------------------------
-
-
 def test_no_result_raises(httpx_mock: HTTPXMock, ban_settings: Settings) -> None:
     httpx_mock.add_response(json={"type": "FeatureCollection", "features": []})
 
@@ -153,20 +139,20 @@ def test_no_result_raises(httpx_mock: HTTPXMock, ban_settings: Settings) -> None
         geocode("zzzz", settings=ban_settings)
 
 
+# Inutile de consommer un appel pour une chaîne vide
 def test_empty_address_never_calls_the_api(httpx_mock: HTTPXMock, ban_settings: Settings) -> None:
-    """Inutile de consommer un appel pour une chaîne vide."""
     with pytest.raises(AdresseIntrouvableError, match="adresse vide"):
         geocode("   ", settings=ban_settings)
 
     assert httpx_mock.get_requests() == []
 
 
+# Un score faible reste exploitable : c'est à l'appelant de juger
 def test_low_score_is_warned_but_returned(
     httpx_mock: HTTPXMock,
     ban_settings: Settings,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """Un score faible reste exploitable : c'est à l'appelant de juger."""
     httpx_mock.add_response(json=feature(score=0.21))
 
     with caplog.at_level("WARNING"):
@@ -190,12 +176,12 @@ def test_commune_level_match_is_flagged(
     assert "maille" in caplog.text
 
 
+# Mieux vaut un code absent qu'un code inventé : la jointure échouera visiblement
 def test_unknown_region_is_warned_and_code_left_empty(
     httpx_mock: HTTPXMock,
     ban_settings: Settings,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """Mieux vaut un code absent qu'un code inventé : la jointure échouera visiblement."""
     httpx_mock.add_response(json=feature(context="99, Ailleurs, Région Inconnue"))
 
     with caplog.at_level("WARNING"):
@@ -219,9 +205,6 @@ def test_malformed_context_raises(httpx_mock: HTTPXMock, ban_settings: Settings)
         geocode("quelque part", settings=ban_settings)
 
 
-# --- Robustesse réseau -----------------------------------------------------
-
-
 def test_transient_status_is_retried(httpx_mock: HTTPXMock, ban_settings: Settings) -> None:
     httpx_mock.add_response(status_code=503)
     httpx_mock.add_response(json=feature())
@@ -233,8 +216,8 @@ def test_transient_status_is_retried(httpx_mock: HTTPXMock, ban_settings: Settin
         assert client.calls == 2
 
 
+# Une 400 ne deviendra pas une 200 au deuxième essai
 def test_client_error_is_not_retried(httpx_mock: HTTPXMock, ban_settings: Settings) -> None:
-    """Une 400 ne deviendra pas une 200 au deuxième essai."""
     httpx_mock.add_response(status_code=400)
 
     with BanClient(ban_settings) as client:

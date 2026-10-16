@@ -1,17 +1,4 @@
-{#-
-    Contraintes résiduelles prospectives (horizon 3 à 5 ans) sur le réseau de
-    transport, ouvrage par ouvrage, vision RTE de décembre 2024.
-
-    Une contrainte de transit résiduelle est une limitation potentielle liée à
-    l'accueil des énergies renouvelables, que RTE prévoit de gérer par de la
-    flexibilité plutôt que par de nouveaux ouvrages. Un signal **d'injection** :
-    il ne mesure pas la capacité disponible pour un consommateur.
-
-    Les champs géographiques de la source sont vides : une contrainte se localise
-    par ses postes (`poste_1` à `poste_3`, chaînes vides en bronze quand ils sont
-    absents, remis à `NULL` ici). `rang_occurrence` (1 à 5) et `rang_perennite`
-    (1 à 3) ordonnent les classes publiées.
--#}
+-- Contraintes résiduelles prospectives (horizon 3 à 5 ans) sur le réseau de transport
 select
     source.ouvrage,
     source.nom_de_l_ouvrage,

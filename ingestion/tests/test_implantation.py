@@ -1,10 +1,3 @@
-"""Rapport d'implantation par adresse : Markdown, PDF, JSON et commande `diagnose --format`.
-
-Même base synthétique que `test_diagnostic.py`. Elle n'a aucun mois complet et
-tarifé : le bloc coût est injecté par `dataclasses.replace`, comme dans
-`test_cout_profil.py`.
-"""
-
 from __future__ import annotations
 
 import json
@@ -80,7 +73,7 @@ def test_markdown_report_carries_every_limit_and_its_charts(
     assert "Établi le 10/10/2026" in texte
     for limite in diagnostic.limites.values():
         assert f"> **Limite.** {limite}" in texte
-    # Alignement du terminal retiré, et une limite ne colle jamais à une liste.
+    # Alignement du terminal retiré, et une limite ne colle jamais à une liste
     assert "Commune     :" not in texte
     assert "\n- " in texte
     assert "\n\n\n" not in texte
@@ -108,14 +101,14 @@ def test_pdf_report_is_built(medallion_db: Path, reglages: Settings, tmp_path: P
     )
     contenu = chemin.read_bytes()
     assert contenu.startswith(b"%PDF")
-    assert len(contenu) > 20_000  # trois graphiques embarqués
+    assert len(contenu) > 20_000
 
 
+# Outre-mer sans équilibre régional, Corse, commune sans site, aucun coût : rien ne casse
 @pytest.mark.parametrize("code", ["97411", "2A004", "69029"])
 def test_reports_hold_for_territories_with_missing_data(
     medallion_db: Path, reglages: Settings, tmp_path: Path, code: str
 ) -> None:
-    """Outre-mer sans équilibre régional, Corse, commune sans site, aucun coût : rien ne casse."""
     diagnostic = lire_diagnostic(territoire(code), database=medallion_db)
     assert diagnostic.cout is None
     for format in ("md", "pdf"):
@@ -123,7 +116,7 @@ def test_reports_hold_for_territories_with_missing_data(
             diagnostic, format=format, settings=reglages, output=tmp_path / f"{code}.{format}"
         )
         assert chemin.stat().st_size > 0
-    # Sans coût, pas de courbe de profil.
+    # Sans coût, pas de courbe de profil
     assert not (tmp_path / f"{code}_graphiques" / "profil_journalier.png").exists()
 
 
@@ -173,9 +166,6 @@ def test_pdf_text_replaces_glyphs_missing_from_standard_fonts() -> None:
     assert _pdf("12 MW → HTA & co") == "12 MW — HTA &amp; co"
     assert _pdf("22 gCO₂/kWh") == "22 gCO<sub>2</sub>/kWh"
     assert _pdf("Commune     : 1 site") == "Commune : 1 site"
-
-
-# --- Ligne de commande -----------------------------------------------------------
 
 
 def _ban(httpx_mock: HTTPXMock) -> None:

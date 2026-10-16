@@ -1,10 +1,3 @@
-"""Normalisation des horodatages et typage Parquet.
-
-Les deux changements d'heure français sont couverts explicitement : ce sont les
-seuls moments de l'année où une ingestion naïve produit des doublons ou des
-trous dans la série.
-"""
-
 from __future__ import annotations
 
 from datetime import UTC, date, datetime, timedelta
@@ -30,19 +23,16 @@ def utc(*args: int) -> datetime:
     return datetime(*args, tzinfo=UTC)
 
 
-# --- Parsing unitaire ------------------------------------------------------
-
-
 @pytest.mark.parametrize(
     ("raw", "expected"),
     [
         ("2026-09-07T03:00:00+00:00", utc(2026, 9, 7, 3, 0)),
         ("2026-09-07T03:00:00Z", utc(2026, 9, 7, 3, 0)),
-        # Décalage explicite : l'instant est déjà non ambigu.
+        # Décalage explicite : l'instant est déjà non ambigu
         ("2026-09-07T05:00:00+02:00", utc(2026, 9, 7, 3, 0)),
-        # Heure locale naïve, en heure d'été (UTC+2).
+        # Heure locale naïve, en heure d'été (UTC+2)
         ("2026-09-07 05:00:00", utc(2026, 9, 7, 3, 0)),
-        # Heure locale naïve, en heure d'hiver (UTC+1).
+        # Heure locale naïve, en heure d'hiver (UTC+1)
         ("2026-01-15 05:00:00", utc(2026, 1, 15, 4, 0)),
     ],
 )
@@ -50,11 +40,8 @@ def test_to_utc_accepts_both_representations(raw: str, expected: datetime) -> No
     assert to_utc(raw) == expected
 
 
-# --- Passage à l'heure d'été (mars) ---------------------------------------
-
-
+# Le saut 01:45 -> 03:00 en local doit rester continu en UTC
 def test_march_gap_produces_contiguous_utc_series() -> None:
-    """Le saut 01:45 -> 03:00 en local doit rester continu en UTC."""
     instants = normalize_datetimes(
         [
             "2026-03-29 01:30:00",
@@ -74,25 +61,22 @@ def test_march_gap_produces_contiguous_utc_series() -> None:
     assert steps == {timedelta(minutes=15)}
 
 
+# 02:30 n'existe pas le 29 mars 2026 : on refuse de deviner
 def test_march_nonexistent_local_time_is_rejected() -> None:
-    """02:30 n'existe pas le 29 mars 2026 : on refuse de deviner."""
     with pytest.raises(NonExistentLocalTimeError, match="heure d'été"):
         to_utc("2026-03-29 02:30:00")
 
 
-# --- Retour à l'heure d'hiver (octobre) -----------------------------------
-
-
+# L'heure locale 02:00-02:45 apparaît deux fois : deux instants distincts
 def test_october_repeated_hour_is_disambiguated_by_sequence() -> None:
-    """L'heure locale 02:00-02:45 apparaît deux fois : deux instants distincts."""
     instants = normalize_datetimes(
         [
             "2026-10-25 01:45:00",
-            "2026-10-25 02:00:00",  # encore en heure d'été (UTC+2)
+            "2026-10-25 02:00:00",
             "2026-10-25 02:15:00",
             "2026-10-25 02:30:00",
             "2026-10-25 02:45:00",
-            "2026-10-25 02:00:00",  # bascule en heure d'hiver (UTC+1)
+            "2026-10-25 02:00:00",
             "2026-10-25 02:15:00",
             "2026-10-25 02:30:00",
             "2026-10-25 02:45:00",
@@ -105,19 +89,16 @@ def test_october_repeated_hour_is_disambiguated_by_sequence() -> None:
     assert instants[5] == utc(2026, 10, 25, 1, 0)
     assert instants[-1] == utc(2026, 10, 25, 2, 0)
 
-    # Aucun doublon, aucun retour en arrière : la clé de MERGE reste unique.
+    # Aucun doublon, aucun retour en arrière : la clé de MERGE reste unique
     assert len(set(instants)) == len(instants)
     assert instants == sorted(instants)
     steps = {b - a for a, b in pairwise(instants)}
     assert steps == {timedelta(minutes=15)}
 
 
+# Sans contexte, on retient la première occurrence (heure d'été)
 def test_october_isolated_ambiguous_time_defaults_to_first_occurrence() -> None:
-    """Sans contexte, on retient la première occurrence (heure d'été)."""
     assert to_utc("2026-10-25 02:30:00") == utc(2026, 10, 25, 0, 30)
-
-
-# --- Construction de la table ---------------------------------------------
 
 
 def test_records_to_table_applies_schema_and_metadata() -> None:
@@ -129,17 +110,17 @@ def test_records_to_table_applies_schema_and_metadata() -> None:
     table = records_to_table(records, spec=NATIONAL_TR, ingested_at=INGESTED_AT)
 
     assert table.schema == SCHEMA
-    # La table est triée par clé, quel que soit l'ordre d'arrivée.
+    # La table est triée par clé, quel que soit l'ordre d'arrivée
     assert table.column(KEY_COLUMN).to_pylist() == [utc(2026, 9, 7, 3, 0), utc(2026, 9, 7, 3, 15)]
     assert table.column("consommation").to_pylist() == [42000.0, 41800.0]
-    # Colonne du schéma absente de la réponse : présente et nulle.
+    # Colonne du schéma absente de la réponse : présente et nulle
     assert table.column("nucleaire").to_pylist() == [None, None]
     assert table.column("source_dataset").to_pylist() == ["eco2mix-national-tr"] * 2
     assert table.column("ingested_at_utc").to_pylist() == [INGESTED_AT] * 2
 
 
+# L'export CSV renvoie des chaînes ; les vides deviennent des nulls
 def test_records_to_table_coerces_csv_strings() -> None:
-    """L'export CSV renvoie des chaînes ; les vides deviennent des nulls."""
     records = [
         {"date_heure": "2026-09-07T03:00:00+00:00", "consommation": "42000", "solaire": ""},
     ]
@@ -174,9 +155,6 @@ def test_records_to_table_handles_empty_input() -> None:
     assert table.schema == SCHEMA
 
 
-# --- Écriture Parquet ------------------------------------------------------
-
-
 def test_write_parquet_creates_hive_partition(tmp_path) -> None:
     table = records_to_table(
         [{"date_heure": "2026-09-07T03:00:00+00:00", "consommation": 42000}],
@@ -187,7 +165,7 @@ def test_write_parquet_creates_hive_partition(tmp_path) -> None:
     path = write_parquet(
         table,
         dataset_dir=tmp_path / "eco2mix_national_tr",
-        # Un run_id peut contenir `:` et `+`, interdits dans un nom de fichier Windows.
+        # Un run_id peut contenir `:` et `+`, interdits dans un nom de fichier Windows
         run_id="scheduled__2026-09-07T06:00:00+00:00",
         ingest_date=date(2026, 9, 7),
     )

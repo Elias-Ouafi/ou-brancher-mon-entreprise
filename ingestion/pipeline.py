@@ -1,10 +1,3 @@
-"""Étapes du pipeline, appelées par la ligne de commande et par `refresh`.
-
-Toute la logique vit ici, testable sans réseau. Chaque étape est paramétrée par un
-`DatasetSpec`, si bien que les deux flux — temps réel et consolidé — partagent
-exactement le même code.
-"""
-
 from __future__ import annotations
 
 import logging
@@ -28,43 +21,41 @@ from ingestion.warehouse import LoadResult, build_loader
 
 logger = logging.getLogger(__name__)
 
-#: Colonne témoin du contrôle de fraîcheur. RTE publie l'horodatage le plus
-#: récent quelques minutes avant ses mesures : compter cette ligne « à blanc »
-#: rendrait le contrôle vert alors que plus aucune valeur n'arrive.
+# Colonne témoin du contrôle de fraîcheur
 FRESHNESS_MEASURE = "consommation"
 
-#: Pas de publication des datasets éCO2mix.
+# Pas de publication des datasets éCO2mix
 SLOT_MINUTES = 15
 
 
+# La donnée la plus récente du warehouse dépasse le retard toléré
 class StaleDataError(RuntimeError):
-    """La donnée la plus récente du warehouse dépasse le retard toléré."""
+    pass
 
 
+# Le dernier mois consolidé disponible comporte trop de pas de temps manquants
 class IncompleteMonthError(RuntimeError):
-    """Le dernier mois consolidé disponible comporte trop de pas de temps manquants."""
+    pass
 
 
+# Résultat d'une extraction, journalisé par la ligne de commande
 @dataclass(frozen=True, slots=True)
 class ExtractionOutcome:
-    """Résultat d'une extraction, journalisé par la ligne de commande."""
-
     dataset_id: str
     parquet_path: str
     rows: int
     api_calls: int
-    #: Bornes de la fenêtre, absentes lors d'une extraction intégrale.
+    # Bornes de la fenêtre, absentes lors d'une extraction intégrale
     window_start: str | None
     window_end: str | None
 
 
+# Écart entre la donnée la plus récente et l'instant du contrôle
 @dataclass(frozen=True, slots=True)
 class FreshnessReport:
-    """Écart entre la donnée la plus récente et l'instant du contrôle."""
-
-    #: Dernier horodatage effectivement mesuré : c'est lui qui décide.
+    # Dernier horodatage effectivement mesuré : c'est lui qui décide
     latest: datetime | None
-    #: Dernier horodatage présent, mesuré ou non. Informatif.
+    # Dernier horodatage présent, mesuré ou non
     latest_row: datetime | None
     lag_hours: float | None
     max_lag_hours: int
@@ -75,10 +66,9 @@ class FreshnessReport:
         return self.lag_hours is not None and self.lag_hours <= self.max_lag_hours
 
 
+# Complétude d'un mois civil dans la table consolidée
 @dataclass(frozen=True, slots=True)
 class CoverageReport:
-    """Complétude d'un mois civil dans la table consolidée."""
-
     month: str
     expected_slots: int
     actual_slots: int
@@ -101,24 +91,16 @@ class CoverageReport:
         }
 
 
-# --- Fenêtres --------------------------------------------------------------
-
-
+# Bornes UTC `[début, fin)` d'un mois civil français
 def month_bounds(year: int, month: int) -> tuple[datetime, datetime]:
-    """Bornes UTC `[début, fin)` d'un mois civil français.
-
-    Passe par `Europe/Paris` : un mois contenant un changement d'heure ne dure
-    pas un nombre entier de jours de 24 h, et c'est précisément ce décalage qui
-    doit être reflété dans le nombre de pas de temps attendus.
-    """
     start = datetime(year, month, 1, tzinfo=PARIS_TZ)
     next_year, next_month = (year + 1, 1) if month == 12 else (year, month + 1)
     end = datetime(next_year, next_month, 1, tzinfo=PARIS_TZ)
     return start.astimezone(UTC), end.astimezone(UTC)
 
 
+# Fenêtre couvrant les `months` derniers mois civils, jusqu'à maintenant
 def last_months_window(months: int, *, now: datetime | None = None) -> ExtractionWindow:
-    """Fenêtre couvrant les `months` derniers mois civils, jusqu'à maintenant."""
     reference = (now or datetime.now(UTC)).astimezone(PARIS_TZ)
     shifted = (reference.year * 12 + reference.month - 1) - months
     start, _ = month_bounds(shifted // 12, shifted % 12 + 1)
@@ -129,9 +111,7 @@ def _expected_slots(start: datetime, end: datetime) -> int:
     return int((end - start) / timedelta(minutes=SLOT_MINUTES))
 
 
-# --- Étapes ----------------------------------------------------------------
-
-
+# Extrait un dataset ODRÉ et l'écrit en Parquet typé
 def extract_to_parquet(
     *,
     settings: Settings | None = None,
@@ -140,19 +120,6 @@ def extract_to_parquet(
     run_id: str = "manual",
     now: datetime | None = None,
 ) -> ExtractionOutcome:
-    """Extrait un dataset ODRÉ et l'écrit en Parquet typé.
-
-    Deux régimes, selon le spec :
-
-    * **série temporelle** (`date_heure` en clé) — extraction sur fenêtre
-      glissante, l'endpoint étant choisi selon le volume estimé ;
-    * **dataset territorial** (clé sans instant) — extraction intégrale en un
-      appel, car filtrer sur le temps n'aurait aucun sens.
-
-    Un fichier est écrit même si le résultat est vide : le chargement en aval
-    reste uniforme, et ce sont les contrôles qualité — pas l'extraction — qui
-    décident si l'absence de donnée est anormale.
-    """
     settings = settings or get_settings()
     ingested_at = (now or datetime.now(UTC)).astimezone(UTC)
 
@@ -165,8 +132,7 @@ def extract_to_parquet(
 
     with OdreClient(settings, dataset_id=spec.dataset_id) as client:
         if window is None:
-            # Tri sur la première colonne de clé : `order_by` sur `date_heure`
-            # provoquerait une 400 sur un dataset qui n'a pas ce champ.
+            # Tri sur la première colonne de clé : `order_by` sur `date_heure` provoquerait une 400
             records = client.fetch_all(order_by=spec.key_names[0])
         else:
             records = client.fetch_window(window)
@@ -194,15 +160,13 @@ def extract_to_parquet(
     )
 
 
+# Jours Tempo utiles au rapport d'un mois, veille du 1er comprise
 def tempo_days_for_month(month: date) -> DayRange:
-    """Jours Tempo utiles au rapport d'un mois, veille du 1er comprise.
-
-    Les heures de 0 h à 6 h du 1er appartiennent au jour Tempo de la veille.
-    """
     days = DayRange.month(month.year, month.month)
     return DayRange(days.start - timedelta(days=1), days.end)
 
 
+# Extrait le calendrier Tempo d'une plage de jours vers un Parquet bronze
 def extract_tempo_to_parquet(
     days: DayRange,
     *,
@@ -210,7 +174,6 @@ def extract_tempo_to_parquet(
     run_id: str = "manual",
     now: datetime | None = None,
 ) -> ExtractionOutcome:
-    """Extrait le calendrier Tempo d'une plage de jours vers un Parquet bronze."""
     settings = settings or get_settings()
     ingested_at = (now or datetime.now(UTC)).astimezone(UTC)
 
@@ -238,14 +201,8 @@ def extract_tempo_to_parquet(
     )
 
 
+# Crée, vides, les tables bronze de tous les datasets connus
 def ensure_bronze_tables(*, settings: Settings | None = None) -> None:
-    """Crée, vides, les tables bronze de tous les datasets connus.
-
-    La couche silver (dbt) lit toutes les sources bronze à chaque run. Sans
-    cela, `dbt build` échouerait tant que la consolidation n'a pas créé
-    `bronze.national_cons_def` — une dépendance d'ordre entre commandes que
-    rien ne devrait imposer.
-    """
     settings = settings or get_settings()
     for spec in BRONZE_SPECS:
         loader = build_loader(settings, spec=spec)
@@ -255,13 +212,13 @@ def ensure_bronze_tables(*, settings: Settings | None = None) -> None:
             loader.close()
 
 
+# Fusionne un Parquet dans la table bronze du dataset, sur la clé `date_heure`
 def load_to_warehouse(
     parquet_path: Path | str,
     *,
     settings: Settings | None = None,
     spec: DatasetSpec = NATIONAL_TR,
 ) -> LoadResult:
-    """Fusionne un Parquet dans la table bronze du dataset, sur la clé `date_heure`."""
     settings = settings or get_settings()
     ensure_bronze_tables(settings=settings)
     loader = build_loader(settings, spec=spec)
@@ -271,21 +228,17 @@ def load_to_warehouse(
         loader.close()
 
 
+# Vérifie le retard de la donnée la plus récente, en lecture seule
 def check_freshness(
     *,
     settings: Settings | None = None,
     spec: DatasetSpec = NATIONAL_TR,
     now: datetime | None = None,
 ) -> FreshnessReport:
-    """Vérifie le retard de la donnée la plus récente, en lecture seule.
-
-    Lève `StaleDataError` si le warehouse est vide ou en retard : la commande
-    `freshness` sort alors en code 1.
-    """
     settings = settings or get_settings()
     reference = (now or datetime.now(UTC)).astimezone(UTC)
 
-    # La lecture seule évite de prendre le verrou d'écriture unique de DuckDB.
+    # La lecture seule évite de prendre le verrou d'écriture unique de DuckDB
     loader = build_loader(settings, spec=spec, read_only=True)
     try:
         latest = loader.latest_timestamp(measure=FRESHNESS_MEASURE)
@@ -325,22 +278,13 @@ def check_freshness(
     return report
 
 
+# Vérifie qu'un mois consolidé est complet, en lecture seule
 def check_month_coverage(
     *,
     settings: Settings | None = None,
     spec: DatasetSpec,
     now: datetime | None = None,
 ) -> CoverageReport:
-    """Vérifie qu'un mois consolidé est complet, en lecture seule.
-
-    Le contrôle porte sur le dernier mois civil **révolu** présent en base : un
-    mois en cours de publication serait forcément incomplet. Le nombre de pas de
-    temps attendus est calculé sur les bornes réelles du mois en heure de Paris,
-    donc un mois de changement d'heure attend 4 pas de moins (mars) ou de plus
-    (octobre) — un comptage naïf en jours de 24 h ferait échouer mars à tort.
-
-    Lève `IncompleteMonthError` sous le seuil de couverture configuré.
-    """
     settings = settings or get_settings()
     reference = (now or datetime.now(UTC)).astimezone(PARIS_TZ)
 
@@ -373,17 +317,18 @@ def check_month_coverage(
     return report
 
 
+# Dernier mois civil révolu présent en base, exprimé en heure de Paris
 def _target_month(latest: datetime, reference: datetime) -> tuple[int, int]:
-    """Dernier mois civil révolu présent en base, exprimé en heure de Paris."""
     local = latest.astimezone(PARIS_TZ)
     year, month = local.year, local.month
     if (year, month) == (reference.year, reference.month):
-        # Le mois courant n'est pas terminé : on juge le précédent.
+        # Le mois courant n'est pas terminé : on juge le précédent
         previous = (year * 12 + month - 1) - 1
         year, month = previous // 12, previous % 12 + 1
     return year, month
 
 
+# Extraction puis chargement, pour un rejeu manuel en une commande
 def run_ingestion(
     *,
     settings: Settings | None = None,
@@ -392,7 +337,6 @@ def run_ingestion(
     run_id: str = "manual",
     now: datetime | None = None,
 ) -> tuple[ExtractionOutcome, LoadResult]:
-    """Extraction puis chargement, pour un rejeu manuel en une commande."""
     settings = settings or get_settings()
     outcome = extract_to_parquet(
         settings=settings, spec=spec, window=window, run_id=run_id, now=now
@@ -401,6 +345,7 @@ def run_ingestion(
     return outcome, result
 
 
+# Calendrier Tempo : extraction puis chargement dans `bronze.rte_tempo`
 def run_tempo_ingestion(
     days: DayRange,
     *,
@@ -408,24 +353,19 @@ def run_tempo_ingestion(
     run_id: str = "manual",
     now: datetime | None = None,
 ) -> tuple[ExtractionOutcome, LoadResult]:
-    """Calendrier Tempo : extraction puis chargement dans `bronze.rte_tempo`."""
     settings = settings or get_settings()
     outcome = extract_tempo_to_parquet(days, settings=settings, run_id=run_id, now=now)
     result = load_to_warehouse(outcome.parquet_path, settings=settings, spec=RTE_TEMPO)
     return outcome, result
 
 
+# Prix Eurostat des entreprises : extraction intégrale (un appel), puis MERGE
 def run_prix_entreprises_ingestion(
     *,
     settings: Settings | None = None,
     run_id: str = "manual",
     now: datetime | None = None,
 ) -> tuple[ExtractionOutcome, LoadResult]:
-    """Prix Eurostat des entreprises : extraction intégrale (un appel), puis MERGE.
-
-    Eurostat révise parfois les semestres récents : relire toute la série coûte
-    un seul appel et garantit que la table bronze porte la dernière version.
-    """
     settings = settings or get_settings()
     ingested_at = (now or datetime.now(UTC)).astimezone(UTC)
     with EurostatClient(settings) as client:
@@ -450,6 +390,7 @@ def run_prix_entreprises_ingestion(
     return outcome, result
 
 
+# Relit les N derniers mois consolidés et les fusionne
 def run_consolidation(
     *,
     settings: Settings | None = None,
@@ -458,13 +399,6 @@ def run_consolidation(
     run_id: str = "manual",
     now: datetime | None = None,
 ) -> tuple[ExtractionOutcome, LoadResult]:
-    """Relit les N derniers mois consolidés et les fusionne.
-
-    La fenêtre est volontairement large : RTE publie le consolidé avec plusieurs
-    mois de retard, puis rejoue une année entière lorsqu'elle bascule en
-    « définitives ». Le volume déclenche automatiquement l'export CSV, donc ce
-    recouvrement coûte **un seul appel API**.
-    """
     settings = settings or get_settings()
     months = months if months is not None else settings.consolidation_lookback_months
     window = last_months_window(months, now=now)

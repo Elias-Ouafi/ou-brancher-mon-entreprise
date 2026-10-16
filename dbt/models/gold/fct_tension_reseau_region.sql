@@ -1,16 +1,4 @@
-{#-
-    Tension du réseau régional : une ligne par région du référentiel.
-
-    * **Équilibre sur 12 mois glissants**, les 12 derniers mois publiés pour
-      l'ensemble des régions. `taux_couverture` = production / consommation
-      brute : sous 1, la région importe de ses voisines.
-    * **Contraintes d'évacuation** (instantané RTE) : puissance à compenser et
-      énergie renouvelable non évacuée, sommée sur les quatre saisons.
-
-    `rang_dependance` classe les régions de la plus déficitaire (1) à la plus
-    excédentaire. Les régions sans donnée (outre-mer) restent présentes, à nul :
-    le diagnostic doit pouvoir dire « pas de donnée » plutôt que de perdre la ligne.
--#}
+-- Tension du réseau régional : une ligne par région du référentiel
 with mensuel as (
     select * from {{ ref('equilibre_regional_mensuel') }}
 ),

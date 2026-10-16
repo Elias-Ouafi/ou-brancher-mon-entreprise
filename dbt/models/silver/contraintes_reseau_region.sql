@@ -1,16 +1,4 @@
-{#-
-    Contraintes d'évacuation du réseau de transport par région (vision RTE).
-
-    La source identifie la région par son **libellé en majuscules**
-    (« AUVERGNE-RHÔNE-ALPES ») : le code INSEE est retrouvé à partir du nom, via
-    `normalise_libelle` (comme pour `contraintes_ouvrages` et `postes_rte`). Le test
-    `not_null` sur `code_insee_region` garantit qu'aucune région n'est perdue
-    en silence si RTE change d'écriture.
-
-    Unités publiées par RTE : puissances en MW, énergies non évacuées en MWh par
-    saison. L'énergie non évacuée est de la production renouvelable écrêtée,
-    faute de capacité d'évacuation : un signal côté injection.
--#}
+-- Contraintes d'évacuation du réseau de transport par région (vision RTE)
 select
     region.code_insee_region,
     source.region as libelle_publie,
