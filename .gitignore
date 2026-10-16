@@ -20,9 +20,3 @@ dbt/target/
 dbt/logs/
 dbt/dbt_packages/
 
-# Astro / Airflow
-# .astro/config.yaml est versionne (identite du projet Astro) ; le reste est genere.
-airflow/.astro/*
-!airflow/.astro/config.yaml
-airflow/logs/
-airflow/airflow.db

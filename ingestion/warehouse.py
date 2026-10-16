@@ -2,7 +2,7 @@
 
 Le reste du pipeline ne connaît que `WarehouseLoader`. `DuckDBLoader` en est
 l'implémentation locale ; un `BigQueryLoader` viendra s'ajouter sans toucher au
-DAG ni au client d'extraction, parce que le contrat est volontairement aligné
+pipeline ni au client d'extraction, parce que le contrat est volontairement aligné
 sur ce que les deux moteurs savent faire nativement :
 
 * charger **un fichier Parquet désigné par un chemin ou une URI**
@@ -51,7 +51,7 @@ _DUCKDB_TYPES: tuple[tuple[object, str], ...] = (
 
 @dataclass(frozen=True, slots=True)
 class LoadResult:
-    """Compte rendu d'un chargement, journalisé et remonté en XCom."""
+    """Compte rendu d'un chargement, journalisé par la ligne de commande."""
 
     target: str
     rows_in_file: int
@@ -123,9 +123,9 @@ def _duckdb_type(arrow_type: pa.DataType) -> str:
 class DuckDBLoader:
     """Implémentation locale du contrat `WarehouseLoader`.
 
-    DuckDB n'accepte qu'**un seul writer** sur un fichier : les DAGs sérialisent
-    les tâches d'écriture (`max_active_runs=1` et pool `duckdb_writer` à 1 slot),
-    et les lectures — contrôles qualité — ouvrent la base en `read_only`.
+    DuckDB n'accepte qu'**un seul writer** sur un fichier : les commandes
+    d'écriture (`refresh`, `ingest`, `dbt build`) se lancent l'une après l'autre,
+    et les lectures — diagnostic, contrôles qualité — ouvrent la base en `read_only`.
     """
 
     def __init__(

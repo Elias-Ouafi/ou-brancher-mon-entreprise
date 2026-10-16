@@ -67,8 +67,8 @@ erreur ; les données se rafraîchissent en une commande.
   `dbt build` complet dix secondes. PySpark ajouterait une JVM et un cluster sans aucun gain à
   ce volume ; DuckDB lit les mêmes Parquet et le passage à `dbt-spark` reste possible si le
   volume est multiplié par mille (voir [extension](extension-internationale.md)).
-- **Airflow hors du MVP** : jamais lancé, il exige Docker, et l'outil ne doit tourner qu'en local
-  et à la demande (décision du 16 oct.) : `refresh` suffit.
+- **Pas d'Airflow** : l'outil ne tourne qu'en local et à la demande (décision du 16 oct.) ;
+  `refresh` suffit. Le projet Airflow, jamais lancé, a été supprimé le 16 oct.
 - **Seeds plutôt qu'API** pour les facteurs ZNI : un chiffre par territoire et par an, mis à
   jour une fois par an.
 
@@ -80,16 +80,15 @@ erreur ; les données se rafraîchissent en une commande.
 | 2 | Intensité carbone ZNI horaire (open data EDF SEI par territoire) | — |
 | 3 | Situer l'électro-intensité : facture estimée rapportée au chiffre d'affaires (`--ca`) | — |
 | 4 | Importer la vraie courbe de charge (export Enedis) à la place du profil type | — |
-| 5 | Airflow en exploitation 7 jours, alerte en cas d'échec ; DAG des référentiels | Docker Desktop |
-| 6 | Calendrier Tempo sur données réelles | compte RTE, par l'utilisateur |
-| 7 | Repère de prix au-delà de 150 000 MWh (contrats CAPN) | décision |
-| 8 | Classement pondéré dans `compare` | décision : poids à exposer et justifier |
+| 5 | Calendrier Tempo sur données réelles | compte RTE, par l'utilisateur |
+| 6 | Repère de prix au-delà de 150 000 MWh (contrats CAPN) | décision |
+| 7 | Classement pondéré dans `compare` | décision : poids à exposer et justifier |
 
 ## Fait
 
 | Domaine | Livré |
 |---|---|
-| Socle | Ingestion ODRÉ, RTE et Eurostat idempotente (MERGE, clés composites et optionnelles), UTC et changements d'heure, quota suivi ; médaillon DuckDB + dbt ; trois DAGs Airflow vérifiés en CI |
+| Socle | Ingestion ODRÉ, RTE et Eurostat idempotente (MERGE, clés composites et optionnelles), UTC et changements d'heure, quota suivi ; médaillon DuckDB + dbt |
 | Territoire | Référentiel commune → département → région ; pression industrielle (millésime sans secret statistique) ; tension régionale sur 12 mois |
 | Réseau | Seuils de raccordement ; contraintes prospectives et postes RTE par département ; zone prioritaire RTE la plus proche (SDDR 2025) |
 | Foncier et risques | Site clé en main France 2030 le plus proche ; risques Géorisques à l'adresse, avec repli communal |
@@ -108,7 +107,7 @@ erreur ; les données se rafraîchissent en une commande.
 | 15 oct. | Contraintes et postes RTE au département : aucun n'est géolocalisé en open data |
 | 15 oct. | Comparaison côte à côte, sans classement |
 | 16 oct. | Verdict carbone sur le facteur ADEME en cycle de vie, comparé au seuil de 100 gCO₂e/kWh de la taxonomie (même périmètre) ; le `taux_co2` RTE, émissions directes seulement, reste un complément. Prix par défaut : tranche IA. Interface : ligne de commande |
-| 16 oct. | Exploitation en local seulement, à la demande : `refresh` lancé à la main, aucune exécution planifiée (ni GitHub Actions, ni tâche planifiée, ni Airflow) |
+| 16 oct. | Exploitation en local seulement, à la demande : `refresh` lancé à la main, aucune exécution planifiée (ni GitHub Actions, ni tâche planifiée, ni Airflow : le projet Airflow est supprimé) |
 | 16 oct. | MVP recentré sur deux réponses à l'adresse, prix moyen et verdict carbone, le diagnostic complet devenant un complément. Compatible avec le cadrage du 9 oct. : la réponse est honnête si elle dit que le prix dépend de la consommation et non de l'adresse, et que le carbone ne change qu'entre le continent, la Corse et l'outre-mer |
 
 ## Écarté

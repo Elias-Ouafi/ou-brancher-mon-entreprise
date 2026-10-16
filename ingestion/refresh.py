@@ -2,7 +2,7 @@
 
 Enchaîne les extractions (éCO2mix consolidé puis temps réel, jeux territoriaux, prix
 Eurostat), puis `dbt build`. C'est l'exploitation du MVP : lancée à la main, en local, sans
-planification ni Airflow.
+planification.
 
 Une source en échec n'arrête pas les autres : son ancienne version reste en bronze, et
 dbt reconstruit silver et gold avec ce qui est disponible. Le code de sortie signale

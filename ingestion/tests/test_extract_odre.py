@@ -290,7 +290,7 @@ def test_call_count_is_logged_on_close(
     records_payload: dict[str, Any],
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """La consommation du quota doit être lisible dans les logs Airflow."""
+    """La consommation du quota doit être lisible dans les logs."""
     httpx_mock.add_response(json=records_payload)
     caplog.set_level(logging.INFO, logger="ingestion.extract_odre")
 
