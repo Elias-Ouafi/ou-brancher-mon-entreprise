@@ -337,3 +337,71 @@ def test_diagnose_command_end_to_end(
 def test_diagnose_rejects_negative_power() -> None:
     with pytest.raises(SystemExit):
         cli.build_parser().parse_args(["diagnose", "--adresse", "x", "--puissance", "-1"])
+
+
+def test_essentiel_command_answers_price_and_carbon(
+    httpx_mock: HTTPXMock,
+    settings: Settings,
+    medallion_db: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    httpx_mock.add_response(
+        json={
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "geometry": {"type": "Point", "coordinates": [8.74, 41.92]},
+                    "properties": {
+                        "label": "1 Cours Napoléon 20000 Ajaccio",
+                        "score": 0.95,
+                        "type": "housenumber",
+                        "citycode": "2A004",
+                        "city": "Ajaccio",
+                        "postcode": "20000",
+                        "context": "2A, Corse-du-Sud, Corse",
+                    },
+                }
+            ],
+        }
+    )
+    reglages = settings.model_copy(
+        update={"ban_base_url": "https://ban.test/geocodage", "duckdb_path": medallion_db}
+    )
+    monkeypatch.setattr(cli, "get_settings", lambda: reglages)
+
+    code = cli.main(["essentiel", "--adresse", "1 cours Napoléon, Ajaccio", "--format", "json"])
+    assert code == 0
+    reponse = json.loads(capsys.readouterr().out)
+    assert reponse["prix"]["code_tranche"] == "IA"
+    assert reponse["prix"]["est_tranche_par_defaut"] is True
+    assert reponse["prix"]["facture_htva_eur_an"] is None
+    assert reponse["carbone"]["est_decarbone"] is False
+    assert reponse["carbone"]["systeme_electrique"] == "Corse"
+    assert set(reponse["limites"]) == {"prix_entreprise", "carbone_territoire"}
+
+
+def test_essentiel_text_fits_in_a_few_lines(medallion_db: Path) -> None:
+    from ingestion.diagnostic import formater_essentiel
+
+    texte = formater_essentiel(
+        lire_diagnostic(territoire("69123", "Lyon"), conso_mwh=350, database=medallion_db)
+    )
+    assert len(texte.splitlines()) <= 7
+    assert "Prix moyen : 0,1925 €/kWh HTVA, soit environ 67 400 € par an pour 350 MWh" in texte
+    assert "Électricité décarbonée : oui (France continentale), 51,9 gCO₂e/kWh" in texte
+
+
+def test_essentiel_explains_an_unknown_address(
+    httpx_mock: HTTPXMock,
+    settings: Settings,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    httpx_mock.add_response(json={"type": "FeatureCollection", "features": []})
+    reglages = settings.model_copy(update={"ban_base_url": "https://ban.test/geocodage"})
+    monkeypatch.setattr(cli, "get_settings", lambda: reglages)
+
+    assert cli.main(["essentiel", "--adresse", "nulle part"]) == 1
+    assert "adresse introuvable" in caplog.text

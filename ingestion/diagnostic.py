@@ -167,6 +167,16 @@ where $conso >= conso_min_mwh
   and (conso_max_mwh is null or $conso < conso_max_mwh)
 """
 
+#: Tranche Eurostat affichée sans `--conso` : moins de 20 MWh par an, celle des TPE et
+#: des commerces (décision du 16 octobre 2026).
+TRANCHE_DEFAUT = "IA"
+
+_PRIX_DEFAUT_SQL = """
+select *
+from gold.fct_prix_entreprise_tranche
+where code_tranche = $code
+"""
+
 
 class DiagnosticIndisponibleError(RuntimeError):
     """Le warehouse ne permet pas de produire le diagnostic."""
@@ -267,7 +277,8 @@ class ContrainteOuvrage:
 class PrixEntreprise:
     """Prix de l'électricité de la tranche de consommation de l'entreprise (Eurostat)."""
 
-    conso_mwh: float
+    #: Consommation déclarée ; `None` pour la tranche par défaut, sans facture.
+    conso_mwh: float | None
     tranche: str
     code_tranche: str
     libelle_tranche: str
@@ -302,7 +313,13 @@ class PrixEntreprise:
         Le prix Eurostat est un prix moyen tout compris (énergie, acheminement,
         part fixe), rapporté au kWh : il donne directement la facture.
         """
+        if self.conso_mwh is None:
+            raise ValueError("facture inconnue sans consommation annuelle")
         return self.conso_mwh * 1000 * prix_eur_kwh
+
+    @property
+    def est_tranche_par_defaut(self) -> bool:
+        return self.conso_mwh is None
 
 
 @dataclass(frozen=True, slots=True)
@@ -403,7 +420,9 @@ def lire_diagnostic(
                 connection, _DIAGNOSTIC_SQL, {"commune": commune, "departement": departement}
             )
             seuil = _seuil(connection, puissance_mw) if puissance_mw is not None else None
-            prix = _prix(connection, conso_mwh) if conso_mwh is not None else None
+            prix = (
+                _prix(connection, conso_mwh) if conso_mwh is not None else _prix_defaut(connection)
+            )
             zone_rte, zone_rte_p3 = _zones_rte(connection, territoire)
             site = _une_ligne(
                 connection,
@@ -483,6 +502,11 @@ def _prix(connection: duckdb.DuckDBPyConnection, conso_mwh: float) -> PrixEntrep
     return None if ligne is None else PrixEntreprise(conso_mwh=conso_mwh, **ligne)
 
 
+def _prix_defaut(connection: duckdb.DuckDBPyConnection) -> PrixEntreprise | None:
+    ligne = _une_ligne(connection, _PRIX_DEFAUT_SQL, {"code": TRANCHE_DEFAUT})
+    return None if ligne is None else PrixEntreprise(conso_mwh=None, **ligne)
+
+
 # ---------------------------------------------------------------------------
 # Sortie texte
 # ---------------------------------------------------------------------------
@@ -520,6 +544,108 @@ def entete(diagnostic: Diagnostic) -> list[str]:
     if not t.est_precis:
         lignes.append(f"Attention : adresse résolue à la maille « {t.precision} » seulement.")
     return lignes
+
+
+#: Rappel affiché sous l'essentiel : ce que l'adresse change, et ce qu'elle ne change pas.
+A_SAVOIR = (
+    "Le prix ne dépend pas de l'adresse mais de la consommation (péréquation, Corse et"
+    " outre-mer compris). Le carbone est la moyenne annuelle du réseau de ce territoire, pas"
+    " celle d'un contrat de fourniture."
+)
+
+
+def essentiel(diagnostic: Diagnostic) -> Section:
+    """Les deux réponses du MVP : prix moyen et verdict carbone, en quelques lignes."""
+    d = diagnostic
+    section = Section("L'essentiel : prix et carbone à cette adresse", [])
+    section.elements.append(("texte", f"Prix moyen : {_prix_court(d)}"))
+    if d.carbone is None:
+        carbone = "non disponible (lancer dbt build)"
+    else:
+        c = d.carbone
+        position = "sous le" if c.est_decarbone else "au-dessus du"
+        carbone = (
+            f"{'oui' if c.est_decarbone else 'non'} ({c.systeme_electrique}),"
+            f" {_nombre_court(c.intensite_acv_g_co2e_kwh)} gCO₂e/kWh en cycle de vie, {position}"
+            f" seuil de {_nombre_court(c.seuil_decarbone_g_co2e_kwh)} gCO₂e/kWh"
+        )
+    section.elements.append(("texte", f"Électricité décarbonée : {carbone}"))
+    section.elements.append(("texte", f"À savoir : {A_SAVOIR}"))
+    return section
+
+
+def _prix_court(d: Diagnostic) -> str:
+    p = d.prix
+    if p is None and d.conso_mwh is not None:
+        return f"non publié par Eurostat pour {_nombre_court(d.conso_mwh)} MWh/an"
+    if p is None:
+        return "non disponible (lancer la commande prix, puis dbt build)"
+    periode = f"{_semestre(p.dernier_semestre, precedent=True)} – {_semestre(p.dernier_semestre)}"
+    prix = f"{_nombre(p.prix_reference_eur_kwh, 4)} €/kWh HTVA"
+    if p.conso_mwh is None:
+        return (
+            f"{prix} pour une petite entreprise (tranche {p.code_tranche}, {p.libelle_tranche} ;"
+            f" Eurostat, {periode}). Préciser --conso pour la tranche et la facture de"
+            " l'entreprise"
+        )
+    return (
+        f"{prix}, soit environ {_euros_arrondis(p.facture_eur(p.prix_reference_eur_kwh))} par an"
+        f" pour {_nombre_court(p.conso_mwh)} MWh (tranche {p.code_tranche} ; Eurostat, {periode})"
+    )
+
+
+def formater_essentiel(diagnostic: Diagnostic) -> str:
+    """L'essentiel seul, pour le terminal."""
+    lignes = [diagnostic.territoire.adresse, *entete(diagnostic), ""]
+    lignes += [contenu for _, contenu in essentiel(diagnostic).elements]
+    return "\n".join(lignes)
+
+
+def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
+    """L'essentiel en JSON : les deux réponses, leurs sources et la position de l'adresse."""
+    d = diagnostic
+    t = d.territoire
+    p = d.prix
+    c = d.carbone
+    return {
+        "adresse": t.adresse,
+        "code_insee_commune": d.code_insee_commune,
+        "commune": t.commune,
+        "code_departement": d.code_departement,
+        "code_insee_region": d.code_insee_region,
+        "region": d.region,
+        "est_zni": d.est_zni,
+        "precision_geocodage": t.precision,
+        "prix": None
+        if p is None
+        else {
+            "prix_htva_eur_kwh": p.prix_reference_eur_kwh,
+            "code_tranche": p.code_tranche,
+            "libelle_tranche": p.libelle_tranche,
+            "est_tranche_par_defaut": p.est_tranche_par_defaut,
+            "conso_mwh": p.conso_mwh,
+            "facture_htva_eur_an": None
+            if p.conso_mwh is None
+            else p.facture_eur(p.prix_reference_eur_kwh),
+            "dernier_semestre": p.dernier_semestre,
+            "source": "Eurostat nrg_pc_205",
+        },
+        "carbone": None
+        if c is None
+        else {
+            "est_decarbone": c.est_decarbone,
+            "intensite_acv_g_co2e_kwh": c.intensite_acv_g_co2e_kwh,
+            "seuil_decarbone_g_co2e_kwh": c.seuil_decarbone_g_co2e_kwh,
+            "systeme_electrique": c.systeme_electrique,
+            "source": f"ADEME Base Carbone, {c.validite_source}",
+        },
+        "a_savoir": A_SAVOIR,
+        "limites": {
+            code: d.limites[code]
+            for code in ("prix_entreprise", "carbone_territoire")
+            if code in d.limites
+        },
+    }
 
 
 def sections(diagnostic: Diagnostic) -> list[Section]:
@@ -699,29 +825,39 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
             " MWh/an.",
         )
     elif d.prix is None:
-        texte(
-            s,
-            "Préciser --conso (consommation annuelle en MWh, lue sur la facture) pour connaître"
-            " le prix de la tranche de l'entreprise.",
-        )
+        texte(s, "Aucun prix Eurostat chargé : lancer la commande prix, puis dbt build.")
     else:
         p = d.prix
-        texte(
-            s,
-            f"Consommation {_nombre_court(p.conso_mwh)} MWh/an → tranche {p.code_tranche}"
-            f" ({p.libelle_tranche}), prix moyen constaté par Eurostat",
-        )
+        if p.conso_mwh is None:
+            texte(
+                s,
+                f"Consommation non précisée → tranche {p.code_tranche} ({p.libelle_tranche}),"
+                " celle des TPE et des commerces, prix moyen constaté par Eurostat. Préciser"
+                " --conso (consommation annuelle en MWh, lue sur la facture) pour la tranche de"
+                " l'entreprise et sa facture.",
+            )
+        else:
+            texte(
+                s,
+                f"Consommation {_nombre_court(p.conso_mwh)} MWh/an → tranche {p.code_tranche}"
+                f" ({p.libelle_tranche}), prix moyen constaté par Eurostat",
+            )
         taxes = (
             f", dont {_nombre(p.taxes_reference_eur_kwh, 4)} €/kWh de taxes non récupérables"
             if p.taxes_reference_eur_kwh is not None
             else ""
         )
-        facture = _euros_arrondis(p.facture_eur(p.prix_reference_eur_kwh))
+        facture = (
+            ""
+            if p.conso_mwh is None
+            else f" → facture d'environ {_euros_arrondis(p.facture_eur(p.prix_reference_eur_kwh))}"
+            " par an"
+        )
         texte(
             s,
             f"12 derniers mois ({_semestre(p.dernier_semestre, precedent=True)} –"
             f" {_semestre(p.dernier_semestre)}) : {_nombre(p.prix_reference_eur_kwh, 4)} €/kWh"
-            f" HTVA{taxes} → facture d'environ {facture} par an",
+            f" HTVA{taxes}{facture}",
         )
         texte(
             s,
@@ -736,14 +872,19 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
             p.prix_3_ans_haut_eur_kwh,
         )
         if bas is not None and centre is not None and haut is not None:
+            factures = (
+                ""
+                if p.conso_mwh is None
+                else f" → facture de {_euros_arrondis(p.facture_eur(bas))} à"
+                f" {_euros_arrondis(p.facture_eur(haut))} par an"
+                f" ({_euros_arrondis(p.facture_eur(centre))} au centre)"
+            )
             texte(
                 s,
                 "Prix moyen des 3 prochaines années, d'après l'historique de la tranche et les"
                 " erreurs passées de la méthode :"
-                f" de {_nombre(bas, 4)} à {_nombre(haut, 4)} €/kWh, {_nombre(centre, 4)} au centre"
-                f" → facture de {_euros_arrondis(p.facture_eur(bas))} à"
-                f" {_euros_arrondis(p.facture_eur(haut))} par an"
-                f" ({_euros_arrondis(p.facture_eur(centre))} au centre)",
+                f" de {_nombre(bas, 4)} à {_nombre(haut, 4)} €/kWh, {_nombre(centre, 4)} au"
+                f" centre{factures}",
             )
             texte(s, _controle_sur_le_passe(p))
         else:
@@ -751,10 +892,16 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
                 s,
                 "Historique trop court pour cette tranche : pas de scénario à 3 ans.",
             )
+        if d.est_zni:
+            texte(
+                s,
+                "En Corse et outre-mer, les tarifs réglementés sont alignés sur ceux du continent"
+                " (péréquation) : ce prix moyen national reste le repère.",
+            )
         limite(s, "prix_entreprise")
 
-    # 5. Coût d'un profil type
-    s = bloc("5. Coût horaire d'un profil type (identique sur tout le territoire)")
+    # 5. Carbone et coût d'un profil type
+    s = bloc("5. Carbone du réseau et coût horaire d'un profil type")
     if d.carbone is not None:
         texte(s, _verdict_carbone(d.carbone))
         limite(s, "carbone_territoire")
@@ -867,7 +1014,7 @@ def formater_diagnostic(diagnostic: Diagnostic) -> str:
     """Diagnostic lisible en terminal, chaque bloc suivi de sa limite."""
     lignes = [f"DIAGNOSTIC D'IMPLANTATION — {diagnostic.territoire.adresse}"]
     lignes += entete(diagnostic)
-    for section in sections(diagnostic):
+    for section in [essentiel(diagnostic), *sections(diagnostic)]:
         lignes += ["", section.titre]
         lignes += [
             f"   ↳ Limite : {contenu}" if nature == "limite" else f"   {contenu}"

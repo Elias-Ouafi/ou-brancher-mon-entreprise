@@ -28,7 +28,14 @@ from typing import Any, Literal
 import duckdb
 
 from ingestion.config import Settings, get_settings
-from ingestion.diagnostic import PROFIL_DEFAUT, Diagnostic, diagnostic_en_dict, entete, sections
+from ingestion.diagnostic import (
+    PROFIL_DEFAUT,
+    Diagnostic,
+    diagnostic_en_dict,
+    entete,
+    essentiel,
+    sections,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -233,6 +240,9 @@ def rendre_markdown(
         " Géorisques). Chaque indicateur est suivi de sa limite méthodologique.",
         "",
     ]
+    resume = essentiel(diagnostic)
+    blocs += [f"## {resume.titre}", "", *[f"- **{texte_compact(c)}**" for _, c in resume.elements]]
+    blocs.append("")
     for numero, section in enumerate(sections(diagnostic), start=1):
         blocs += [f"## {section.titre}", ""]
         for nature, contenu in section.elements:
