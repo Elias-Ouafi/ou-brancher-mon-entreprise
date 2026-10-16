@@ -3,10 +3,12 @@
 Projet **dbt-duckdb** qui construit silver et gold à partir des tables `bronze` chargées par
 `ingestion`. Aucun package externe : il se construit hors ligne.
 
-```bash
-uv run dbt build --project-dir dbt --profiles-dir dbt          # depuis la racine du dépôt
-uv run dbt docs generate --project-dir dbt --profiles-dir dbt  # catalogue et lignage
+```powershell
+.\.venv\Scripts\dbt.exe build --project-dir dbt --profiles-dir dbt          # depuis la racine du dépôt
+.\.venv\Scripts\dbt.exe docs generate --project-dir dbt --profiles-dir dbt  # catalogue et lignage
 ```
+
+`refresh` lance déjà `dbt build` après les extractions.
 
 Base visée : `ECO2MIX_DUCKDB_PATH` (défaut `data/warehouse/eco2mix.duckdb`).
 

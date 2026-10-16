@@ -1,12 +1,11 @@
 # Où brancher mon entreprise
 
-**Prix et carbone de l'électricité à une adresse française.** Une adresse en entrée ; en
-sortie, le prix moyen de l'électricité pour l'entreprise et si l'électricité du réseau y est
-décarbonée, puis, si on le souhaite, un diagnostic d'implantation complet (réseau, prix,
-risques), chaque chiffre accompagné de sa limite. Une commande, pas d'application.
+**Une adresse française en entrée ; en sortie, le prix moyen de l'électricité et si elle est
+décarbonée.** Données publiques uniquement, chaque chiffre avec sa source et sa limite. Ligne de
+commande, en local.
 
-```bash
-uv run python -m ingestion.cli essentiel --adresse "1 cours Napoléon, 20000 Ajaccio" --conso 60000
+```powershell
+.\.venv\Scripts\python.exe -m ingestion.cli essentiel --adresse "1 cours Napoléon, 20000 Ajaccio" --conso 60000
 ```
 
 ```
@@ -19,183 +18,97 @@ Prix moyen : 0,0916 €/kWh HTVA, soit environ 5 500 000 € par an pour 60 000 
 ```
 
 Exemples réels : [recette sur 11 adresses](docs/exemples/recette_mvp.md) ·
-[diagnostic de Lyon](docs/exemples/implantation_lyon.md) ([PDF](docs/exemples/implantation_lyon.pdf)) ·
-[comparaison Lyon, Lille, Poitiers](docs/exemples/comparaison_lyon_lille_poitiers.md).
+[diagnostic complet de Lyon](docs/exemples/implantation_lyon.md) ([PDF](docs/exemples/implantation_lyon.pdf)) ·
+[comparaison de 3 villes](docs/exemples/comparaison_lyon_lille_poitiers.md).
 
-## Ce que dit le diagnostic
+## Trois points forts pour un data engineer
 
-| Bloc | Indicateurs | Source | Maille |
-|---|---|---|---|
-| 1. Pression industrielle | Sites raccordés au transport et leur consommation ; rang du département | ODRÉ (RTE, GRTgaz, Teréga) | commune, département |
-| 2. Tension du réseau | Couverture production / consommation sur 12 mois, rang de dépendance ; contraintes d'évacuation ; contraintes prospectives RTE à 3-5 ans | ODRÉ (RTE) | région, département |
-| 3. Raccordement | Niveau de tension et gestionnaire selon la puissance ; postes RTE ; zone prioritaire RTE la plus proche et sa date de capacité ; site industriel clé en main le plus proche | arrêté de 2003, ODRÉ, SDDR 2025 de RTE, ANCT | adresse, département |
-| 4. Prix | Prix de la tranche de consommation sur 12 mois, repères depuis 2007, scénarios à 3 ans et leur contrôle sur le passé | Eurostat `nrg_pc_205` | national, par tranche |
-| 5. Carbone et coût d'un profil type | Électricité décarbonée ou non (seuil de 100 gCO₂e/kWh de la taxonomie européenne) ; bureau 36 kVA chiffré heure par heure (HP/HC), gain d'un report vers les heures creuses | ADEME Base Carbone, CRE, éCO2mix | système électrique (continent, Corse, chaque DROM) ; national |
-| 6. Risques | Risques naturels et technologiques à l'adresse ; repli sur la commune si le rapport ne répond pas | Géorisques | adresse |
+1. **Une ingestion idempotente, éprouvée sur les pièges réels des sources.** Bronze en Parquet
+   immuables (toutes les révisions gardées) puis `MERGE` sur clé dans DuckDB, jamais d'`INSERT` :
+   relancer ne duplique rien. Changements d'heure normalisés en UTC, révisions de RTE rattrapées,
+   quota d'API suivi, bascule automatique sur l'export CSV, nouvelles tentatives exponentielles ;
+   BOM, codes IRIS tronqués et secret statistique traités et testés.
+2. **Un médaillon dbt testé de bout en bout, sans réseau.** 318 tests pytest, dont un `dbt build`
+   complet sur une base synthétique qui reproduit ces pièges ; tests de données dbt (unicité,
+   bornes, intégrité référentielle) à chaque build ; CI GitHub Actions à chaque PR. Les scénarios
+   de prix sont contrôlés sur le passé, sans regard vers le futur.
+3. **Des choix proportionnés et des chiffres honnêtes.** DuckDB plutôt que Spark (500 000 lignes,
+   `dbt build` en 10 s), reconstruction complète plutôt qu'incrémental, interface
+   `WarehouseLoader` prête pour BigQuery. Chaque indicateur porte sa source, sa maille et sa
+   limite (`limites_methodologiques.csv`), conformément aux règles sur les allégations
+   environnementales (directive EmpCo).
 
-**Les limites tiennent au cadrage**, établi dans [`docs/cadrage-besoins-entreprises.md`](docs/cadrage-besoins-entreprises.md) :
+## Installation et mise à jour
 
-- **le prix n'est pas géographique** : la péréquation rend le tarif identique partout. Il
-  dépend de la taille de l'entreprise, pas de l'adresse ;
-- **le carbone ne change qu'entre systèmes électriques** : le continent est un seul réseau
-  (51,9 gCO₂e/kWh en cycle de vie, ADEME 2024) ; seules la Corse et l'outre-mer, non
-  interconnectés, ont leur propre facteur, six à dix-huit fois plus élevé ;
-- **la capacité de raccordement en soutirage n'est pas en open data** : seule une étude RTE ou
-  Enedis fait foi.
+Python 3.12. Tout tourne en local, sans compte (sauf le calendrier Tempo, optionnel).
 
-Chaque indicateur affiche donc sa source, sa maille et ce qu'il ne dit pas
-(`dbt/seeds/limites_methodologiques.csv`) : une exigence de méthode, et de conformité aux
-règles sur les allégations environnementales (directive EmpCo).
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e . dbt-duckdb matplotlib reportlab pytest pytest-httpx ruff
+Copy-Item .env.example .env
+.\.venv\Scripts\python.exe -m ingestion.cli refresh --months 180
+```
 
-## Utilisation
+`refresh` relit toutes les sources (une dizaine d'appels d'API) puis lance `dbt build`, en une
+minute environ. Rien ne tourne tout seul : relancez `refresh` (sans `--months`) pour mettre les
+données à jour. Avec [uv](https://docs.astral.sh/uv/), `uv sync --group dev --group dbt --group report`
+remplace les deux premières lignes, et `uv run python` remplace `.\.venv\Scripts\python.exe`.
+
+## Commandes
+
+Toutes s'écrivent `.\.venv\Scripts\python.exe -m ingestion.cli <commande>`.
 
 | Commande | Effet |
 |---|---|
-| `essentiel --adresse "…" [--conso N] [--format json]` | Prix moyen et verdict carbone, en 5 lignes ; sans `--conso`, tranche des petites entreprises (IA, moins de 20 MWh par an) |
-| `diagnose --adresse "…"` | Diagnostic complet dans le terminal, l'essentiel en tête |
-| `… --puissance 12` | Niveau de tension et gestionnaire pour un projet de 12 MW |
-| `… --conso 60000` | Prix de la tranche Eurostat pour 60 000 MWh par an |
-| `… --format pdf\|md\|json [--output fichier]` | Rapport PDF ou Markdown (graphiques compris), ou JSON |
-| `… --sans-risques` | Sans appel à Géorisques (hors ligne) |
-| `compare --adresse "A" --adresse "B" …` | 2 à 6 adresses côte à côte, **sans classement** ; formats `texte`, `md`, `csv` (Excel), `json` |
-| `refresh [--months 180]` | Rafraîchit toutes les sources puis lance `dbt build` (180 mois au premier chargement) |
-| `geocode --adresse "…"` | Résolution de l'adresse seule (BAN), score et précision |
-| `report --month 2026-09 [--format md]` | Rapport mensuel carbone et créneaux Tempo (voir plus bas) |
+| `essentiel --adresse "…" [--conso N] [--format json]` | Prix moyen et verdict carbone ; sans `--conso`, tranche des petites entreprises (moins de 20 MWh/an) |
+| `diagnose --adresse "…" [--puissance MW] [--conso N] [--format pdf\|md\|json]` | Diagnostic complet : industrie locale, réseau, raccordement, prix, carbone, risques |
+| `compare --adresse "A" --adresse "B" …` | 2 à 6 adresses côte à côte, sans classement ; `texte`, `md`, `csv`, `json` |
+| `refresh [--months 180]` | Met à jour toutes les sources, puis `dbt build` |
+| `report --month 2026-09` | Rapport mensuel carbone et créneaux Tempo (compte RTE requis pour Tempo) |
 
-Toutes les commandes : `uv run python -m ingestion.cli <commande>`.
+## Ce que l'adresse change, et ce qu'elle ne change pas
 
-## Installation
+- **Le prix ne dépend pas de l'adresse** : la péréquation le rend identique partout. Il dépend de
+  la consommation (tranches Eurostat `nrg_pc_205`).
+- **Le carbone ne change qu'entre systèmes électriques** : 51,9 gCO₂e/kWh sur tout le continent
+  (ADEME 2024), 594 à 957 en Corse et outre-mer, non interconnectés. Verdict au seuil de
+  100 gCO₂e/kWh de la taxonomie européenne ; c'est la moyenne du réseau, pas celle d'un contrat.
+- **La capacité de raccordement n'est pas en open data** : seule une étude RTE ou Enedis fait foi.
 
-Python 3.12 et [uv](https://docs.astral.sh/uv/). Tout tourne en local, sans service cloud ni
-compte (sauf le calendrier Tempo, optionnel).
-
-```bash
-uv sync --group dev --group dbt --group report
-cp .env.example .env
-
-# Données : une dizaine d'appels API, puis dbt build (une minute environ)
-uv run python -m ingestion.cli refresh --months 180          # éCO2mix depuis 2012, territoire, prix
-```
-
-`refresh` enchaîne l'éCO2mix consolidé puis temps réel, les cinq jeux territoriaux, les prix
-Eurostat et `dbt build` ; chaque étape existe aussi seule (`consolidate`, `ingest --dataset`,
-`prix`).
-
-La BAN (géocodage) et Géorisques sont appelés au moment du diagnostic ; `essentiel` n'appelle
-que la BAN.
+Le raisonnement complet est dans le [cadrage](docs/cadrage-besoins-entreprises.md).
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    SRC[("ODRÉ · Eurostat · RTE Tempo")] -->|"ingestion/ (Python)"| B
-    subgraph B["Bronze"]
-        P[("Parquet immuables")] --> T[("DuckDB : MERGE idempotent")]
-    end
-    B -->|"dbt"| S["Silver : nettoyé, codes INSEE"]
-    S -->|"dbt"| G["Gold : diagnostic, prix, scénarios"]
-    SEEDS[("Seeds : référentiels, tarifs, limites,<br/>zones RTE, sites clés en main")] --> G
-    G --> CLI(["diagnose · compare · report"])
-    BAN[("BAN · Géorisques<br/>(à la demande)")] --> CLI
+    SRC[("ODRÉ · Eurostat · RTE")] -->|"ingestion/ (Python)"| B["Bronze : Parquet + DuckDB (MERGE)"]
+    B -->|dbt| S["Silver : nettoyé, codes INSEE"]
+    S -->|dbt| G["Gold : prix, carbone, diagnostic"]
+    SEEDS[("Seeds : ADEME, tarifs, référentiels, limites")] --> G
+    G --> CLI(["essentiel · diagnose · compare"])
+    BAN[("BAN · Géorisques, à la demande")] --> CLI
 ```
 
-| Couche | Construite par | Règle |
-|---|---|---|
-| Bronze (`data/bronze/*.parquet` + schéma `bronze`) | `ingestion/` | Miroir de la source, horodatage en UTC ; les Parquet gardent toutes les révisions, les tables la dernière |
-| Silver | `dbt/models/silver/` | Nettoyage et conformité (codes INSEE, classes ordonnées), pas d'agrégat |
-| Gold | `dbt/models/gold/` | Prêt à lire : une requête par diagnostic, unités dans les noms de colonnes |
+Détail : [modèles dbt](dbt/README.md) · [stockage](data/README.md).
 
-Choix structurants :
-- **DuckDB, pas de PySpark** : le plus gros jeu fait 500 000 lignes, la base 235 Mo ; un
-  `dbt build` complet (229 nœuds, tests compris) prend une dizaine de secondes.
-- **Reconstruction complète** de silver et gold à chaque run : plus simple qu'un incrémental
-  à ce volume.
-- **Interface `WarehouseLoader`** : seul point où DuckDB est nommé, pour une bascule BigQuery
-  ultérieure (`BigQueryLoader` à écrire).
+## Tests
 
-Détail des modèles : [`dbt/README.md`](dbt/README.md) ; stockage : [`data/README.md`](data/README.md).
-
-## Fiabilité des données
-
-- **Changements d'heure** : `date_heure` normalisé en UTC dès l'extraction ; l'heure de mars
-  inexistante lève une erreur, l'heure d'octobre doublée est tranchée par l'instant précédent.
-  RTE publie 24 h par jour : 4 lignes en double par an absorbées, 1 h manquante par an signalée
-  (`est_complet = false`).
-- **Révisions** : fenêtre glissante de 3 h, dédoublonnage du lot, MERGE sur la clé (jamais
-  d'INSERT) ; une clé peut être composite et comporter des colonnes optionnelles.
-- **Quota ODRÉ** (50 000 appels par jeu et par mois) : environ 900 appels par mois en
-  exploitation horaire, journalisés avec le compteur renvoyé par l'API ; bascule automatique
-  sur l'export CSV (un appel) au-delà de 900 lignes.
-- **Pièges des sources**, traités et testés : BOM des exports CSV, ligne temps réel publiée
-  « à blanc », codes IRIS tronqués, communes non publiées, millésimes masqués par le secret
-  statistique (millésime retenu : 2021), champs géographiques vides des contraintes RTE.
-- **API instables** : nouvelles tentatives exponentielles partout ; Géorisques coupe souvent
-  ses connexions, d'où un repli communal annoncé, et un diagnostic qui sort même sans lui.
-
-## Exploitation
-
-**Local uniquement, à la demande.** Rien ne tourne tout seul : les données se mettent à jour
-quand on lance `refresh` sur son poste, par exemple avant une série de diagnostics. Une source
-en échec n'arrête pas les autres : sa dernière version reste en bronze, et la commande sort
-en code 1.
-
-DuckDB n'accepte qu'un writer : ne lancez pas deux commandes d'écriture en même temps.
-`freshness` échoue si la dernière mesure a plus de 2 h de retard.
-
-**Rapport mensuel Tempo** : `report --month AAAA-MM` produit un PDF ou un Markdown sur les pics
-de carbone et les meilleurs créneaux Tempo d'un mois. Les couleurs Tempo exigent un compte
-gratuit sur [data.rte-france.com](https://data.rte-france.com) (`ECO2MIX_RTE_CLIENT_ID` et
-`_SECRET` dans `.env`) ; sans elles, le rapport se limite au carbone.
-
-## Tests et CI
-
-```bash
-uv run ruff check . && uv run ruff format --check . && uv run pytest
+```powershell
+.\.venv\Scripts\python.exe -m ruff check . ; .\.venv\Scripts\python.exe -m pytest
 ```
-
-318 tests pytest, **aucun appel réseau réel** (`pytest-httpx`, sockets condamnées), dont un
-`dbt build` complet sur une base synthétique qui reproduit les pièges des sources. Les tests de
-données dbt (unicité, bornes, intégrité référentielle, cohérence des scénarios) tournent à
-chaque build. La CI GitHub Actions rejoue ruff, pytest et `dbt build` à chaque PR, sans credential.
-
-## État
-
-**Fait** : tout ce que décrit ce README, testé et exécuté sur des adresses réelles.
-
-**MVP atteint le 16 octobre 2026** : `essentiel` répond pour toute adresse française, Corse
-et outre-mer compris, et `refresh` met les données à jour à la demande, en local. Suite : protéger `main`, puis
-[l'extension à d'autres pays](docs/extension-internationale.md). Détail :
-[`docs/feuille-de-route.md`](docs/feuille-de-route.md).
-
-**Pas encore validé en conditions réelles** :
-- les prix Tempo n'ont été calculés que sur des réponses simulées (pas de compte RTE).
 
 ## Documentation
 
 | Document | Contenu |
 |---|---|
-| [Feuille de route](docs/feuille-de-route.md) | État des lieux, étapes du MVP, décisions datées, écarté |
-| [Extension internationale](docs/extension-internationale.md) | 16 oct. 2026 : pistes pour d'autres pays, après le MVP |
-| [Cadrage](docs/cadrage-besoins-entreprises.md) | 9 oct. 2026 : pourquoi un diagnostic de contexte et non « le prix et le CO₂ à l'adresse » |
-| [Revue des besoins](docs/revue-besoins-entreprises.md) | 15 oct. 2026 : ce que cherchent les entreprises qui choisissent un site |
-| [Veille](docs/veille-projets-similaires.md) | 15 oct. 2026 : projets similaires sur GitHub et idées retenues |
+| [Feuille de route](docs/feuille-de-route.md) | État du MVP, suite, décisions datées |
+| [Extension internationale](docs/extension-internationale.md) | Pistes pour d'autres pays |
+| [Cadrage](docs/cadrage-besoins-entreprises.md) · [Revue des besoins](docs/revue-besoins-entreprises.md) · [Veille](docs/veille-projets-similaires.md) | Études datées des 9 et 15 oct. 2026 |
 
-## Structure du dépôt
+## Sources
 
-```
-ingestion/   clients API (ODRÉ, RTE, Eurostat, BAN, Géorisques), chargement, refresh, diagnostic, comparaison, CLI
-  tests/     pytest, sans réseau
-dbt/         silver et gold (dbt-duckdb), seeds de référence
-reporting/   rapports PDF et Markdown (implantation, mensuel)
-docs/        cadrage, revue, veille, feuille de route, exemples réels
-data/        gitignoré : Parquet, base DuckDB, rapports
-```
-
-## Sources et licences
-
-[ODRÉ](https://odre.opendatasoft.com) (éCO2mix, consommation par IRIS, équilibre régional,
-contraintes et postes RTE) · [Eurostat](https://ec.europa.eu/eurostat) `nrg_pc_205` ·
-[Géorisques](https://www.georisques.gouv.fr) · [Base Adresse Nationale](https://adresse.data.gouv.fr)
-(Géoplateforme IGN) · [sites clés en main France 2030](https://www.data.gouv.fr/datasets/les-sites-cles-en-main-france-2030)
-(ANCT) · [Base Carbone de l'ADEME](https://data.ademe.fr/datasets/base-carboner) · SDDR 2025 de RTE · barèmes de la CRE. Licence Ouverte / Etalab pour les données
-françaises publiques.
+[ODRÉ](https://odre.opendatasoft.com) (éCO2mix, RTE) · [Eurostat](https://ec.europa.eu/eurostat) ·
+[Base Carbone de l'ADEME](https://data.ademe.fr/datasets/base-carboner) ·
+[Base Adresse Nationale](https://adresse.data.gouv.fr) · [Géorisques](https://www.georisques.gouv.fr) ·
+[sites clés en main France 2030](https://www.data.gouv.fr/datasets/les-sites-cles-en-main-france-2030) ·
+SDDR 2025 de RTE · barèmes de la CRE. Licence Ouverte / Etalab.
