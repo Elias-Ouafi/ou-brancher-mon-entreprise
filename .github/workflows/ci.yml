@@ -23,6 +23,11 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
       # uv installe via pip : aucune action tierce, aucun credential.
       - name: Install uv
         run: pip install uv
