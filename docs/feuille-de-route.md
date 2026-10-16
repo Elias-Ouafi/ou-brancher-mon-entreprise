@@ -1,124 +1,57 @@
 # Feuille de route
 
-> Mise à jour le 16 octobre 2026. Périmètre : la France (métropole, Corse, outre-mer).
-> Pourquoi ce périmètre : [cadrage](cadrage-besoins-entreprises.md). Après le MVP :
-> [extension à d'autres pays](extension-internationale.md).
+> Mise à jour le 16 octobre 2026. Périmètre : la France (métropole, Corse, outre-mer), en local
+> et à la demande. Après le MVP : [extension à d'autres pays](extension-internationale.md).
 
-## Objectif du MVP
+## État : MVP atteint le 16 octobre 2026
 
-Une personne saisit une adresse ; l'outil répond à deux questions, en quelques lignes :
-
-1. **Quel prix moyen de l'électricité vais-je payer ?** En €/kWh HTVA, avec la facture
-   annuelle estimée si la consommation est connue.
-2. **L'électricité y est-elle décarbonée ?** Oui ou non, avec l'intensité carbone en
-   gCO₂/kWh et le seuil retenu.
-
-Le diagnostic complet (réseau, raccordement, risques) reste disponible en complément.
-
-## État du MVP (16 octobre 2026)
-
-**Le MVP fonctionne** : `essentiel --adresse "…"` répond aux deux questions en 1,5 s environ,
-sur 11 adresses de recette justes, Corse et outre-mer compris
-([recette](exemples/recette_mvp.md)). Seule l'étape 9, un réglage GitHub, reste au
-propriétaire du dépôt ; l'interface web (étape 7) n'a pas été retenue.
+`essentiel --adresse "…"` donne en 1,5 s environ le prix moyen de l'électricité et le verdict
+carbone, juste sur les [11 adresses de recette](exemples/recette_mvp.md), Corse et outre-mer
+compris. `refresh` met toutes les sources à jour en une minute (9 étapes sur 9 le 16 oct.).
 
 | Brique | Où |
 |---|---|
-| Adresse → commune, département, région, ZNI | `ingestion/geocode.py`, `dim_departement` |
-| Prix moyen par tranche, tranche IA sans `--conso`, scénarios à 3 ans | `fct_prix_entreprise_tranche`, bloc 4 |
-| Intensité carbone et verdict par système électrique (continent, Corse, chaque DROM) | `fct_carbone_territoire`, bloc 5 |
-| Réponse courte, texte ou JSON ; même encadré en tête de `diagnose` et des rapports | `essentiel` (`ingestion/diagnostic.py`) |
-| Rafraîchissement de toutes les sources, puis `dbt build`, à la demande et en local | `refresh` |
-| 318 tests sans réseau, dont la recette ; dbt build en CI | `ingestion/tests/` |
+| Adresse → commune, département, région | `ingestion/geocode.py` (BAN) |
+| Prix par tranche Eurostat ; tranche IA (< 20 MWh/an) sans `--conso` ; scénarios à 3 ans | `fct_prix_entreprise_tranche` |
+| Carbone par système électrique (continent, Corse, chaque DROM), seuil de 100 gCO₂e/kWh | `fct_carbone_territoire`, seed ADEME |
+| Réponse courte en texte ou JSON, reprise en tête de `diagnose` et des rapports | `essentiel` |
+| Diagnostic complet : industrie, réseau, raccordement, risques | `diagnose`, `compare` |
+| Mise à jour de toutes les sources, puis `dbt build` | `refresh` |
+| 318 tests sans réseau, CI à chaque PR | `ingestion/tests/` |
 
-**Encore à surveiller** : les facteurs ADEME des ZNI datent de décembre 2020. La commande
-`refresh` a été exécutée en local le 16 oct. : 9 étapes sur 9 en 52 s.
+**À surveiller** : les facteurs ADEME de la Corse et de l'outre-mer datent de décembre 2020 ;
+le calendrier Tempo n'a tourné que sur des réponses simulées (pas de compte RTE).
 
-## Étapes vers le MVP
-
-| # | Étape | Fait |
-|---|---|---|
-| 1 | Trancher les trois décisions ci-dessous | 16 oct. : propositions validées |
-| 2 | Intensité carbone par territoire | 16 oct. : `fct_carbone_territoire`, facteur ADEME en cycle de vie pour le continent (51,9 g, 2024), la Corse (594 g) et chaque DROM (702 à 957 g, déc. 2020) ; intensité directe RTE sur 12 mois en complément pour le continent (20 g au 8 oct. 2026) |
-| 3 | Verdict « décarboné » | 16 oct. : `est_decarbone` au seuil de 100 gCO₂e/kWh, limite `carbone_territoire` |
-| 4 | Prix par défaut sans `--conso` | 16 oct. : tranche IA, sans facture, avec l'invitation à préciser `--conso` ; rappel de la péréquation en ZNI |
-| 5 | Commande `essentiel` | 16 oct. : 5 lignes (adresse, territoire, prix, verdict carbone, « à savoir ») en texte ou JSON avec les limites ; même encadré en tête de `diagnose`, des rapports Markdown et PDF ; ligne « Électricité décarbonée » dans `compare` ; adresse introuvable → message clair et code 1 |
-| 6 | Rafraîchissement simple | 16 oct. : `refresh` (une source en panne n'arrête pas les autres, code 1 si échec)  ; lancée à la main, en local : aucune exécution planifiée (décision du 16 oct.) |
-| 7 | Interface web | non retenue (décision du 16 oct. : ligne de commande) |
-| 8 | Recette | 16 oct. : 11 adresses réelles (Guadeloupe ajoutée), test de non-régression `test_recette_mvp.py` |
-| 9 | **Protéger `main`** : CI et PR obligatoires | à faire, réglage GitHub par le propriétaire du dépôt |
-
-**Critères de réussite du MVP**, tous atteints le 16 oct. : une adresse française quelconque
-donne en moins de 5 secondes un prix en €/kWh et un verdict carbone sourcés ; les adresses de
-recette sont justes, ZNI comprises ; une adresse introuvable donne un message clair, pas une
-erreur ; les données se rafraîchissent en une commande.
-
-### Décisions (validées le 16 oct.)
-
-| Décision | Proposition | Alternative |
-|---|---|---|
-| Seuil « décarboné » | **100 gCO₂e/kWh**, le seuil de la taxonomie européenne pour la production d'électricité : défendable et publié | Comparer à la moyenne de l'UE, ce qui donne un repère et non un oui/non |
-| Prix par défaut sans `--conso` | **Tranche Eurostat la plus basse (IA, < 20 MWh/an)**, celle des TPE et commerces | Exiger `--conso` ; ou ajouter les ménages (`nrg_pc_204`, même API) si le public inclut des particuliers |
-| Interface | **Ligne de commande** (décision du 9 oct., « ne fais pas de site »), Streamlit en option à l'étape 7 | Streamlit dès le MVP : c'est la seule façon de toucher des non-développeurs |
-
-### Choix techniques
-
-- **Python, dbt et DuckDB, sans PySpark** : le plus gros jeu fait 500 000 lignes et le
-  `dbt build` complet dix secondes. PySpark ajouterait une JVM et un cluster sans aucun gain à
-  ce volume ; DuckDB lit les mêmes Parquet et le passage à `dbt-spark` reste possible si le
-  volume est multiplié par mille (voir [extension](extension-internationale.md)).
-- **Pas d'Airflow** : l'outil ne tourne qu'en local et à la demande (décision du 16 oct.) ;
-  `refresh` suffit. Le projet Airflow, jamais lancé, a été supprimé le 16 oct.
-- **Seeds plutôt qu'API** pour les facteurs ZNI : un chiffre par territoire et par an, mis à
-  jour une fois par an.
-
-## Après le MVP
+## Suite
 
 | Priorité | Étape | Bloqué par |
 |---|---|---|
-| 1 | Extension à d'autres pays : [pistes](extension-internationale.md) | MVP |
-| 2 | Intensité carbone ZNI horaire (open data EDF SEI par territoire) | — |
-| 3 | Situer l'électro-intensité : facture estimée rapportée au chiffre d'affaires (`--ca`) | — |
-| 4 | Importer la vraie courbe de charge (export Enedis) à la place du profil type | — |
-| 5 | Calendrier Tempo sur données réelles | compte RTE, par l'utilisateur |
-| 6 | Repère de prix au-delà de 150 000 MWh (contrats CAPN) | décision |
-| 7 | Classement pondéré dans `compare` | décision : poids à exposer et justifier |
-
-## Fait
-
-| Domaine | Livré |
-|---|---|
-| Socle | Ingestion ODRÉ, RTE et Eurostat idempotente (MERGE, clés composites et optionnelles), UTC et changements d'heure, quota suivi ; médaillon DuckDB + dbt |
-| Territoire | Référentiel commune → département → région ; pression industrielle (millésime sans secret statistique) ; tension régionale sur 12 mois |
-| Réseau | Seuils de raccordement ; contraintes prospectives et postes RTE par département ; zone prioritaire RTE la plus proche (SDDR 2025) |
-| Foncier et risques | Site clé en main France 2030 le plus proche ; risques Géorisques à l'adresse, avec repli communal |
-| Prix | Coût horaire d'un profil type (HP/HC, CRE) ; prix Eurostat par tranche ; scénarios à 3 ans calibrés sur les erreurs passées, contrôle sur le passé affiché |
-| Restitution | `diagnose` (texte, PDF, Markdown, JSON) ; `compare` (2 à 6 adresses, sans classement) ; limites affichées partout ; exemples réels dans `docs/exemples/` |
+| 1 | Protéger `main` : CI et PR obligatoires | réglage GitHub, par le propriétaire |
+| 2 | Extension à d'autres pays : [pistes](extension-internationale.md) | — |
+| 3 | Carbone horaire en Corse et outre-mer (open data EDF SEI) | — |
+| 4 | Facture rapportée au chiffre d'affaires (`--ca`) | — |
+| 5 | Vraie courbe de charge (export Enedis) à la place du profil type | — |
+| 6 | Calendrier Tempo sur données réelles | compte RTE |
+| 7 | Repère de prix au-delà de 150 000 MWh/an ; classement pondéré dans `compare` | décision |
 
 ## Décisions
 
 | Date | Décision |
 |---|---|
-| 9 oct. | Diagnostic de contexte et de risque par adresse, plutôt que « le prix et le CO₂ à l'adresse » |
-| 10 oct. | Coût du profil sur l'option HP/HC, sans compte RTE |
-| 10 oct. | `fct_diagnostic_territoire` à la maille du département ; la commune s'y joint à la lecture |
-| 12 oct. | Prix fixes et historiques par tranche (Eurostat), pas de prix horaire ; horizon de 3 ans ; `--conso` saisi |
-| 15 oct. | Fourchette des scénarios calibrée sur les erreurs passées de la méthode |
-| 15 oct. | Contraintes et postes RTE au département : aucun n'est géolocalisé en open data |
-| 15 oct. | Comparaison côte à côte, sans classement |
-| 16 oct. | Verdict carbone sur le facteur ADEME en cycle de vie, comparé au seuil de 100 gCO₂e/kWh de la taxonomie (même périmètre) ; le `taux_co2` RTE, émissions directes seulement, reste un complément. Prix par défaut : tranche IA. Interface : ligne de commande |
-| 16 oct. | Exploitation en local seulement, à la demande : `refresh` lancé à la main, aucune exécution planifiée (ni GitHub Actions, ni tâche planifiée, ni Airflow : le projet Airflow est supprimé) |
-| 16 oct. | MVP recentré sur deux réponses à l'adresse, prix moyen et verdict carbone, le diagnostic complet devenant un complément. Compatible avec le cadrage du 9 oct. : la réponse est honnête si elle dit que le prix dépend de la consommation et non de l'adresse, et que le carbone ne change qu'entre le continent, la Corse et l'outre-mer |
+| 9 oct. | Diagnostic de contexte par adresse plutôt que « le prix et le CO₂ à l'adresse » ([cadrage](cadrage-besoins-entreprises.md)) |
+| 12 oct. | Prix historiques par tranche Eurostat, pas de prix horaire ; scénarios à 3 ans |
+| 15 oct. | Scénarios calibrés sur les erreurs passées ; comparaison sans classement |
+| 16 oct. | MVP recentré sur deux réponses : prix moyen et verdict carbone, le diagnostic complet en complément |
+| 16 oct. | Verdict sur le facteur ADEME en cycle de vie, au seuil de 100 gCO₂e/kWh de la taxonomie européenne ; le `taux_co2` RTE (émissions directes) reste un complément |
+| 16 oct. | Sans `--conso`, tranche IA ; interface en ligne de commande |
+| 16 oct. | Local et à la demande uniquement : aucune exécution planifiée ; Airflow supprimé |
 
 ## Écarté
 
 | Sujet | Pourquoi |
 |---|---|
-| Prix « à l'adresse » | Péréquation : identique partout, y compris en ZNI pour les tarifs réglementés |
-| Intensité carbone régionale en métropole | Pas de `taux_co2` régional ni de facteur ADEME opposable : le réseau continental est un seul système. La Corse et l'outre-mer, non interconnectés, ont leur facteur (fait le 16 oct.) |
-| Capacité de raccordement chiffrée | Absente de l'open data pour la consommation |
-| Distance au poste RTE | Postes publiés sans coordonnées |
-| Prix spot horaire | Hors besoin (décision du 12 oct.) |
-| Mix régional au pas 15 min | 2,86 M lignes pour un apport faible au diagnostic |
-| PySpark | Aucun gain sous quelques centaines de millions de lignes ; DuckDB suffit |
-| Migration BigQuery | `BigQueryLoader` à écrire derrière l'interface existante, sans intérêt tant que le local suffit |
+| Prix « à l'adresse » | Péréquation : identique partout |
+| Carbone régional en métropole | Un seul réseau continental, pas de facteur régional opposable |
+| Capacité de raccordement chiffrée, distance au poste RTE | Absentes de l'open data |
+| PySpark, BigQuery | Aucun gain à ce volume (500 000 lignes) ; `WarehouseLoader` prêt si besoin |
+| Site web, exécution planifiée | Hors périmètre : ligne de commande, en local |
