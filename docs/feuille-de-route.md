@@ -15,51 +15,46 @@ Une personne saisit une adresse ; l'outil répond à deux questions, en quelques
 
 Le diagnostic complet (réseau, raccordement, risques) reste disponible en complément.
 
-## État des lieux (16 octobre 2026)
+## État du MVP (16 octobre 2026)
 
-**Ce qui existe déjà pour le MVP** : l'essentiel des données et des calculs.
+**Le MVP fonctionne** : `essentiel --adresse "…"` répond aux deux questions en 1,5 s environ,
+sur 11 adresses de recette justes, Corse et outre-mer compris
+([recette](exemples/recette_mvp.md)). Seule l'étape 9, un réglage GitHub, reste au
+propriétaire du dépôt ; l'interface web (étape 7) n'a pas été retenue.
 
-| Brique | État | Où |
-|---|---|---|
-| Intensité carbone et verdict par système électrique (continent, Corse, DROM) | fait le 16 oct. | `fct_carbone_territoire`, bloc 5 |
-| Adresse → commune, département, région, ZNI | fait, testé sur adresses réelles | `ingestion/geocode.py`, `dim_departement` |
-| Prix moyen par tranche de consommation, 12 derniers mois et scénarios à 3 ans | fait | `fct_prix_entreprise_tranche`, bloc 4 |
-| Prix d'un petit profil (bureau 36 kVA, HP/HC) | fait, barème de métropole seulement | `fct_cout_mensuel_profil`, bloc 5 |
-| Intensité carbone nationale, au pas 15 min depuis 2012 | fait | `fct_mix`, `fct_mix_journalier` |
-| Limites affichées par indicateur | fait | `limites_methodologiques.csv` |
-| 300 tests sans réseau, dbt build en CI | fait, passent au 16 oct. | `ingestion/tests/` |
+| Brique | Où |
+|---|---|
+| Adresse → commune, département, région, ZNI | `ingestion/geocode.py`, `dim_departement` |
+| Prix moyen par tranche, tranche IA sans `--conso`, scénarios à 3 ans | `fct_prix_entreprise_tranche`, bloc 4 |
+| Intensité carbone et verdict par système électrique (continent, Corse, chaque DROM) | `fct_carbone_territoire`, bloc 5 |
+| Réponse courte, texte ou JSON ; même encadré en tête de `diagnose` et des rapports | `essentiel` (`ingestion/diagnostic.py`) |
+| Rafraîchissement de toutes les sources, puis `dbt build` | `refresh`, workflow `refresh.yml` |
+| 318 tests sans réseau, dont la recette ; dbt build en CI | `ingestion/tests/` |
 
-**Ce qui manque** :
-
-- **aucune réponse directe** aux deux questions : le prix exige `--conso` (sinon rien), le
-  carbone n'apparaît que dans le bloc 5, noyé parmi six blocs ;
-- ~~pas de verdict « décarboné » ; Corse et outre-mer faux sur le carbone~~ : corrigé le
-  16 oct. (étapes 2 et 3). Le profil type du bloc 5 garde l'intensité nationale ;
-- **exploitation jamais testée** : Airflow n'a jamais tourné ; les données ne se rafraîchissent
-  qu'à la main.
+**Encore à surveiller** : le workflow `refresh.yml` n'a pas encore tourné sur GitHub (la
+commande `refresh` a été exécutée en local le 16 oct. : 9 étapes sur 9 en 52 s) ; les facteurs
+ADEME des ZNI datent de décembre 2020.
 
 ## Étapes vers le MVP
 
-Dans l'ordre. Chaque étape se termine par des tests sans réseau et la mise à jour du README.
+| # | Étape | Fait |
+|---|---|---|
+| 1 | Trancher les trois décisions ci-dessous | 16 oct. : propositions validées |
+| 2 | Intensité carbone par territoire | 16 oct. : `fct_carbone_territoire`, facteur ADEME en cycle de vie pour le continent (51,9 g, 2024), la Corse (594 g) et chaque DROM (702 à 957 g, déc. 2020) ; intensité directe RTE sur 12 mois en complément pour le continent (20 g au 8 oct. 2026) |
+| 3 | Verdict « décarboné » | 16 oct. : `est_decarbone` au seuil de 100 gCO₂e/kWh, limite `carbone_territoire` |
+| 4 | Prix par défaut sans `--conso` | 16 oct. : tranche IA, sans facture, avec l'invitation à préciser `--conso` ; rappel de la péréquation en ZNI |
+| 5 | Commande `essentiel` | 16 oct. : 5 lignes (adresse, territoire, prix, verdict carbone, « à savoir ») en texte ou JSON avec les limites ; même encadré en tête de `diagnose`, des rapports Markdown et PDF ; ligne « Électricité décarbonée » dans `compare` ; adresse introuvable → message clair et code 1 |
+| 6 | Rafraîchissement simple | 16 oct. : `refresh` (une source en panne n'arrête pas les autres, code 1 si échec) ; workflow GitHub Actions chaque lundi, warehouse gardé en cache et publié en artefact, vérification de Lyon et d'Ajaccio sur la vraie base |
+| 7 | Interface web | non retenue (décision du 16 oct. : ligne de commande) |
+| 8 | Recette | 16 oct. : 11 adresses réelles (Guadeloupe ajoutée), test de non-régression `test_recette_mvp.py` |
+| 9 | **Protéger `main`** : CI et PR obligatoires | à faire, réglage GitHub par le propriétaire du dépôt |
 
-| # | Étape | Détail | Outil |
-|---|---|---|---|
-| 1 | ~~Trancher les trois décisions ci-dessous~~ | **Fait le 16 oct.** : propositions validées | — |
-| 2 | ~~Intensité carbone annuelle par territoire~~ | **Fait le 16 oct.** : `fct_carbone_territoire`, une ligne par région ; facteur ADEME en cycle de vie pour le continent (51,9 g, 2024), la Corse (594 g) et chaque DROM (702 à 957 g, déc. 2020) ; intensité directe RTE sur 12 mois en complément pour le continent (20 g au 8 oct. 2026) | dbt, seed `facteurs_carbone_territoire.csv` (API data.ademe.fr) |
-| 3 | ~~Verdict « décarboné »~~ | **Fait le 16 oct.** : `est_decarbone` comparé au seuil de 100 gCO₂e/kWh, limite `carbone_territoire` ; affiché en tête du bloc 5 de `diagnose` | dbt, seed `limites_methodologiques` |
-| 4 | **Prix par défaut sans `--conso`** | Afficher le prix de la tranche retenue par défaut, et inviter à préciser la consommation ; signaler que les ZNI suivent le même barème réglementé (péréquation) | `ingestion/diagnostic.py` |
-| 5 | **Commande `essentiel`** | `essentiel --adresse "…" [--conso N]` : 4 à 6 lignes (adresse résolue, prix, facture, verdict carbone, limites courtes) ; formats `texte` et `json` ; `diagnose` affiche le même encadré en tête | `ingestion/cli.py` |
-| 6 | **Rafraîchissement simple** | Une commande `refresh` qui enchaîne les ingestions et `dbt build` ; planification par un workflow GitHub Actions planifié **ou** le planificateur Windows, à la place d'Airflow pour le MVP | Python, GitHub Actions |
-| 7 | **Interface pour non-développeurs** (si décidé) | Une page Streamlit qui appelle `essentiel`, sans logique propre ; déploiement gratuit (Streamlit Community Cloud) avec une base DuckDB en lecture seule | Streamlit |
-| 8 | **Recette** | 10 adresses de référence (Paris, Lyon, Lille, Marseille, Ajaccio, Bastia, Fort-de-France, Saint-Denis de La Réunion, Cayenne, Mamoudzou) en test de non-régression, exemples réels dans `docs/exemples/` | pytest |
-| 9 | **Protéger `main`** | CI et PR obligatoires | réglage GitHub, par le propriétaire du dépôt |
+**Critères de réussite du MVP**, tous atteints le 16 oct. : une adresse française quelconque
+donne en moins de 5 secondes un prix en €/kWh et un verdict carbone sourcés ; les adresses de
+recette sont justes, ZNI comprises ; une adresse introuvable donne un message clair, pas une
+erreur ; les données se rafraîchissent sans intervention.
 
-**Critères de réussite du MVP** : une adresse française quelconque donne en moins de
-5 secondes un prix en €/kWh et un verdict carbone sourcés ; les 10 adresses de recette sont
-justes, ZNI comprises ; une adresse introuvable donne un message clair, pas une erreur ; les
-données se rafraîchissent sans intervention.
-
-### Décisions à prendre avant l'étape 2
+### Décisions (validées le 16 oct.)
 
 | Décision | Proposition | Alternative |
 |---|---|---|
@@ -114,6 +109,7 @@ données se rafraîchissent sans intervention.
 | 15 oct. | Contraintes et postes RTE au département : aucun n'est géolocalisé en open data |
 | 15 oct. | Comparaison côte à côte, sans classement |
 | 16 oct. | Verdict carbone sur le facteur ADEME en cycle de vie, comparé au seuil de 100 gCO₂e/kWh de la taxonomie (même périmètre) ; le `taux_co2` RTE, émissions directes seulement, reste un complément. Prix par défaut : tranche IA. Interface : ligne de commande |
+| 16 oct. | Exploitation du MVP par `refresh` et un workflow GitHub Actions hebdomadaire, sans Airflow |
 | 16 oct. | MVP recentré sur deux réponses à l'adresse, prix moyen et verdict carbone, le diagnostic complet devenant un complément. Compatible avec le cadrage du 9 oct. : la réponse est honnête si elle dit que le prix dépend de la consommation et non de l'adresse, et que le carbone ne change qu'entre le continent, la Corse et l'outre-mer |
 
 ## Écarté

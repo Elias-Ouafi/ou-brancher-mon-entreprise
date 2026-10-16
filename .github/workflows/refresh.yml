@@ -1,0 +1,75 @@
+name: Refresh
+
+# Exploitation du MVP sans Airflow : chaque lundi, toutes les sources sont relues sur les
+# vraies API publiques (ODRÉ, Eurostat, BAN), puis dbt reconstruit silver et gold. Le
+# warehouse est conservé d'une exécution à l'autre par le cache, et publié en artefact.
+# Un échec (source qui change de format, API en panne) rend le run rouge : c'est l'alerte.
+
+on:
+  schedule:
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: refresh
+  cancel-in-progress: false
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  refresh:
+    name: refresh + verification de deux adresses
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install dependencies
+        run: uv sync --group dbt
+
+      # Clé unique par run : le cache est réécrit à chaque fois, et le run suivant
+      # repart du plus récent (restore-keys).
+      - name: Restore warehouse
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: data
+          key: warehouse-${{ github.run_id }}
+          restore-keys: warehouse-
+
+      - name: Refresh
+        run: |
+          if [ -f data/warehouse/eco2mix.duckdb ]; then
+            uv run python -m ingestion.cli refresh
+          else
+            uv run python -m ingestion.cli refresh --months 180
+          fi
+
+      # Bout en bout sur la vraie base : un verdict par système électrique.
+      - name: Check two addresses
+        run: |
+          uv run python -m ingestion.cli essentiel --adresse "20 rue de la Republique, 69002 Lyon" --format json > lyon.json
+          uv run python -m ingestion.cli essentiel --adresse "1 cours Napoleon, 20000 Ajaccio" --format json > ajaccio.json
+          python -c "
+          import json
+          lyon, ajaccio = (json.load(open(f, encoding='utf-8')) for f in ('lyon.json', 'ajaccio.json'))
+          assert lyon['prix'] and lyon['prix']['prix_htva_eur_kwh'] > 0, lyon
+          assert lyon['carbone']['est_decarbone'] is True, lyon
+          assert ajaccio['carbone']['est_decarbone'] is False, ajaccio
+          print('ok', lyon['prix']['prix_htva_eur_kwh'], lyon['carbone']['intensite_acv_g_co2e_kwh'])
+          "
+
+      - name: Upload warehouse
+        uses: actions/upload-artifact@v4
+        with:
+          name: warehouse
+          path: data/warehouse/eco2mix.duckdb
+          retention-days: 14
