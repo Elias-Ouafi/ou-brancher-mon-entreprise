@@ -52,9 +52,9 @@ toute l'UE ; hors UE, il faudra le justifier à nouveau.
 
 ## Volumes et outils
 
-L'ingestion est déjà en PySpark : elle passera à l'échelle d'une Europe horaire (quelques
-dizaines de millions de lignes sur dix ans) sur un cluster sans changer de code. Silver et gold
-pourront suivre avec `dbt-spark`, et le stockage avec BigQuery derrière `WarehouseLoader`.
+Une Europe horaire représente quelques dizaines de millions de lignes sur dix ans : DuckDB les
+traite sur un ordinateur portable, sans cluster. Le stockage pourra passer à BigQuery derrière
+`WarehouseLoader` si le besoin d'un entrepôt partagé apparaît.
 
 ## Ordre proposé
 

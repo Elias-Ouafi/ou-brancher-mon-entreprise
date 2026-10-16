@@ -21,19 +21,10 @@ Exemples réels : [recette sur 11 adresses](docs/exemples/recette_mvp.md) ·
 [diagnostic complet de Lyon](docs/exemples/implantation_lyon.md) ([PDF](docs/exemples/implantation_lyon.pdf)) ·
 [comparaison de 3 villes](docs/exemples/comparaison_lyon_lille_poitiers.md).
 
-> **In English.** A command-line tool that takes a French address and returns the average
-> electricity price a business would pay (Eurostat bands, by annual consumption) and whether the
-> local grid is low-carbon (ADEME life-cycle factors, EU taxonomy 100 gCO₂e/kWh threshold), with
-> a full siting report on demand: local industrial load, grid congestion, connection zones and
-> natural risks. Public open data only (RTE/ODRÉ, Eurostat, ADEME, BAN, Géorisques); every figure
-> carries its source and its limits. Under the hood: idempotent PySpark ingestion into a DuckDB
-> bronze layer (immutable Parquet, `MERGE` on keys), a dbt-duckdb medallion (silver, gold) and
-> 318 offline tests run in GitHub Actions. Runs locally; the rest of this page is in French.
-
 ## Trois points forts pour un data engineer
 
-1. **Une ingestion PySpark idempotente, éprouvée sur les pièges réels des sources.** PySpark
-   type, normalise et filtre chaque lot ; bronze en Parquet immuables (toutes les révisions
+1. **Une ingestion Python idempotente, éprouvée sur les pièges réels des sources.** Chaque lot
+   est typé, normalisé et filtré avec pyarrow ; bronze en Parquet immuables (toutes les révisions
    gardées) puis `MERGE` sur clé dans DuckDB, jamais d'`INSERT` : relancer ne duplique rien. Changements d'heure normalisés en UTC, révisions de RTE rattrapées,
    quota d'API suivi, bascule automatique sur l'export CSV, nouvelles tentatives exponentielles ;
    BOM, codes IRIS tronqués et secret statistique traités et testés.
@@ -41,17 +32,16 @@ Exemples réels : [recette sur 11 adresses](docs/exemples/recette_mvp.md) ·
    complet sur une base synthétique qui reproduit ces pièges ; tests de données dbt (unicité,
    bornes, intégrité référentielle) à chaque build ; CI GitHub Actions à chaque PR. Les scénarios
    de prix sont contrôlés sur le passé, sans regard vers le futur.
-3. **Des choix proportionnés et des chiffres honnêtes.** PySpark pour la transformation, dbt et
-   DuckDB pour le stockage et la lecture (`essentiel` répond en 1,5 s, sans démarrer Spark),
+3. **Des choix proportionnés et des chiffres honnêtes.** Python uniquement : pyarrow pour
+   l'ingestion, dbt et DuckDB pour le stockage et la lecture (`essentiel` répond en 1,5 s),
    reconstruction complète plutôt qu'incrémental, interface `WarehouseLoader` prête pour BigQuery. Chaque indicateur porte sa source, sa maille et sa
    limite (`limites_methodologiques.csv`), conformément aux règles sur les allégations
    environnementales (directive EmpCo).
 
 ## Installation et mise à jour
 
-Python 3.12 et Java 17 (pour PySpark). Tout tourne en local, sans compte (sauf le calendrier
-Tempo, optionnel). Spark n'écrit aucun fichier lui-même : pas besoin de `winutils` ni de
-`HADOOP_HOME` sous Windows.
+Python 3.12 suffit : aucune autre dépendance système. Tout tourne en local, sans compte (sauf le
+calendrier Tempo, optionnel).
 
 ```powershell
 python -m venv .venv
@@ -92,7 +82,7 @@ Le raisonnement complet est dans le [cadrage](docs/cadrage-besoins-entreprises.m
 
 ```mermaid
 flowchart LR
-    SRC[("ODRÉ · Eurostat · RTE")] -->|"ingestion/ (PySpark)"| B["Bronze : Parquet + DuckDB (MERGE)"]
+    SRC[("ODRÉ · Eurostat · RTE")] -->|"ingestion/ (Python)"| B["Bronze : Parquet + DuckDB (MERGE)"]
     B -->|dbt| S["Silver : nettoyé, codes INSEE"]
     S -->|dbt| G["Gold : prix, carbone, diagnostic"]
     SEEDS[("Seeds : ADEME, tarifs, référentiels, limites")] --> G

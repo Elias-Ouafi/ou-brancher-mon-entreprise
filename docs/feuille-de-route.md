@@ -46,6 +46,8 @@ le calendrier Tempo n'a tourné que sur des réponses simulées (pas de compte R
 | 16 oct. | Sans `--conso`, tranche IA ; interface en ligne de commande |
 | 16 oct. | Local et à la demande uniquement : aucune exécution planifiée ; Airflow supprimé |
 | 16 oct. | Ingestion en PySpark (typage, UTC, clés du lot) ; Spark calcule et Arrow écrit, sans `winutils` sous Windows ; silver et gold restent en dbt-duckdb |
+| 16 oct. | Python uniquement : PySpark retiré, l'ingestion revient à pyarrow ; plus besoin de Java |
+| 16 oct. | Documentation en français uniquement ; code sous licence MIT |
 | 16 oct. | Commentaires réduits au strict nécessaire : une ligne au-dessus d'une fonction ou d'un bloc |
 
 ## Écarté
@@ -55,5 +57,5 @@ le calendrier Tempo n'a tourné que sur des réponses simulées (pas de compte R
 | Prix « à l'adresse » | Péréquation : identique partout |
 | Carbone régional en métropole | Un seul réseau continental, pas de facteur régional opposable |
 | Capacité de raccordement chiffrée, distance au poste RTE | Absentes de l'open data |
-| Spark pour silver, gold et la lecture | dbt-duckdb suffit à ce volume ; démarrer Spark ferait passer `essentiel` de 1,5 s à 6 s |
+| Spark (ingestion, silver, gold) | Exige Java ; pyarrow et dbt-duckdb suffisent à ce volume |
 | Site web, exécution planifiée | Hors périmètre : ligne de commande, en local |
