@@ -1,13 +1,12 @@
 """Rafraîchissement complet des données du diagnostic, en une commande.
 
 Enchaîne les extractions (éCO2mix consolidé puis temps réel, jeux territoriaux, prix
-Eurostat), puis `dbt build`. C'est l'exploitation du MVP, sans Airflow : une tâche
-planifiée (planificateur de tâches Windows, cron) ou le workflow GitHub Actions
-`refresh.yml` suffit pour une dizaine d'appels d'API.
+Eurostat), puis `dbt build`. C'est l'exploitation du MVP : lancée à la main, en local, sans
+planification ni Airflow.
 
 Une source en échec n'arrête pas les autres : son ancienne version reste en bronze, et
 dbt reconstruit silver et gold avec ce qui est disponible. Le code de sortie signale
-l'échec pour que la tâche planifiée le remonte.
+l'échec.
 
 Le calendrier Tempo n'en fait pas partie : il exige un compte RTE (commande `tempo`).
 """

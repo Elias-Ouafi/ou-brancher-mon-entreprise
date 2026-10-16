@@ -134,20 +134,12 @@ Détail des modèles : [`dbt/README.md`](dbt/README.md) ; stockage : [`data/READ
 
 ## Exploitation
 
-**MVP : `refresh` chaque semaine.** Le workflow [`refresh.yml`](.github/workflows/refresh.yml)
-le lance chaque lundi sur les vraies API, garde le warehouse en cache, vérifie Lyon (décarbonée)
-et Ajaccio (non décarbonée) sur la vraie base, et publie la base en artefact : un run rouge
-signale une source en panne ou qui a changé. En local, une tâche planifiée suffit, par exemple
-sous Windows, dans l'invite de commandes :
+**Local uniquement, à la demande.** Rien ne tourne tout seul : les données se mettent à jour
+quand on lance `refresh` sur son poste, par exemple avant une série de diagnostics. Une source
+en échec n'arrête pas les autres : sa dernière version reste en bronze, et la commande sort
+en code 1.
 
-```bat
-schtasks /create /tn "Ou brancher - refresh" /sc weekly /d MON /st 06:00 /tr "uv --directory \"C:\chemin\du\depot\" run python -m ingestion.cli refresh"
-```
-
-Une source en échec n'arrête pas les autres : sa dernière version reste en bronze, et la
-commande sort en code 1.
-
-**Plus tard : Airflow.** Trois DAGs Airflow (projet Astro dans `airflow/`, `astro dev start`) : ingestion horaire,
+**Non utilisé : Airflow.** Trois DAGs Airflow (projet Astro dans `airflow/`, `astro dev start`) : ingestion horaire,
 consolidation mensuelle, rapport mensuel à la demande. Les tâches qui écrivent dans DuckDB
 passent par le pool `duckdb_writer` (1 slot) : DuckDB n'accepte qu'un writer. Un contrôle
 de fraîcheur échoue si la dernière mesure a plus de 2 h de retard.
@@ -174,12 +166,11 @@ avec Airflow 2.10, sans credential.
 **Fait** : tout ce que décrit ce README, testé et exécuté sur des adresses réelles.
 
 **MVP atteint le 16 octobre 2026** : `essentiel` répond pour toute adresse française, Corse
-et outre-mer compris, et `refresh` tient les données à jour. Suite : protéger `main`, puis
+et outre-mer compris, et `refresh` met les données à jour à la demande, en local. Suite : protéger `main`, puis
 [l'extension à d'autres pays](docs/extension-internationale.md). Détail :
 [`docs/feuille-de-route.md`](docs/feuille-de-route.md).
 
 **Pas encore validé en conditions réelles** :
-- le workflow `refresh.yml` n'a pas encore tourné sur GitHub (`refresh` a tourné en local) ;
 - Airflow n'a jamais tourné (Docker Desktop absent du poste de développement) ;
 - les prix Tempo n'ont été calculés que sur des réponses simulées (pas de compte RTE).
 
