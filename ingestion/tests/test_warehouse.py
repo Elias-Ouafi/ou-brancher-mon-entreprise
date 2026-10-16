@@ -196,7 +196,7 @@ def test_merge_keeps_the_latest_revision_within_a_single_batch(
 
 
 def test_merge_accepts_an_empty_batch(loader: DuckDBLoader, make_parquet) -> None:
-    """Une fenêtre sans donnée publiée ne doit pas faire échouer le DAG."""
+    """Une fenêtre sans donnée publiée ne doit pas faire échouer le chargement."""
     parquet = make_parquet(([], utc(2026, 9, 7, 6, 0)))
 
     result = loader.merge_parquet(parquet)

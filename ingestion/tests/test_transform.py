@@ -187,7 +187,7 @@ def test_write_parquet_creates_hive_partition(tmp_path) -> None:
     path = write_parquet(
         table,
         dataset_dir=tmp_path / "eco2mix_national_tr",
-        # Un run_id Airflow contient `:` et `+`, interdits dans un nom de fichier Windows.
+        # Un run_id peut contenir `:` et `+`, interdits dans un nom de fichier Windows.
         run_id="scheduled__2026-09-07T06:00:00+00:00",
         ingest_date=date(2026, 9, 7),
     )

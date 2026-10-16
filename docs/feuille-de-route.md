@@ -28,12 +28,11 @@ propriétaire du dépôt ; l'interface web (étape 7) n'a pas été retenue.
 | Prix moyen par tranche, tranche IA sans `--conso`, scénarios à 3 ans | `fct_prix_entreprise_tranche`, bloc 4 |
 | Intensité carbone et verdict par système électrique (continent, Corse, chaque DROM) | `fct_carbone_territoire`, bloc 5 |
 | Réponse courte, texte ou JSON ; même encadré en tête de `diagnose` et des rapports | `essentiel` (`ingestion/diagnostic.py`) |
-| Rafraîchissement de toutes les sources, puis `dbt build` | `refresh`, workflow `refresh.yml` |
+| Rafraîchissement de toutes les sources, puis `dbt build`, à la demande et en local | `refresh` |
 | 318 tests sans réseau, dont la recette ; dbt build en CI | `ingestion/tests/` |
 
-**Encore à surveiller** : le workflow `refresh.yml` n'a pas encore tourné sur GitHub (la
-commande `refresh` a été exécutée en local le 16 oct. : 9 étapes sur 9 en 52 s) ; les facteurs
-ADEME des ZNI datent de décembre 2020.
+**Encore à surveiller** : les facteurs ADEME des ZNI datent de décembre 2020. La commande
+`refresh` a été exécutée en local le 16 oct. : 9 étapes sur 9 en 52 s.
 
 ## Étapes vers le MVP
 
@@ -44,7 +43,7 @@ ADEME des ZNI datent de décembre 2020.
 | 3 | Verdict « décarboné » | 16 oct. : `est_decarbone` au seuil de 100 gCO₂e/kWh, limite `carbone_territoire` |
 | 4 | Prix par défaut sans `--conso` | 16 oct. : tranche IA, sans facture, avec l'invitation à préciser `--conso` ; rappel de la péréquation en ZNI |
 | 5 | Commande `essentiel` | 16 oct. : 5 lignes (adresse, territoire, prix, verdict carbone, « à savoir ») en texte ou JSON avec les limites ; même encadré en tête de `diagnose`, des rapports Markdown et PDF ; ligne « Électricité décarbonée » dans `compare` ; adresse introuvable → message clair et code 1 |
-| 6 | Rafraîchissement simple | 16 oct. : `refresh` (une source en panne n'arrête pas les autres, code 1 si échec) ; workflow GitHub Actions chaque lundi, warehouse gardé en cache et publié en artefact, vérification de Lyon et d'Ajaccio sur la vraie base |
+| 6 | Rafraîchissement simple | 16 oct. : `refresh` (une source en panne n'arrête pas les autres, code 1 si échec)  ; lancée à la main, en local : aucune exécution planifiée (décision du 16 oct.) |
 | 7 | Interface web | non retenue (décision du 16 oct. : ligne de commande) |
 | 8 | Recette | 16 oct. : 11 adresses réelles (Guadeloupe ajoutée), test de non-régression `test_recette_mvp.py` |
 | 9 | **Protéger `main`** : CI et PR obligatoires | à faire, réglage GitHub par le propriétaire du dépôt |
@@ -52,7 +51,7 @@ ADEME des ZNI datent de décembre 2020.
 **Critères de réussite du MVP**, tous atteints le 16 oct. : une adresse française quelconque
 donne en moins de 5 secondes un prix en €/kWh et un verdict carbone sourcés ; les adresses de
 recette sont justes, ZNI comprises ; une adresse introuvable donne un message clair, pas une
-erreur ; les données se rafraîchissent sans intervention.
+erreur ; les données se rafraîchissent en une commande.
 
 ### Décisions (validées le 16 oct.)
 
@@ -68,8 +67,8 @@ erreur ; les données se rafraîchissent sans intervention.
   `dbt build` complet dix secondes. PySpark ajouterait une JVM et un cluster sans aucun gain à
   ce volume ; DuckDB lit les mêmes Parquet et le passage à `dbt-spark` reste possible si le
   volume est multiplié par mille (voir [extension](extension-internationale.md)).
-- **Airflow hors du MVP** : jamais lancé, il exige Docker. Un workflow planifié suffit pour une
-  dizaine d'appels par jour ; les DAGs restent en place pour plus tard.
+- **Pas d'Airflow** : l'outil ne tourne qu'en local et à la demande (décision du 16 oct.) ;
+  `refresh` suffit. Le projet Airflow, jamais lancé, a été supprimé le 16 oct.
 - **Seeds plutôt qu'API** pour les facteurs ZNI : un chiffre par territoire et par an, mis à
   jour une fois par an.
 
@@ -81,16 +80,15 @@ erreur ; les données se rafraîchissent sans intervention.
 | 2 | Intensité carbone ZNI horaire (open data EDF SEI par territoire) | — |
 | 3 | Situer l'électro-intensité : facture estimée rapportée au chiffre d'affaires (`--ca`) | — |
 | 4 | Importer la vraie courbe de charge (export Enedis) à la place du profil type | — |
-| 5 | Airflow en exploitation 7 jours, alerte en cas d'échec ; DAG des référentiels | Docker Desktop |
-| 6 | Calendrier Tempo sur données réelles | compte RTE, par l'utilisateur |
-| 7 | Repère de prix au-delà de 150 000 MWh (contrats CAPN) | décision |
-| 8 | Classement pondéré dans `compare` | décision : poids à exposer et justifier |
+| 5 | Calendrier Tempo sur données réelles | compte RTE, par l'utilisateur |
+| 6 | Repère de prix au-delà de 150 000 MWh (contrats CAPN) | décision |
+| 7 | Classement pondéré dans `compare` | décision : poids à exposer et justifier |
 
 ## Fait
 
 | Domaine | Livré |
 |---|---|
-| Socle | Ingestion ODRÉ, RTE et Eurostat idempotente (MERGE, clés composites et optionnelles), UTC et changements d'heure, quota suivi ; médaillon DuckDB + dbt ; trois DAGs Airflow vérifiés en CI |
+| Socle | Ingestion ODRÉ, RTE et Eurostat idempotente (MERGE, clés composites et optionnelles), UTC et changements d'heure, quota suivi ; médaillon DuckDB + dbt |
 | Territoire | Référentiel commune → département → région ; pression industrielle (millésime sans secret statistique) ; tension régionale sur 12 mois |
 | Réseau | Seuils de raccordement ; contraintes prospectives et postes RTE par département ; zone prioritaire RTE la plus proche (SDDR 2025) |
 | Foncier et risques | Site clé en main France 2030 le plus proche ; risques Géorisques à l'adresse, avec repli communal |
@@ -109,7 +107,7 @@ erreur ; les données se rafraîchissent sans intervention.
 | 15 oct. | Contraintes et postes RTE au département : aucun n'est géolocalisé en open data |
 | 15 oct. | Comparaison côte à côte, sans classement |
 | 16 oct. | Verdict carbone sur le facteur ADEME en cycle de vie, comparé au seuil de 100 gCO₂e/kWh de la taxonomie (même périmètre) ; le `taux_co2` RTE, émissions directes seulement, reste un complément. Prix par défaut : tranche IA. Interface : ligne de commande |
-| 16 oct. | Exploitation du MVP par `refresh` et un workflow GitHub Actions hebdomadaire, sans Airflow |
+| 16 oct. | Exploitation en local seulement, à la demande : `refresh` lancé à la main, aucune exécution planifiée (ni GitHub Actions, ni tâche planifiée, ni Airflow : le projet Airflow est supprimé) |
 | 16 oct. | MVP recentré sur deux réponses à l'adresse, prix moyen et verdict carbone, le diagnostic complet devenant un complément. Compatible avec le cadrage du 9 oct. : la réponse est honnête si elle dit que le prix dépend de la consommation et non de l'adresse, et que le carbone ne change qu'entre le continent, la Corse et l'outre-mer |
 
 ## Écarté

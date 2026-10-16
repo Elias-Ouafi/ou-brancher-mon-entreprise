@@ -216,7 +216,7 @@ def records_to_table(
 def _safe_run_id(run_id: str) -> str:
     """Neutralise les caractères interdits dans un nom de fichier Windows/Linux.
 
-    Les `run_id` Airflow contiennent `:` et `+` (`scheduled__2026-09-07T05:00:00+00:00`).
+    Un `run_id` peut contenir `:` et `+` (`scheduled__2026-09-07T05:00:00+00:00`).
     """
     return _UNSAFE_FILENAME_CHARS.sub("-", run_id).strip("-") or "run"
 

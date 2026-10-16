@@ -132,7 +132,7 @@ def test_freshness_fails_when_data_is_late(
     settings: Settings,
     records_payload: dict[str, Any],
 ) -> None:
-    """Au-delà de 2 h de retard, la tâche Airflow doit échouer."""
+    """Au-delà de 2 h de retard, le contrôle de fraîcheur doit échouer."""
     httpx_mock.add_response(json=records_payload)
     run_ingestion(settings=settings, now=NOW)
 

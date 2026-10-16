@@ -26,13 +26,12 @@ dev = [
     "ruff>=0.6",
 ]
 # Couches silver et gold (dbt/). Groupe séparé : dbt n'est pas nécessaire à
-# l'ingestion, et tourne dans un environnement isolé dans l'image Airflow.
+# l'ingestion seule.
 # >= 1.10 pour la syntaxe `arguments:` des tests de données.
 dbt = [
     "dbt-duckdb>=1.10,<2",
 ]
-# Rapport mensuel PDF (reporting/). Installé dans l'image Airflow via
-# airflow/requirements.txt ; inutile pour l'ingestion seule.
+# Rapports PDF et graphiques (reporting/) ; inutiles pour l'ingestion seule.
 report = [
     "matplotlib>=3.8",
     "reportlab>=4.0",

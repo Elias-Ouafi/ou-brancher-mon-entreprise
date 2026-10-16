@@ -301,8 +301,8 @@ def _section_tempo(rapport: RapportMensuel) -> list:
     else:
         blocs.append(
             Paragraph(
-                "Le calendrier Tempo de ce mois n'est pas chargé : relancez le DAG avec le "
-                "paramètre <i>tempo</i> activé et des identifiants RTE configurés.",
+                "Le calendrier Tempo de ce mois n'est pas chargé : lancez la commande "
+                "<i>tempo</i> avec des identifiants RTE configurés.",
                 STYLES["texte"],
             )
         )
@@ -470,7 +470,7 @@ def rendre(rapport: RapportMensuel, chemin: Path) -> Path:
         blocs.append(
             Paragraph(
                 "Aucune donnée éCO2mix disponible pour ce mois : le rapport ne peut pas être "
-                "établi. Vérifiez que les DAGs d'ingestion ont tourné sur la période.",
+                "établi. Lancez la commande refresh, puis relancez le rapport.",
                 STYLES["texte"],
             )
         )

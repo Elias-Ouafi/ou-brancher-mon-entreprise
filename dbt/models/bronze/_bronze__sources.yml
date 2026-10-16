@@ -27,7 +27,7 @@ sources:
         description: >
           Calendrier Tempo publié par l'API RTE « Tempo Like Supply Contract » :
           une ligne par jour civil, `date_heure` = minuit heure de Paris, `couleur`
-          parmi BLUE, WHITE, RED. Alimenté à la demande par le DAG de rapport mensuel.
+          parmi BLUE, WHITE, RED. Alimenté à la demande par la commande `tempo`.
         columns:
           - name: date_heure
             data_tests: [unique, not_null]

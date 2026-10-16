@@ -1,3 +1,0 @@
-# Marque airflow/ comme projet Astro : requis par `astro dev start`.
-project:
-  name: ou-brancher-mon-entreprise
