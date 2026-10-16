@@ -1,17 +1,3 @@
-"""Normalisation des enregistrements ODRÉ : fuseau horaire, typage, Parquet.
-
-Deux responsabilités, volontairement séparées du client HTTP pour rester
-testables sans réseau :
-
-1. **Fuseau horaire.** `date_heure` peut arriver soit en ISO 8601 avec décalage
-   (`2026-03-29T01:45:00+01:00`), soit en heure locale naïve
-   (`2026-03-29 01:45:00`) selon le typage du champ côté Opendatasoft. Les deux
-   formes sont acceptées et ramenées en UTC, y compris aux changements d'heure.
-2. **Typage.** Le schéma pyarrow du `DatasetSpec` fait foi : le Parquet produit a
-   toujours les mêmes colonnes et les mêmes types, que l'API renvoie des entiers,
-   des chaînes (cas de l'export CSV) ou des valeurs nulles.
-"""
-
 from __future__ import annotations
 
 import logging
@@ -24,203 +10,159 @@ from zoneinfo import ZoneInfo
 
 import pyarrow as pa
 import pyarrow.parquet as pq
+from pyspark.sql import Column as SparkColumn
+from pyspark.sql import DataFrame, Window
+from pyspark.sql import functions as F
 
-from ingestion.datasets import (
-    INGESTED_AT_COLUMN,
-    SOURCE_COLUMN,
-    ColumnKind,
-    DatasetSpec,
-)
+from ingestion.datasets import INGESTED_AT_COLUMN, SOURCE_COLUMN, ColumnKind, DatasetSpec
+from ingestion.spark import session
 
 logger = logging.getLogger(__name__)
 
-#: Fuseau de publication de RTE. Les horodatages naïfs sont exprimés dans ce fuseau.
 PARIS_TZ = ZoneInfo("Europe/Paris")
+PARIS = "Europe/Paris"
+ORDRE = "_ordre"
 
 _UNSAFE_FILENAME_CHARS = re.compile(r"[^A-Za-z0-9_.-]+")
 
 
 class NonExistentLocalTimeError(ValueError):
-    """L'horodatage local n'existe pas (heure sautée lors du passage à l'heure d'été)."""
+    pass
 
 
-def _parse_iso(raw: str) -> datetime:
-    """Parse une chaîne ISO 8601, en tolérant le suffixe `Z` et l'espace séparateur."""
-    text = raw.strip().replace(" ", "T")
-    if text.endswith(("z", "Z")):
-        text = f"{text[:-1]}+00:00"
-    return datetime.fromisoformat(text)
+# Valeur brute en texte : Spark reçoit une table homogène, le typage se fait ensuite.
+def _brut(value: Any) -> str | None:
+    if value is None or isinstance(value, bool):
+        return None
+    return str(value)
 
 
-def _is_nonexistent(naive: datetime) -> bool:
-    """Vrai si l'heure locale n'existe pas (trou du passage à l'heure d'été)."""
-    localized = naive.replace(tzinfo=PARIS_TZ)
-    round_trip = localized.astimezone(UTC).astimezone(PARIS_TZ).replace(tzinfo=None)
-    return round_trip != naive
+def _texte(colonne: SparkColumn) -> SparkColumn:
+    return F.when(F.trim(colonne) != "", F.trim(colonne))
 
 
-def _is_ambiguous(naive: datetime) -> bool:
-    """Vrai si l'heure locale existe deux fois (retour à l'heure d'hiver)."""
-    before = naive.replace(tzinfo=PARIS_TZ, fold=0)
-    after = naive.replace(tzinfo=PARIS_TZ, fold=1)
-    return before.utcoffset() != after.utcoffset()
-
-
-def to_utc(raw: str, previous: datetime | None = None) -> datetime:
-    """Convertit un `date_heure` ODRÉ en instant UTC.
-
-    - Chaîne avec décalage : l'instant est déjà non ambigu, on convertit.
-    - Chaîne naïve : interprétée en `Europe/Paris`.
-      - Heure inexistante (mars) : `NonExistentLocalTimeError`, la donnée est
-        incohérente et doit être vue, pas devinée.
-      - Heure ambiguë (octobre) : `previous` — le dernier instant UTC émis —
-        tranche entre les deux occurrences. La première passe reste en heure
-        d'été (`fold=0`), la seconde bascule en heure d'hiver (`fold=1`).
-        Sans `previous`, on retient la première occurrence.
-
-    L'appelant doit fournir les enregistrements dans l'ordre chronologique
-    croissant, ce que garantit le paramètre `order_by` du client d'extraction.
-    """
-    parsed = _parse_iso(raw)
-    if parsed.tzinfo is not None:
-        return parsed.astimezone(UTC)
-
-    if _is_nonexistent(parsed):
+# Instant ODRÉ en UTC : avec décalage il est déjà absolu ; sans, c'est l'heure de Paris, et la
+# 2e occurrence d'une heure d'octobre dans un même groupe est l'heure d'hiver.
+def _instant_utc(df: DataFrame, name: str, groupe: Sequence[str]) -> DataFrame:
+    texte = F.regexp_replace(F.regexp_replace(F.trim(F.col(name)), " ", "T"), "[zZ]$", "+00:00")
+    absolu = texte.rlike(r"[+-]\d{2}:?\d{2}$")
+    local = F.when(~absolu, texte.cast("timestamp"))
+    ete = F.to_utc_timestamp(local, PARIS)
+    ambigu = F.from_utc_timestamp(ete + F.expr("INTERVAL 1 HOUR"), PARIS) == local
+    occurrence = F.row_number().over(Window.partitionBy(*groupe, local).orderBy(ORDRE))
+    df = df.withColumn(
+        f"_{name}_inexistant", local.isNotNull() & (F.from_utc_timestamp(ete, PARIS) != local)
+    ).withColumn(
+        f"_{name}_utc",
+        F.when(absolu, texte.cast("timestamp"))
+        .when(ambigu & (occurrence > 1), ete + F.expr("INTERVAL 1 HOUR"))
+        .otherwise(ete),
+    )
+    if inexistant := df.filter(F.col(f"_{name}_inexistant")).select(name).first():
         raise NonExistentLocalTimeError(
-            f"{raw!r} n'existe pas dans le fuseau Europe/Paris (passage à l'heure d'été)"
+            f"{inexistant[0]!r} n'existe pas dans le fuseau Europe/Paris (passage à l'heure d'été)"
         )
-
-    candidate = parsed.replace(tzinfo=PARIS_TZ, fold=0).astimezone(UTC)
-    if _is_ambiguous(parsed) and previous is not None and candidate <= previous:
-        candidate = parsed.replace(tzinfo=PARIS_TZ, fold=1).astimezone(UTC)
-    return candidate
+    if illisible := df.filter(F.col(f"_{name}_utc").isNull()).select(name).first():
+        raise ValueError(f"horodatage illisible : {illisible[0]!r}")
+    return df.drop(name, f"_{name}_inexistant").withColumnRenamed(f"_{name}_utc", name)
 
 
-def normalize_datetimes(raw_values: Iterable[str]) -> list[datetime]:
-    """Applique `to_utc` à une série ordonnée, en propageant l'instant précédent."""
-    instants: list[datetime] = []
-    previous: datetime | None = None
-    for raw in raw_values:
-        previous = to_utc(raw, previous)
-        instants.append(previous)
-    return instants
+# Mesure en double ; une valeur illisible devient nulle et est signalée.
+def _mesure(df: DataFrame, name: str) -> DataFrame:
+    valeur = F.expr(f"try_cast(trim(`{name}`) as double)")
+    illisibles = df.filter(_texte(F.col(name)).isNotNull() & valeur.isNull())
+    for (exemple,) in illisibles.select(name).limit(3).collect():
+        logger.warning("valeur non numerique ignoree colonne=%s valeur=%r", name, exemple.strip())
+    return df.withColumn(name, valeur)
 
 
-def _coerce_float(value: Any, *, column: str = "") -> float | None:
-    """Ramène une mesure à `float | None`.
-
-    L'export CSV renvoie des chaînes, et ODRÉ type même certaines colonnes
-    numériques en `text` (`gaz_cogen`, `ech_comm_allemagne_belgique`). Une valeur
-    illisible devient `null` avec un avertissement : elle ne doit ni casser un
-    chargement mensuel de dizaines de milliers de lignes, ni passer inaperçue.
-    """
-    if value is None:
-        return None
-    if isinstance(value, bool):  # garde-fou : un booléen n'est pas une mesure
-        return None
-    if isinstance(value, int | float):
-        return float(value)
-    text = str(value).strip()
-    if not text:
-        return None
-    try:
-        return float(text)
-    except ValueError:
-        logger.warning("valeur non numerique ignoree colonne=%s valeur=%r", column, text)
-        return None
+def _table_brute(records: Sequence[dict[str, Any]], spec: DatasetSpec) -> pa.Table:
+    colonnes = {c.name: pa.array([_brut(r.get(c.name)) for r in records], pa.string())
+                for c in spec.columns}  # fmt: skip
+    colonnes[ORDRE] = pa.array(range(len(records)), pa.int64())
+    return pa.table(colonnes)
 
 
-def _coerce_str(value: Any) -> str | None:
-    if value is None:
-        return None
-    text = str(value).strip()
-    return text or None
-
-
-def _normalize_instant_column(
-    records: Sequence[dict[str, Any]],
-    *,
-    name: str,
-    group_names: Sequence[str],
-) -> list[datetime]:
-    """Normalise une colonne d'instant en UTC, groupe par groupe.
-
-    La lève d'ambiguïté d'octobre s'appuie sur l'instant précédent de la série.
-    Or un dataset régional publie le même instant pour les douze régions : pris
-    à plat, le deuxième enregistrement d'un instant répété serait vu comme un
-    retour en arrière et basculerait à tort en heure d'hiver. On suit donc un
-    instant précédent **par groupe** (les autres colonnes de la clé).
-    """
-    previous: dict[tuple[str | None, ...], datetime] = {}
-    instants: list[datetime] = []
-    for record in records:
-        group = tuple(_coerce_str(record.get(g)) for g in group_names)
-        value = to_utc(str(record[name]), previous.get(group))
-        previous[group] = value
-        instants.append(value)
-    return instants
-
-
+# Enregistrements bruts → table typée du spec, en PySpark : clés complètes, instants en UTC,
+# mesures en double, textes nettoyés, métadonnées d'ingestion, tri par clé.
 def records_to_table(
     records: Sequence[dict[str, Any]],
     *,
     spec: DatasetSpec,
     ingested_at: datetime,
 ) -> pa.Table:
-    """Construit la table pyarrow typée à partir des enregistrements bruts.
-
-    Les enregistrements dont une colonne de clé est absente sont écartés (avec un
-    avertissement) : ils ne peuvent pas participer au MERGE. Les colonnes du spec
-    absentes de la réponse sont créées à `null` et signalées — c'est le garde-fou
-    contre un renommage de champ côté ODRÉ. Les colonnes renvoyées par l'API mais
-    absentes du spec sont ignorées.
-    """
     if ingested_at.tzinfo is None:
         raise ValueError("ingested_at doit être un datetime aware")
-    ingested_at_utc = ingested_at.astimezone(UTC)
+    if not records:
+        return spec.schema.empty_table()
 
-    key_names = spec.key_names
+    technical = {INGESTED_AT_COLUMN, SOURCE_COLUMN}
+    seen: set[str] = set().union(*(r.keys() for r in records))
+    if missing := sorted(set(spec.schema.names) - seen - technical):
+        logger.warning("colonnes absentes de la reponse API, remplies a null : %s", missing)
+
+    df = session().createDataFrame(_table_brute(records, spec))
     requises = [c.name for c in spec.keys if not c.vide_si_absent]
-    usable = [r for r in records if all(_coerce_str(r.get(n)) for n in requises)]
-    if (dropped := len(records) - len(usable)) > 0:
-        logger.warning("%d enregistrement(s) sans cle complete %s ignore(s)", dropped, requises)
+    complet = df.filter(_tout([_texte(F.col(n)).isNotNull() for n in requises]))
+    if (ecartes := df.count() - complet.count()) > 0:
+        logger.warning("%d enregistrement(s) sans cle complete %s ignore(s)", ecartes, requises)
+    if complet.isEmpty():
+        return spec.schema.empty_table()
+    df = complet
 
-    if usable:
-        seen: set[str] = set().union(*(set(r.keys()) for r in usable))
-        technical = {INGESTED_AT_COLUMN, SOURCE_COLUMN}
-        if missing := sorted(set(spec.schema.names) - seen - technical):
-            logger.warning("colonnes absentes de la reponse API, remplies a null : %s", missing)
-
-    group_names = [n for n in key_names if n != spec.instant_column]
-    columns: dict[str, list[Any]] = {}
+    groupe = [c.name for c in spec.keys if c.kind is not ColumnKind.INSTANT]
     for column in spec.columns:
         if column.kind is ColumnKind.INSTANT:
-            columns[column.name] = _normalize_instant_column(
-                usable, name=column.name, group_names=group_names
-            )
+            df = _instant_utc(df, column.name, groupe)
         elif column.kind is ColumnKind.MEASURE:
-            columns[column.name] = [
-                _coerce_float(r.get(column.name), column=column.name) for r in usable
-            ]
+            df = _mesure(df, column.name)
         elif column.vide_si_absent:
-            columns[column.name] = [_coerce_str(r.get(column.name)) or "" for r in usable]
+            df = df.withColumn(column.name, F.coalesce(_texte(F.col(column.name)), F.lit("")))
         else:
-            columns[column.name] = [_coerce_str(r.get(column.name)) for r in usable]
-    columns[INGESTED_AT_COLUMN] = [ingested_at_utc] * len(usable)
-    columns[SOURCE_COLUMN] = [spec.dataset_id] * len(usable)
+            df = df.withColumn(column.name, _texte(F.col(column.name)))
 
-    table = pa.table(columns, schema=spec.schema)
-    return table.sort_by([(name, "ascending") for name in key_names])
+    df = (
+        df.withColumn(INGESTED_AT_COLUMN, F.lit(ingested_at.astimezone(UTC)).cast("timestamp"))
+        .withColumn(SOURCE_COLUMN, F.lit(spec.dataset_id))
+        .orderBy(*spec.key_names, ORDRE)
+        .select(*spec.schema.names)
+    )
+    return _au_schema(df.toArrow(), spec.schema)
 
 
+def _tout(conditions: list[SparkColumn]) -> SparkColumn:
+    resultat = F.lit(True)
+    for condition in conditions:
+        resultat = resultat & condition
+    return resultat
+
+
+def _au_schema(table: pa.Table, schema: pa.Schema) -> pa.Table:
+    return pa.Table.from_arrays(
+        [table.column(f.name).cast(f.type) for f in schema], schema=schema
+    )
+
+
+# Conversion d'une série d'horodatages ODRÉ, dans l'ordre : même règle que `records_to_table`.
+def normalize_datetimes(raw_values: Iterable[str]) -> list[datetime]:
+    valeurs = list(raw_values)
+    if not valeurs:
+        return []
+    table = pa.table({"t": pa.array(valeurs, pa.string()), ORDRE: range(len(valeurs))})
+    df = _instant_utc(session().createDataFrame(table), "t", []).orderBy(ORDRE)
+    return [v.replace(tzinfo=UTC) for v in df.toArrow().column("t").to_pylist()]
+
+
+def to_utc(raw: str) -> datetime:
+    return normalize_datetimes([raw])[0]
+
+
+# `run_id` utilisable comme nom de fichier sous Windows et Linux.
 def _safe_run_id(run_id: str) -> str:
-    """Neutralise les caractères interdits dans un nom de fichier Windows/Linux.
-
-    Un `run_id` peut contenir `:` et `+` (`scheduled__2026-09-07T05:00:00+00:00`).
-    """
     return _UNSAFE_FILENAME_CHARS.sub("-", run_id).strip("-") or "run"
 
 
+# Bronze immuable : un fichier par exécution, partitionné par date d'ingestion.
 def write_parquet(
     table: pa.Table,
     *,
@@ -228,7 +170,6 @@ def write_parquet(
     run_id: str,
     ingest_date: date,
 ) -> Path:
-    """Écrit la table dans `<dataset_dir>/ingest_date=YYYY-MM-DD/part-<run_id>.parquet`."""
     partition = dataset_dir / f"ingest_date={ingest_date.isoformat()}"
     partition.mkdir(parents=True, exist_ok=True)
     path = partition / f"part-{_safe_run_id(run_id)}.parquet"
