@@ -21,6 +21,15 @@ Exemples réels : [recette sur 11 adresses](docs/exemples/recette_mvp.md) ·
 [diagnostic complet de Lyon](docs/exemples/implantation_lyon.md) ([PDF](docs/exemples/implantation_lyon.pdf)) ·
 [comparaison de 3 villes](docs/exemples/comparaison_lyon_lille_poitiers.md).
 
+> **In English.** A command-line tool that takes a French address and returns the average
+> electricity price a business would pay (Eurostat bands, by annual consumption) and whether the
+> local grid is low-carbon (ADEME life-cycle factors, EU taxonomy 100 gCO₂e/kWh threshold), with
+> a full siting report on demand: local industrial load, grid congestion, connection zones and
+> natural risks. Public open data only (RTE/ODRÉ, Eurostat, ADEME, BAN, Géorisques); every figure
+> carries its source and its limits. Under the hood: idempotent PySpark ingestion into a DuckDB
+> bronze layer (immutable Parquet, `MERGE` on keys), a dbt-duckdb medallion (silver, gold) and
+> 318 offline tests run in GitHub Actions. Runs locally; the rest of this page is in French.
+
 ## Trois points forts pour un data engineer
 
 1. **Une ingestion PySpark idempotente, éprouvée sur les pièges réels des sources.** PySpark
@@ -114,3 +123,7 @@ Détail : [modèles dbt](dbt/README.md) · [stockage](data/README.md).
 [Base Adresse Nationale](https://adresse.data.gouv.fr) · [Géorisques](https://www.georisques.gouv.fr) ·
 [sites clés en main France 2030](https://www.data.gouv.fr/datasets/les-sites-cles-en-main-france-2030) ·
 SDDR 2025 de RTE · barèmes de la CRE. Licence Ouverte / Etalab.
+
+## Licence
+
+Code sous [licence MIT](LICENSE). Les données restent sous la licence de leurs producteurs.
