@@ -19,6 +19,7 @@ from ingestion.hexagones import (
     lire_terres,
     points_terrestres,
 )
+from ingestion.transform import safe_run_id
 
 logger = logging.getLogger(__name__)
 
@@ -59,10 +60,12 @@ def _verifier(response: httpx.Response) -> httpx.Response:
     if response.status_code in RETRYABLE_STATUS_CODES:
         raise RetryableStatusError(response.status_code)
     response.raise_for_status()
+    # Une redirection vers http:// ferait transiter le fichier en clair
+    if response.url.scheme != "https":
+        raise ValueError(f"telechargement hors https refuse : {response.url}")
     return response
 
 
-# Télécharge un fichier GeoJSON dans le bronze, tel que publié
 def telecharger_geojson(
     jeu: str,
     url: str,
@@ -94,14 +97,12 @@ def telecharger_geojson(
     return path
 
 
-# Fichier le plus récent d'un jeu du bronze, `None` s'il n'a jamais été téléchargé
 def dernier_geojson(jeu: str, settings: Settings | None = None) -> Path | None:
     settings = settings or get_settings()
     fichiers = sorted((Path(settings.bronze_dir) / jeu).glob("ingest_date=*/*.geojson*"))
     return fichiers[-1] if fichiers else None
 
 
-# Client du service d'altimétrie, utilisable comme context manager
 class AltimetrieClient:
     def __init__(self, settings: Settings | None = None, *, client: httpx.Client | None = None):
         self.settings = settings or get_settings()
@@ -148,7 +149,6 @@ class AltimetrieClient:
         return resultat
 
 
-# Altitudes déjà en bronze, toutes exécutions confondues
 def lire_altitudes(settings: Settings | None = None) -> dict[tuple[float, float], float | None]:
     settings = settings or get_settings()
     altitudes: dict[tuple[float, float], float | None] = {}
@@ -191,14 +191,13 @@ def completer_altitudes(
     partition = Path(settings.bronze_dir) / RELIEF_JEU / f"ingest_date={maintenant.date()}"
     partition.mkdir(parents=True, exist_ok=True)
     # Horodatage dans le nom : deux exécutions du même jour ne s'écrasent pas
-    path = partition / f"part-{run_id}-{maintenant:%H%M%S%f}.parquet"
+    path = partition / f"part-{safe_run_id(run_id)}-{maintenant:%H%M%S%f}.parquet"
     pq.write_table(table, path, compression="zstd")
     logger.info("altitudes ecrites points=%d path=%s", len(manquants), path)
     altitudes.update(zip(manquants, nouvelles, strict=True))
     return altitudes
 
 
-# Étape du refresh : contours et terres à jour, puis relief de toutes les cases de la carte
 def run_geo_ingestion(*, settings: Settings | None = None, run_id: str = "manual") -> int:
     settings = settings or get_settings()
     contours = telecharger_geojson(CONTOURS_JEU, settings.contours_url, settings=settings)

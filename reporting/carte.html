@@ -4,8 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Atlas électrique de France</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Alegreya+Sans:wght@400;500;700&display=swap">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:">
 <style>
 /* Plein écran façon jeu de stratégie : carte 3D au fond, ressources en haut, fiche en bas à gauche, lentilles en bas à droite */
 :root {
@@ -19,8 +18,8 @@
   --good: #6fbf73;
   --warn: #e3b341;
   --bad: #d9573f;
-  --f-display: "Cinzel", "Trajan Pro", Georgia, serif;
-  --f-body: "Alegreya Sans", "Segoe UI", system-ui, sans-serif;
+  --f-display: "Trajan Pro", "Palatino Linotype", Georgia, serif;
+  --f-body: "Segoe UI", system-ui, sans-serif;
   color-scheme: dark;
 }
 html, body { height: 100%; margin: 0; }
@@ -270,7 +269,7 @@ GR.forEach((g, gi) => { if (!g.code) return; const ts = tiles.filter(t => t.g ==
 
 // Décor : montagnes selon l'altitude maximale, forêts et villes
 const props = { terrain: new THREE.Group(), mountains: new THREE.Group() }; scene.add(props.terrain, props.mountains);
-function instanced(geo, color, list, group) { const m = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ color: color ? col(color) : undefined, roughness: .8, flatShading: true }), Math.max(list.length, 1));
+function instanced(geo, color, list, group) { const m = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ ...(color && { color: col(color) }), roughness: .8, flatShading: true }), Math.max(list.length, 1));
   m.count = list.length;
   list.forEach((o, i) => { dummy.position.set(o.x, o.y, o.z); dummy.rotation.set(0, o.ry || 0, 0); dummy.scale.set(o.sx, o.sy, o.sx); dummy.updateMatrix(); m.setMatrixAt(i, dummy.matrix); if (o.c) m.setColorAt(i, o.c); });
   m.castShadow = true; group.add(m); return m; }

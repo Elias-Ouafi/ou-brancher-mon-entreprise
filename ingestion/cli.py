@@ -37,7 +37,6 @@ from ingestion.pipeline import (
 logger = logging.getLogger("ingestion")
 
 
-# Accepte `2026-09-07` ou `2026-09-07T05:00:00`, interprétés en UTC
 def _parse_instant(value: str) -> datetime:
     parsed = datetime.fromisoformat(value)
     return parsed.replace(tzinfo=UTC) if parsed.tzinfo is None else parsed.astimezone(UTC)

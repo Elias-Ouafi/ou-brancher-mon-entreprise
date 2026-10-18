@@ -29,7 +29,6 @@ def _nombre(valeur: float, decimales: int = 0) -> str:
     return f"{valeur:,.{decimales}f}".replace(",", " ").replace(".", ",")
 
 
-# Bandeau de quatre indicateurs, ceux qu'on cherche en premier
 def _synthese(d: Diagnostic) -> list:
     cartes = []
     if d.rang_pression_departement:
@@ -73,7 +72,6 @@ def _synthese(d: Diagnostic) -> list:
     return [_kpis(cartes, par_ligne=2), Spacer(1, 8)]
 
 
-# Écrit le rapport PDF et renvoie son chemin
 def rendre(
     diagnostic: Diagnostic, comparaisons: Comparaisons, chemin: Path, *, now: datetime
 ) -> Path:

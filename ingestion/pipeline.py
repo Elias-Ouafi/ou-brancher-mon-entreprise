@@ -24,21 +24,17 @@ logger = logging.getLogger(__name__)
 # Colonne témoin du contrôle de fraîcheur
 FRESHNESS_MEASURE = "consommation"
 
-# Pas de publication des datasets éCO2mix
 SLOT_MINUTES = 15
 
 
-# La donnée la plus récente du warehouse dépasse le retard toléré
 class StaleDataError(RuntimeError):
     pass
 
 
-# Le dernier mois consolidé disponible comporte trop de pas de temps manquants
 class IncompleteMonthError(RuntimeError):
     pass
 
 
-# Résultat d'une extraction, journalisé par la ligne de commande
 @dataclass(frozen=True, slots=True)
 class ExtractionOutcome:
     dataset_id: str
@@ -50,12 +46,10 @@ class ExtractionOutcome:
     window_end: str | None
 
 
-# Écart entre la donnée la plus récente et l'instant du contrôle
 @dataclass(frozen=True, slots=True)
 class FreshnessReport:
     # Dernier horodatage effectivement mesuré : c'est lui qui décide
     latest: datetime | None
-    # Dernier horodatage présent, mesuré ou non
     latest_row: datetime | None
     lag_hours: float | None
     max_lag_hours: int
@@ -66,7 +60,6 @@ class FreshnessReport:
         return self.lag_hours is not None and self.lag_hours <= self.max_lag_hours
 
 
-# Complétude d'un mois civil dans la table consolidée
 @dataclass(frozen=True, slots=True)
 class CoverageReport:
     month: str
@@ -99,7 +92,6 @@ def month_bounds(year: int, month: int) -> tuple[datetime, datetime]:
     return start.astimezone(UTC), end.astimezone(UTC)
 
 
-# Fenêtre couvrant les `months` derniers mois civils, jusqu'à maintenant
 def last_months_window(months: int, *, now: datetime | None = None) -> ExtractionWindow:
     reference = (now or datetime.now(UTC)).astimezone(PARIS_TZ)
     shifted = (reference.year * 12 + reference.month - 1) - months
@@ -111,7 +103,6 @@ def _expected_slots(start: datetime, end: datetime) -> int:
     return int((end - start) / timedelta(minutes=SLOT_MINUTES))
 
 
-# Extrait un dataset ODRÉ et l'écrit en Parquet typé
 def extract_to_parquet(
     *,
     settings: Settings | None = None,
@@ -166,7 +157,6 @@ def tempo_days_for_month(month: date) -> DayRange:
     return DayRange(days.start - timedelta(days=1), days.end)
 
 
-# Extrait le calendrier Tempo d'une plage de jours vers un Parquet bronze
 def extract_tempo_to_parquet(
     days: DayRange,
     *,
@@ -201,7 +191,6 @@ def extract_tempo_to_parquet(
     )
 
 
-# Crée, vides, les tables bronze de tous les datasets connus
 def ensure_bronze_tables(*, settings: Settings | None = None) -> None:
     settings = settings or get_settings()
     for spec in BRONZE_SPECS:
@@ -212,7 +201,6 @@ def ensure_bronze_tables(*, settings: Settings | None = None) -> None:
             loader.close()
 
 
-# Fusionne un Parquet dans la table bronze du dataset, sur la clé `date_heure`
 def load_to_warehouse(
     parquet_path: Path | str,
     *,
@@ -228,7 +216,6 @@ def load_to_warehouse(
         loader.close()
 
 
-# Vérifie le retard de la donnée la plus récente, en lecture seule
 def check_freshness(
     *,
     settings: Settings | None = None,
@@ -278,7 +265,6 @@ def check_freshness(
     return report
 
 
-# Vérifie qu'un mois consolidé est complet, en lecture seule
 def check_month_coverage(
     *,
     settings: Settings | None = None,
@@ -317,7 +303,6 @@ def check_month_coverage(
     return report
 
 
-# Dernier mois civil révolu présent en base, exprimé en heure de Paris
 def _target_month(latest: datetime, reference: datetime) -> tuple[int, int]:
     local = latest.astimezone(PARIS_TZ)
     year, month = local.year, local.month
@@ -328,7 +313,6 @@ def _target_month(latest: datetime, reference: datetime) -> tuple[int, int]:
     return year, month
 
 
-# Extraction puis chargement, pour un rejeu manuel en une commande
 def run_ingestion(
     *,
     settings: Settings | None = None,
@@ -345,7 +329,6 @@ def run_ingestion(
     return outcome, result
 
 
-# Calendrier Tempo : extraction puis chargement dans `bronze.rte_tempo`
 def run_tempo_ingestion(
     days: DayRange,
     *,
@@ -359,7 +342,6 @@ def run_tempo_ingestion(
     return outcome, result
 
 
-# Prix Eurostat des entreprises : extraction intégrale (un appel), puis MERGE
 def run_prix_entreprises_ingestion(
     *,
     settings: Settings | None = None,
@@ -390,7 +372,6 @@ def run_prix_entreprises_ingestion(
     return outcome, result
 
 
-# Relit les N derniers mois consolidés et les fusionne
 def run_consolidation(
     *,
     settings: Settings | None = None,

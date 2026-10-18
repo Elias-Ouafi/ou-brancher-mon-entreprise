@@ -15,7 +15,6 @@ KM_PAR_DEGRE_LON = 111.32
 RAYON_SCENE = 1.2
 RAYON_METROPOLE_KM = 12.0
 
-# Centre de la projection de la métropole
 LON0_METROPOLE, LAT0_METROPOLE = 2.4, 46.6
 
 # Départements d'outre-mer ; les collectivités (977, 984…) restent hors carte
@@ -25,7 +24,6 @@ DEPARTEMENTS_OUTRE_MER = ("971", "972", "973", "974", "976")
 CASES_PAR_ENCART = 70
 MARGE_METROPOLE, MARGE_ENCART = 3, 2
 
-# Écart entre la métropole et la colonne des encarts, puis entre deux encarts
 ESPACE_ENCARTS = 6.0
 
 # Échantillons par case : le centre puis six points à 60 % du rayon
@@ -73,7 +71,6 @@ class Case:
     lon: float
     lat: float
     departement: str | None = None
-    # Terre hors de France (pays voisin), affichée en brouillard
     etranger: bool = False
     # Échantillons tombés à terre, en (lon, lat) : ils servent au relief
     echantillons: list[tuple[float, float]] = field(default_factory=list)
@@ -85,7 +82,6 @@ class Grille:
     code: str | None
     projection: Projection
     rayon_km: float
-    # Centre de la case (0, 0), en km projetés puis dans la scène
     x0_km: float
     z0_km: float
     colonnes: int
@@ -103,7 +99,6 @@ class Grille:
         x = self.x0_km + c * largeur + (r & 1) * largeur / 2
         return x, self.z0_km + r * 1.5 * self.rayon_km
 
-    # Case terrestre la plus proche d'un point, éventuellement limitée à un département
     def case_terrestre(self, lon: float, lat: float, departement: str | None = None) -> Case | None:
         x, z = self.projection.km(lon, lat)
         candidates = [
@@ -125,7 +120,6 @@ def _lire_geojson(path: Path) -> list[dict]:
         return json.load(fichier)["features"]
 
 
-# Anneaux d'une géométrie Polygon ou MultiPolygon, en (lon, lat)
 def _anneaux(geometrie: dict) -> tuple[Anneau, ...]:
     polygones = (
         [geometrie["coordinates"]] if geometrie["type"] == "Polygon" else geometrie["coordinates"]
@@ -137,7 +131,6 @@ def _anneaux(geometrie: dict) -> tuple[Anneau, ...]:
     )
 
 
-# Contours des départements (GeoJSON, compressé ou non)
 def lire_contours(path: Path) -> list[Departement]:
     return [
         Departement(
@@ -150,7 +143,6 @@ def lire_contours(path: Path) -> list[Departement]:
     ]
 
 
-# Terres émergées du monde, un anneau par île ou continent
 def lire_terres(path: Path) -> list[Anneau]:
     return [anneau for feature in _lire_geojson(path) for anneau in _anneaux(feature["geometry"])]
 
@@ -305,7 +297,6 @@ def _grille(
     return grille
 
 
-# Métropole au centre de la scène, encarts d'outre-mer en colonne à l'ouest
 def construire_grilles(
     departements: list[Departement],
     *,
@@ -352,7 +343,6 @@ def construire_grilles(
             )
         )
 
-    # Deux encarts par rangée, la première colonne contre la métropole
     largeur_max = max((e.colonnes for e in encarts), default=0) * largeur_s
     z = grille.scene_z0
     for i in range(0, len(encarts), 2):

@@ -14,7 +14,6 @@ HC = "#E8EEF6"
 FLEXIBLE = "#E08A00"
 
 
-# Barres horizontales, la première valeur en haut
 def _barres(ax: plt.Axes, libelles: list[str], valeurs: list[float], ici: list[bool]) -> None:
     positions = range(len(valeurs))[::-1]
     ax.barh(list(positions), valeurs, color=[ICI if i else AUTRES for i in ici], height=0.7)
@@ -80,7 +79,6 @@ def pression_departements(diagnostic: Diagnostic, comparaisons: Comparaisons) ->
     return _png(fig)
 
 
-# Puissance appelée heure par heure, jour ouvré et week-end, part flexible en couleur
 def profil_journalier(diagnostic: Diagnostic, comparaisons: Comparaisons) -> bytes | None:
     if not comparaisons.profil or diagnostic.cout is None:
         return None
@@ -120,7 +118,6 @@ def profil_journalier(diagnostic: Diagnostic, comparaisons: Comparaisons) -> byt
     return _png(fig)
 
 
-# Prix semestriel de la tranche depuis 2007, puis l'éventail des scénarios à 3 ans
 def prix_tranche(diagnostic: Diagnostic, comparaisons: Comparaisons) -> bytes | None:
     prix = diagnostic.prix
     if prix is None or not comparaisons.historique_prix:

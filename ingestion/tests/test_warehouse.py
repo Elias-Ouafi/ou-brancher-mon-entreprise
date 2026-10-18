@@ -21,7 +21,6 @@ def utc(*args: int) -> datetime:
     return datetime(*args, tzinfo=UTC)
 
 
-# Fabrique un Parquet brut à partir de couples (records, ingested_at)
 @pytest.fixture
 def make_parquet(tmp_path: Path):
     counter = 0
@@ -43,7 +42,6 @@ def make_parquet(tmp_path: Path):
     return _make
 
 
-# Loader sur base en mémoire
 @pytest.fixture
 def loader() -> DuckDBLoader:
     with DuckDBLoader(":memory:") as instance:

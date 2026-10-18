@@ -22,7 +22,6 @@ def _isolate_environment(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv(key, raising=False)
 
 
-# Réglages de test : hôte factice, aucune attente entre deux tentatives
 @pytest.fixture
 def settings(tmp_path: Path) -> Settings:
     return Settings(
@@ -35,13 +34,11 @@ def settings(tmp_path: Path) -> Settings:
     )
 
 
-# Réponse `/records` réaliste (2 enregistrements)
 @pytest.fixture
 def records_payload() -> dict[str, Any]:
     return json.loads((FIXTURES_DIR / "records_page.json").read_text(encoding="utf-8"))
 
 
-# Réponse `/exports/csv` réaliste (séparateur `;`, une valeur manquante)
 @pytest.fixture
 def export_csv() -> str:
     return (FIXTURES_DIR / "export_sample.csv").read_text(encoding="utf-8")
@@ -57,7 +54,6 @@ def export_url() -> str:
     return f"{TEST_BASE_URL}/catalog/datasets/eco2mix-national-tr/exports/csv"
 
 
-# Base DuckDB de bronze à gold (voir `medallion.py`), construite une fois par session
 @pytest.fixture(scope="session")
 def medallion_db(tmp_path_factory: pytest.TempPathFactory) -> Path:
     from ingestion.tests import medallion

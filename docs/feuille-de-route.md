@@ -51,6 +51,8 @@ le calendrier Tempo n'a tourné que sur des réponses simulées (pas de compte R
 | 16 oct. | Documentation en français uniquement ; code sous licence MIT |
 | 16 oct. | Commentaires réduits au strict nécessaire : une ligne au-dessus d'une fonction ou d'un bloc |
 | 18 oct. | Carte 3D en page HTML autonome écrite par Python ; three.js (MIT) embarqué, seul code JavaScript du dépôt, exécuté par le navigateur : l'installation ne change pas |
+| 18 oct. | ETL confirmé en Python pur (pyarrow), sans PySpark ni Java ; commentaires limités à la logique (le pourquoi), 226 commentaires descriptifs retirés |
+| 18 oct. | Sécurité : CI en lecture seule, actions GitHub figées par commit, identifiants RTE jamais transmis à dbt, téléchargements HTTPS uniquement, carte sans aucune requête externe (CSP) |
 | 18 oct. | Grille hexagonale maison (cases régulières de 24 km) plutôt que H3 : rendu net et aucune dépendance ; relief IGN mis en cache par point dans le bronze |
 
 ## Écarté

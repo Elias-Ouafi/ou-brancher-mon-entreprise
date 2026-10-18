@@ -26,7 +26,6 @@ logger = logging.getLogger(__name__)
 Format = Literal["md", "pdf", "json"]
 FORMATS: tuple[Format, ...] = ("md", "pdf", "json")
 
-# Nombre de départements affichés dans le graphique de pression industrielle
 NB_DEPARTEMENTS_AFFICHES = 15
 
 SOURCES = [
@@ -52,7 +51,6 @@ class PlageProfil:
     puissance_flexible_kw: float
 
 
-# Séries nationales qui situent l'adresse parmi les autres territoires
 @dataclass(frozen=True, slots=True)
 class Comparaisons:
     # (région, taux de couverture), de la plus déficitaire à la plus excédentaire
@@ -66,7 +64,6 @@ class Comparaisons:
     scenarios_prix: list[tuple[int, float, float, float]] = field(default_factory=list)
 
 
-# Séries de comparaison ; `tranche` ajoute l'historique et les scénarios de prix
 def lire_comparaisons(
     connection: duckdb.DuckDBPyConnection, *, tranche: str | None = None
 ) -> Comparaisons:
@@ -136,7 +133,6 @@ def nom_fichier(diagnostic: Diagnostic, format: Format) -> str:
     return f"implantation_{diagnostic.code_insee_commune}_{slug}.{format}"
 
 
-# Écrit le rapport d'une adresse déjà diagnostiquée et renvoie son chemin
 def generer_rapport_implantation(
     diagnostic: Diagnostic,
     *,
@@ -180,10 +176,6 @@ def en_json(diagnostic: Diagnostic) -> str:
     return json.dumps(diagnostic_en_dict(diagnostic), ensure_ascii=False, indent=2)
 
 
-# Markdown
-
-
-# Retire l'alignement en colonnes du terminal (« Commune : »)
 def texte_compact(contenu: str) -> str:
     return " ".join(contenu.split())
 
@@ -197,7 +189,6 @@ GRAPHIQUES = {
 }
 
 
-# Écrit le rapport Markdown, graphiques en PNG dans `<nom>_graphiques/`
 def rendre_markdown(
     diagnostic: Diagnostic,
     comparaisons: Comparaisons,

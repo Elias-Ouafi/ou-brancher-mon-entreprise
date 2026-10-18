@@ -25,7 +25,6 @@ def ban_settings(settings: Settings) -> Settings:
     return settings.model_copy(update={"ban_base_url": BAN_URL})
 
 
-# Réponse BAN minimale, surchargeable champ par champ
 def feature(**props: Any) -> dict[str, Any]:
     defaults = {
         "label": "12 Rue de la Paix 69003 Lyon",
