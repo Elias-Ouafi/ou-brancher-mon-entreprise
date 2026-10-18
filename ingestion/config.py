@@ -7,11 +7,14 @@ from typing import Literal
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# Identifiants hors de `.env`, dans un fichier ignoré par git : il prime sur `.env`
+IDENTIFIANTS_LOCAUX = Path(__file__).resolve().parents[1] / "identifiants.local.txt"
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="ECO2MIX_",
-        env_file=".env",
+        env_file=(".env", IDENTIFIANTS_LOCAUX),
         env_file_encoding="utf-8",
         extra="ignore",
     )
