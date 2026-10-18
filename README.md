@@ -55,6 +55,10 @@ minute environ. Rien ne tourne tout seul : relancez `refresh` (sans `--months`) 
 données à jour. Avec [uv](https://docs.astral.sh/uv/), `uv sync --group dev --group dbt --group report`
 remplace les deux premières lignes, et `uv run python` remplace `.\.venv\Scripts\python.exe`.
 
+**Identifiants** (calendrier Tempo seulement) : copiez `identifiants.exemple.txt` en
+`identifiants.local.txt` et renseignez-le. Ce fichier est ignoré par git, prime sur `.env` et
+n'est jamais affiché dans les journaux. Ne mettez aucun identifiant dans `.env` ni dans le modèle.
+
 ## Commandes
 
 Toutes s'écrivent `.\.venv\Scripts\python.exe -m ingestion.cli <commande>`.
