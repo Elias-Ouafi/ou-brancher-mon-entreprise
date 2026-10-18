@@ -36,6 +36,22 @@ class Settings(BaseSettings):
 
     # API de diffusion d'Eurostat (JSON-stat), sans compte ni clé
     eurostat_base_url: str = "https://ec.europa.eu/eurostat/api/dissemination"
+
+    # Contours des départements d'Etalab (IGN Admin Express simplifié à 1 km), sans clé
+    contours_url: str = (
+        "https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/2025/geojson/"
+        "departements-1000m.geojson.gz"
+    )
+
+    # Terres émergées de Natural Earth (domaine public) : pays voisins en brouillard sur la carte
+    terres_url: str = (
+        "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/"
+        "ne_50m_land.geojson"
+    )
+
+    # Service d'altimétrie de la Géoplateforme (IGN, RGE ALTI), sans clé
+    altimetrie_base_url: str = "https://data.geopf.fr/altimetrie"
+
     rte_client_id: str | None = None
     rte_client_secret: SecretStr | None = None
 

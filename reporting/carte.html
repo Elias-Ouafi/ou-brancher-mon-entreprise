@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Atlas électrique de France</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Alegreya+Sans:wght@400;500;700&display=swap">
+<style>
+/* Plein écran façon jeu de stratégie : carte 3D au fond, ressources en haut, fiche en bas à gauche, lentilles en bas à droite */
+:root {
+  --ink: #0d1a26;
+  --panel: #142334;
+  --panel-2: #1c3047;
+  --gold: #d6b26a;
+  --gold-dim: #8a7145;
+  --parch: #efe4c8;
+  --parch-dim: #b9ad90;
+  --good: #6fbf73;
+  --warn: #e3b341;
+  --bad: #d9573f;
+  --f-display: "Cinzel", "Trajan Pro", Georgia, serif;
+  --f-body: "Alegreya Sans", "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; margin: 0; }
+[hidden] { display: none !important; }
+body { background: var(--ink); color: var(--parch); font-family: var(--f-body); font-size: 15px; overflow: hidden; }
+#scene { position: fixed; inset: 0; }
+#scene canvas { display: block; touch-action: none; }
+.vignette { position: fixed; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 45%, transparent 55%, color-mix(in srgb, var(--ink) 85%, transparent) 100%); }
+.frame { background: linear-gradient(180deg, var(--panel-2), var(--panel)); border: 1px solid var(--gold-dim);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 18%, transparent), 0 8px 28px color-mix(in srgb, var(--ink) 70%, transparent); }
+button { font: inherit; }
+
+.topbar { position: fixed; top: 0; left: 0; right: 0; z-index: 5; display: flex; align-items: center; gap: 18px;
+  padding: calc(8px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px));
+  border-width: 0 0 1px; overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
+.brand { font-family: var(--f-display); font-weight: 700; letter-spacing: .08em; color: var(--gold); font-size: 15px; text-transform: uppercase; }
+.res { display: flex; align-items: center; gap: 7px; font-variant-numeric: tabular-nums; }
+.res svg { width: 18px; height: 18px; flex: none; }
+.res b { font-weight: 700; }
+#carbone { display: contents; }
+.res small { color: var(--parch-dim); font-size: 12.5px; }
+.res select { font: inherit; font-size: 13px; background: var(--ink); color: var(--parch); border: 1px solid var(--gold-dim); border-radius: 3px; padding: 2px 4px; }
+.sep { width: 1px; height: 22px; background: var(--gold-dim); opacity: .6; flex: none; }
+.chip { margin-left: auto; font-size: 12px; color: var(--parch-dim); border: 1px solid var(--gold-dim); padding: 2px 8px; border-radius: 10px; }
+
+.city { position: fixed; z-index: 4; left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  width: 340px; max-width: calc(100vw - 32px); border-radius: 4px; overflow: hidden; }
+.city header { padding: 10px 14px 9px; border-bottom: 1px solid var(--gold-dim); position: relative;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--rc, var(--gold)) 55%, var(--panel)), var(--panel-2)); }
+.city h2 { margin: 0; font-family: var(--f-display); font-size: 20px; letter-spacing: .04em; text-wrap: balance; padding-right: 24px; }
+.city .sub { font-size: 13px; opacity: .85; }
+.city .close { position: absolute; right: 8px; top: 8px; background: none; border: 0; color: var(--parch); font-size: 18px; cursor: pointer; line-height: 1; padding: 4px; }
+.city .vide { padding: 14px; color: var(--parch-dim); font-size: 14px; line-height: 1.4; }
+.yields { display: grid; gap: 1px; background: color-mix(in srgb, var(--gold) 14%, transparent); }
+.y { display: grid; grid-template-columns: 26px 1fr auto; align-items: center; gap: 8px; padding: 7px 14px; background: var(--panel); }
+.y svg { width: 20px; height: 20px; }
+.y .k { font-size: 13.5px; color: var(--parch-dim); }
+.y .v { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+.y .v small { font-weight: 400; color: var(--parch-dim); }
+.pill { display: inline-block; font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 1px 7px; border-radius: 9px; margin-left: 6px; }
+.pill.good { background: color-mix(in srgb, var(--good) 25%, transparent); color: var(--good); }
+.pill.bad { background: color-mix(in srgb, var(--bad) 25%, transparent); color: var(--bad); }
+.pill.warn { background: color-mix(in srgb, var(--warn) 22%, transparent); color: var(--warn); }
+.limit { padding: 8px 14px 10px; font-size: 12.5px; color: var(--parch-dim); background: var(--ink); border-top: 1px solid var(--gold-dim); }
+.limit b { color: var(--gold); font-weight: 500; }
+
+.lenses { position: fixed; z-index: 4; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+.vues { display: flex; gap: 6px; }
+.vues button { background: var(--panel); color: var(--parch); border: 1px solid var(--gold-dim); border-radius: 12px; padding: 3px 10px; font-size: 12.5px; cursor: pointer; }
+.vues button:hover, .vues button:focus-visible { border-color: var(--gold); outline: none; }
+.legend { width: 280px; max-width: calc(100vw - 32px); padding: 10px 12px; border-radius: 4px; font-size: 12.5px; color: var(--parch-dim); }
+.legend h3 { margin: 0 0 6px; font-family: var(--f-display); font-size: 13px; letter-spacing: .08em; color: var(--gold); text-transform: uppercase; }
+.legend .bar { height: 10px; border-radius: 2px; margin: 4px 0 3px; border: 1px solid var(--gold-dim); }
+.legend .ticks { display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; color: var(--parch); }
+.legend p { margin: 6px 0 0; line-height: 1.35; }
+.lensbar { display: flex; gap: 8px; }
+.lens { width: 58px; display: flex; flex-direction: column; align-items: center; gap: 4px; background: none; border: 0; cursor: pointer; color: var(--parch-dim); font: 500 11.5px var(--f-body); }
+.lens .disc { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center;
+  background: radial-gradient(circle at 35% 30%, var(--panel-2), var(--ink)); border: 2px solid var(--gold-dim); transition: border-color .2s, transform .2s; }
+.lens svg { width: 24px; height: 24px; }
+.lens:hover .disc { transform: translateY(-2px); }
+.lens[aria-pressed="true"] { color: var(--gold); }
+.lens[aria-pressed="true"] .disc { border-color: var(--gold); box-shadow: 0 0 14px color-mix(in srgb, var(--gold) 55%, transparent); }
+.lens:focus-visible { outline: none; }
+.lens:focus-visible .disc { outline: 2px solid var(--parch); outline-offset: 2px; }
+
+#labels { position: fixed; inset: 0; pointer-events: none; z-index: 2; overflow: hidden; }
+.rlabel { position: absolute; transform: translate(-50%, -50%); font-family: var(--f-display); font-weight: 700; font-size: 13px; letter-spacing: .22em;
+  text-transform: uppercase; color: var(--parch); text-align: center; line-height: 1.15; text-shadow: 0 1px 3px var(--ink), 0 0 10px var(--ink); opacity: .9; width: max-content; max-width: 170px; }
+.rlabel small { display: block; font-family: var(--f-body); font-weight: 500; font-size: 11px; letter-spacing: .04em; text-transform: none; color: var(--parch-dim); }
+.banner { position: absolute; transform: translate(-50%, -100%); display: flex; align-items: center; gap: 6px; padding: 2px 9px 2px 2px; border-radius: 14px;
+  background: linear-gradient(180deg, var(--panel-2), var(--panel)); border: 1px solid var(--gold); font-size: 12.5px; white-space: nowrap; }
+.banner .pr { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 11px; color: var(--ink); background: var(--gold); }
+.banner.p2 .pr { background: var(--parch-dim); }
+.banner .by { color: var(--parch-dim); font-variant-numeric: tabular-nums; }
+.banner.adresse { border-color: var(--bad); padding: 3px 10px; font-weight: 700; max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+.tip { position: fixed; z-index: 6; pointer-events: none; padding: 6px 10px; border-radius: 3px; font-size: 13px; max-width: 260px; }
+.tip b { font-family: var(--f-display); font-size: 13.5px; letter-spacing: .03em; }
+.tip div { color: var(--parch-dim); }
+.hint { position: fixed; z-index: 3; top: calc(52px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); font-size: 12.5px; color: var(--parch-dim);
+  text-shadow: 0 1px 3px var(--ink); white-space: nowrap; }
+.erreur { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; font-size: 16px; }
+
+@media (max-width: 760px) {
+  .city { bottom: calc(100px + env(safe-area-inset-bottom, 0px)); width: auto; right: max(16px, env(safe-area-inset-right, 0px)); }
+  .city .y { padding: 5px 12px; }
+  .legend, .hint, .chip { display: none; }
+  .lenses { left: max(16px, env(safe-area-inset-left, 0px)); align-items: center; }
+  .rlabel { font-size: 10px; letter-spacing: .14em; }
+}
+@media (max-height: 640px) and (min-width: 761px) { .legend p { display: none; } }
+</style>
+</head>
+<body>
+<div id="scene"></div>
+<div class="vignette"></div>
+<div id="labels"></div>
+
+<div class="topbar frame">
+  <span class="brand">Atlas électrique</span>
+  <span class="sep"></span>
+  <span class="res" title="Prix moyen HTVA (Eurostat nrg_pc_205), identique sur tout le territoire">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#d6b26a"/><path d="M15.5 8.2a4.6 4.6 0 1 0 0 7.6M6.5 10.8h7M6.5 13.4h7" stroke="#0d1a26" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
+    <b id="prix">–</b><small>€/kWh HTVA</small>
+    <select id="tranche" aria-label="Tranche de consommation"></select>
+  </span>
+  <span class="sep"></span>
+  <span class="res" title="Intensité carbone en cycle de vie (Base Carbone de l'ADEME)">
+    <svg viewBox="0 0 24 24"><path d="M4 20C4 10 10 4 20 4c0 10-6 16-16 16Z" fill="#6fbf73"/><path d="M4 20 14 10" stroke="#0d1a26" stroke-width="1.6"/></svg>
+    <span id="carbone"></span>
+  </span>
+  <span class="sep"></span>
+  <span class="res" title="Zones de raccordement prioritaires (SDDR 2025 de RTE)">
+    <svg viewBox="0 0 24 24"><path d="M12 2 7 22h2.2l1-4h3.6l1 4H17L12 2Zm-1.2 13 1.2-5 1.2 5h-2.4ZM5 7h14M6.5 11h11" stroke="#c9d1d6" stroke-width="1.6" fill="none"/></svg>
+    <b id="nzones">–</b><small>zones prioritaires RTE</small>
+  </span>
+  <span class="sep"></span>
+  <span class="res" title="Sites clés en main France 2030">
+    <svg viewBox="0 0 24 24"><path d="m12 2 2.9 6.6 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 21l1.6-7L2 9.2l7.1-.6L12 2Z" fill="#e9c46a"/></svg>
+    <b id="nsites">–</b><small>sites clés en main</small>
+  </span>
+  <span class="chip" id="genere"></span>
+</div>
+<div class="hint">Glisser pour se déplacer · clic droit pour pivoter · molette pour zoomer · cliquer sur une case</div>
+
+<aside class="city frame" id="city" aria-live="polite"></aside>
+
+<div class="lenses">
+  <div class="vues" role="group" aria-label="Aller à">
+    <button id="vue-metropole">Métropole</button>
+    <button id="vue-outre-mer">Outre-mer</button>
+    <button id="vue-adresse" hidden>Adresse</button>
+  </div>
+  <div class="legend frame" id="legend"></div>
+  <div class="lensbar" role="toolbar" aria-label="Lentilles">
+    <button class="lens" data-lens="terrain" aria-pressed="true"><span class="disc"><svg viewBox="0 0 24 24"><path d="M2 20 9 7l4 6 2-3 7 10H2Z" fill="#a9b07a"/><path d="m9 7 1.8 3.3-1.8-.8-1.6.9L9 7Z" fill="#efe4c8"/></svg></span>Terrain</button>
+    <button class="lens" data-lens="industrie" aria-pressed="false"><span class="disc"><svg viewBox="0 0 24 24"><path d="M3 21V11l5 3v-3l5 3v-3l5 3V4h3v17H3Z" fill="#e3892b"/></svg></span>Industrie</button>
+    <button class="lens" data-lens="reseau" aria-pressed="false"><span class="disc"><svg viewBox="0 0 24 24"><path d="M12 2 7 22h2.2l1-4h3.6l1 4H17L12 2Zm-1.2 13 1.2-5 1.2 5h-2.4ZM5 7h14M6.5 11h11" stroke="#c9d1d6" stroke-width="1.7" fill="none"/></svg></span>Réseau</button>
+    <button class="lens" data-lens="equilibre" aria-pressed="false"><span class="disc"><svg viewBox="0 0 24 24"><path d="M12 3v17M6 20h12M4 7h16M4 7l-2.5 6h5L4 7Zm16 0-2.5 6h5L20 7Z" stroke="#58c4e6" stroke-width="1.7" fill="none" stroke-linejoin="round"/></svg></span>Équilibre</button>
+  </div>
+</div>
+<div class="tip frame" id="tip" hidden></div>
+
+<!--__SCRIPTS__-->
+<script>
+const DATA = /*__DONNEES__*/null;
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const fmt = (v, d = 0) => v == null ? "n.d." : Number(v).toLocaleString("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d });
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+if (!window.THREE) document.body.insertAdjacentHTML("beforeend", '<div class="erreur frame">WebGL ou three.js indisponible : ouvrir la carte dans un navigateur récent.</div>');
+
+const REGION_COLORS = { "11": "#f2cf4a", "24": "#c0663f", "27": "#8e5fc2", "28": "#4a8fd9", "32": "#d94f4f", "44": "#3fb59c", "52": "#58c4e6", "53": "#ece6d2", "75": "#e3892b", "76": "#c73f8a", "84": "#7bc043", "93": "#f08a7a", "94": "#a9a948", "01": "#e8c547", "02": "#e8c547", "03": "#e8c547", "04": "#e8c547", "06": "#e8c547" };
+// Grandes villes, en décor : lat, lon, étendue
+const CITIES = [[48.86, 2.35, 1.8], [45.76, 4.84, 1.2], [43.30, 5.37, 1.1], [50.63, 3.06, 1], [43.60, 1.44, 1], [44.84, -0.58, 1], [47.22, -1.55, .9], [48.58, 7.75, .9], [43.70, 7.27, .8], [48.11, -1.68, .8]];
+const MEDITERRANEE = new Set(["06", "11", "13", "30", "34", "66", "83", "84", "2A", "2B"]);
+
+const col = h => new THREE.Color(h).convertSRGBToLinear();
+const DEP = Object.fromEntries(DATA.departements.map(d => [d.c, d]));
+const GR = DATA.grilles, R = DATA.rayonScene, HW = Math.sqrt(3) * R, DZ = 1.5 * R, PS = R / 1.5;
+const centre = (g, c, r) => [GR[g].x0 + c * HW + (r & 1) * HW / 2, GR[g].z0 + r * DZ];
+const hash = (a, b) => { const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return s - Math.floor(s); };
+
+// Cases et voisinage
+const tiles = [], grid = new Map();
+// Mer : [g, c, r] ; pays voisin : [g, c, r, 1] ; case française : 8 valeurs
+for (const row of DATA.cases) {
+  const [g, c, r, dep, alt, altMax, lat, lon] = row, [x, z] = centre(g, c, r);
+  grid.set(g + "," + c + "," + r, tiles.length);
+  tiles.push({ g, c, r, x, z, land: row.length === 8, fog: row.length === 4, dep, alt: alt || 0, altMax: altMax || 0, lat, lon });
+}
+const tileAt = (g, c, r) => { const i = grid.get(g + "," + c + "," + r); return i == null ? null : tiles[i]; };
+const nb = (t, k) => { const a = (30 + 60 * k) * Math.PI / 180, x = t.x + HW * Math.sin(a), z = t.z + HW * Math.cos(a);
+  const r = Math.round((z - GR[t.g].z0) / DZ); return tileAt(t.g, Math.round((x - GR[t.g].x0 - (r & 1) * HW / 2) / HW), r); };
+const land = tiles.filter(t => t.land), fog = tiles.filter(t => t.fog), water = tiles.filter(t => !t.land && !t.fog);
+for (const t of land) { const d = DEP[t.dep]; t.reg = d ? d.r : "00"; }
+for (const t of tiles) t.dist = t.land || t.fog ? 0 : 99;
+let front = land.concat(fog);
+for (let step = 1; step < 7 && front.length; step++) { const nx = []; for (const t of front) for (let k = 0; k < 6; k++) { const n = nb(t, k); if (n && n.dist > step) { n.dist = step; nx.push(n); } } front = nx; }
+
+// Relief réel : hauteur selon l'altitude moyenne, exagérée par une racine carrée
+const hauteur = alt => .45 + 2.6 * Math.sqrt(Math.max(alt, 0) / 4000);
+const nearCity = t => t.g === 0 && CITIES.some(([la, lo, s]) => Math.hypot((lo - t.lon) * 76, (la - t.lat) * 111) < GR[0].rayonKm * 1.05 * s);
+for (const t of land) {
+  t.city = nearCity(t);
+  const code = GR[t.g].code;
+  let base = t.lat > 48.6 ? "#5f8f3e" : t.lon < .5 ? "#6c9a45" : "#74a046";
+  if (t.lat < 45.2 && t.lon < 1.5) base = "#8ea24b";
+  if (MEDITERRANEE.has(t.dep)) base = "#b0a35f";
+  if (code) base = code === "973" ? "#2f6f3a" : "#4f8f45";
+  let c = col(base);
+  if (t.alt > 300) c.lerp(col("#8c7f4e"), Math.min(1, (t.alt - 300) / 600));
+  if (t.alt > 1300) c.lerp(col("#8f8c82"), Math.min(.8, (t.alt - 1300) / 800));
+  if (t.city) c = col("#a99f8c");
+  c.offsetHSL(0, 0, (hash(t.c, t.r) - .5) * .06); t.biome = c;
+  t.forest = !t.city && t.altMax < 1500 && ((Math.sin(t.x * .35) + Math.sin(t.z * .29 + 1.3) + Math.sin((t.x + t.z) * .21)) > 1.2 || ["40", "88", "973"].includes(t.dep));
+  t.baseH = hauteur(t.alt);
+}
+const MAXP = Math.max(...DATA.departements.map(d => d.p || 0)), MAXK = Math.max(...DATA.departements.map(d => d.k || 0)), MAXG = Math.max(...DATA.departements.map(d => d.gwh || 0));
+const RANG_MAX = Math.max(...DATA.departements.map(d => d.nc || 0));
+
+// Scène
+const host = document.getElementById("scene");
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+host.appendChild(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = col("#0d1a26"); scene.fog = new THREE.Fog(col("#0d1a26"), 120, 280);
+const camera = new THREE.PerspectiveCamera(42, 1, .5, 600);
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = .08; controls.screenSpacePanning = false;
+controls.minDistance = 10; controls.maxDistance = 190; controls.minPolarAngle = .3; controls.maxPolarAngle = 1.08;
+controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
+controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE };
+scene.add(new THREE.HemisphereLight(col("#d7e6ff"), col("#4a3b2a"), .7));
+const sun = new THREE.DirectionalLight(col("#ffe4bd"), 1.05); sun.position.set(-45, 90, 35); sun.target.position.set(-45, 0, 0); scene.add(sun.target);
+sun.castShadow = true; Object.assign(sun.shadow.camera, { left: -130, right: 130, top: 90, bottom: -90, near: 10, far: 260 });
+sun.shadow.mapSize.set(4096, 4096); sun.shadow.bias = -.0008; scene.add(sun);
+const seabed = new THREE.Mesh(new THREE.PlaneGeometry(900, 900), new THREE.MeshStandardMaterial({ color: col("#163b52"), roughness: .9 }));
+seabed.rotation.x = -Math.PI / 2; seabed.position.y = -.05; seabed.receiveShadow = true; scene.add(seabed);
+
+const hexGeo = new THREE.CylinderGeometry(R * .97, R * .97, 1, 6); hexGeo.translate(0, .5, 0);
+const dummy = new THREE.Object3D();
+const landMesh = new THREE.InstancedMesh(hexGeo, new THREE.MeshStandardMaterial({ roughness: .85, flatShading: true }), land.length);
+landMesh.castShadow = landMesh.receiveShadow = true; scene.add(landMesh);
+const curH = new Float32Array(land.length), tgtH = new Float32Array(land.length), curC = new Float32Array(land.length * 3), tgtC = new Float32Array(land.length * 3);
+land.forEach((t, i) => { t.i = i; curH[i] = tgtH[i] = t.baseH; landMesh.setColorAt(i, t.biome); t.biome.toArray(curC, i * 3); t.biome.toArray(tgtC, i * 3); });
+function writeTile(i) { const t = land[i]; dummy.position.set(t.x, 0, t.z); dummy.rotation.set(0, 0, 0); dummy.scale.set(1, curH[i], 1); dummy.updateMatrix(); landMesh.setMatrixAt(i, dummy.matrix); }
+land.forEach((_, i) => writeTile(i));
+const waterMesh = new THREE.InstancedMesh(hexGeo, new THREE.MeshStandardMaterial({ roughness: .35, metalness: .1, flatShading: true }), water.length);
+waterMesh.receiveShadow = true; scene.add(waterMesh);
+water.forEach((t, i) => { const d = t.dist, h = d <= 1 ? .26 : d <= 3 ? .18 : .1; dummy.position.set(t.x, 0, t.z); dummy.scale.set(1, h, 1); dummy.updateMatrix(); waterMesh.setMatrixAt(i, dummy.matrix);
+  const c = col(d <= 1 ? "#4aa3a2" : d <= 3 ? "#2d7f93" : "#1f5c75"); c.offsetHSL(0, 0, (hash(t.r, t.c) - .5) * .03); waterMesh.setColorAt(i, c); });
+
+// Pays voisins en brouillard parchemin, comme les terres inexplorées
+const fogMesh = new THREE.InstancedMesh(hexGeo, new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true }), Math.max(fog.length, 1));
+fogMesh.count = fog.length; fogMesh.receiveShadow = true; scene.add(fogMesh);
+fog.forEach((t, i) => { dummy.position.set(t.x, 0, t.z); dummy.scale.set(1, .42 + hash(t.c, t.r) * .08, 1); dummy.updateMatrix(); fogMesh.setMatrixAt(i, dummy.matrix);
+  const c = col("#b8a57a"); c.offsetHSL(0, 0, (hash(t.r, t.c) - .5) * .05); fogMesh.setColorAt(i, c); });
+
+// Cadre doré autour de chaque encart d'outre-mer
+const cadreMat = new THREE.LineBasicMaterial({ color: col("#8a7145") });
+GR.forEach((g, gi) => { if (!g.code) return; const ts = tiles.filter(t => t.g === gi);
+  const x0 = Math.min(...ts.map(t => t.x)) - R, x1 = Math.max(...ts.map(t => t.x)) + R, z0 = Math.min(...ts.map(t => t.z)) - R, z1 = Math.max(...ts.map(t => t.z)) + R;
+  scene.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints([[x0, z0], [x1, z0], [x1, z1], [x0, z1]].map(([x, z]) => new THREE.Vector3(x, .35, z))), cadreMat)); });
+
+// Décor : montagnes selon l'altitude maximale, forêts et villes
+const props = { terrain: new THREE.Group(), mountains: new THREE.Group() }; scene.add(props.terrain, props.mountains);
+function instanced(geo, color, list, group) { const m = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ color: color ? col(color) : undefined, roughness: .8, flatShading: true }), Math.max(list.length, 1));
+  m.count = list.length;
+  list.forEach((o, i) => { dummy.position.set(o.x, o.y, o.z); dummy.rotation.set(0, o.ry || 0, 0); dummy.scale.set(o.sx, o.sy, o.sx); dummy.updateMatrix(); m.setMatrixAt(i, dummy.matrix); if (o.c) m.setColorAt(i, o.c); });
+  m.castShadow = true; group.add(m); return m; }
+const coneGeo = new THREE.ConeGeometry(1, 1, 5); coneGeo.translate(0, .5, 0);
+const treeGeo = new THREE.ConeGeometry(1, 1, 6); treeGeo.translate(0, .5, 0);
+const boxGeo = new THREE.BoxGeometry(1, 1, 1); boxGeo.translate(0, .5, 0);
+const rocks = [], snows = [], trees = [], houses = [];
+for (const t of land) {
+  const top = t.baseH;
+  if (t.alt >= 900 || t.altMax >= 2000) { const n = t.altMax >= 2800 ? 2 : 1; for (let j = 0; j < n; j++) {
+    const ox = n > 1 ? (j ? .45 : -.4) * PS : 0, oz = n > 1 ? (j ? .3 : -.28) * PS : 0, s = (.6 + hash(t.c + j, t.r) * .2) * PS, H = (.5 + 2 * Math.sqrt(t.altMax / 4800) - j * .35) * PS;
+    rocks.push({ x: t.x + ox, y: top, z: t.z + oz, sx: s, sy: H, ry: hash(t.r, j) * 6 });
+    if (t.altMax >= 2300) snows.push({ x: t.x + ox, y: top + H * .64, z: t.z + oz, sx: s * .37, sy: H * .37, ry: hash(t.r, j) * 6 }); } }
+  if (t.forest) for (let j = 0; j < 4; j++) { const a = hash(t.c, t.r + j) * 6.28, d = (.35 + hash(t.r + j, t.c) * .65) * PS; trees.push({ x: t.x + Math.cos(a) * d, y: top, z: t.z + Math.sin(a) * d, sx: .27 * PS, sy: (.8 + hash(j, t.c) * .3) * PS, c: col(j % 2 ? "#3c6a2e" : "#4d7d35") }); }
+  if (t.city) for (let j = 0; j < 6; j++) { const a = hash(t.c + j, t.r) * 6.28, d = hash(t.r, t.c + j) * .9 * PS; houses.push({ x: t.x + Math.cos(a) * d, y: top, z: t.z + Math.sin(a) * d, sx: .32 * PS, sy: (.3 + hash(j, t.r) * .7) * PS, ry: a, c: col(j % 3 ? "#e8dcc4" : "#b5523b") }); }
+}
+instanced(coneGeo, "#8b877c", rocks, props.mountains); instanced(coneGeo, "#f1f3f4", snows, props.mountains);
+instanced(treeGeo, null, trees, props.terrain); instanced(boxGeo, null, houses, props.terrain);
+
+// Bandes de frontière qui suivent la hauteur des cases
+const vtx = (t, k, s) => { const a = 60 * k * Math.PI / 180; return [t.x + R * .97 * s * Math.sin(a), t.z + R * .97 * s * Math.cos(a)]; };
+class Band {
+  constructor(opacity = 1, yOff = .03) { this.yOff = yOff; this.hex = new Int32Array(0); this.mesh = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, transparent: opacity < 1, opacity, depthWrite: opacity === 1 })); this.mesh.renderOrder = 2; scene.add(this.mesh); }
+  set(edges) {
+    const pos = new Float32Array(edges.length * 12), cl = new Float32Array(edges.length * 12), idx = []; this.hex = new Int32Array(edges.length * 4);
+    edges.forEach((e, n) => { const t = land[e.i], s = 1 - e.w / R; [vtx(t, e.k, 1), vtx(t, e.k + 1, 1), vtx(t, e.k + 1, s), vtx(t, e.k, s)].forEach((p, j) => { pos.set([p[0], 0, p[1]], (n * 4 + j) * 3); e.c.toArray(cl, (n * 4 + j) * 3); this.hex[n * 4 + j] = e.i; });
+      const b = n * 4; idx.push(b, b + 1, b + 2, b, b + 2, b + 3); });
+    const g = this.mesh.geometry; g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); g.setAttribute("color", new THREE.BufferAttribute(cl, 3)); g.setIndex(idx); this.update(); }
+  update() { const p = this.mesh.geometry.attributes.position; if (!p || !this.hex.length) return; for (let v = 0; v < this.hex.length; v++) p.array[v * 3 + 1] = curH[this.hex[v]] + this.yOff; p.needsUpdate = true; this.mesh.geometry.computeBoundingSphere(); }
+}
+const regionBand = new Band(1, .025), depBand = new Band(.28, .02), selBand = new Band(1, .05), hoverBand = new Band(.9, .06);
+const rE = [], dE = [];
+for (const t of land) for (let k = 0; k < 6; k++) { const n = nb(t, k);
+  if (!n || !n.land) rE.push({ i: t.i, k, w: .12 * PS, c: col("#e3d3a0") });
+  else if (n.reg !== t.reg) rE.push({ i: t.i, k, w: .3 * PS, c: col(REGION_COLORS[t.reg] || "#ffffff") });
+  else if (n.dep !== t.dep) dE.push({ i: t.i, k, w: .06 * PS, c: col("#ffffff") }); }
+regionBand.set(rE); depBand.set(dE);
+const ringOf = (list, w, c) => { const set = new Set(list.map(t => t.i)), out = []; for (const t of list) for (let k = 0; k < 6; k++) { const n = nb(t, k); if (!n || !n.land || !set.has(n.i)) out.push({ i: t.i, k, w, c }); } return out; };
+
+// Repères : sites clés en main, pylônes, zones RTE, adresse
+const caseDe = ref => ref ? tileAt(...ref) : null;
+const followers = [];
+const markers = { sites: new THREE.Group(), reseau: new THREE.Group() }; scene.add(markers.sites, markers.reseau);
+const gemMat = new THREE.MeshStandardMaterial({ color: col("#f1c75b"), emissive: col("#7a5410"), roughness: .3, metalness: .6 });
+const beamMat = new THREE.MeshBasicMaterial({ color: col("#ffe3a1"), transparent: true, opacity: .35, blending: THREE.AdditiveBlending, depthWrite: false });
+for (const s of DATA.sites) { const t = caseDe(s.case); if (!t || !t.land) continue; const g = new THREE.Group();
+  const gem = new THREE.Mesh(new THREE.OctahedronGeometry(.42 * PS), gemMat); gem.position.y = 1.3 * PS; gem.castShadow = true; g.add(gem);
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(.06, .06, 1.3 * PS, 6), beamMat); beam.position.y = .65 * PS; g.add(beam);
+  g.position.set(t.x + (hash(t.c, 9) - .5) * .8 * PS, 0, t.z + (hash(9, t.r) - .5) * .8 * PS); g.userData = { i: t.i, gem, ph: hash(t.c, t.r) * 6, nom: s.n }; markers.sites.add(g); followers.push(g); }
+const steel = new THREE.MeshStandardMaterial({ color: col("#cdd5da"), roughness: .5, metalness: .5, flatShading: true });
+const depTiles = {}; for (const t of land) (depTiles[t.dep] ||= []).push(t);
+const centreDe = ts => { const cx = ts.reduce((a, t) => a + t.x, 0) / ts.length, cz = ts.reduce((a, t) => a + t.z, 0) / ts.length; return ts.reduce((a, b) => ((b.x - cx) ** 2 + (b.z - cz) ** 2 < (a.x - cx) ** 2 + (a.z - cz) ** 2 ? b : a)); };
+for (const [code, ts] of Object.entries(depTiles)) { const d = DEP[code]; if (!d || !d.p) continue; const t = centreDe(ts);
+  const h = (.9 + d.p / MAXP * 2.6) * PS, g = new THREE.Group();
+  const mast = new THREE.Mesh(new THREE.CylinderGeometry(.07 * PS, .34 * PS, h, 4), steel); mast.position.y = h / 2; g.add(mast);
+  [.72, .9].forEach((f, j) => { const arm = new THREE.Mesh(new THREE.BoxGeometry((1.1 - j * .35) * PS, .07 * PS, .07 * PS), steel); arm.position.y = h * f; g.add(arm); });
+  g.children.forEach(m => m.castShadow = true); g.position.set(t.x, 0, t.z); g.userData = { i: t.i }; markers.reseau.add(g); followers.push(g); }
+const ringMat = new THREE.MeshBasicMaterial({ color: col("#7fe3ff"), transparent: true, opacity: .8, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false });
+const zoneObjs = DATA.zones.map(z => ({ z, t: caseDe(z.case) })).filter(o => o.t && o.t.land);
+for (const { t } of zoneObjs) { const m = new THREE.Mesh(new THREE.RingGeometry(R * .9, R * 1.12, 6), ringMat.clone()); m.rotation.x = -Math.PI / 2; m.rotation.z = Math.PI / 6;
+  m.position.set(t.x, 0, t.z); m.userData = { i: t.i, dy: .08, ring: true }; markers.reseau.add(m); followers.push(m); }
+const adresseTile = DATA.adresse ? caseDe(DATA.adresse.case) : null;
+if (adresseTile) { const g = new THREE.Group(), rouge = new THREE.MeshStandardMaterial({ color: col("#d9573f"), emissive: col("#5a160c"), roughness: .4 });
+  const tige = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, 2.2 * PS, 6), rouge); tige.position.y = 1.1 * PS; g.add(tige);
+  const tete = new THREE.Mesh(new THREE.SphereGeometry(.32 * PS, 12, 10), rouge); tete.position.y = 2.3 * PS; g.add(tete);
+  g.children.forEach(m => m.castShadow = true); g.position.set(adresseTile.x, 0, adresseTile.z); g.userData = { i: adresseTile.i }; scene.add(g); followers.push(g); }
+
+// Étiquettes et bannières projetées en HTML
+const labelsEl = document.getElementById("labels"), labels = [];
+const addLabel = (html, cls, at, lenses) => { const el = document.createElement("div"); el.className = cls; el.innerHTML = html; labelsEl.appendChild(el); labels.push({ el, ...at, lenses }); };
+const regTiles = {}; for (const t of land) if (t.g === 0) (regTiles[t.reg] ||= []).push(t);
+for (const [r, ts] of Object.entries(regTiles)) { const d = DATA.departements.find(x => x.r === r); if (!d) continue;
+  addLabel(esc(d.rn).replace(/-/g, "-&#8203;"), "rlabel", { x: ts.reduce((a, t) => a + t.x, 0) / ts.length, z: ts.reduce((a, t) => a + t.z, 0) / ts.length, y: 3.2 }, ["terrain", "equilibre"]); }
+GR.forEach((g, gi) => { if (!g.code) return; const ts = tiles.filter(t => t.g === gi);
+  addLabel(`${esc(g.nom)}<small>1 case ≈ ${fmt(g.rayonKm * 2, 1)} km, contre ${fmt(GR[0].rayonKm * 2)} km en métropole</small>`, "rlabel",
+    { x: ts.reduce((a, t) => a + t.x, 0) / ts.length, z: Math.max(...ts.map(t => t.z)) + R * 1.2, y: 0 }, ["terrain", "industrie", "reseau", "equilibre"]); });
+for (const { z, t } of zoneObjs) addLabel(`<span class="pr">${esc(z.pr)}</span><span>${esc(z.n)}</span>${z.a ? `<span class="by">${z.a}</span>` : ""}`, "banner " + (z.pr === "P1" ? "p1" : "p2"), { i: t.i, x: t.x, z: t.z, y: 1.6 * PS }, ["reseau"]);
+if (adresseTile) addLabel(esc(DATA.adresse.libelle), "banner adresse", { i: adresseTile.i, x: adresseTile.x, z: adresseTile.z, y: 2.8 * PS }, ["terrain", "industrie", "reseau", "equilibre"]);
+
+// Lentilles
+const ramp = (stops, s) => { s = Math.max(0, Math.min(1, s)); const n = stops.length - 1, k = Math.min(n - 1, Math.floor(s * n)); return col(stops[k]).lerp(col(stops[k + 1]), s * n - k); };
+const IND = ["#34444d", "#6b6a4a", "#d9a441", "#e0592a", "#f4d06b"], NET = ["#3f8f7f", "#a9b44a", "#e3b341", "#d64532"], EQ = ["#b8382b", "#d98a5e", "#e9dcb8", "#78b3c9", "#2f7fb3"];
+const indS = d => d && d.rk ? 1 - (d.rk - 1) / Math.max(1, d.nc - 1) : 0;
+const eqS = d => d && d.tc ? Math.max(-1, Math.min(1, Math.log2(d.tc) / 2)) * .5 + .5 : .5;
+const annee = (DATA.departements.find(d => d.an) || {}).an || "";
+const LENS = {
+  terrain: { tile: t => [t.biome, t.baseH], show: ["terrain", "mountains", "sites"],
+    legend: `<h3>Terrain</h3><p>Relief : altitude moyenne de chaque case (IGN, RGE ALTI), exagérée ; neiges au-dessus de 2 300 m. Bandes : régions, traits fins : départements. Losange doré : site clé en main France 2030. Forêts et bâtiments : décor.</p>` },
+  industrie: { tile: t => { const d = DEP[t.dep], s = indS(d); return [d && d.rk ? ramp(IND, s) : col("#2b363d"), .45 + t.alt / 4000 + Math.pow(s, 1.7) * 7.5]; }, show: ["sites"],
+    legend: `<h3>Pression industrielle</h3><div class="bar" style="background:linear-gradient(90deg,${IND.join(",")})"></div><div class="ticks"><span>rang ${RANG_MAX}</span><span>rang 1 · ${fmt(MAXG)} GWh</span></div><p>Rang du département selon la consommation électrique de ses sites industriels (ODRÉ, ${annee}). Hauteur et couleur suivent le rang ; gris : non classé.</p>` },
+  reseau: { tile: t => { const d = DEP[t.dep]; return [d ? ramp(NET, (d.k || 0) / Math.max(1, MAXK)) : col("#2b363d"), t.baseH]; }, show: ["mountains", "reseau"],
+    legend: `<h3>Réseau RTE</h3><div class="bar" style="background:linear-gradient(90deg,${NET.join(",")})"></div><div class="ticks"><span>0</span><span>${Math.round(MAXK / 2)}</span><span>${MAXK} contraintes</span></div><p>Couleur : ouvrages en contrainte. Pylône : nombre de postes (jusqu'à ${MAXP}). Anneau et bannière : zone de raccordement prioritaire du SDDR 2025, avec l'année de capacité quand RTE la publie.</p>` },
+  equilibre: { tile: t => [ramp(EQ, eqS(DEP[t.dep])), t.baseH], show: ["mountains"],
+    legend: `<h3>Équilibre régional</h3><div class="bar" style="background:linear-gradient(90deg,${EQ.join(",")})"></div><div class="ticks"><span>×0,25</span><span>×1</span><span>×4</span></div><p>Production divisée par consommation de la région sur 12 mois. Sous ×1, la région importe.</p>` },
+};
+let lens = "terrain", animating = true;
+function setLens(name) { lens = name; const L = LENS[name];
+  land.forEach((t, i) => { const [c, h] = L.tile(t); c.toArray(tgtC, i * 3); tgtH[i] = h; if (REDUCED) { curH[i] = h; c.toArray(curC, i * 3); } });
+  props.terrain.visible = L.show.includes("terrain"); props.mountains.visible = L.show.includes("mountains");
+  markers.sites.visible = L.show.includes("sites"); markers.reseau.visible = L.show.includes("reseau");
+  document.querySelectorAll(".lens").forEach(b => b.setAttribute("aria-pressed", b.dataset.lens === name));
+  document.getElementById("legend").innerHTML = L.legend; animating = true; }
+
+// Fiche du département
+const ICON = {
+  bolt: '<svg viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" fill="#e3b341"/></svg>',
+  factory: '<svg viewBox="0 0 24 24"><path d="M3 21V11l5 3v-3l5 3v-3l5 3V4h3v17H3Z" fill="#e3892b"/></svg>',
+  pylon: '<svg viewBox="0 0 24 24"><path d="M12 2 7 22h2.2l1-4h3.6l1 4H17L12 2Zm-1.2 13 1.2-5 1.2 5h-2.4ZM5 7h14M6.5 11h11" stroke="#c9d1d6" stroke-width="1.7" fill="none"/></svg>',
+  warn: '<svg viewBox="0 0 24 24"><path d="M12 3 2 21h20L12 3Z" fill="#d9573f"/><path d="M12 10v5M12 17.5v.5" stroke="#0d1a26" stroke-width="2" stroke-linecap="round"/></svg>',
+  scale: '<svg viewBox="0 0 24 24"><path d="M12 3v17M6 20h12M4 7h16M4 7l-2.5 6h5L4 7Zm16 0-2.5 6h5L20 7Z" stroke="#58c4e6" stroke-width="1.7" fill="none"/></svg>',
+  leaf: '<svg viewBox="0 0 24 24"><path d="M4 20C4 10 10 4 20 4c0 10-6 16-16 16Z" fill="#6fbf73"/></svg>',
+  coin: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#d6b26a"/><path d="M15 8.6a4 4 0 1 0 0 6.8M7.5 11h6M7.5 13.3h6" stroke="#0d1a26" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>',
+  mount: '<svg viewBox="0 0 24 24"><path d="M2 20 9 7l4 6 2-3 7 10H2Z" fill="#a9b07a"/></svg>',
+};
+const cityEl = document.getElementById("city"); let selected = null;
+const ficheVide = () => { selected = null; selBand.set([]); cityEl.style.removeProperty("--rc");
+  cityEl.innerHTML = `<header><h2>Territoires</h2><div class="sub">${land.length} cases · ${Object.keys(depTiles).length} départements</div></header><div class="vide">Cliquez sur une case pour afficher les indicateurs de son département. Changez de lentille en bas à droite (touches 1 à 4).</div>`; };
+function showDep(code) { const d = DEP[code]; if (!d) return; selected = code;
+  const ts = depTiles[code] || [], alts = ts.map(t => t.alt), altMax = Math.max(0, ...ts.map(t => t.altMax));
+  selBand.set(ringOf(ts, .26 * PS, col("#f6d27a")));
+  const eqPill = d.tc == null ? "" : d.tc >= 1 ? '<span class="pill good">excédent</span>' : '<span class="pill bad">importe</span>';
+  const co2Pill = d.co2 == null ? "" : d.co2 <= 100 ? '<span class="pill good">décarbonée</span>' : '<span class="pill bad">carbonée</span>';
+  const kPill = (d.k || 0) >= 10 ? '<span class="pill warn">tendu</span>' : "";
+  cityEl.style.setProperty("--rc", REGION_COLORS[d.r] || "#d6b26a");
+  cityEl.innerHTML = `<header><h2>${esc(d.n)}</h2><div class="sub">${esc(d.c)} · ${esc(d.rn)}</div><button class="close" aria-label="Fermer la fiche">×</button></header>
+  <div class="yields">
+    <div class="y">${ICON.mount}<span class="k">Relief des cases</span><span class="v">${fmt(alts.reduce((a, b) => a + b, 0) / Math.max(1, alts.length))} m <small>moyenne, ${fmt(altMax)} m au plus haut</small></span></div>
+    <div class="y">${ICON.factory}<span class="k">Conso. industrielle ${d.an || ""}</span><span class="v">${fmt(d.gwh)} GWh <small>${d.rk ? "rang " + d.rk + "/" + d.nc : ""}</small></span></div>
+    <div class="y">${ICON.bolt}<span class="k">Sites industriels suivis</span><span class="v">${fmt(d.s)}</span></div>
+    <div class="y">${ICON.pylon}<span class="k">Postes RTE</span><span class="v">${fmt(d.p)} <small>dont ${fmt(d.p3)} en 400 kV${d.pp ? ", " + d.pp + " en projet" : ""}</small></span></div>
+    <div class="y">${ICON.warn}<span class="k">Ouvrages en contrainte</span><span class="v">${fmt(d.k)}${kPill}</span></div>
+    <div class="y">${ICON.scale}<span class="k">Couverture régionale</span><span class="v">${d.tc == null ? "n.d." : fmt(d.tc * 100) + " %"}${eqPill}</span></div>
+    <div class="y">${ICON.leaf}<span class="k">Carbone du réseau</span><span class="v">${fmt(d.co2, 1)} <small>g/kWh</small>${co2Pill}</span></div>
+    <div class="y">${ICON.coin}<span class="k">Prix moyen (${esc(trancheSel.value)})</span><span class="v">${fmt(prixOf(), 4)} € <small>partout</small></span></div>
+  </div>
+  <div class="limit"><b>Limite :</b> la capacité de raccordement n'est pas publique ; seule une étude RTE ou Enedis fait foi.</div>`;
+  cityEl.querySelector(".close").onclick = ficheVide; }
+
+// Barre de ressources
+const trancheSel = document.getElementById("tranche");
+DATA.prix.forEach(p => trancheSel.add(new Option(`${p.t} · ${p.l}`, p.t)));
+trancheSel.value = DATA.prix.some(p => p.t === "IB") ? "IB" : (DATA.prix[0] || {}).t;
+const prixOf = () => (DATA.prix.find(p => p.t === trancheSel.value) || {}).p;
+const updPrix = () => { document.getElementById("prix").textContent = fmt(prixOf(), 4); if (selected) showDep(selected); };
+trancheSel.onchange = updPrix; updPrix();
+const co2s = [...new Set(DATA.departements.map(d => d.co2).filter(v => v != null))].sort((a, b) => a - b);
+document.getElementById("carbone").innerHTML = co2s.length ? `<b>${fmt(co2s[0], 1)}</b><small>gCO₂e/kWh continent</small><b style="color:var(--bad)">${fmt(co2s[1] ?? co2s[0])}–${fmt(co2s[co2s.length - 1])}</b><small>îles</small>` : "";
+document.getElementById("nzones").textContent = DATA.zones.length; document.getElementById("nsites").textContent = DATA.sites.length;
+document.getElementById("genere").textContent = `Généré le ${new Date(DATA.genereLe).toLocaleDateString("fr-FR")} · relief IGN, contours Etalab, indicateurs du gold`;
+
+// Caméra : cadrage initial et déplacements animés
+const bounds = { x0: Math.min(...tiles.map(t => t.x)), x1: Math.max(...tiles.map(t => t.x)), z0: Math.min(...tiles.map(t => t.z)), z1: Math.max(...tiles.map(t => t.z)) };
+let vol = null;
+function allerA(x, z, dist) { const off = new THREE.Vector3(-.05, .75, .66).normalize().multiplyScalar(dist);
+  vol = { t0: performance.now(), d: REDUCED ? 1 : 900, fromT: controls.target.clone(), toT: new THREE.Vector3(x, 0, z), fromP: camera.position.clone(), toP: new THREE.Vector3(x, 0, z).add(off) }; }
+const metro = tiles.filter(t => t.g === 0 && t.land), om = tiles.filter(t => t.g > 0);
+const moyenne = (ts, k) => ts.reduce((a, t) => a + t[k], 0) / Math.max(1, ts.length);
+const vueMetropole = () => allerA(moyenne(metro, "x"), moyenne(metro, "z") + 4, 125);
+document.getElementById("vue-metropole").onclick = vueMetropole;
+document.getElementById("vue-outre-mer").onclick = () => allerA(moyenne(om, "x"), moyenne(om, "z"), 135);
+document.getElementById("vue-outre-mer").hidden = !om.length;
+const vueAdresse = () => allerA(adresseTile.x, adresseTile.z, 45);
+if (adresseTile) { const b = document.getElementById("vue-adresse"); b.hidden = false; b.onclick = vueAdresse; }
+controls.target.set(moyenne(metro, "x"), 0, moyenne(metro, "z") + 4); camera.position.copy(controls.target).add(new THREE.Vector3(-4, 95, 84));
+
+// Survol et sélection
+const ray = new THREE.Raycaster(), mouse = new THREE.Vector2(), tip = document.getElementById("tip"); let hovered = -1, down = null;
+const lensLine = d => !d ? "" : lens === "industrie" ? `${fmt(d.gwh)} GWh industriels${d.rk ? " · rang " + d.rk : ""}` : lens === "reseau" ? `${fmt(d.p)} postes · ${fmt(d.k)} contraintes` : lens === "equilibre" ? `Couverture régionale ${d.tc == null ? "n.d." : fmt(d.tc * 100) + " %"}` : d.rn;
+function pick(e) { const b = renderer.domElement.getBoundingClientRect(); mouse.set((e.clientX - b.left) / b.width * 2 - 1, -(e.clientY - b.top) / b.height * 2 + 1); ray.setFromCamera(mouse, camera); const h = ray.intersectObject(landMesh)[0]; return h ? h.instanceId : -1; }
+renderer.domElement.addEventListener("pointermove", e => { if (e.pointerType !== "mouse") return; const i = pick(e);
+  if (i !== hovered) { hovered = i; hoverBand.set(i < 0 ? [] : ringOf([land[i]], .16 * PS, col("#ffffff"))); renderer.domElement.style.cursor = i < 0 ? "" : "pointer"; }
+  if (i < 0) { tip.hidden = true; return; } const t = land[i], d = DEP[t.dep];
+  tip.innerHTML = `<b>${esc(d ? d.n : t.dep)} (${esc(t.dep)})</b><div>${esc(lensLine(d))}</div><div>Altitude moyenne ${fmt(t.alt)} m</div>`; tip.hidden = false;
+  tip.style.left = Math.min(innerWidth - 270, e.clientX + 16) + "px"; tip.style.top = (e.clientY + 18) + "px"; });
+renderer.domElement.addEventListener("pointerleave", () => { tip.hidden = true; hovered = -1; hoverBand.set([]); });
+renderer.domElement.addEventListener("pointerdown", e => { down = [e.clientX, e.clientY]; vol = null; });
+renderer.domElement.addEventListener("pointerup", e => { if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 6 || e.button !== 0) return; const i = pick(e); if (i >= 0) showDep(land[i].dep); });
+document.querySelectorAll(".lens").forEach(b => b.onclick = () => setLens(b.dataset.lens));
+addEventListener("keydown", e => { const k = { "1": "terrain", "2": "industrie", "3": "reseau", "4": "equilibre" }[e.key]; if (k && e.target.tagName !== "SELECT") setLens(k); });
+
+// Boucle de rendu
+const v3 = new THREE.Vector3(), tmpC = new THREE.Color();
+function resize() { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
+addEventListener("resize", resize); resize();
+function tick(ms) {
+  const t = ms / 1000;
+  if (animating) { let moving = false;
+    for (let i = 0; i < land.length; i++) { const dh = tgtH[i] - curH[i]; if (Math.abs(dh) > .003) { curH[i] += dh * .12; moving = true; } else curH[i] = tgtH[i];
+      for (let j = 0; j < 3; j++) { const q = i * 3 + j, dc = tgtC[q] - curC[q]; if (Math.abs(dc) > .002) { curC[q] += dc * .14; moving = true; } else curC[q] = tgtC[q]; }
+      writeTile(i); tmpC.fromArray(curC, i * 3); landMesh.setColorAt(i, tmpC); }
+    landMesh.instanceMatrix.needsUpdate = true; landMesh.instanceColor.needsUpdate = true;
+    [regionBand, depBand, selBand, hoverBand].forEach(b => b.update()); animating = moving; }
+  for (const g of followers) { const u = g.userData; g.position.y = curH[u.i] + (u.dy || 0);
+    if (u.gem && !REDUCED) { u.gem.rotation.y = t * 1.2 + u.ph; u.gem.position.y = (1.3 + Math.sin(t * 2 + u.ph) * .12) * PS; }
+    if (u.ring && !REDUCED) { const s = 1 + ((t * .6) % 1) * .35; g.scale.set(s, s, s); g.material.opacity = .85 * (1 - (t * .6) % 1); } }
+  if (vol) { const k = Math.min(1, (ms - vol.t0) / vol.d), e = k * k * (3 - 2 * k);
+    controls.target.lerpVectors(vol.fromT, vol.toT, e); camera.position.lerpVectors(vol.fromP, vol.toP, e); if (k >= 1) vol = null; }
+  const tg = controls.target; tg.x = Math.max(bounds.x0, Math.min(bounds.x1, tg.x)); tg.z = Math.max(bounds.z0, Math.min(bounds.z1, tg.z));
+  controls.update(); renderer.render(scene, camera);
+  for (const L of labels) { if (!L.lenses.includes(lens)) { L.el.hidden = true; continue; }
+    v3.set(L.x, (L.i != null ? curH[L.i] : 1) + L.y, L.z).project(camera);
+    if (v3.z > 1 || Math.abs(v3.x) > 1.1 || Math.abs(v3.y) > 1.1) { L.el.hidden = true; continue; }
+    L.el.hidden = false; L.el.style.left = (v3.x + 1) / 2 * innerWidth + "px"; L.el.style.top = (1 - v3.y) / 2 * innerHeight + "px"; }
+  requestAnimationFrame(tick);
+}
+setLens("terrain");
+if (DATA.adresse && DEP[DATA.adresse.departement]) showDep(DATA.adresse.departement); else ficheVide();
+if (adresseTile) vueAdresse();
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>

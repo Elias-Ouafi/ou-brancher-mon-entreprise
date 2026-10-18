@@ -1,6 +1,6 @@
 # Feuille de route
 
-> Mise à jour le 16 octobre 2026. Périmètre : la France (métropole, Corse, outre-mer), en local
+> Mise à jour le 18 octobre 2026. Périmètre : la France (métropole, Corse, outre-mer), en local
 > et à la demande. Après le MVP : [extension à d'autres pays](extension-internationale.md).
 
 ## État : MVP atteint le 16 octobre 2026
@@ -17,7 +17,8 @@ compris. `refresh` met toutes les sources à jour en une minute (9 étapes sur 9
 | Réponse courte en texte ou JSON, reprise en tête de `diagnose` et des rapports | `essentiel` |
 | Diagnostic complet : industrie, réseau, raccordement, risques | `diagnose`, `compare` |
 | Mise à jour de toutes les sources, puis `dbt build` | `refresh` |
-| 318 tests sans réseau, CI à chaque PR | `ingestion/tests/` |
+| Carte 3D hexagonale : relief IGN, 4 lentilles, outre-mer en encarts | `carte`, `ingestion/hexagones.py`, `reporting/carte.html` |
+| 330 tests sans réseau, CI à chaque PR | `ingestion/tests/` |
 
 **À surveiller** : les facteurs ADEME de la Corse et de l'outre-mer datent de décembre 2020 ;
 le calendrier Tempo n'a tourné que sur des réponses simulées (pas de compte RTE).
@@ -49,6 +50,8 @@ le calendrier Tempo n'a tourné que sur des réponses simulées (pas de compte R
 | 16 oct. | Python uniquement : PySpark retiré, l'ingestion revient à pyarrow ; plus besoin de Java |
 | 16 oct. | Documentation en français uniquement ; code sous licence MIT |
 | 16 oct. | Commentaires réduits au strict nécessaire : une ligne au-dessus d'une fonction ou d'un bloc |
+| 18 oct. | Carte 3D en page HTML autonome écrite par Python ; three.js (MIT) embarqué, seul code JavaScript du dépôt, exécuté par le navigateur : l'installation ne change pas |
+| 18 oct. | Grille hexagonale maison (cases régulières de 24 km) plutôt que H3 : rendu net et aucune dépendance ; relief IGN mis en cache par point dans le bronze |
 
 ## Écarté
 

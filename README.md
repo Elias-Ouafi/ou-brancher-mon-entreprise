@@ -28,7 +28,7 @@ Exemples réels : [recette sur 11 adresses](docs/exemples/recette_mvp.md) ·
    gardées) puis `MERGE` sur clé dans DuckDB, jamais d'`INSERT` : relancer ne duplique rien. Changements d'heure normalisés en UTC, révisions de RTE rattrapées,
    quota d'API suivi, bascule automatique sur l'export CSV, nouvelles tentatives exponentielles ;
    BOM, codes IRIS tronqués et secret statistique traités et testés.
-2. **Un médaillon dbt testé de bout en bout, sans réseau.** 318 tests pytest, dont un `dbt build`
+2. **Un médaillon dbt testé de bout en bout, sans réseau.** 330 tests pytest, dont un `dbt build`
    complet sur une base synthétique qui reproduit ces pièges ; tests de données dbt (unicité,
    bornes, intégrité référentielle) à chaque build ; CI GitHub Actions à chaque PR. Les scénarios
    de prix sont contrôlés sur le passé, sans regard vers le futur.
@@ -64,8 +64,23 @@ Toutes s'écrivent `.\.venv\Scripts\python.exe -m ingestion.cli <commande>`.
 | `essentiel --adresse "…" [--conso N] [--format json]` | Prix moyen et verdict carbone ; sans `--conso`, tranche des petites entreprises (moins de 20 MWh/an) |
 | `diagnose --adresse "…" [--puissance MW] [--conso N] [--format pdf\|md\|json]` | Diagnostic complet : industrie locale, réseau, raccordement, prix, carbone, risques |
 | `compare --adresse "A" --adresse "B" …` | 2 à 6 adresses côte à côte, sans classement ; `texte`, `md`, `csv`, `json` |
+| `carte [--adresse "…"] [--output F] [--sans-ouvrir]` | Carte 3D des territoires, ouverte dans le navigateur (voir ci-dessous) |
 | `refresh [--months 180]` | Met à jour toutes les sources, puis `dbt build` |
 | `report --month 2026-09` | Rapport mensuel carbone et créneaux Tempo (compte RTE requis pour Tempo) |
+
+### Carte 3D
+
+`carte` écrit `data/reports/carte.html`, une page autonome qui marche hors ligne, et l'ouvre dans
+le navigateur. La France y est découpée en cases hexagonales de 24 km, façon jeu de stratégie :
+
+- **relief réel** : altitude moyenne de chaque case, mesurée en 7 points par l'IGN (RGE ALTI) ;
+- **quatre lentilles** : terrain, pression industrielle, réseau RTE (postes, contraintes, zones
+  prioritaires), équilibre régional ;
+- **une fiche par département** au clic, avec les indicateurs du gold et leur limite ;
+- **l'outre-mer en encarts**, chacun à sa propre échelle ; les pays voisins en brouillard.
+
+Avec `--adresse`, la carte s'ouvre sur l'adresse, épinglée. Contours, terres et relief sont mis en
+cache dans le bronze par `refresh` ; la première `carte` les télécharge s'ils manquent.
 
 ## Ce que l'adresse change, et ce qu'elle ne change pas
 
@@ -86,7 +101,8 @@ flowchart LR
     B -->|dbt| S["Silver : nettoyé, codes INSEE"]
     S -->|dbt| G["Gold : prix, carbone, diagnostic"]
     SEEDS[("Seeds : ADEME, tarifs, référentiels, limites")] --> G
-    G --> CLI(["essentiel · diagnose · compare"])
+    GEO[("Contours Etalab · relief IGN · Natural Earth")] -->|"ingestion/ (Python)"| B
+    G --> CLI(["essentiel · diagnose · compare · carte"])
     BAN[("BAN · Géorisques, à la demande")] --> CLI
 ```
 
@@ -111,9 +127,14 @@ Détail : [modèles dbt](dbt/README.md) · [stockage](data/README.md).
 [ODRÉ](https://odre.opendatasoft.com) (éCO2mix, RTE) · [Eurostat](https://ec.europa.eu/eurostat) ·
 [Base Carbone de l'ADEME](https://data.ademe.fr/datasets/base-carboner) ·
 [Base Adresse Nationale](https://adresse.data.gouv.fr) · [Géorisques](https://www.georisques.gouv.fr) ·
+[contours administratifs d'Etalab](https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/) ·
+[altimétrie de la Géoplateforme](https://geoservices.ign.fr/documentation/services/services-geoplateforme/altimetrie) ·
+[Natural Earth](https://www.naturalearthdata.com) (domaine public) ·
 [sites clés en main France 2030](https://www.data.gouv.fr/datasets/les-sites-cles-en-main-france-2030) ·
 SDDR 2025 de RTE · barèmes de la CRE. Licence Ouverte / Etalab.
 
 ## Licence
 
 Code sous [licence MIT](LICENSE). Les données restent sous la licence de leurs producteurs.
+[three.js](https://threejs.org) r128, embarqué dans `reporting/vendor/` pour la carte, est sous
+licence MIT.
