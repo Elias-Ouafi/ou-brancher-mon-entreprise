@@ -27,7 +27,6 @@ def _tableau(entetes: list[str], lignes: list[list[str]]) -> str:
     )
 
 
-# Écrit les graphiques à côté du document et renvoie leur lien Markdown relatif
 class _Graphiques:
     def __init__(self, document: Path, rapport: RapportMensuel, actif: bool) -> None:
         self.rapport = rapport
@@ -270,7 +269,6 @@ def _methodologie(rapport: RapportMensuel) -> list[str]:
     ]
 
 
-# Écrit le rapport Markdown (et ses graphiques si demandé) ; renvoie son chemin
 def rendre(rapport: RapportMensuel, chemin: Path, *, graphiques: bool = True) -> Path:
     chemin.parent.mkdir(parents=True, exist_ok=True)
     figures = _Graphiques(chemin, rapport, graphiques)

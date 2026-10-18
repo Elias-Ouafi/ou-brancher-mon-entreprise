@@ -99,7 +99,6 @@ def _tableau(entetes: list[str], lignes: list[list], largeurs: list[float]) -> T
     return table
 
 
-# Bandeau d'indicateurs : valeur en gros, libellé dessous
 def _kpis(cartes: list[tuple[str, str]], par_ligne: int = 3) -> Table:
     cellules = [
         [Paragraph(valeur, STYLES["kpi_valeur"]), Paragraph(libelle, STYLES["kpi_libelle"])]
@@ -431,7 +430,6 @@ def _pied_de_page(titre: str):
     return dessiner
 
 
-# Écrit le rapport PDF et renvoie son chemin
 def rendre(rapport: RapportMensuel, chemin: Path) -> Path:
     chemin.parent.mkdir(parents=True, exist_ok=True)
     titre = f"Électricité en France — {nom_mois(rapport.mois)}"

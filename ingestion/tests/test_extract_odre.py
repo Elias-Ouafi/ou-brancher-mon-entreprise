@@ -19,7 +19,6 @@ from ingestion.extract_odre import (
 NOW = datetime(2026, 9, 7, 6, 0, tzinfo=UTC)
 
 
-# Fenêtre horaire par défaut : les 3 dernières heures
 @pytest.fixture
 def window() -> ExtractionWindow:
     return ExtractionWindow.last_hours(3, now=NOW)
@@ -29,7 +28,6 @@ def query_of(request: httpx.Request) -> dict[str, str]:
     return dict(httpx.QueryParams(request.url.query.decode()))
 
 
-# Réponse `/records` synthétique de `count` enregistrements consécutifs
 def page(count: int, *, start: datetime = NOW) -> dict[str, Any]:
     return {
         "total_count": count,

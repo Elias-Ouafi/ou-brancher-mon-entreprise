@@ -16,7 +16,6 @@ Format = Literal["pdf", "md"]
 FORMATS: tuple[Format, ...] = ("pdf", "md")
 
 
-# `2026-09` -> 1er septembre 2026
 def parse_month(value: str) -> date:
     try:
         return datetime.strptime(value, "%Y-%m").date()
@@ -29,7 +28,6 @@ def report_path(mois: date, *, settings: Settings | None = None, format: Format 
     return settings.reports_dir / f"eco2mix_rapport_{mois:%Y-%m}.{format}"
 
 
-# Génère le rapport d'un mois à partir de la couche gold, en lecture seule
 def generate_monthly_report(
     mois: date,
     *,

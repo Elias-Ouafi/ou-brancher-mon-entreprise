@@ -48,7 +48,6 @@ def _png(fig: plt.Figure) -> bytes:
     return buffer.getvalue()
 
 
-# Intensité carbone heure par heure, pics surlignés, couleur Tempo en fond
 def courbe_carbone(rapport: RapportMensuel) -> bytes:
     heures = [h for h in rapport.heures if h.taux_co2 is not None]
     x = [h.heure_paris.replace(tzinfo=None) for h in heures]
@@ -84,7 +83,6 @@ def courbe_carbone(rapport: RapportMensuel) -> bytes:
     return _png(fig)
 
 
-# Intensité carbone par jour (lignes) et heure locale (colonnes)
 def carte_chaleur(rapport: RapportMensuel) -> bytes:
     nb_jours = rapport.jours_du_mois
     grille = np.full((nb_jours, 24), np.nan)
@@ -105,7 +103,6 @@ def carte_chaleur(rapport: RapportMensuel) -> bytes:
     return _png(fig)
 
 
-# Intensité carbone moyenne par heure, prix moyen du kWh en surimpression
 def profil_horaire(rapport: RapportMensuel) -> bytes:
     heures = [p[0] for p in rapport.profil_horaire]
     co2 = [p[1] if p[1] is not None else np.nan for p in rapport.profil_horaire]
@@ -135,7 +132,6 @@ def profil_horaire(rapport: RapportMensuel) -> bytes:
     return _png(fig)
 
 
-# Calendrier du mois, une case par jour colorée selon Tempo
 def calendrier_tempo(rapport: RapportMensuel) -> bytes:
     semaines = calendar.Calendar().monthdatescalendar(rapport.mois.year, rapport.mois.month)
     fig, ax = plt.subplots(figsize=(4.2, 0.45 * len(semaines) + 0.5))

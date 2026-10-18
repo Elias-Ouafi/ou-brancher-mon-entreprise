@@ -75,7 +75,6 @@ def _lignes(connection: duckdb.DuckDBPyConnection, sql: str) -> list[dict[str, A
     return [dict(zip(colonnes, ligne, strict=True)) for ligne in relation.fetchall()]
 
 
-# Indicateurs par département, repères et prix, lus dans la couche gold
 def lire_donnees_gold(database: Path) -> dict[str, list[dict[str, Any]]]:
     if not Path(database).exists():
         raise DiagnosticIndisponibleError(
@@ -103,7 +102,6 @@ def _reperer(
     return [indice, case.c, case.r] if case else None
 
 
-# Données de la page : cases, relief, indicateurs gold et repères
 def construire_donnees(
     grilles: list[Grille],
     altitudes: dict[tuple[float, float], float | None],
@@ -192,7 +190,6 @@ def _geojson(jeu: str, url: str, settings: Settings) -> Path | None:
     return path
 
 
-# Écrit la carte ; télécharge les fichiers ou le relief manquants si le réseau répond
 def generer_carte(
     *,
     settings: Settings | None = None,

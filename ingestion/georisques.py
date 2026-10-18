@@ -23,7 +23,6 @@ RAPPORT_PATH = "resultats_rapport_risque"
 GASPAR_PATH = "gaspar/risques"
 ZONAGE_PATH = "zonage_sismique"
 
-# Libellés français des risques, par code Géorisques
 LIBELLES: dict[str, str] = {
     "inondation": "Inondation",
     "remonteeNappe": "Remontée de nappe",
@@ -48,12 +47,10 @@ LIBELLES: dict[str, str] = {
 FAMILLES = {"risquesNaturels": "naturel", "risquesTechnologiques": "technologique"}
 
 
-# Géorisques n'a pas fourni de rapport exploitable
 class GeorisquesError(ExtractionError):
     pass
 
 
-# Situation de l'adresse face à un risque
 class Exposition(StrEnum):
     # Risque existant (ou « concerné ») à l'adresse
     EXPOSE = "expose"
@@ -86,14 +83,12 @@ def exposition(statut: str | None) -> Exposition:
     return Exposition.INCONNU
 
 
-# « Risque Existant - important » -> « important »
 def niveau(statut: str | None) -> str | None:
     if statut and " - " in statut:
         return statut.split(" - ", 1)[1].strip().lower()
     return None
 
 
-# Un risque du rapport Géorisques, vu de la commune et de l'adresse
 @dataclass(frozen=True, slots=True)
 class Risque:
     code: str
@@ -116,7 +111,6 @@ class Risque:
         return niveau(self.statut_adresse) or niveau(self.statut_commune)
 
 
-# Risques d'un site : rapport à l'adresse, ou repli sur la commune
 @dataclass(frozen=True, slots=True)
 class RisquesSite:
     url: str | None
@@ -124,7 +118,6 @@ class RisquesSite:
     # `adresse` (rapport Géorisques) ou `commune` (repli : GASPAR et zonage sismique)
     maille: str = "adresse"
 
-    # Risques dans une situation donnée, d'une famille ou des deux
     def selon(self, situation: Exposition, famille: str | None = None) -> list[Risque]:
         return [
             r
@@ -133,7 +126,6 @@ class RisquesSite:
         ]
 
 
-# Transforme la réponse `resultats_rapport_risque` en `RisquesSite`
 def lire_rapport(payload: dict[str, Any]) -> RisquesSite:
     risques = []
     for bloc, famille in FAMILLES.items():
@@ -155,7 +147,6 @@ def lire_rapport(payload: dict[str, Any]) -> RisquesSite:
     return RisquesSite(url=payload.get("url"), risques=risques)
 
 
-# Statut donné aux risques du repli communal : recensés dans la commune
 RECENSE = "Risque recensé dans la commune"
 
 # Intensités du zonage sismique, publiées en majuscules sans accents
@@ -168,7 +159,6 @@ INTENSITES_SISMIQUES = {
 }
 
 
-# Risques recensés dans la commune (`gaspar/risques`)
 def lire_gaspar(payload: dict[str, Any], codes_commune: set[str]) -> list[Risque]:
     communes = payload.get("data")
     if not isinstance(communes, list) or not communes:
@@ -213,7 +203,6 @@ def lire_zonage(payload: dict[str, Any]) -> Risque | None:
     )
 
 
-# Client HTTP de l'API Géorisques, utilisable comme context manager
 class GeorisquesClient:
     def __init__(
         self,
@@ -251,7 +240,6 @@ class GeorisquesClient:
     def __exit__(self, *exc_info: object) -> None:
         self.close()
 
-    # Rapport de risques au point donné (WGS 84)
     def rapport(self, *, latitude: float, longitude: float) -> RisquesSite:
         return lire_rapport(self._json(RAPPORT_PATH, latitude=latitude, longitude=longitude))
 
@@ -272,7 +260,6 @@ class GeorisquesClient:
             risques = [seisme, *(r for r in risques if r.code != "gaspar_13")]
         return RisquesSite(url=None, risques=risques, maille="commune")
 
-    # GET au point donné, avec nouvelles tentatives sur les erreurs passagères
     def _json(self, path: str, *, latitude: float, longitude: float) -> dict[str, Any]:
 
         def envoyer() -> httpx.Response:
@@ -292,7 +279,6 @@ class GeorisquesClient:
         return payload
 
 
-# Rapport à l'adresse ; à défaut, repli sur la commune
 def lire_risques(
     *,
     latitude: float,

@@ -20,7 +20,6 @@ logger = logging.getLogger(__name__)
 DATASET = "nrg_pc_205"
 DATA_PATH = f"/statistics/1.0/data/{DATASET}"
 
-# Tranches de consommation annuelle de la nomenclature 2007 (IA à IG)
 TRANCHES: tuple[str, ...] = (
     "MWH_LT20",
     "MWH20-499",
@@ -34,16 +33,13 @@ TRANCHES: tuple[str, ...] = (
 # `X_TAX` : hors taxes ; `X_VAT` : hors TVA et taxes récupérables
 FISCALITES: tuple[str, ...] = ("X_TAX", "X_VAT")
 
-# Premier semestre de la nomenclature IA–IG
 PREMIER_SEMESTRE = "2007-S1"
 
 
-# La réponse d'Eurostat n'a pas la forme JSON-stat attendue
 class EurostatResponseError(ExtractionError):
     pass
 
 
-# Client HTTP de l'API de diffusion d'Eurostat, utilisable comme context manager
 class EurostatClient:
     def __init__(
         self,
@@ -81,7 +77,6 @@ class EurostatClient:
     def __exit__(self, *exc_info: object) -> None:
         self.close()
 
-    # Prix semestriels de toutes les tranches, sous forme d'enregistrements bronze
     def fetch_prix_entreprises(self, *, geo: str = "FR") -> list[dict[str, Any]]:
         params: list[tuple[str, str]] = [
             ("format", "JSON"),
@@ -107,7 +102,6 @@ class EurostatClient:
         return self._retrying(envoyer)
 
 
-# Une ligne par cellule renseignée du cube `nrg_pc_205`
 def aplatir_json_stat(payload: dict[str, Any]) -> list[dict[str, Any]]:
     try:
         dimensions: list[str] = payload["id"]
