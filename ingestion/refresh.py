@@ -11,6 +11,7 @@ from pathlib import Path
 
 from ingestion.config import Settings, get_settings
 from ingestion.datasets import NATIONAL_CONS_DEF, NATIONAL_TR, TERRITORIAL_SPECS
+from ingestion.extract_geo import run_geo_ingestion
 from ingestion.pipeline import (
     run_consolidation,
     run_ingestion,
@@ -73,6 +74,7 @@ def run_refresh(
             )
             for spec in TERRITORIAL_SPECS
         ],
+        ("carte-geo", lambda: run_geo_ingestion(settings=settings, run_id=run_id)),
         (
             "prix-eurostat",
             lambda: run_prix_entreprises_ingestion(settings=settings, run_id=run_id),

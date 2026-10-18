@@ -5,9 +5,14 @@ Entièrement gitignoré, sauf ce README ; recréé à la demande par le pipeline
 ```
 data/
 ├── bronze/<jeu>/ingest_date=AAAA-MM-JJ/part-<run_id>.parquet   # un fichier par exécution, immuable
+├── bronze/<jeu>/ingest_date=AAAA-MM-JJ/*.geojson[.gz]          # contours et terres, tels que publiés
 ├── warehouse/eco2mix.duckdb                                    # schémas bronze, silver, gold
-└── reports/                                                    # rapports générés (PDF, Markdown, PNG)
+└── reports/                                                    # rapports (PDF, Markdown, PNG) et carte.html
 ```
+
+Jeux de la carte : `contours_departements` (Etalab), `terres_emergees` (Natural Earth) et
+`relief_ign`, altitudes IGN par point : seuls les points absents sont demandés, une relance ne coûte
+aucun appel.
 
 Jeux en bronze : éCO2mix temps réel et consolidé, calendrier Tempo, consommation par IRIS,
 équilibre régional, contraintes régionales, contraintes par ouvrage, postes RTE, prix Eurostat.
