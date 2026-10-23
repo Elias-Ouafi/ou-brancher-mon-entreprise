@@ -32,7 +32,8 @@ Exemple de diagnostic complet : [Lyon, en PDF](docs/exemples/implantation_lyon.p
 
 ## Installation et mise à jour
 
-Python 3.12. Tout tourne en local, sans compte (sauf le calendrier Tempo, optionnel).
+Python 3.12 et Java 17 (pour PySpark). Tout tourne en local, sans compte (sauf le calendrier
+Tempo, optionnel).
 
 ```powershell
 python -m venv .venv
@@ -41,7 +42,7 @@ Copy-Item .env.example .env
 .\.venv\Scripts\python.exe -m ingestion.cli refresh --months 180
 ```
 
-`refresh` relit toutes les sources puis lance `dbt build`, en une minute environ. Rien ne tourne
+`refresh` relit toutes les sources puis lance `dbt build`, en une minute et demie environ. Rien ne tourne
 tout seul : relancez `refresh` pour mettre les données à jour. Avec [uv](https://docs.astral.sh/uv/),
 `uv sync --group dev --group dbt --group report` remplace les deux premières lignes.
 
@@ -65,7 +66,7 @@ Toutes s'écrivent `.\.venv\Scripts\python.exe -m ingestion.cli <commande>`.
 
 ```mermaid
 flowchart LR
-    SRC[("ODRÉ · Eurostat · RTE")] -->|"ingestion/ (Python)"| B["Bronze : Parquet + DuckDB (MERGE)"]
+    SRC[("ODRÉ · Eurostat · RTE")] -->|"ingestion/ (PySpark)"| B["Bronze : Parquet + DuckDB (MERGE)"]
     B -->|dbt| S["Silver : nettoyé, codes INSEE"]
     S -->|dbt| G["Gold : prix, carbone, diagnostic"]
     SEEDS[("Seeds : ADEME, tarifs, référentiels, limites")] --> G
@@ -74,8 +75,9 @@ flowchart LR
     BAN[("BAN · Géorisques, à la demande")] --> CLI
 ```
 
-- **Ingestion idempotente** : chaque lot est typé et normalisé en Python (UTC, BOM, codes IRIS
-  tronqués, secret statistique). Le bronze garde toutes les révisions en Parquet immuables
+- **Ingestion idempotente en PySpark** : chaque lot est typé et normalisé par une session Spark
+  locale (UTC, changements d'heure, clés complètes), puis écrit via Arrow ; BOM, codes IRIS
+  tronqués et secret statistique sont traités en Python. Le bronze garde toutes les révisions en Parquet immuables
   (`data/bronze/<jeu>/ingest_date=…/part-<run_id>.parquet`), puis un `MERGE` sur clé dans DuckDB
   (`data/warehouse/eco2mix.duckdb`) : relancer ne duplique rien. Quota d'API suivi, bascule sur
   l'export CSV, nouvelles tentatives exponentielles.
