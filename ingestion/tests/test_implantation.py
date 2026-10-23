@@ -51,7 +51,11 @@ def reglages(settings: Settings, medallion_db: Path, tmp_path: Path) -> Settings
 
 def _lyon(medallion_db: Path) -> Diagnostic:
     diagnostic = lire_diagnostic(
-        territoire("69383", "Lyon"), puissance_mw=12, conso_mwh=350, database=medallion_db
+        territoire("69383", "Lyon"),
+        puissance_mw=12,
+        conso_mwh=350,
+        ca_eur=5_000_000,
+        database=medallion_db,
     )
     rapport = json.loads(
         (FIXTURES_DIR / "georisques_rapport_lyon.json").read_text(encoding="utf-8")

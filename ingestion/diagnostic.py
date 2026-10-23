@@ -269,6 +269,16 @@ class PrixEntreprise:
 
 
 @dataclass(frozen=True, slots=True)
+class PartChiffreAffaires:
+    chiffre_affaires_eur: float
+    facture_eur: float
+    part: float
+    # Bornes des scénarios à 3 ans ; `None` si l'historique de la tranche est trop court
+    part_bas: float | None
+    part_haut: float | None
+
+
+@dataclass(frozen=True, slots=True)
 class Diagnostic:
     territoire: Territoire
     code_insee_commune: str
@@ -324,10 +334,27 @@ class Diagnostic:
     limites: dict[str, str]
     risques: RisquesSite | None = None
     risques_erreur: str | None = None
+    ca_eur: float | None = None
 
     @property
     def commune_a_des_sites(self) -> bool:
         return bool(self.nb_sites_commune)
+
+    @property
+    def part_chiffre_affaires(self) -> PartChiffreAffaires | None:
+        p = self.prix
+        ca = self.ca_eur
+        if ca is None or p is None or p.conso_mwh is None:
+            return None
+        bas, haut = p.prix_3_ans_bas_eur_kwh, p.prix_3_ans_haut_eur_kwh
+        facture = p.facture_eur(p.prix_reference_eur_kwh)
+        return PartChiffreAffaires(
+            chiffre_affaires_eur=ca,
+            facture_eur=facture,
+            part=facture / ca,
+            part_bas=None if bas is None else p.facture_eur(bas) / ca,
+            part_haut=None if haut is None else p.facture_eur(haut) / ca,
+        )
 
 
 def lire_diagnostic(
@@ -335,6 +362,7 @@ def lire_diagnostic(
     *,
     puissance_mw: float | None = None,
     conso_mwh: float | None = None,
+    ca_eur: float | None = None,
     settings: Settings | None = None,
     database: Path | None = None,
 ) -> Diagnostic:
@@ -398,6 +426,7 @@ def lire_diagnostic(
         code_insee_commune=commune,
         seuil=seuil,
         conso_mwh=conso_mwh,
+        ca_eur=ca_eur,
         prix=prix,
         contraintes=contraintes,
         zone_rte=zone_rte,
@@ -488,8 +517,30 @@ def essentiel(diagnostic: Diagnostic) -> Section:
             f" seuil de {_nombre_court(c.seuil_decarbone_g_co2e_kwh)} gCO₂e/kWh"
         )
     section.elements.append(("texte", f"Électricité décarbonée : {carbone}"))
+    if (part := d.part_chiffre_affaires) is not None:
+        section.elements.append(("texte", f"Part du chiffre d'affaires : {_part_ca(part)}"))
     section.elements.append(("texte", f"À savoir : {A_SAVOIR}"))
     return section
+
+
+def _part_ca(part: PartChiffreAffaires) -> str:
+    phrase = (
+        f"{_pourcentage(part.part)} ({_euros_arrondis(part.facture_eur)} sur"
+        f" {_euros_arrondis(part.chiffre_affaires_eur)})"
+    )
+    if part.part_bas is not None and part.part_haut is not None:
+        phrase += (
+            f", de {_pourcentage(part.part_bas)} à {_pourcentage(part.part_haut)}"
+            " avec les scénarios à 3 ans"
+        )
+    # Une facture au-delà du chiffre d'affaires trahit presque toujours une erreur d'unité
+    if part.part > 1:
+        phrase += ". Facture supérieure au chiffre d'affaires : --ca est en euros, --conso en MWh"
+    return phrase
+
+
+def _pourcentage(part: float) -> str:
+    return f"{_nombre(part * 100, 2 if part < 0.01 else 1)} %"
 
 
 def _prix_court(d: Diagnostic) -> str:
@@ -546,6 +597,9 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
             "dernier_semestre": p.dernier_semestre,
             "source": "Eurostat nrg_pc_205",
         },
+        "part_chiffre_affaires": None
+        if d.part_chiffre_affaires is None
+        else asdict(d.part_chiffre_affaires),
         "carbone": None
         if c is None
         else {
@@ -558,8 +612,9 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
         "a_savoir": A_SAVOIR,
         "limites": {
             code: d.limites[code]
-            for code in ("prix_entreprise", "carbone_territoire")
+            for code in ("prix_entreprise", "carbone_territoire", "part_chiffre_affaires")
             if code in d.limites
+            and (code != "part_chiffre_affaires" or d.part_chiffre_affaires is not None)
         },
     }
 
@@ -810,6 +865,9 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
                 " (péréquation) : ce prix moyen national reste le repère.",
             )
         limite(s, "prix_entreprise")
+        if (part := d.part_chiffre_affaires) is not None:
+            texte(s, f"Facture rapportée au chiffre d'affaires : {_part_ca(part)}")
+            limite(s, "part_chiffre_affaires")
 
     s = bloc("5. Carbone du réseau et coût horaire d'un profil type")
     if d.carbone is not None:
@@ -939,6 +997,8 @@ def diagnostic_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
 
     contenu = asdict(diagnostic)
     contenu["commune_a_des_sites"] = diagnostic.commune_a_des_sites
+    part = diagnostic.part_chiffre_affaires
+    contenu["part_chiffre_affaires"] = None if part is None else asdict(part)
     return convertir(contenu)
 
 

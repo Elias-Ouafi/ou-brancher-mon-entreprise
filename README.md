@@ -2,46 +2,37 @@
 
 **Une adresse française en entrée ; en sortie, le prix moyen de l'électricité et si elle est
 décarbonée.** Données publiques uniquement, chaque chiffre avec sa source et sa limite. Ligne de
-commande, en local.
+commande, en local. État et suite du projet : [PLAN.md](PLAN.md).
 
 ```powershell
-.\.venv\Scripts\python.exe -m ingestion.cli essentiel --adresse "1 cours Napoléon, 20000 Ajaccio" --conso 60000
+.\.venv\Scripts\python.exe -m ingestion.cli essentiel --adresse "20 rue de la République, 69002 Lyon" --conso 350 --ca 5000000
 ```
 
 ```
-1 Cours Napoléon 20000 Ajaccio
-Commune Ajaccio (2A004) · Corse-du-Sud (2A) · Corse (94)
+20 Rue de la République 69002 Lyon
+Commune Lyon (69123) · Rhône (69) · Auvergne-Rhône-Alpes (84)
 
-Prix moyen : 0,0916 €/kWh HTVA, soit environ 5 500 000 € par an pour 60 000 MWh (tranche IE ; Eurostat, S2 2025 – S1 2026)
-Électricité décarbonée : non (Corse), 594 gCO₂e/kWh en cycle de vie, au-dessus du seuil de 100 gCO₂e/kWh
+Prix moyen : 0,1997 €/kWh HTVA, soit environ 69 900 € par an pour 350 MWh (tranche IB ; Eurostat, S2 2025 – S1 2026)
+Électricité décarbonée : oui (France continentale), 51,9 gCO₂e/kWh en cycle de vie, sous le seuil de 100 gCO₂e/kWh
+Part du chiffre d'affaires : 1,4 % (69 900 € sur 5 000 000 €), de 1,3 % à 2,0 % avec les scénarios à 3 ans
 À savoir : Le prix ne dépend pas de l'adresse mais de la consommation (péréquation, Corse et outre-mer compris). […]
 ```
 
-Exemples réels : [recette sur 11 adresses](docs/exemples/recette_mvp.md) ·
-[diagnostic complet de Lyon](docs/exemples/implantation_lyon.md) ([PDF](docs/exemples/implantation_lyon.pdf)) ·
-[comparaison de 3 villes](docs/exemples/comparaison_lyon_lille_poitiers.md).
+Exemple de diagnostic complet : [Lyon, en PDF](docs/exemples/implantation_lyon.pdf).
 
-## Trois points forts pour un data engineer
+## Ce que l'adresse change, et ce qu'elle ne change pas
 
-1. **Une ingestion Python idempotente, éprouvée sur les pièges réels des sources.** Chaque lot
-   est typé, normalisé et filtré avec pyarrow ; bronze en Parquet immuables (toutes les révisions
-   gardées) puis `MERGE` sur clé dans DuckDB, jamais d'`INSERT` : relancer ne duplique rien. Changements d'heure normalisés en UTC, révisions de RTE rattrapées,
-   quota d'API suivi, bascule automatique sur l'export CSV, nouvelles tentatives exponentielles ;
-   BOM, codes IRIS tronqués et secret statistique traités et testés.
-2. **Un médaillon dbt testé de bout en bout, sans réseau.** 330 tests pytest, dont un `dbt build`
-   complet sur une base synthétique qui reproduit ces pièges ; tests de données dbt (unicité,
-   bornes, intégrité référentielle) à chaque build ; CI GitHub Actions à chaque PR. Les scénarios
-   de prix sont contrôlés sur le passé, sans regard vers le futur.
-3. **Des choix proportionnés et des chiffres honnêtes.** Python uniquement : pyarrow pour
-   l'ingestion, dbt et DuckDB pour le stockage et la lecture (`essentiel` répond en 1,5 s),
-   reconstruction complète plutôt qu'incrémental, interface `WarehouseLoader` prête pour BigQuery. Chaque indicateur porte sa source, sa maille et sa
-   limite (`limites_methodologiques.csv`), conformément aux règles sur les allégations
-   environnementales (directive EmpCo).
+- **Le prix ne dépend pas de l'adresse** : la péréquation le rend identique partout, Corse et
+  outre-mer compris. Il dépend de la consommation (tranches Eurostat `nrg_pc_205`).
+- **Le carbone ne change qu'entre systèmes électriques** : 51,9 gCO₂e/kWh sur tout le continent
+  (ADEME 2024), 594 à 957 en Corse et outre-mer, non interconnectés. Le verdict se fait au seuil
+  de 100 gCO₂e/kWh de la taxonomie européenne : c'est la moyenne du réseau, pas celle d'un contrat.
+- **La capacité de raccordement n'est pas en open data** : seule une étude RTE ou Enedis fait foi.
+  L'outil signale la zone prioritaire RTE et le site clé en main les plus proches.
 
 ## Installation et mise à jour
 
-Python 3.12 suffit : aucune autre dépendance système. Tout tourne en local, sans compte (sauf le
-calendrier Tempo, optionnel).
+Python 3.12. Tout tourne en local, sans compte (sauf le calendrier Tempo, optionnel).
 
 ```powershell
 python -m venv .venv
@@ -50,14 +41,12 @@ Copy-Item .env.example .env
 .\.venv\Scripts\python.exe -m ingestion.cli refresh --months 180
 ```
 
-`refresh` relit toutes les sources (une dizaine d'appels d'API) puis lance `dbt build`, en une
-minute environ. Rien ne tourne tout seul : relancez `refresh` (sans `--months`) pour mettre les
-données à jour. Avec [uv](https://docs.astral.sh/uv/), `uv sync --group dev --group dbt --group report`
-remplace les deux premières lignes, et `uv run python` remplace `.\.venv\Scripts\python.exe`.
+`refresh` relit toutes les sources puis lance `dbt build`, en une minute environ. Rien ne tourne
+tout seul : relancez `refresh` pour mettre les données à jour. Avec [uv](https://docs.astral.sh/uv/),
+`uv sync --group dev --group dbt --group report` remplace les deux premières lignes.
 
-**Identifiants** (calendrier Tempo seulement) : copiez `identifiants.exemple.txt` en
-`identifiants.local.txt` et renseignez-le. Ce fichier est ignoré par git, prime sur `.env` et
-n'est jamais affiché dans les journaux. Ne mettez aucun identifiant dans `.env` ni dans le modèle.
+**Identifiants** (Tempo seulement) : copiez `identifiants.exemple.txt` en
+`identifiants.local.txt`. Ce fichier est ignoré par git et prime sur `.env`.
 
 ## Commandes
 
@@ -65,37 +54,12 @@ Toutes s'écrivent `.\.venv\Scripts\python.exe -m ingestion.cli <commande>`.
 
 | Commande | Effet |
 |---|---|
-| `essentiel --adresse "…" [--conso N] [--format json]` | Prix moyen et verdict carbone ; sans `--conso`, tranche des petites entreprises (moins de 20 MWh/an) |
-| `diagnose --adresse "…" [--puissance MW] [--conso N] [--format pdf\|md\|json]` | Diagnostic complet : industrie locale, réseau, raccordement, prix, carbone, risques |
+| `essentiel --adresse "…" [--conso MWh] [--ca €] [--format json]` | Prix moyen et verdict carbone ; sans `--conso`, tranche des petites entreprises (moins de 20 MWh/an) ; `--ca` donne la part de la facture dans le chiffre d'affaires |
+| `diagnose --adresse "…" [--puissance MW] [--conso MWh] [--ca €] [--format pdf\|md\|json]` | Diagnostic complet : industrie locale, réseau, raccordement, prix, carbone, risques (Géorisques) |
 | `compare --adresse "A" --adresse "B" …` | 2 à 6 adresses côte à côte, sans classement ; `texte`, `md`, `csv`, `json` |
-| `carte [--adresse "…"] [--output F] [--sans-ouvrir]` | Carte 3D des territoires, ouverte dans le navigateur (voir ci-dessous) |
+| `carte [--adresse "…"]` | Carte 3D hors ligne (`data/reports/carte.html`) : relief IGN en cases de 24 km, quatre lentilles (terrain, industrie, réseau RTE, équilibre régional), outre-mer en encarts |
 | `refresh [--months 180]` | Met à jour toutes les sources, puis `dbt build` |
-| `report --month 2026-09` | Rapport mensuel carbone et créneaux Tempo (compte RTE requis pour Tempo) |
-
-### Carte 3D
-
-`carte` écrit `data/reports/carte.html`, une page autonome qui marche hors ligne, et l'ouvre dans
-le navigateur. La France y est découpée en cases hexagonales de 24 km, façon jeu de stratégie :
-
-- **relief réel** : altitude moyenne de chaque case, mesurée en 7 points par l'IGN (RGE ALTI) ;
-- **quatre lentilles** : terrain, pression industrielle, réseau RTE (postes, contraintes, zones
-  prioritaires), équilibre régional ;
-- **une fiche par département** au clic, avec les indicateurs du gold et leur limite ;
-- **l'outre-mer en encarts**, chacun à sa propre échelle ; les pays voisins en brouillard.
-
-Avec `--adresse`, la carte s'ouvre sur l'adresse, épinglée. Contours, terres et relief sont mis en
-cache dans le bronze par `refresh` ; la première `carte` les télécharge s'ils manquent.
-
-## Ce que l'adresse change, et ce qu'elle ne change pas
-
-- **Le prix ne dépend pas de l'adresse** : la péréquation le rend identique partout. Il dépend de
-  la consommation (tranches Eurostat `nrg_pc_205`).
-- **Le carbone ne change qu'entre systèmes électriques** : 51,9 gCO₂e/kWh sur tout le continent
-  (ADEME 2024), 594 à 957 en Corse et outre-mer, non interconnectés. Verdict au seuil de
-  100 gCO₂e/kWh de la taxonomie européenne ; c'est la moyenne du réseau, pas celle d'un contrat.
-- **La capacité de raccordement n'est pas en open data** : seule une étude RTE ou Enedis fait foi.
-
-Le raisonnement complet est dans le [cadrage](docs/cadrage-besoins-entreprises.md).
+| `report --month 2026-09` | Rapport mensuel carbone et créneaux Tempo |
 
 ## Architecture
 
@@ -110,7 +74,21 @@ flowchart LR
     BAN[("BAN · Géorisques, à la demande")] --> CLI
 ```
 
-Détail : [modèles dbt](dbt/README.md) · [stockage](data/README.md).
+- **Ingestion idempotente** : chaque lot est typé et normalisé en Python (UTC, BOM, codes IRIS
+  tronqués, secret statistique). Le bronze garde toutes les révisions en Parquet immuables
+  (`data/bronze/<jeu>/ingest_date=…/part-<run_id>.parquet`), puis un `MERGE` sur clé dans DuckDB
+  (`data/warehouse/eco2mix.duckdb`) : relancer ne duplique rien. Quota d'API suivi, bascule sur
+  l'export CSV, nouvelles tentatives exponentielles.
+- **Silver et gold en dbt-duckdb**, reconstruits à chaque run (quelques secondes). Jointures par
+  code INSEE, jamais par libellé ; énergie = puissance × durée (jours de 23 ou 25 h) ; scénarios
+  de prix à 3 ans sans regard vers le futur, calibrés sur les erreurs passées ; verdict carbone
+  en cycle de vie, le `taux_co2` de RTE (émissions directes) en complément.
+- **Gold principal** : `fct_diagnostic_territoire` (une ligne par département),
+  `fct_prix_entreprise_tranche`, `fct_carbone_territoire`, `fct_mix`. Les seeds datés (tarifs,
+  SDDR, sites clés en main, facteurs ADEME) sont à mettre à jour à chaque nouvelle source ;
+  `limites_methodologiques` porte la limite de chaque indicateur.
+- `data/` n'est pas versionné et se recrée par `refresh`. DuckDB n'accepte qu'un writer : fermez
+  toute session `duckdb` pendant un chargement.
 
 ## Tests
 
@@ -118,27 +96,19 @@ Détail : [modèles dbt](dbt/README.md) · [stockage](data/README.md).
 .\.venv\Scripts\python.exe -m ruff check . ; .\.venv\Scripts\python.exe -m pytest
 ```
 
-## Documentation
+338 tests sans réseau, dont un `dbt build` complet sur une base synthétique qui reproduit les
+pièges des sources, plus les tests de données dbt. La CI GitHub Actions les joue à chaque PR.
 
-| Document | Contenu |
-|---|---|
-| [Feuille de route](docs/feuille-de-route.md) | État du MVP, suite, décisions datées |
-| [Extension internationale](docs/extension-internationale.md) | Pistes pour d'autres pays |
-| [Cadrage](docs/cadrage-besoins-entreprises.md) · [Revue des besoins](docs/revue-besoins-entreprises.md) · [Veille](docs/veille-projets-similaires.md) | Études datées des 9 et 15 oct. 2026 |
-
-## Sources
+## Sources et licence
 
 [ODRÉ](https://odre.opendatasoft.com) (éCO2mix, RTE) · [Eurostat](https://ec.europa.eu/eurostat) ·
 [Base Carbone de l'ADEME](https://data.ademe.fr/datasets/base-carboner) ·
 [Base Adresse Nationale](https://adresse.data.gouv.fr) · [Géorisques](https://www.georisques.gouv.fr) ·
-[contours administratifs d'Etalab](https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/) ·
-[altimétrie de la Géoplateforme](https://geoservices.ign.fr/documentation/services/services-geoplateforme/altimetrie) ·
-[Natural Earth](https://www.naturalearthdata.com) (domaine public) ·
+[contours Etalab](https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/) ·
+[altimétrie IGN](https://geoservices.ign.fr/documentation/services/services-geoplateforme/altimetrie) ·
+[Natural Earth](https://www.naturalearthdata.com) ·
 [sites clés en main France 2030](https://www.data.gouv.fr/datasets/les-sites-cles-en-main-france-2030) ·
-SDDR 2025 de RTE · barèmes de la CRE. Licence Ouverte / Etalab.
+SDDR 2025 de RTE · barèmes de la CRE.
 
-## Licence
-
-Code sous [licence MIT](LICENSE). Les données restent sous la licence de leurs producteurs.
-[three.js](https://threejs.org) r128, embarqué dans `reporting/vendor/` pour la carte, est sous
-licence MIT.
+Code sous [licence MIT](LICENSE) ; les données restent sous la licence de leurs producteurs.
+[three.js](https://threejs.org) r128, embarqué dans `reporting/vendor/`, est sous licence MIT.
