@@ -79,6 +79,24 @@ def _parse_conso(value: str) -> float:
     return conso
 
 
+def _parse_ca(value: str) -> float:
+    try:
+        ca = float(value.replace(",", ".").replace(" ", ""))
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"chiffre d'affaires invalide : {value!r} (€)") from None
+    if ca <= 0:
+        raise argparse.ArgumentTypeError("le chiffre d'affaires doit être strictement positif")
+    return ca
+
+
+def _add_ca_option(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--ca",
+        type=_parse_ca,
+        help="chiffre d'affaires annuel en euros (avec --conso) : part de la facture",
+    )
+
+
 def _add_dataset_option(parser: argparse.ArgumentParser, default: str) -> None:
     parser.add_argument("--dataset", choices=sorted(SPECS), default=default, help="dataset ODRÉ")
 
@@ -143,6 +161,7 @@ def build_parser() -> argparse.ArgumentParser:
         type=_parse_conso,
         help="consommation annuelle en MWh (défaut : tranche des petites entreprises)",
     )
+    _add_ca_option(essentiel)
     essentiel.add_argument(
         "--format", choices=["texte", "json"], default="texte", help="texte ou json"
     )
@@ -159,6 +178,7 @@ def build_parser() -> argparse.ArgumentParser:
         type=_parse_conso,
         help="consommation annuelle en MWh (ex. 350) : prix de la tranche Eurostat",
     )
+    _add_ca_option(diagnose)
     diagnose.add_argument(
         "--format",
         choices=["texte", "md", "pdf", "json"],
@@ -239,7 +259,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    if getattr(args, "ca", None) is not None and args.conso is None:
+        parser.error("--ca demande --conso : la facture se calcule sur la consommation annuelle")
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(asctime)s %(levelname)-8s %(name)s %(message)s",
@@ -308,7 +331,9 @@ def main(argv: list[str] | None = None) -> int:
         case "essentiel":
             try:
                 territoire = geocode(args.adresse, settings=settings)
-                diagnostic = lire_diagnostic(territoire, conso_mwh=args.conso, settings=settings)
+                diagnostic = lire_diagnostic(
+                    territoire, conso_mwh=args.conso, ca_eur=args.ca, settings=settings
+                )
             except AdresseIntrouvableError as error:
                 logger.error(
                     "adresse introuvable : %s. Preciser le numero, la rue et la commune"
@@ -335,6 +360,7 @@ def main(argv: list[str] | None = None) -> int:
                     territoire,
                     puissance_mw=args.puissance,
                     conso_mwh=args.conso,
+                    ca_eur=args.ca,
                     settings=settings,
                 )
             except (GeocodingError, DiagnosticIndisponibleError) as error:

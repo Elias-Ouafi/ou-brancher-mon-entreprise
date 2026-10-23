@@ -189,7 +189,7 @@ sur le passé.
 |---|---|---|---|
 | 1 | **Fait (15 oct.)** — Signaler la **zone prioritaire RTE** (P1, P2) la plus proche et sa date de capacité | Puissance disponible, à une date connue | SDDR 2025, fiche 5 : seed stable, à dater |
 | 2 | **Fait (15 oct.)** — Signaler le **site industriel clé en main** le plus proche et son calendrier | Foncier viabilisé et raccordé | Liste DGE France 2030 (à vérifier en open data) |
-| 3 | **Situer l'électro-intensité** : facture estimée rapportée au chiffre d'affaires ou à la valeur ajoutée, si fournis | Savoir si le prix doit peser dans le choix | Saisie de l'entreprise + prix Eurostat déjà en base |
+| 3 | **Fait (23 oct.), au chiffre d'affaires** — **Situer l'électro-intensité** : facture estimée rapportée au chiffre d'affaires ou à la valeur ajoutée, si fournis | Savoir si le prix doit peser dans le choix | Saisie de l'entreprise + prix Eurostat déjà en base |
 | 4 | **Repère CAPN** pour les consommateurs au-delà de 150 000 MWh | Visibilité de prix sur 10-15 ans | Annonces publiques EDF, État ; limite forte |
 | 5 | **Fait (15 oct.), sans classement** — **Comparer plusieurs adresses** (déjà dans la veille) | Choisir entre des sites | Diagnostic existant |
 

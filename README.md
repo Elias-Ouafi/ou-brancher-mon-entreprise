@@ -28,7 +28,7 @@ Exemples réels : [recette sur 11 adresses](docs/exemples/recette_mvp.md) ·
    gardées) puis `MERGE` sur clé dans DuckDB, jamais d'`INSERT` : relancer ne duplique rien. Changements d'heure normalisés en UTC, révisions de RTE rattrapées,
    quota d'API suivi, bascule automatique sur l'export CSV, nouvelles tentatives exponentielles ;
    BOM, codes IRIS tronqués et secret statistique traités et testés.
-2. **Un médaillon dbt testé de bout en bout, sans réseau.** 330 tests pytest, dont un `dbt build`
+2. **Un médaillon dbt testé de bout en bout, sans réseau.** 338 tests pytest, dont un `dbt build`
    complet sur une base synthétique qui reproduit ces pièges ; tests de données dbt (unicité,
    bornes, intégrité référentielle) à chaque build ; CI GitHub Actions à chaque PR. Les scénarios
    de prix sont contrôlés sur le passé, sans regard vers le futur.
@@ -65,8 +65,8 @@ Toutes s'écrivent `.\.venv\Scripts\python.exe -m ingestion.cli <commande>`.
 
 | Commande | Effet |
 |---|---|
-| `essentiel --adresse "…" [--conso N] [--format json]` | Prix moyen et verdict carbone ; sans `--conso`, tranche des petites entreprises (moins de 20 MWh/an) |
-| `diagnose --adresse "…" [--puissance MW] [--conso N] [--format pdf\|md\|json]` | Diagnostic complet : industrie locale, réseau, raccordement, prix, carbone, risques |
+| `essentiel --adresse "…" [--conso N] [--ca €] [--format json]` | Prix moyen et verdict carbone ; sans `--conso`, tranche des petites entreprises (moins de 20 MWh/an) ; avec `--ca`, part de la facture dans le chiffre d'affaires |
+| `diagnose --adresse "…" [--puissance MW] [--conso N] [--ca €] [--format pdf\|md\|json]` | Diagnostic complet : industrie locale, réseau, raccordement, prix, carbone, risques |
 | `compare --adresse "A" --adresse "B" …` | 2 à 6 adresses côte à côte, sans classement ; `texte`, `md`, `csv`, `json` |
 | `carte [--adresse "…"] [--output F] [--sans-ouvrir]` | Carte 3D des territoires, ouverte dans le navigateur (voir ci-dessous) |
 | `refresh [--months 180]` | Met à jour toutes les sources, puis `dbt build` |
