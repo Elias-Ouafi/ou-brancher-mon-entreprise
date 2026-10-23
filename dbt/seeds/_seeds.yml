@@ -101,7 +101,7 @@ seeds:
       sur `[puissance_min_mw, puissance_max_mw)` ; `puissance_max_mw` vide pour la
       dernière tranche. Domaines de référence de l'arrêté du 17 mars 2003 ; le seuil
       structurant de 40 MW (Enedis en deçà, RTE au-delà) et la zone grise 20–40 MW
-      viennent du cadrage produit (docs/cadrage-besoins-entreprises.md, § Priorité 3).
+      viennent du cadrage produit du 9 octobre 2026.
     config:
       column_types:
         ordre: integer
