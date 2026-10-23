@@ -11,6 +11,7 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 
 | Brique | Où |
 |---|---|
+| Ingestion PySpark (typage, UTC, clés du lot), écriture Arrow vers le bronze | `ingestion/transform.py`, `ingestion/spark.py` |
 | Adresse → commune, département, région | `ingestion/geocode.py` (BAN) |
 | Prix par tranche Eurostat, scénarios à 3 ans calibrés sur les erreurs passées | `fct_prix_entreprise_tranche` |
 | Carbone par système électrique, seuil de 100 gCO₂e/kWh | `fct_carbone_territoire` |
@@ -26,15 +27,14 @@ calendrier Tempo n'a tourné que sur des réponses simulées (pas de compte RTE)
 
 | Priorité | Étape | Bloqué par |
 |---|---|---|
-| 1 | Réintroduire PySpark pour l'ingestion (typage, UTC, clés du lot) ; Java 17 en local et en CI | — |
-| 2 | Protéger `main` : CI et PR obligatoires | réglage GitHub, par le propriétaire |
-| 3 | Pied de page des rapports : commande lancée et date des données | — |
-| 4 | Carbone horaire en Corse et outre-mer (open data EDF SEI) | — |
-| 5 | Vraie courbe de charge (`--courbe`, export Enedis) à la place du profil type | — |
-| 6 | Part de la facture dans la valeur ajoutée (`--va`), critère du statut d'électro-intensif | — |
-| 7 | Extension internationale, voir ci-dessous | licences Ember et contours à vérifier |
-| 8 | Calendrier Tempo sur données réelles | compte RTE |
-| 9 | Repère de prix au-delà de 150 000 MWh/an (contrats CAPN) ; classement pondéré dans `compare` | décision |
+| 1 | Protéger `main` : CI et PR obligatoires | réglage GitHub, par le propriétaire |
+| 2 | Pied de page des rapports : commande lancée et date des données | — |
+| 3 | Carbone horaire en Corse et outre-mer (open data EDF SEI) | — |
+| 4 | Vraie courbe de charge (`--courbe`, export Enedis) à la place du profil type | — |
+| 5 | Part de la facture dans la valeur ajoutée (`--va`), critère du statut d'électro-intensif | — |
+| 6 | Extension internationale, voir ci-dessous | licences Ember et contours à vérifier |
+| 7 | Calendrier Tempo sur données réelles | compte RTE |
+| 8 | Repère de prix au-delà de 150 000 MWh/an (contrats CAPN) ; classement pondéré dans `compare` | décision |
 
 **Extension internationale**, dans cet ordre :
 1. UE-27 à la maille pays : prix Eurostat (déjà ingéré, retirer le filtre France) et carbone
@@ -68,7 +68,7 @@ calendrier Tempo n'a tourné que sur des réponses simulées (pas de compte RTE)
 | 18 oct. | Commentaires limités à la logique (le pourquoi) ; documentation en français ; licence MIT |
 | 18 oct. | Sécurité : CI en lecture seule, actions figées par commit, HTTPS seulement, identifiants dans `identifiants.local.txt` (ignoré par git) |
 | 18 oct. | Carte : page HTML autonome, three.js embarqué, grille hexagonale maison plutôt que H3 |
-| 23 oct. | Outils Python et PySpark privilégiés : ingestion en PySpark, silver et gold en dbt-duckdb |
+| 23 oct. | Outils Python et PySpark privilégiés : ingestion en PySpark (Java 17 requis, en local et en CI), silver et gold en dbt-duckdb |
 | 23 oct. | `--ca` sans seuil : le statut d'électro-intensif se juge sur la valeur ajoutée ; `--ca` exige `--conso` |
 | 23 oct. | Documentation réduite à deux fichiers : README et ce plan |
 

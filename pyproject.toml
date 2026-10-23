@@ -10,6 +10,7 @@ dependencies = [
     "httpx>=0.27",
     "tenacity>=8.2",
     "pyarrow>=16.0",
+    "pyspark>=4.0,<5",
     "duckdb>=1.0",
     # requis par le client Python DuckDB pour rendre les TIMESTAMPTZ
     "pytz>=2024.1",
@@ -56,3 +57,4 @@ allowed-confusables = ["–"]
 [tool.pytest.ini_options]
 testpaths = ["ingestion/tests"]
 addopts = "-q --strict-markers"
+filterwarnings = ["ignore:PySpark does not yet fully support pandas:FutureWarning"]
