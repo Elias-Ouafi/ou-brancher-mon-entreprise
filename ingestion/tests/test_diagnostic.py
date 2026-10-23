@@ -234,14 +234,20 @@ def test_every_figure_comes_with_its_limit(medallion_db: Path, warehouse: Any) -
         (FIXTURES_DIR / "georisques_rapport_lyon.json").read_text(encoding="utf-8")
     )
     diagnostic = replace(
-        lire_diagnostic(territoire("69123"), puissance_mw=50, conso_mwh=350, database=medallion_db),
+        lire_diagnostic(
+            territoire("69123"),
+            puissance_mw=50,
+            conso_mwh=350,
+            ca_eur=5_000_000,
+            database=medallion_db,
+        ),
         risques=lire_rapport(rapport),
     )
     texte = formater_diagnostic(diagnostic)
     limites = [
         limite for (limite,) in _rows(warehouse, "SELECT limite FROM gold.limites_methodologiques")
     ]
-    assert len(limites) == 13
+    assert len(limites) == 14
     for limite in limites:
         assert limite in texte
 
@@ -366,6 +372,68 @@ def test_essentiel_text_fits_in_a_few_lines(medallion_db: Path) -> None:
     assert len(texte.splitlines()) <= 7
     assert "Prix moyen : 0,1925 €/kWh HTVA, soit environ 67 400 € par an pour 350 MWh" in texte
     assert "Électricité décarbonée : oui (France continentale), 51,9 gCO₂e/kWh" in texte
+
+
+def test_essentiel_puts_the_bill_against_turnover(medallion_db: Path) -> None:
+    from ingestion.diagnostic import essentiel_en_dict, formater_essentiel
+
+    diagnostic = lire_diagnostic(
+        territoire("69123", "Lyon"), conso_mwh=350, ca_eur=5_000_000, database=medallion_db
+    )
+    part = diagnostic.part_chiffre_affaires
+    assert part is not None
+    assert part.part == pytest.approx(350_000 * 0.1925 / 5_000_000, rel=1e-3)
+    texte = formater_essentiel(diagnostic)
+    assert "Part du chiffre d'affaires : 1,3 % (67 400 € sur 5 000 000 €)" in texte
+    assert "scénarios" not in texte
+    reponse = essentiel_en_dict(diagnostic)
+    assert reponse["part_chiffre_affaires"]["part"] == part.part
+    assert "part_chiffre_affaires" in reponse["limites"]
+
+
+def test_turnover_share_follows_the_three_year_scenarios(medallion_db: Path) -> None:
+    from ingestion.diagnostic import formater_essentiel
+
+    diagnostic = lire_diagnostic(
+        territoire("69123"), conso_mwh=350, ca_eur=5_000_000, database=medallion_db
+    )
+    assert diagnostic.prix is not None
+    diagnostic = replace(
+        diagnostic,
+        prix=replace(
+            diagnostic.prix,
+            prix_3_ans_bas_eur_kwh=0.10,
+            prix_3_ans_central_eur_kwh=0.15,
+            prix_3_ans_haut_eur_kwh=0.30,
+        ),
+    )
+    part = diagnostic.part_chiffre_affaires
+    assert part is not None
+    assert part.part_bas == pytest.approx(0.007)
+    assert part.part_haut == pytest.approx(0.021)
+    assert "de 0,70 % à 2,1 % avec les scénarios à 3 ans" in formater_essentiel(diagnostic)
+
+
+def test_turnover_is_ignored_without_consumption(medallion_db: Path) -> None:
+    diagnostic = lire_diagnostic(territoire("69123"), ca_eur=5_000_000, database=medallion_db)
+    assert diagnostic.part_chiffre_affaires is None
+    assert "Part du chiffre d'affaires" not in formater_diagnostic(diagnostic)
+
+
+def test_bill_above_turnover_hints_at_a_unit_error(medallion_db: Path) -> None:
+    from ingestion.diagnostic import formater_essentiel
+
+    texte = formater_essentiel(
+        lire_diagnostic(territoire("69123"), conso_mwh=350, ca_eur=5_000, database=medallion_db)
+    )
+    assert "Facture supérieure au chiffre d'affaires" in texte
+
+
+def test_turnover_requires_consumption() -> None:
+    with pytest.raises(SystemExit):
+        cli.main(["essentiel", "--adresse", "x", "--ca", "5000000"])
+    with pytest.raises(SystemExit):
+        cli.build_parser().parse_args(["diagnose", "--adresse", "x", "--ca", "-1"])
 
 
 def test_essentiel_explains_an_unknown_address(

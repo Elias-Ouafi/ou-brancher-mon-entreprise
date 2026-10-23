@@ -1,6 +1,6 @@
 # Feuille de route
 
-> Mise à jour le 18 octobre 2026. Périmètre : la France (métropole, Corse, outre-mer), en local
+> Mise à jour le 23 octobre 2026. Périmètre : la France (métropole, Corse, outre-mer), en local
 > et à la demande. Après le MVP : [extension à d'autres pays](extension-internationale.md).
 
 ## État : MVP atteint le 16 octobre 2026
@@ -18,7 +18,8 @@ compris. `refresh` met toutes les sources à jour en une minute (9 étapes sur 9
 | Diagnostic complet : industrie, réseau, raccordement, risques | `diagnose`, `compare` |
 | Mise à jour de toutes les sources, puis `dbt build` | `refresh` |
 | Carte 3D hexagonale : relief IGN, 4 lentilles, outre-mer en encarts | `carte`, `ingestion/hexagones.py`, `reporting/carte.html` |
-| 330 tests sans réseau, CI à chaque PR | `ingestion/tests/` |
+| Facture rapportée au chiffre d'affaires (`--ca`), avec la fourchette des scénarios à 3 ans | `essentiel`, `diagnose` |
+| 338 tests sans réseau, CI à chaque PR | `ingestion/tests/` |
 
 **À surveiller** : les facteurs ADEME de la Corse et de l'outre-mer datent de décembre 2020 ;
 le calendrier Tempo n'a tourné que sur des réponses simulées (pas de compte RTE).
@@ -30,10 +31,9 @@ le calendrier Tempo n'a tourné que sur des réponses simulées (pas de compte R
 | 1 | Protéger `main` : CI et PR obligatoires | réglage GitHub, par le propriétaire |
 | 2 | Extension à d'autres pays : [pistes](extension-internationale.md) | — |
 | 3 | Carbone horaire en Corse et outre-mer (open data EDF SEI) | — |
-| 4 | Facture rapportée au chiffre d'affaires (`--ca`) | — |
-| 5 | Vraie courbe de charge (export Enedis) à la place du profil type | — |
-| 6 | Calendrier Tempo sur données réelles | compte RTE |
-| 7 | Repère de prix au-delà de 150 000 MWh/an ; classement pondéré dans `compare` | décision |
+| 4 | Vraie courbe de charge (export Enedis) à la place du profil type | — |
+| 5 | Calendrier Tempo sur données réelles | compte RTE |
+| 6 | Repère de prix au-delà de 150 000 MWh/an ; classement pondéré dans `compare` | décision |
 
 ## Décisions
 
@@ -55,6 +55,7 @@ le calendrier Tempo n'a tourné que sur des réponses simulées (pas de compte R
 | 18 oct. | Sécurité : CI en lecture seule, actions GitHub figées par commit, identifiants RTE jamais transmis à dbt, téléchargements HTTPS uniquement, carte sans aucune requête externe (CSP) |
 | 18 oct. | Identifiants dans `identifiants.local.txt`, ignoré par git et prioritaire sur `.env` ; un test vérifie qu'il n'est jamais versionné |
 | 18 oct. | Grille hexagonale maison (cases régulières de 24 km) plutôt que H3 : rendu net et aucune dépendance ; relief IGN mis en cache par point dans le bronze |
+| 23 oct. | `--ca` rapporte la facture estimée au chiffre d'affaires, sans seuil : le statut d'électro-intensif se juge sur la valeur ajoutée, que l'outil ne demande pas ; `--ca` exige `--conso` |
 
 ## Écarté
 
