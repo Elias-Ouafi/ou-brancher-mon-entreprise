@@ -14,7 +14,6 @@ from ingestion.datasets import NATIONAL_TR, DatasetSpec
 
 logger = logging.getLogger(__name__)
 
-# Couche médaillon alimentée par ce module
 DEFAULT_SCHEMA = "bronze"
 
 # Correspondance des types pyarrow vers DuckDB. Le schéma du spec reste la source de vérité unique
@@ -25,7 +24,6 @@ _DUCKDB_TYPES: tuple[tuple[object, str], ...] = (
 )
 
 
-# Compte rendu d'un chargement, journalisé par la ligne de commande
 @dataclass(frozen=True, slots=True)
 class LoadResult:
     target: str
@@ -34,7 +32,6 @@ class LoadResult:
     rows_inserted: int
     rows_updated: int
 
-    # Lignes écartées parce qu'un même `date_heure` apparaissait deux fois dans le lot
     @property
     def rows_deduplicated(self) -> int:
         return self.rows_in_file - self.rows_merged
@@ -54,22 +51,17 @@ class LoadResult:
 class WarehouseLoader(Protocol):
     spec: DatasetSpec
 
-    # Crée le schéma et la table cible s'ils n'existent pas
     def ensure_table(self) -> None: ...
 
-    # Fusionne un fichier Parquet dans la table cible, sur la clé du spec
     def merge_parquet(self, parquet_path: Path | str) -> LoadResult: ...
 
     # Plus récent `date_heure` présent, ou `None` si la table est vide
     def latest_timestamp(self, *, measure: str | None = None) -> datetime | None: ...
 
-    # Nombre d'instants distincts dans `[start, end)`
     def count_distinct_instants(self, *, start: datetime, end: datetime) -> int: ...
 
-    # Nombre de lignes de la table cible
     def row_count(self) -> int: ...
 
-    # Libère la connexion sous-jacente
     def close(self) -> None: ...
 
 
@@ -80,7 +72,6 @@ def _duckdb_type(arrow_type: pa.DataType) -> str:
     raise TypeError(f"type pyarrow non pris en charge par la DDL DuckDB : {arrow_type}")
 
 
-# Implémentation locale du contrat `WarehouseLoader`
 class DuckDBLoader:
     def __init__(
         self,
@@ -115,12 +106,10 @@ class DuckDBLoader:
     def qualified_table(self) -> str:
         return f"{self.schema}.{self.table}"
 
-    # Colonnes de clé, dans l'ordre du spec
     @property
     def _key_list(self) -> str:
         return ", ".join(self.spec.key_names)
 
-    # Prédicat de jointure sur la clé composite entre deux alias
     def _key_join(self, left: str, right: str) -> str:
         return " AND ".join(f"{left}.{name} = {right}.{name}" for name in self.spec.key_names)
 
@@ -135,7 +124,6 @@ class DuckDBLoader:
         )
         return f"ingested_at_utc DESC, ({completude}) DESC"
 
-    # Colonne d'instant du spec, ou erreur si le dataset n'est pas temporel
     @property
     def _instant_column(self) -> str:
         instant = self.spec.instant_column
@@ -146,7 +134,6 @@ class DuckDBLoader:
             )
         return instant
 
-    # Colonnes du schéma, énumérées explicitement
     @property
     def _column_list(self) -> str:
         return ", ".join(self.spec.schema.names)
@@ -171,7 +158,6 @@ class DuckDBLoader:
     def __exit__(self, *exc_info: object) -> None:
         self.close()
 
-    # Crée la table cible à partir du schéma du spec, avec clé primaire
     def ensure_table(self) -> None:
         columns = ",\n    ".join(
             f"{field.name} {_duckdb_type(field.type)}" + ("" if field.nullable else " NOT NULL")
@@ -293,7 +279,6 @@ class DuckDBLoader:
         return None if row is None else row[0]
 
 
-# Fabrique le loader correspondant au backend configuré
 def build_loader(
     settings: Settings | None = None,
     *,

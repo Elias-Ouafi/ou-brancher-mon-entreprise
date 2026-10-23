@@ -37,7 +37,6 @@ from ingestion.pipeline import (
 logger = logging.getLogger("ingestion")
 
 
-# Accepte `2026-09-07` ou `2026-09-07T05:00:00`, interprétés en UTC
 def _parse_instant(value: str) -> datetime:
     parsed = datetime.fromisoformat(value)
     return parsed.replace(tzinfo=UTC) if parsed.tzinfo is None else parsed.astimezone(UTC)
@@ -201,6 +200,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     compare.add_argument("--output", help="fichier de sortie (défaut : sortie standard)")
     compare.add_argument("--sans-risques", action="store_true", help="ne consulte pas Géorisques")
+
+    carte = subparsers.add_parser(
+        "carte", help="carte 3D des territoires : relief, industrie, réseau (page HTML)"
+    )
+    carte.add_argument("--adresse", help="adresse à épingler sur la carte, entre guillemets")
+    carte.add_argument("--output", help="chemin du fichier (défaut : data/reports/carte.html)")
+    carte.add_argument(
+        "--sans-ouvrir", action="store_true", help="écrit la page sans ouvrir le navigateur"
+    )
 
     coverage = subparsers.add_parser(
         "coverage", help="contrôle la complétude du dernier mois révolu"
@@ -399,6 +407,25 @@ def main(argv: list[str] | None = None) -> int:
                 if hasattr(sys.stdout, "reconfigure"):
                     sys.stdout.reconfigure(encoding="utf-8")
                 print(sortie)
+        case "carte":
+            # Import paresseux : la carte n'est utile qu'à cette commande
+            import webbrowser
+
+            from reporting.carte import generer_carte
+
+            try:
+                territoire = geocode(args.adresse, settings=settings) if args.adresse else None
+                path = generer_carte(
+                    settings=settings,
+                    territoire=territoire,
+                    output=Path(args.output) if args.output else None,
+                )
+            except (GeocodingError, DiagnosticIndisponibleError) as error:
+                logger.error("carte impossible : %s", error)
+                return 1
+            logger.info("carte ecrite %s", path)
+            if not args.sans_ouvrir:
+                webbrowser.open(path.resolve().as_uri())
         case "tempo":
             if args.month:
                 days = tempo_days_for_month(args.month)

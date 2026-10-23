@@ -32,17 +32,14 @@ USER_AGENT = (
 )
 
 
-# Erreur non récupérable pendant l'extraction
 class ExtractionError(RuntimeError):
     pass
 
 
-# La fenêtre demandée dépasse la profondeur de pagination de `/records`
 class PaginationLimitExceededError(ExtractionError):
     pass
 
 
-# Statut HTTP transitoire : la requête peut être rejouée
 class RetryableStatusError(ExtractionError):
     def __init__(self, status_code: int) -> None:
         super().__init__(f"statut HTTP transitoire {status_code}")
@@ -65,7 +62,6 @@ class ApiCallCounter:
         self.count += 1
         return self.count
 
-    # Mémorise le quota restant annoncé par l'API, si l'en-tête est présent
     def record_quota(self, headers: Mapping[str, str]) -> None:
         self.quota_remaining = _optional_int(headers.get(self.REMAINING_HEADER))
         self.quota_limit = _optional_int(headers.get(self.LIMIT_HEADER))
@@ -90,7 +86,6 @@ def _optional_int(value: str | None) -> int | None:
         return None
 
 
-# Fenêtre temporelle `[start, end)` exprimée en UTC
 @dataclass(frozen=True, slots=True)
 class ExtractionWindow:
     start: datetime
@@ -102,7 +97,6 @@ class ExtractionWindow:
         if self.start >= self.end:
             raise ValueError(f"fenêtre vide ou inversée : {self.start} -> {self.end}")
 
-    # Fenêtre glissante des `hours` dernières heures, bornée à maintenant
     @classmethod
     def last_hours(cls, hours: int, *, now: datetime | None = None) -> ExtractionWindow:
         end = (now or datetime.now(UTC)).astimezone(UTC)
@@ -116,7 +110,6 @@ class ExtractionWindow:
     def estimated_rows(self, rows_per_hour: int = EXPECTED_ROWS_PER_HOUR) -> int:
         return int(self.duration_hours * rows_per_hour) + 1
 
-    # Traduit la fenêtre en filtre ODSQL (`where=`), bornes en UTC explicites
     def to_odsql(self, column: str = "date_heure") -> str:
         start = self.start.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         end = self.end.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -126,7 +119,6 @@ class ExtractionWindow:
         return f"[{self.start.isoformat()} -> {self.end.isoformat()})"
 
 
-# Client HTTP du dataset éCO2mix, utilisable comme context manager
 class OdreClient:
     def __init__(
         self,
@@ -136,7 +128,6 @@ class OdreClient:
         client: httpx.Client | None = None,
     ) -> None:
         self.settings = settings or get_settings()
-        # Un client cible un dataset ; par defaut celui du temps reel
         self.dataset_id = dataset_id or self.settings.dataset_id
         self.calls = ApiCallCounter()
         self._owns_client = client is None
@@ -156,7 +147,6 @@ class OdreClient:
             reraise=True,
         )
 
-    # Ferme le client HTTP et journalise la consommation du quota
     def close(self) -> None:
         logger.info(
             "odre_api_calls=%d dataset=%s quota_remaining=%s/%s quota_reset=%s",
@@ -175,12 +165,10 @@ class OdreClient:
     def __exit__(self, *exc_info: object) -> None:
         self.close()
 
-    # Extrait l'intégralité du dataset en un seul appel
     def fetch_all(self, *, order_by: str | None = None) -> list[dict[str, Any]]:
         logger.info("extraction integrale de %s : /exports/csv", self.dataset_id)
         return self.fetch_export_csv(None, order_by=order_by)
 
-    # Récupère tous les enregistrements de la fenêtre, endpoint choisi automatiquement
     def fetch_window(self, window: ExtractionWindow) -> list[dict[str, Any]]:
         estimated = window.estimated_rows()
         if estimated > self.settings.records_row_threshold:
@@ -189,7 +177,6 @@ class OdreClient:
         logger.info("fenetre %s (~%d lignes) : /records", window, estimated)
         return self.fetch_records(window)
 
-    # Pagine `/records` jusqu'à épuisement de la fenêtre
     def fetch_records(
         self,
         window: ExtractionWindow | None,
@@ -226,7 +213,6 @@ class OdreClient:
                     f"(offset max {RECORDS_MAX_OFFSET}) : utiliser /exports/csv"
                 )
 
-    # Récupère la fenêtre en un seul appel via `/exports/csv`
     def fetch_export_csv(
         self,
         window: ExtractionWindow | None,
@@ -251,7 +237,6 @@ class OdreClient:
         reader = csv.DictReader(io.StringIO(text), delimiter=";")
         return [dict(row) for row in reader]
 
-    # GET avec comptage d'appels et retry exponentiel sur erreurs transitoires
     def _get(self, path: str, params: dict[str, Any]) -> httpx.Response:
 
         def _send() -> httpx.Response:

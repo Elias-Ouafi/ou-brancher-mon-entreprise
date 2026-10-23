@@ -24,7 +24,6 @@ NB_ADRESSES_MIN = 2
 NB_ADRESSES_MAX = 6
 
 
-# Un indicateur, sa valeur pour chaque adresse, et la limite qui l'accompagne
 @dataclass(frozen=True, slots=True)
 class Ligne:
     indicateur: str
@@ -135,7 +134,6 @@ def _non_evalues(d: Diagnostic) -> str:
     return _liste_risques(d.risques.selon(Exposition.INCONNU)) or "aucun"
 
 
-# Les indicateurs qui dépendent de l'adresse, une valeur par diagnostic
 def lignes(diagnostics: list[Diagnostic]) -> list[Ligne]:
 
     def ligne(
@@ -164,7 +162,6 @@ def lignes(diagnostics: list[Diagnostic]) -> list[Ligne]:
     return resultat
 
 
-# Ce qui ne dépend pas de l'adresse : niveau de tension, prix, coût du profil
 def communs(diagnostics: list[Diagnostic]) -> list[str]:
     reference = next((d for d in diagnostics if not d.est_zni), diagnostics[0])
     blocs = sections(reference)
@@ -192,7 +189,6 @@ def communs(diagnostics: list[Diagnostic]) -> list[str]:
     return resultat
 
 
-# Limites des indicateurs du tableau et des éléments communs, chacune une seule fois
 def limites(diagnostics: list[Diagnostic], tableau: list[Ligne]) -> list[tuple[str, str]]:
     references = diagnostics[0].limites
     codes: list[str] = []
@@ -204,12 +200,9 @@ def limites(diagnostics: list[Diagnostic], tableau: list[Ligne]) -> list[tuple[s
     return [(code, references[code]) for code in codes if code in references]
 
 
-# Rendus
-
 LARGEUR_INDICATEUR = 26
 
 
-# Tableau en texte, colonnes repliées pour tenir dans `largeur` caractères
 def formater_comparaison(diagnostics: list[Diagnostic], *, largeur: int = 120) -> str:
     tableau = lignes(diagnostics)
     n = len(diagnostics)
@@ -267,7 +260,6 @@ def comparaison_en_markdown(diagnostics: list[Diagnostic]) -> str:
     return "\n".join(texte) + "\n"
 
 
-# Une ligne par indicateur, une colonne par adresse : prêt pour un tableur
 def comparaison_en_csv(diagnostics: list[Diagnostic]) -> str:
     sortie = io.StringIO()
     ecrivain = csv.writer(sortie, delimiter=";", lineterminator="\n")
@@ -278,7 +270,6 @@ def comparaison_en_csv(diagnostics: list[Diagnostic]) -> str:
     return sortie.getvalue()
 
 
-# Le tableau, et le diagnostic complet de chaque adresse
 def comparaison_en_json(diagnostics: list[Diagnostic]) -> str:
     tableau = lignes(diagnostics)
     contenu = {

@@ -1,0 +1,9 @@
+# Modèle du fichier d'identifiants local. Pour s'en servir :
+#   Copy-Item identifiants.exemple.txt identifiants.local.txt
+# puis renseigner identifiants.local.txt, qui est ignoré par git et ne quitte jamais ce poste.
+# Ce modèle-ci est versionné : n'y écrivez jamais de vraie valeur.
+
+# API RTE (calendrier Tempo) : compte gratuit sur https://data.rte-france.com,
+# application abonnée à « Tempo Like Supply Contract ».
+ECO2MIX_RTE_CLIENT_ID=
+ECO2MIX_RTE_CLIENT_SECRET=
