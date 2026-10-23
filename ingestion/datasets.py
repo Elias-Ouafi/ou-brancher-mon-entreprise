@@ -6,15 +6,12 @@ from pathlib import Path
 
 import pyarrow as pa
 
-# Nom conventionnel de la colonne d'instant dans les séries temporelles éCO2mix
 KEY_COLUMN = "date_heure"
 
-# Colonnes techniques ajoutées par l'ingestion, communes à tous les specs
 INGESTED_AT_COLUMN = "ingested_at_utc"
 SOURCE_COLUMN = "source_dataset"
 
 
-# Nature d'une colonne, qui détermine son type et sa conversion
 class ColumnKind(StrEnum):
     # Instant daté, normalisé en UTC à l'extraction
     INSTANT = "instant"
@@ -22,9 +19,7 @@ class ColumnKind(StrEnum):
     PERIOD = "period"
     # Code d'identification (INSEE, IRIS) — texte, jamais un nombre
     CODE = "code"
-    # Libellé descriptif
     LABEL = "label"
-    # Mesure numérique
     MEASURE = "measure"
 
 
@@ -70,15 +65,11 @@ def measures(*names: str) -> tuple[Column, ...]:
     return tuple(Column(name, ColumnKind.MEASURE) for name in names)
 
 
-# Identité, schéma, clé de MERGE et destination d'un dataset
 @dataclass(frozen=True, slots=True)
 class DatasetSpec:
     dataset_id: str
-    # Clé d'unicité, ordonnée
     keys: tuple[Column, ...]
-    # Colonnes descriptives non clés
     attributes: tuple[Column, ...]
-    # Mesures
     measures: tuple[Column, ...]
     description: str
 
@@ -91,12 +82,10 @@ class DatasetSpec:
         if len(names) != len(set(names)):
             raise ValueError(f"{self.dataset_id} : colonnes en double")
 
-    # Table cible (`eco2mix-national-tr` -> `national_tr`)
     @property
     def table_name(self) -> str:
         return self.dataset_id.removeprefix("eco2mix-").replace("-", "_")
 
-    # Nom de dossier de la couche bronze (`eco2mix_national_tr`)
     @property
     def slug(self) -> str:
         return self.dataset_id.replace("-", "_")
@@ -112,7 +101,6 @@ class DatasetSpec:
     def key_names(self) -> tuple[str, ...]:
         return tuple(column.name for column in self.keys)
 
-    # Colonne d'instant de la clé, si le dataset est une série temporelle
     @property
     def instant_column(self) -> str | None:
         return next((c.name for c in self.keys if c.kind is ColumnKind.INSTANT), None)
@@ -132,8 +120,6 @@ class DatasetSpec:
         ]
         return pa.schema(fields)
 
-
-# Datasets nationaux (séries temporelles au pas 15 min)
 
 _NATIONAL_LABELS = (label("perimetre"), label("nature"))
 
@@ -195,9 +181,6 @@ NATIONAL_CONS_DEF = DatasetSpec(
 )
 
 
-# Datasets territoriaux (diagnostic d'implantation)
-
-# Mix régional consolidé/définitif, au pas 15 min et par région
 REGIONAL_CONS_DEF = DatasetSpec(
     dataset_id="eco2mix-regional-cons-def",
     keys=(instant(KEY_COLUMN), code("code_insee_region")),
@@ -327,8 +310,6 @@ POSTES_RTE = DatasetSpec(
 )
 
 
-# Autres sources
-
 # Calendrier Tempo, extrait de l'API RTE (pas d'ODRÉ) : une couleur par jour
 RTE_TEMPO = DatasetSpec(
     dataset_id="rte-tempo",
@@ -338,7 +319,6 @@ RTE_TEMPO = DatasetSpec(
     description="Calendrier Tempo RTE (couleur de chaque jour)",
 )
 
-# Prix semestriels de l'électricité des entreprises en France
 EUROSTAT_PRIX_ENTREPRISES = DatasetSpec(
     dataset_id="eurostat-nrg-pc-205",
     keys=(period("semestre"), code("tranche"), code("fiscalite")),
@@ -347,8 +327,6 @@ EUROSTAT_PRIX_ENTREPRISES = DatasetSpec(
     description="Prix de l'électricité des entreprises, France, par tranche (Eurostat)",
 )
 
-
-# Registres
 
 # Datasets extraits depuis ODRÉ, adressables par `--dataset` en ligne de commande
 SPECS: dict[str, DatasetSpec] = {
@@ -365,7 +343,6 @@ SPECS: dict[str, DatasetSpec] = {
     )
 }
 
-# Datasets du diagnostic territorial
 TERRITORIAL_SPECS: tuple[DatasetSpec, ...] = (
     CONSO_IRIS,
     EQUILIBRE_REGIONAL,
@@ -384,7 +361,6 @@ BRONZE_SPECS: tuple[DatasetSpec, ...] = (
 )
 
 
-# Retrouve un spec par identifiant ODRÉ
 def get_spec(dataset_id: str) -> DatasetSpec:
     try:
         return SPECS[dataset_id]

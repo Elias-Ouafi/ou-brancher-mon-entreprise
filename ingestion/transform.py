@@ -107,7 +107,6 @@ def _normalize_instant_column(
     return instants
 
 
-# Enregistrements bruts → table typée du spec : clés complètes, instants en UTC
 def records_to_table(
     records: Sequence[dict[str, Any]],
     *,
@@ -151,7 +150,7 @@ def records_to_table(
 
 
 # `run_id` utilisable comme nom de fichier sous Windows et Linux
-def _safe_run_id(run_id: str) -> str:
+def safe_run_id(run_id: str) -> str:
     return _UNSAFE_FILENAME_CHARS.sub("-", run_id).strip("-") or "run"
 
 
@@ -165,7 +164,7 @@ def write_parquet(
 ) -> Path:
     partition = dataset_dir / f"ingest_date={ingest_date.isoformat()}"
     partition.mkdir(parents=True, exist_ok=True)
-    path = partition / f"part-{_safe_run_id(run_id)}.parquet"
+    path = partition / f"part-{safe_run_id(run_id)}.parquet"
     pq.write_table(table, path, compression="zstd")
     logger.info("parquet ecrit rows=%d path=%s", table.num_rows, path)
     return path

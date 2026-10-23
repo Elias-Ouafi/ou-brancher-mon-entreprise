@@ -11,6 +11,7 @@ from pathlib import Path
 
 from ingestion.config import Settings, get_settings
 from ingestion.datasets import NATIONAL_CONS_DEF, NATIONAL_TR, TERRITORIAL_SPECS
+from ingestion.extract_geo import run_geo_ingestion
 from ingestion.pipeline import (
     run_consolidation,
     run_ingestion,
@@ -25,7 +26,6 @@ DBT_DIR = Path(__file__).resolve().parents[1] / "dbt"
 @dataclass(frozen=True, slots=True)
 class Etape:
     nom: str
-    # Message d'erreur, `None` si l'étape a réussi
     erreur: str | None = None
 
     @property
@@ -33,14 +33,21 @@ class Etape:
         return self.erreur is None
 
 
-# `dbt build` sur le warehouse configuré ; lève une erreur si un nœud échoue
+# dbt n'a besoin d'aucun identifiant : on ne lui transmet pas ceux de RTE
+def _env_sans_secrets() -> dict[str, str]:
+    return {cle: valeur for cle, valeur in os.environ.items() if not cle.startswith("ECO2MIX_RTE_")}
+
+
 def dbt_build(settings: Settings) -> None:
     dbt = shutil.which("dbt", path=str(Path(sys.executable).parent)) or shutil.which("dbt")
     if dbt is None:
         raise RuntimeError("dbt introuvable (uv sync --group dbt)")
     resultat = subprocess.run(
         [dbt, "build", "--project-dir", str(DBT_DIR), "--profiles-dir", str(DBT_DIR)],
-        env={**os.environ, "ECO2MIX_DUCKDB_PATH": str(Path(settings.duckdb_path).resolve())},
+        env={
+            **_env_sans_secrets(),
+            "ECO2MIX_DUCKDB_PATH": str(Path(settings.duckdb_path).resolve()),
+        },
         capture_output=True,
         text=True,
         check=False,
@@ -73,6 +80,7 @@ def run_refresh(
             )
             for spec in TERRITORIAL_SPECS
         ],
+        ("carte-geo", lambda: run_geo_ingestion(settings=settings, run_id=run_id)),
         (
             "prix-eurostat",
             lambda: run_prix_entreprises_ingestion(settings=settings, run_id=run_id),

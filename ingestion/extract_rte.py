@@ -26,14 +26,11 @@ CALENDAR_PATH = "/open_api/tempo_like_supply_contract/v1/tempo_like_calendars"
 # Plage maximale acceptée par l'API en un appel
 MAX_DAYS_PER_CALL = 366
 
-# Marge de renouvellement du jeton avant son expiration annoncée
 TOKEN_EXPIRY_MARGIN_SECONDS = 60
 
-# Couleurs publiées par RTE
 TEMPO_COLORS = frozenset({"BLUE", "WHITE", "RED"})
 
 
-# Les identifiants de l'API RTE ne sont pas configurés
 class RteCredentialsMissingError(ExtractionError):
     pass
 
@@ -53,7 +50,6 @@ class DayRange:
         next_year, next_month = (year + 1, 1) if month == 12 else (year, month + 1)
         return cls(start=date(year, month, 1), end=date(next_year, next_month, 1))
 
-    # Découpe la plage en tranches d'au plus `max_days` jours
     def chunks(self, max_days: int = MAX_DAYS_PER_CALL) -> list[DayRange]:
         result = []
         current = self.start
@@ -72,7 +68,6 @@ def _paris_midnight(day: date) -> str:
     return datetime(day.year, day.month, day.day, tzinfo=PARIS_TZ).isoformat()
 
 
-# Client HTTP du calendrier Tempo, utilisable comme context manager
 class RteTempoClient:
     def __init__(self, settings: Settings | None = None, *, client: httpx.Client | None = None):
         self.settings = settings or get_settings()
@@ -112,7 +107,6 @@ class RteTempoClient:
     def __exit__(self, *exc_info: object) -> None:
         self.close()
 
-    # Couleur de chaque jour de la plage, sous forme d'enregistrements bronze
     def fetch_calendar(self, days: DayRange, *, today: date | None = None) -> list[dict[str, Any]]:
         today = today or datetime.now(PARIS_TZ).date()
         horizon = today + timedelta(days=2)

@@ -12,8 +12,10 @@ __pycache__/
 dist/
 build/
 
-# Environnement
+# Environnement et identifiants : jamais versionnés
 .env
+identifiants.local.txt
+*.local.txt
 
 # dbt
 dbt/target/

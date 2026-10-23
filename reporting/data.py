@@ -10,7 +10,6 @@ from ingestion.transform import PARIS_TZ
 COULEURS = ("bleu", "blanc", "rouge")
 
 
-# Paramètres du rapport, exposés dans la CLI
 @dataclass(frozen=True, slots=True)
 class Options:
     # Durée d'un créneau, en heures
@@ -32,7 +31,6 @@ class Heure:
     prix: float | None
 
 
-# Suite d'heures consécutives au-dessus du seuil de pic
 @dataclass(frozen=True, slots=True)
 class Episode:
     debut: datetime
@@ -65,7 +63,6 @@ class SyntheseTarif:
     co2_moyen: float | None
 
 
-# Usage flexible placé au meilleur créneau du jour, comparé à la soirée
 @dataclass(frozen=True, slots=True)
 class Economie:
     nb_jours: int
@@ -142,7 +139,6 @@ def _paris(value: datetime) -> datetime:
     return value.replace(tzinfo=PARIS_TZ) if value.tzinfo is None else value.astimezone(PARIS_TZ)
 
 
-# Rassemble tous les chiffres du rapport d'un mois civil
 def collect(
     connection: duckdb.DuckDBPyConnection,
     mois: date,
@@ -270,7 +266,6 @@ def _tarifs(connection: duckdb.DuckDBPyConnection, rapport: RapportMensuel, para
     ).fetchall()
 
 
-# Fenêtres glissantes de `n` heures
 def _fenetres_sql(n: int) -> str:
     if not isinstance(n, int) or n < 1:
         raise ValueError(f"durée de créneau invalide : {n!r}")
