@@ -1,6 +1,5 @@
-# Donnees locales : jamais versionnees (voir data/README.md)
+# Donnees locales : jamais versionnees, recreees par refresh
 data/*
-!data/README.md
 
 # Python
 __pycache__/
