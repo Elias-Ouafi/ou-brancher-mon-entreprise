@@ -19,7 +19,7 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 | Diagnostic complet : industrie, réseau, zone RTE, site clé en main, risques | `diagnose`, `compare` |
 | Carte 3D hexagonale, épinglée par `essentiel` et `diagnose` (seule l'épingle bouge si les données n'ont pas changé) | `carte`, `reporting/carte.py` |
 | Risques sans dépendre de l'API Géorisques : export GASPAR chargé par `refresh` | `fct_risques_commune` |
-| Date de chargement de chaque source dans toutes les sorties | `ligne_chargements` |
+| Date de chargement de chaque source dans toutes les sorties ; pied de page des rapports avec la commande pour les refaire | `ligne_chargements`, `pied_de_page` |
 | Mise à jour de toutes les sources, puis `dbt build` | `refresh` |
 
 **À surveiller** :
@@ -37,7 +37,6 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 | Priorité | Étape | Bloqué par |
 |---|---|---|
 | 1 | Protéger `main` : CI et PR obligatoires | réglage GitHub, par le propriétaire |
-| 2 | Pied de page des rapports : commande lancée (la date des données est faite) | — |
 | 2 bis | Carte épurée autour d'un verdict « brancher ici ? » (raccordement, risques, carbone, facture), vues secondaires repliées | — |
 | 3 | Carbone horaire en Corse et outre-mer (open data EDF SEI) | — |
 | 4 | Vraie courbe de charge (`--courbe`, export Enedis) à la place du profil type | — |

@@ -10,7 +10,7 @@ from reportlab.platypus import KeepTogether, Paragraph, SimpleDocTemplate, Space
 
 from ingestion.diagnostic import Diagnostic, entete, essentiel, sections
 from reporting import implantation_charts
-from reporting.implantation import GRAPHIQUES, SOURCES, Comparaisons, texte_compact
+from reporting.implantation import GRAPHIQUES, SOURCES, Comparaisons, pied_de_page, texte_compact
 from reporting.pdf import ALERTE, STYLES, _encadre, _image, _kpis, _pied_de_page
 
 # Caractères hors Windows-1252, et leur équivalent lisible en Helvetica
@@ -73,7 +73,12 @@ def _synthese(d: Diagnostic) -> list:
 
 
 def rendre(
-    diagnostic: Diagnostic, comparaisons: Comparaisons, chemin: Path, *, now: datetime
+    diagnostic: Diagnostic,
+    comparaisons: Comparaisons,
+    chemin: Path,
+    *,
+    now: datetime,
+    commande: str | None = None,
 ) -> Path:
     titre = "Diagnostic d'implantation électrique"
     document = SimpleDocTemplate(
@@ -125,6 +130,10 @@ def rendre(
 
     blocs.append(Paragraph("Sources", STYLES["h1"]))
     blocs += [Paragraph(_pdf(source), STYLES["note"]) for source in SOURCES]
+    blocs.append(Spacer(1, 6))
+    blocs += [
+        Paragraph(_pdf(ligne), STYLES["note"]) for ligne in pied_de_page(diagnostic, commande)
+    ]
     pied = _pied_de_page(f"{titre} — {diagnostic.territoire.commune}")
     document.build(blocs, onFirstPage=pied, onLaterPages=pied)
     return chemin

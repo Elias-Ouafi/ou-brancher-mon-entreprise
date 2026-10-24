@@ -134,6 +134,13 @@ def _placer_sur_carte(territoire: Territoire, settings: Settings) -> None:
     logger.info("carte mise a jour %s", path)
 
 
+# Ligne de commande à recopier pour refaire un rapport, citée dans son pied de page
+def _commande(argv: list[str] | None) -> str:
+    arguments = sys.argv[1:] if argv is None else argv
+    cites = [f'"{a}"' if not a or " " in a else a for a in arguments]
+    return " ".join(["python -m ingestion.cli", *cites])
+
+
 def _add_dataset_option(parser: argparse.ArgumentParser, default: str) -> None:
     parser.add_argument("--dataset", choices=sorted(SPECS), default=default, help="dataset ODRÉ")
 
@@ -436,6 +443,7 @@ def main(argv: list[str] | None = None) -> int:
                     settings=settings,
                     output=Path(args.output) if args.output else None,
                     graphiques=not args.sans_graphiques,
+                    commande=_commande(argv),
                 )
                 logger.info("rapport ecrit %s", path)
             if not args.sans_carte:
