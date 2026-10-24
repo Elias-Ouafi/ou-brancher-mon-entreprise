@@ -183,7 +183,7 @@ def test_donnees_de_la_carte(settings_carte: Settings, grilles: list) -> None:
     francaises = [case for case in donnees["cases"] if len(case) == 8]
     assert {case[4] for case in francaises} == {300}
     assert donnees["grilles"][0]["code"] is None and donnees["grilles"][1]["code"] == "971"
-    assert donnees["departements"] and donnees["prix"]
+    assert donnees["departements"] and donnees["zones"]
     assert all(site["case"] for site in donnees["sites"])
     assert donnees["adresse"]["departement"] == territoire().code_departement
     assert donnees["donnees"].startswith("Données chargées le 01/07/2026")
@@ -272,8 +272,11 @@ def test_essentiel_place_l_adresse_sur_la_carte(
     monkeypatch.setattr(
         carte, "mettre_a_jour_carte", lambda **kwargs: appels.append(kwargs) or Path("c.html")
     )
-    assert cli.main(["essentiel", "--adresse", "Lyon"]) == 0
+    assert cli.main(["essentiel", "--adresse", "Lyon", "--puissance", "100"]) == 0
     assert appels[0]["territoire"] == territoire()
+    verdict_adresse = appels[0]["verdict_adresse"]
+    assert verdict_adresse["criteres"][0]["etat"] == "attention"
+    assert verdict_adresse["phrase"].startswith("À vérifier avant de s'engager : raccordement")
     assert cli.main(["essentiel", "--adresse", "Lyon", "--sans-carte"]) == 0
     assert len(appels) == 1
 

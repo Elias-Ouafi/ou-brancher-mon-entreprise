@@ -14,11 +14,14 @@ from pytest_httpx import HTTPXMock
 from ingestion import cli
 from ingestion.config import Settings
 from ingestion.diagnostic import (
+    Critere,
     DiagnosticIndisponibleError,
     code_commune_parent,
     code_departement,
     formater_diagnostic,
     lire_diagnostic,
+    phrase_verdict,
+    verdict,
 )
 from ingestion.geocode import Territoire
 from ingestion.georisques import lire_rapport
@@ -229,6 +232,48 @@ def test_connection_threshold_follows_project_power(
     assert seuil.domaine_tension == domaine
 
 
+# Sans puissance, on ne sait pas qui raccorde : le verdict le dit au lieu de deviner
+def test_verdict_without_power_leaves_connection_unknown(medallion_db: Path) -> None:
+    criteres = verdict(lire_diagnostic(territoire("69123"), database=medallion_db))
+    assert [c.nom for c in criteres] == ["Raccordement", "Risques", "Carbone", "Facture", "Foncier"]
+    assert criteres[0].etat == "inconnu"
+    assert "non évalué : raccordement" in phrase_verdict(criteres)
+
+
+# Petit projet chez Enedis : rien à signaler ; gros projet chez RTE : étude indispensable
+@pytest.mark.parametrize(("puissance", "etat"), [(0.25, "ok"), (100, "attention")])
+def test_verdict_connection_follows_who_connects(
+    medallion_db: Path, puissance: float, etat: str
+) -> None:
+    raccordement = verdict(
+        lire_diagnostic(territoire("69123"), puissance_mw=puissance, database=medallion_db)
+    )[0]
+    assert raccordement.etat == etat
+    assert ("RTE" in raccordement.detail) is (etat == "attention")
+
+
+# Réseau insulaire au-dessus du seuil européen : le carbone passe à vérifier
+def test_verdict_flags_carbon_heavy_grid(medallion_db: Path) -> None:
+    def carbone(commune: str) -> str:
+        criteres = verdict(lire_diagnostic(territoire(commune), database=medallion_db))
+        return next(c.etat for c in criteres if c.nom == "Carbone")
+
+    assert carbone("2A004") == "attention"
+    assert carbone("69123") == "ok"
+
+
+def test_verdict_sentence_lists_what_to_check() -> None:
+    criteres = [
+        Critere("Raccordement", "attention", "HTB, RTE", ""),
+        Critere("Risques", "inconnu", "non consultés", ""),
+        Critere("Carbone", "ok", "40 gCO₂e/kWh", ""),
+    ]
+    assert phrase_verdict(criteres) == (
+        "À vérifier avant de s'engager : raccordement (non évalué : risques)."
+    )
+    assert phrase_verdict(criteres[2:]) == "Rien de bloquant dans les données publiques."
+
+
 def test_every_figure_comes_with_its_limit(medallion_db: Path, warehouse: Any) -> None:
     rapport = json.loads(
         (FIXTURES_DIR / "georisques_rapport_lyon.json").read_text(encoding="utf-8")
@@ -371,6 +416,8 @@ def test_essentiel_command_answers_price_and_carbon(
     assert reponse["carbone"]["est_decarbone"] is False
     assert reponse["carbone"]["systeme_electrique"] == "Corse"
     assert set(reponse["limites"]) == {"prix_entreprise", "carbone_territoire"}
+    assert "carbone" in reponse["verdict"]["phrase"]
+    assert len(reponse["verdict"]["criteres"]) == 5
 
 
 def test_essentiel_text_fits_in_a_few_lines(medallion_db: Path) -> None:
@@ -379,7 +426,8 @@ def test_essentiel_text_fits_in_a_few_lines(medallion_db: Path) -> None:
     texte = formater_essentiel(
         lire_diagnostic(territoire("69123", "Lyon"), conso_mwh=350, database=medallion_db)
     )
-    assert len(texte.splitlines()) <= 7
+    assert len(texte.splitlines()) <= 8
+    assert texte.splitlines()[-1].startswith("Brancher ici ? Rien de bloquant")
     assert "Prix moyen : 0,1925 €/kWh HTVA, soit environ 67 400 € par an pour 350 MWh" in texte
     assert "Électricité décarbonée : oui (France continentale), 51,9 gCO₂e/kWh" in texte
 
