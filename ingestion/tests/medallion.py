@@ -11,6 +11,7 @@ from typing import Any
 
 from ingestion.config import Settings
 from ingestion.datasets import (
+    COMMUNES_CENTRES,
     CONSO_IRIS,
     CONTRAINTES_OUVRAGES,
     CONTRAINTES_REGIONALES,
@@ -24,6 +25,7 @@ from ingestion.datasets import (
     NATIONAL_TR,
     POSTES_RTE,
     RTE_TEMPO,
+    SITES_PRODUCTION,
     DatasetSpec,
 )
 from ingestion.pipeline import ensure_bronze_tables
@@ -427,6 +429,53 @@ def ember_intensites() -> list[dict[str, Any]]:
     ]
 
 
+# Pôles de production : un gros site par réseau, et ce que le gold doit écarter
+def sites_production() -> list[dict[str, Any]]:
+    lignes = [
+        # Arrondissement de Lyon : rattaché à la commune 69123
+        ("69383", "Lyon 3e Arrondissement", "69", "Nucléaire", 3600.0),
+        ("69123", "Lyon", "69", "Hydraulique", 150.0),
+        ("69123", "Lyon", "69", "Hydraulique", 120.0),
+        # Continent sous 200 MW, stockage, commune absente, collectivité hors carte : écartés
+        ("01001", "L'Abergement", "01", "Eolien", 180.0),
+        ("01001", "L'Abergement", "01", "Stockage non hydraulique", 400.0),
+        ("", "", "69", "Thermique non renouvelable", 900.0),
+        ("97501", "Miquelon", "975", "Thermique non renouvelable", 22.0),
+        # Corse : 20 MW suffisent
+        ("2A004", "Ajaccio", "2A", "Thermique non renouvelable", 120.0),
+    ]
+    return [
+        {
+            "code_commune": commune,
+            "commune": nom if i != 2 else "Lyon (bis)",
+            "code_departement": departement,
+            "filiere": filiere,
+            "puissance_mw": mw,
+            "energie_gwh": mw * 4,
+            "nb_installations": 1,
+        }
+        for i, (commune, nom, departement, filiere, mw) in enumerate(lignes)
+    ]
+
+
+def communes_centres() -> list[dict[str, Any]]:
+    return [
+        {
+            "code_commune": code,
+            "nom": nom,
+            "code_departement": dep,
+            "longitude": lon,
+            "latitude": lat,
+        }
+        for code, nom, dep, lon, lat in [
+            ("69123", "Lyon", "69", 4.8351, 45.758),
+            ("01001", "L'Abergement-Clémenciat", "01", 4.9306, 46.1517),
+            ("2A004", "Ajaccio", "2A", 8.7369, 41.9267),
+            ("97501", "Miquelon-Langlade", "975", -56.38, 47.1),
+        ]
+    ]
+
+
 def load_bronze(
     database: Path, tmp_path: Path, spec: DatasetSpec, records: list[dict[str, Any]]
 ) -> None:
@@ -478,6 +527,8 @@ def build_warehouse(tmp_path: Path, *, with_tempo: bool = True) -> Path:
     load_bronze(database, tmp_path, EDF_SEI_PRODUCTION, edf_sei_production())
     load_bronze(database, tmp_path, EUROSTAT_PRIX_UE, prix_ue())
     load_bronze(database, tmp_path, EMBER_INTENSITE_CARBONE, ember_intensites())
+    load_bronze(database, tmp_path, SITES_PRODUCTION, sites_production())
+    load_bronze(database, tmp_path, COMMUNES_CENTRES, communes_centres())
     ensure_bronze_tables(settings=Settings(_env_file=None, duckdb_path=database))
     dbt_build(database, tmp_path)
     return database

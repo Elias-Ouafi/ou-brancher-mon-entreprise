@@ -24,7 +24,8 @@ DEPARTEMENTS_OUTRE_MER = ("971", "972", "973", "974", "976")
 CASES_PAR_ENCART = 70
 MARGE_METROPOLE, MARGE_ENCART = 3, 2
 
-ESPACE_ENCARTS = 6.0
+# Écart entre deux cartes dans la scène : au-delà du brouillard, une seule carte se voit à la fois
+ECART_CARTES = 600.0
 
 # Échantillons par case : le centre puis six points à 60 % du rayon
 FRACTION_ECHANTILLON = 0.6
@@ -299,7 +300,7 @@ def _grille(
     return grille
 
 
-# Grilles hexagonales de la métropole et des outre-mer, chaque case rattachée à un département
+# Une carte par système électrique : métropole et Corse, puis chaque département d'outre-mer
 def construire_grilles(
     departements: list[Departement],
     *,
@@ -317,8 +318,6 @@ def construire_grilles(
         Projection(LON0_METROPOLE, LAT0_METROPOLE),
         terres,
     )
-    grille.scene_x0 = -(grille.colonnes - 1) * largeur_s / 2
-    grille.scene_z0 = -(grille.lignes - 1) * hauteur_s / 2
     grilles = [grille]
 
     encarts = []
@@ -346,16 +345,12 @@ def construire_grilles(
             )
         )
 
-    largeur_max = max((e.colonnes for e in encarts), default=0) * largeur_s
-    z = grille.scene_z0
-    for i in range(0, len(encarts), 2):
-        rangee = encarts[i : i + 2]
-        for j, encart in enumerate(rangee):
-            bord_droit = grille.scene_x0 - ESPACE_ENCARTS - j * (largeur_max + ESPACE_ENCARTS / 2)
-            encart.scene_x0 = bord_droit - (encart.colonnes - 0.5) * largeur_s
-            encart.scene_z0 = z
-        z += max(e.lignes for e in rangee) * hauteur_s + ESPACE_ENCARTS / 2
-    return grilles + encarts
+    grilles += encarts
+    # Chaque carte centrée sur son propre point, loin des autres
+    for i, g in enumerate(grilles):
+        g.scene_x0 = i * ECART_CARTES - (g.colonnes - 1) * largeur_s / 2
+        g.scene_z0 = -(g.lignes - 1) * hauteur_s / 2
+    return grilles
 
 
 # Échantillons terrestres de toutes les grilles, arrondis au mètre près

@@ -395,3 +395,28 @@ models:
                 values: [naturel, technologique]
       - name: millesime
         data_tests: [not_null]
+  - name: fct_sites_production
+    description: >
+      Principaux pôles de production d'électricité : puissance en service d'une filière dans
+      une commune, d'au moins 200 MW sur le continent et 20 MW en Corse et outre-mer (des
+      réseaux bien plus petits). Le stockage hors barrages en est exclu. Placé au centre de
+      la commune, pas à l'adresse exacte de la centrale.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [code_insee_commune, filiere]
+    columns:
+      - name: code_insee_commune
+        data_tests:
+          - not_null
+          - exact_length:
+              arguments:
+                length: 5
+      - name: puissance_mw
+        data_tests:
+          - not_null
+          - accepted_range:
+              arguments:
+                min_value: 20
+      - name: latitude
+        data_tests: [not_null]
