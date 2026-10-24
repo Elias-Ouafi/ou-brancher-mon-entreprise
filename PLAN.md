@@ -22,6 +22,7 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 | Verdict « brancher ici ? » en cinq critères (raccordement, risques, carbone, facture, foncier) | `verdict`, `phrase_verdict` |
 | Carte 3D épurée autour du verdict : vue « Raccorder » par défaut, adresse reliée à la zone RTE utile et au site clé en main ; épinglée par `essentiel` et `diagnose` (seule l'épingle bouge si les données n'ont pas changé) | `carte`, `reporting/carte.py` |
 | Risques sans dépendre de l'API Géorisques : export GASPAR chargé par `refresh` | `fct_risques_commune` |
+| Risques « à vérifier » seulement sous un plan de prévention approuvé ou prescrit (13 919 communes au lieu des 31 706 qui ont un risque recensé) | `fct_plans_prevention_commune`, `_critere_risques` |
 | Date de chargement de chaque source dans toutes les sorties ; pied de page des rapports avec la commande pour les refaire | `ligne_chargements`, `pied_de_page` |
 | Pays de l'UE-27 : prix Eurostat et carbone Ember du pays, face à la France à tranche égale ; pays trouvé par Nominatim | `europe`, `fct_pays_ue` |
 | Mise à jour de toutes les sources, puis `dbt build` | `refresh` |
@@ -89,6 +90,7 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 | 23 oct. | Documentation réduite à deux fichiers : README et ce plan |
 | 24 oct. | Adresse refusée plutôt que devinée : score BAN sous 0,65, deux communes à moins de 0,05 l'une de l'autre, ou code postal demandé absent des résultats |
 | 24 oct. | Risques : rapport Géorisques à l'adresse d'abord, puis export GASPAR local (maille commune), puis API commune |
+| 24 oct. | Critère risques : « attention » seulement si un plan de prévention (PPRN, PPRT, PPRM) approuvé, anticipé, prescrit ou prorogé couvre la commune (export GASPAR, plans caducs écartés) ; sinon « info » avec les risques recensés ; « inconnu » si les plans ne sont pas chargés |
 | 24 oct. | Chaque sortie donne la date de chargement de ses sources ; au-delà de 45 jours, elle demande un `refresh` |
 | 24 oct. | Commentaires : une ligne par fonction sur son but et son intérêt métier ; code simple, Python d'abord |
 | 24 oct. | Une étape n'est validée qu'après un test complet : ruff, pytest (dont `dbt build`), essai réel |

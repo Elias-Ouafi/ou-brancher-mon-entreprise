@@ -330,6 +330,26 @@ GASPAR_RISQUES = DatasetSpec(
     description="Risques majeurs recensés par commune (GASPAR, DDRM)",
 )
 
+# Plans de prévention (PPRN, PPRT, PPRM) de l'export GASPAR : une ligne par commune, procédure
+# et aléa ; `code_risque` est l'aléa le plus précis publié (vide pour un plan sans aléa)
+GASPAR_PLANS = DatasetSpec(
+    dataset_id="gaspar-plans",
+    keys=(code("code_commune"), code("code_procedure"), code("code_risque", vide_si_absent=True)),
+    attributes=(
+        label("type_plan"),
+        label("libelle_plan"),
+        label("libelle_risque"),
+        label("libelle_alea"),
+        label("etat"),
+        label("sous_etat"),
+        period("date_prescription"),
+        period("date_approbation"),
+        period("millesime"),
+    ),
+    measures=(),
+    description="Plans de prévention des risques par commune (GASPAR : PPRN, PPRT, PPRM)",
+)
+
 EDF_SEI_PRODUCTION = DatasetSpec(
     dataset_id="edf-sei-production",
     keys=(code("territoire"), instant("date_heure")),
@@ -406,6 +426,7 @@ BRONZE_SPECS: tuple[DatasetSpec, ...] = (
     RTE_TEMPO,
     EUROSTAT_PRIX_ENTREPRISES,
     GASPAR_RISQUES,
+    GASPAR_PLANS,
     EDF_SEI_PRODUCTION,
     EUROSTAT_PRIX_UE,
     EMBER_INTENSITE_CARBONE,

@@ -162,6 +162,15 @@ where code_tranche = $code
 """
 
 
+# Plans en vigueur, approuvés d'abord, puis du plus récent au plus ancien
+_PLANS_SQL = """
+select code_procedure, type_plan, libelle_plan, risques, etat, date_prescription, date_approbation
+from gold.fct_plans_prevention_commune
+where code_insee_commune in (select unnest($codes))
+order by etat, coalesce(date_approbation, date_prescription) desc nulls last, libelle_plan
+"""
+
+
 class DiagnosticIndisponibleError(RuntimeError):
     pass
 
@@ -184,6 +193,7 @@ SOURCES_CHARGEES: dict[str, str] = {
     "contraintes_region": "contraintes RTE",
     "postes_electriques_rte": "postes RTE",
     "gaspar_risques": "risques GASPAR",
+    "gaspar_plans": "plans de prévention GASPAR",
 }
 # Au-delà, une source n'a pas été rechargée depuis plus d'un cycle mensuel de `refresh`
 AGE_MAX_JOURS = 45
@@ -371,6 +381,21 @@ class PartChiffreAffaires:
     part_haut: float | None
 
 
+# Plan de prévention en vigueur dans la commune : son règlement s'impose aux constructions
+@dataclass(frozen=True, slots=True)
+class PlanPrevention:
+    code_procedure: str
+    # PPRN (naturels), PPRT (technologiques) ou PPRM (miniers)
+    type_plan: str
+    libelle_plan: str
+    # Familles d'aléas couvertes (« Inondation, Mouvement de terrain »)
+    risques: str | None
+    # `approuvé` (ou appliqué par anticipation) ou `prescrit` (en cours d'élaboration)
+    etat: str
+    date_prescription: date | None
+    date_approbation: date | None
+
+
 @dataclass(frozen=True, slots=True)
 class Diagnostic:
     territoire: Territoire
@@ -433,6 +458,8 @@ class Diagnostic:
     chargements: dict[str, date] = field(default_factory=dict)
     # Courbe de charge Enedis fournie par `--courbe`
     courbe: BilanCourbe | None = None
+    # Plans de prévention en vigueur dans la commune ; `None` si l'export GASPAR n'est pas chargé
+    plans_prevention: list[PlanPrevention] | None = None
 
     @property
     def commune_a_des_sites(self) -> bool:
@@ -549,6 +576,11 @@ def lire_diagnostic(
                 ).fetchall()
             )
             chargements = lire_chargements(connection)
+            plans = (
+                _plans(connection, {territoire.code_insee_commune, commune})
+                if "gaspar_plans" in chargements
+                else None
+            )
     except duckdb.CatalogException as error:
         raise DonneesAbsentesError(
             f"couche gold incomplete : {str(error).splitlines()[0]}"
@@ -575,8 +607,20 @@ def lire_diagnostic(
         limites=limites,
         chargements=chargements,
         courbe=bilan,
+        plans_prevention=plans,
         **ligne,
     )
+
+
+# Plans de la commune (et de son arrondissement), une fois chacun
+def _plans(connection: duckdb.DuckDBPyConnection, codes: set[str]) -> list[PlanPrevention]:
+    resultat = connection.execute(_PLANS_SQL, {"codes": sorted(codes)})
+    colonnes = [d[0] for d in resultat.description]
+    plans: dict[str, PlanPrevention] = {}
+    for row in resultat.fetchall():
+        plan = PlanPrevention(**dict(zip(colonnes, row, strict=True)))
+        plans.setdefault(plan.code_procedure, plan)
+    return list(plans.values())
 
 
 def _une_ligne(
@@ -814,30 +858,64 @@ def _critere_raccordement(d: Diagnostic) -> Critere:
     return Critere("Raccordement", "attention", valeur, detail)
 
 
-# Risques naturels et technologiques : à l'adresse si Géorisques répond, sinon dans la commune
+# Plans cités dans le verdict ; le diagnostic complet les donne tous
+NB_PLANS_CITES = 3
+
+
+# Risques : à vérifier seulement quand un plan de prévention en vigueur couvre la commune, car son
+# règlement peut interdire ou conditionner une construction ; un risque seulement recensé informe
 def _critere_risques(d: Diagnostic) -> Critere:
-    r = d.risques
-    if r is None:
-        return Critere("Risques", "inconnu", "non consultés", "À vérifier sur georisques.gouv.fr.")
-    if r.maille == "adresse":
-        exposes = r.selon(Exposition.EXPOSE)
-        if not exposes:
-            return Critere("Risques", "ok", "aucun recensé à l'adresse", "Rapport Géorisques.")
+    plans = d.plans_prevention
+    if plans is None:
+        return Critere(
+            "Risques",
+            "inconnu",
+            "plans de prévention non chargés",
+            "Lancer refresh pour charger l'export GASPAR.",
+        )
+    if plans:
         return Critere(
             "Risques",
             "attention",
-            f"{len(exposes)} à l'adresse",
-            _liste_risques(exposes) + ".",
+            f"{len(plans)} plan{'s' if len(plans) > 1 else ''} de prévention dans la commune",
+            f"{liste_plans(plans, NB_PLANS_CITES)}. Le règlement du plan peut interdire ou"
+            " conditionner la construction selon la zone : le consulter en mairie avant de"
+            " s'engager.",
         )
+    return Critere(
+        "Risques", "info", "aucun plan de prévention dans la commune", _risques_recenses(d.risques)
+    )
+
+
+# Ce que l'on sait des risques sans plan de prévention : à l'adresse, sinon dans la commune
+def _risques_recenses(r: RisquesSite | None) -> str:
+    if r is None:
+        return "Risques recensés non consultés : à vérifier sur georisques.gouv.fr."
+    if r.maille == "adresse":
+        exposes = r.selon(Exposition.EXPOSE)
+        if not exposes:
+            return "Aucun risque recensé à l'adresse (rapport Géorisques)."
+        return f"Recensés à l'adresse : {_liste_risques(exposes)}."
     recenses = r.selon(Exposition.INCONNU)
     if not recenses:
-        return Critere("Risques", "ok", "aucun recensé dans la commune", "Export GASPAR.")
-    return Critere(
-        "Risques",
-        "attention",
-        f"{len(recenses)} dans la commune",
-        _liste_risques(recenses) + " ; non évalués à l'adresse.",
-    )
+        return "Aucun risque recensé dans la commune (export GASPAR)."
+    return f"Recensés dans la commune, sans plan de prévention : {_liste_risques(recenses)}."
+
+
+# « PPRI de Paris (inondation, approuvé en 2007) », les premiers seulement si `limite`
+def liste_plans(plans: list[PlanPrevention], limite: int | None = None) -> str:
+    cites = plans if limite is None else plans[:limite]
+    texte = ", ".join(_plan_court(p) for p in cites)
+    if (reste := len(plans) - len(cites)) > 0:
+        texte += f" et {reste} autre{'s' if reste > 1 else ''}"
+    return texte
+
+
+def _plan_court(p: PlanPrevention) -> str:
+    date_etat = p.date_approbation if p.etat == "approuvé" else p.date_prescription
+    etat = f"{p.etat} en {date_etat.year}" if date_etat else p.etat
+    familles = f"{p.risques.lower()}, " if p.risques else ""
+    return f"{p.libelle_plan} ({familles}{etat})"
 
 
 # Électricité du réseau sous le seuil de la taxonomie européenne, ou non
@@ -963,6 +1041,9 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
         },
         "a_savoir": A_SAVOIR,
         "courbe": None if d.courbe is None else asdict(d.courbe),
+        "plans_prevention": None
+        if d.plans_prevention is None
+        else [asdict(p) for p in d.plans_prevention],
         "verdict": {
             "phrase": phrase_verdict(criteres := verdict(d)),
             "criteres": [asdict(c) for c in criteres],
@@ -1273,6 +1354,13 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
     limite(s, "cout_profil")
 
     s = bloc("6. Risques naturels et technologiques à l'adresse (Géorisques)")
+    if d.plans_prevention is not None:
+        texte(
+            s,
+            "Plans de prévention en vigueur dans la commune : "
+            + (liste_plans(d.plans_prevention) or "aucun"),
+        )
+        limite(s, "plans_prevention")
     if d.risques_erreur is not None:
         texte(
             s,
