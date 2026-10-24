@@ -332,3 +332,25 @@ models:
     columns:
       - name: code_departement
         data_tests: [unique, not_null]
+  - name: fct_risques_commune
+    description: >
+      Risques recensés dans chaque commune selon le dernier export GASPAR. Repli du
+      diagnostic quand l'API Géorisques ne répond pas : maille commune, jamais l'adresse.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [code_insee_commune, num_risque]
+    columns:
+      - name: code_insee_commune
+        data_tests:
+          - not_null
+          - exact_length:
+              arguments:
+                length: 5
+      - name: famille
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [naturel, technologique]
+      - name: millesime
+        data_tests: [not_null]

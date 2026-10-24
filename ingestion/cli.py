@@ -19,7 +19,13 @@ from ingestion.diagnostic import (
 )
 from ingestion.extract_odre import ExtractionWindow
 from ingestion.extract_rte import DayRange, RteCredentialsMissingError
-from ingestion.geocode import AdresseIntrouvableError, GeocodingError, Territoire, geocode
+from ingestion.geocode import (
+    AdresseAmbigueError,
+    AdresseIntrouvableError,
+    GeocodingError,
+    Territoire,
+    geocode,
+)
 from ingestion.pipeline import (
     IncompleteMonthError,
     StaleDataError,
@@ -378,6 +384,9 @@ def main(argv: list[str] | None = None) -> int:
                     " (adresse en France uniquement).",
                     error,
                 )
+                return 1
+            except AdresseAmbigueError as error:
+                logger.error("adresse ambigue : %s. Preciser le code postal ou la commune.", error)
                 return 1
             except GeocodingError as error:
                 logger.error("geocodage impossible : %s", error)

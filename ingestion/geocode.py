@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import unicodedata
 from dataclasses import dataclass
 from typing import Any
@@ -13,8 +14,15 @@ from ingestion.extract_odre import RETRYABLE_STATUS_CODES, USER_AGENT, Retryable
 
 logger = logging.getLogger(__name__)
 
-# En dessous, la BAN n'a pas trouvé grand-chose de ressemblant
-SCORE_MINIMUM = 0.4
+# En dessous, le meilleur résultat est souvent une autre adresse (« Fort-de-France » → Dracy-le-Fort
+# à 0,59) ; une faute de frappe avec code postal reste au-dessus (0,75)
+SCORE_MINIMUM = 0.65
+# Deux communes à moins de cet écart de score : la BAN ne sait pas trancher (« 3 allée des
+# Peupliers » : Bordeaux 0,980, Saint-Quentin 0,975…)
+MARGE_AMBIGUITE = 0.05
+NB_CANDIDATS = 5
+ARRONDISSEMENTS: dict[str, str] = {"751": "75056", "693": "69123", "132": "13055"}
+_CODE_POSTAL = re.compile(r"(?<!\d)(\d{5})(?!\d)")
 
 REGIONS: dict[str, str] = {
     "84": "Auvergne-Rhône-Alpes",
@@ -44,6 +52,18 @@ class GeocodingError(RuntimeError):
 
 class AdresseIntrouvableError(GeocodingError):
     pass
+
+
+class AdresseAmbigueError(GeocodingError):
+    def __init__(self, demande: str, candidats: list[str]) -> None:
+        super().__init__(f"{demande!r} correspond a plusieurs communes : {' ; '.join(candidats)}")
+        self.candidats = candidats
+
+
+def code_commune_parent(code_insee: str) -> str:
+    if len(code_insee) == 5 and code_insee[:3] in ARRONDISSEMENTS:
+        return ARRONDISSEMENTS[code_insee[:3]]
+    return code_insee
 
 
 def normalise(valeur: str) -> str:
@@ -96,6 +116,49 @@ def _contexte(valeur: str) -> tuple[str, str, str]:
     raise GeocodingError(f"champ context inattendu : {valeur!r}")
 
 
+def _props(feature: dict[str, Any]) -> dict[str, Any]:
+    return feature.get("properties") or {}
+
+
+def _score(feature: dict[str, Any]) -> float:
+    return float(_props(feature).get("score") or 0.0)
+
+
+# Une commune seule n'a pas de code postal dans son libellé : « Saint-Denis » (93 ou 974)
+def _libelle_candidat(props: dict[str, Any]) -> str:
+    libelle = str(props.get("label") or "")
+    if props.get("postcode") and str(props["postcode"]) in libelle:
+        return libelle
+    departement = str(props.get("context") or "").split(",")[0].strip()
+    return f"{libelle} ({departement})" if departement else libelle
+
+
+# Mieux vaut refuser que répondre pour une autre commune : prix et carbone n'en dépendent
+# pas, mais le réseau, les sites et les risques si
+def _choisir(features: list[dict[str, Any]], demande: str) -> dict[str, Any]:
+    candidats = sorted(features, key=_score, reverse=True)
+    if code_postal := _CODE_POSTAL.search(demande):
+        candidats = [f for f in candidats if _props(f).get("postcode") == code_postal.group(1)]
+        if not candidats:
+            raise AdresseIntrouvableError(
+                f"aucun resultat dans le code postal {code_postal.group(1)} pour {demande!r}"
+            )
+    meilleur = candidats[0]
+    if _score(meilleur) < SCORE_MINIMUM:
+        raise AdresseIntrouvableError(
+            f"resultat trop approximatif pour {demande!r} (score {_score(meilleur):.2f},"
+            f" {_props(meilleur).get('label')!r})"
+        )
+    proches: dict[str, str] = {}
+    for feature in candidats:
+        if _score(feature) >= _score(meilleur) - MARGE_AMBIGUITE:
+            commune = code_commune_parent(str(_props(feature).get("citycode") or ""))
+            proches.setdefault(commune, _libelle_candidat(_props(feature)))
+    if len(proches) > 1:
+        raise AdresseAmbigueError(demande, list(proches.values()))
+    return meilleur
+
+
 class BanClient:
     def __init__(
         self,
@@ -139,13 +202,18 @@ class BanClient:
 
         payload = self._get(
             "search",
-            {"q": adresse, "index": "address", "limit": 1, "returntruegeometry": "false"},
+            {
+                "q": adresse,
+                "index": "address",
+                "limit": NB_CANDIDATS,
+                "returntruegeometry": "false",
+            },
         ).json()
         features = payload.get("features") or []
         if not features:
             raise AdresseIntrouvableError(f"aucun resultat pour {adresse!r}")
 
-        return self._to_territoire(features[0], demande=adresse)
+        return self._to_territoire(_choisir(features, adresse), demande=adresse)
 
     def _to_territoire(self, feature: dict[str, Any], *, demande: str) -> Territoire:
         props: dict[str, Any] = feature.get("properties") or {}
@@ -159,13 +227,6 @@ class BanClient:
         score = float(props.get("score") or 0.0)
         precision = str(props.get("type") or "")
 
-        if score < SCORE_MINIMUM:
-            logger.warning(
-                "score de geocodage faible (%.2f) pour %r : resultat retenu %r",
-                score,
-                demande,
-                props.get("label"),
-            )
         if precision not in {"housenumber", "street"}:
             logger.warning(
                 "adresse resolue a la maille %r seulement pour %r", precision or "inconnue", demande

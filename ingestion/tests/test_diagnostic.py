@@ -458,3 +458,50 @@ def test_essentiel_explains_an_unknown_address(
 
     assert cli.main(["essentiel", "--adresse", "nulle part"]) == 1
     assert "adresse introuvable" in caplog.text
+
+
+def test_data_dates_come_from_the_last_load_of_each_source(medallion_db: Path) -> None:
+    diagnostic = lire_diagnostic(territoire("69123", "Lyon"), database=medallion_db)
+
+    assert set(diagnostic.chargements) >= {"eurostat_nrg_pc_205", "gaspar_risques"}
+    assert set(diagnostic.chargements.values()) == {date(2026, 7, 1)}
+    assert "Données chargées le 01/07/2026" in formater_diagnostic(diagnostic)
+
+
+@pytest.mark.parametrize(
+    ("chargements", "attendu"),
+    [
+        ({}, "Date des données inconnue"),
+        ({"eurostat_nrg_pc_205": date(2026, 10, 23)}, "Données chargées le 23/10/2026."),
+        (
+            {"eurostat_nrg_pc_205": date(2026, 10, 23), "gaspar_risques": date(2026, 10, 24)},
+            "Données chargées du 23/10/2026 au 24/10/2026.",
+        ),
+        (
+            {"eurostat_nrg_pc_205": date(2026, 9, 1), "gaspar_risques": date(2026, 10, 24)},
+            "Données chargées le 24/10/2026, sauf prix Eurostat le 01/09/2026 : plus de 45 jours,"
+            " relancer refresh.",
+        ),
+    ],
+)
+def test_data_date_line_flags_late_sources(chargements: dict, attendu: str) -> None:
+    from ingestion.diagnostic import ligne_chargements
+
+    assert ligne_chargements(chargements, aujourd_hui=date(2026, 10, 24)).startswith(attendu)
+
+
+def test_essentiel_lists_the_candidates_of_an_ambiguous_address(
+    settings: Settings, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    from ingestion.geocode import AdresseAmbigueError
+
+    def ambigue(adresse: str, **_: object) -> None:
+        raise AdresseAmbigueError(adresse, ["3 A. 33000 Bordeaux", "3 A. 02100 Saint-Quentin"])
+
+    monkeypatch.setattr(cli, "get_settings", lambda: settings)
+    monkeypatch.setattr(cli, "geocode", ambigue)
+
+    assert cli.main(["essentiel", "--adresse", "3 allée des peupliers"]) == 1
+    assert "adresse ambigue" in caplog.text
+    assert "33000 Bordeaux ; 3 A. 02100 Saint-Quentin" in caplog.text
+    assert "Preciser le code postal ou la commune" in caplog.text

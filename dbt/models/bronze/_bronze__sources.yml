@@ -126,3 +126,19 @@ sources:
         columns:
           - name: code_poste
             data_tests: [unique, not_null]
+      - name: gaspar_risques
+        description: >
+          Risques majeurs recensés par commune, d'après les dossiers départementaux des
+          risques majeurs (export GASPAR de Géorisques, fichier `ddrm_risq_gaspar`).
+          `num_risque` est hiérarchique : « 11 » (inondation) se précise en « 112 » (crue à
+          débordement lent). `millesime` est la date du fichier : un risque retiré de la
+          source garde l'ancienne date, le silver ne retient que la dernière.
+        data_tests:
+          - unique_combination:
+              arguments:
+                columns: [code_commune, num_risque]
+        columns:
+          - name: code_commune
+            data_tests: [not_null]
+          - name: millesime
+            data_tests: [not_null]

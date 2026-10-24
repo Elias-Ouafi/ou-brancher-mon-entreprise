@@ -16,6 +16,7 @@ from ingestion.datasets import (
     CONTRAINTES_REGIONALES,
     EQUILIBRE_REGIONAL,
     EUROSTAT_PRIX_ENTREPRISES,
+    GASPAR_RISQUES,
     NATIONAL_CONS_DEF,
     NATIONAL_TR,
     POSTES_RTE,
@@ -349,6 +350,28 @@ def contraintes_ouvrages() -> list[dict[str, Any]]:
     ]
 
 
+# Lyon et Ajaccio ; une ligne d'un export plus ancien, retirée depuis, et un « Autre risque »
+def gaspar_risques() -> list[dict[str, Any]]:
+    lignes = [
+        ("69123", "Lyon", "11", "Inondation", "2026-10-05"),
+        ("69123", "Lyon", "112", "Par une crue à débordement lent de cours d'eau", "2026-10-05"),
+        ("69123", "Lyon", "24", "Transport de marchandises dangereuses", "2026-10-05"),
+        ("69123", "Lyon", "AUTRE", "Autre risque", "2026-10-05"),
+        ("69123", "Lyon", "13", "Séisme", "2025-01-02"),
+        ("2A004", "Ajaccio", "16", "Feu de forêt", "2026-10-05"),
+    ]
+    return [
+        {
+            "code_commune": commune,
+            "libelle_commune": nom,
+            "num_risque": numero,
+            "libelle_risque": libelle,
+            "millesime": millesime,
+        }
+        for commune, nom, numero, libelle, millesime in lignes
+    ]
+
+
 def load_bronze(
     database: Path, tmp_path: Path, spec: DatasetSpec, records: list[dict[str, Any]]
 ) -> None:
@@ -396,6 +419,7 @@ def build_warehouse(tmp_path: Path, *, with_tempo: bool = True) -> Path:
     load_bronze(database, tmp_path, EUROSTAT_PRIX_ENTREPRISES, prix_entreprises())
     load_bronze(database, tmp_path, POSTES_RTE, postes_rte())
     load_bronze(database, tmp_path, CONTRAINTES_OUVRAGES, contraintes_ouvrages())
+    load_bronze(database, tmp_path, GASPAR_RISQUES, gaspar_risques())
     ensure_bronze_tables(settings=Settings(_env_file=None, duckdb_path=database))
     dbt_build(database, tmp_path)
     return database

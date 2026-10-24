@@ -419,7 +419,7 @@ trancheSel.onchange = updPrix; updPrix();
 const co2s = [...new Set(DATA.departements.map(d => d.co2).filter(v => v != null))].sort((a, b) => a - b);
 document.getElementById("carbone").innerHTML = co2s.length ? `<b>${fmt(co2s[0], 1)}</b><small>gCO₂e/kWh continent</small><b style="color:var(--bad)">${fmt(co2s[1] ?? co2s[0])}–${fmt(co2s[co2s.length - 1])}</b><small>îles</small>` : "";
 document.getElementById("nzones").textContent = DATA.zones.length; document.getElementById("nsites").textContent = DATA.sites.length;
-document.getElementById("genere").textContent = `Généré le ${new Date(DATA.genereLe).toLocaleDateString("fr-FR")} · relief IGN, contours Etalab, indicateurs du gold`;
+document.getElementById("genere").textContent = `Généré le ${new Date(DATA.genereLe).toLocaleDateString("fr-FR")} · ${DATA.donnees || "relief IGN, contours Etalab, indicateurs du gold"}`;
 
 // Caméra : cadrage initial et déplacements animés
 const bounds = { x0: Math.min(...tiles.map(t => t.x)), x1: Math.max(...tiles.map(t => t.x)), z0: Math.min(...tiles.map(t => t.z)), z1: Math.max(...tiles.map(t => t.z)) };

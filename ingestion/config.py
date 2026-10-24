@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     # API Géorisques (risques naturels et technologiques à l'adresse), sans clé
     georisques_base_url: str = "https://www.georisques.gouv.fr/api/v1/"
 
+    # Export GASPAR (risques recensés par commune), servi hors de l'API : repli quand elle se tait
+    gaspar_url: str = "https://files.georisques.fr/GASPAR/gaspar.zip"
+
     # API de diffusion d'Eurostat (JSON-stat), sans compte ni clé
     eurostat_base_url: str = "https://ec.europa.eu/eurostat/api/dissemination"
 

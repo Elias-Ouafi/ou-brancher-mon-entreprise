@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import unicodedata
 from dataclasses import dataclass
+from datetime import date
 from enum import StrEnum
 from typing import Any
 
@@ -117,6 +118,8 @@ class RisquesSite:
     risques: list[Risque]
     # `adresse` (rapport Géorisques) ou `commune` (repli : GASPAR et zonage sismique)
     maille: str = "adresse"
+    # Repli sur l'export GASPAR local : date du fichier, l'API n'ayant pas répondu
+    millesime: date | None = None
 
     def selon(self, situation: Exposition, famille: str | None = None) -> list[Risque]:
         return [
@@ -279,17 +282,46 @@ class GeorisquesClient:
         return payload
 
 
+# Risques recensés dans la commune d'après l'export GASPAR chargé par `refresh`
+def risques_gaspar(lignes: list[tuple[str, str, str, date]]) -> RisquesSite | None:
+    if not lignes:
+        return None
+    code_insee = lignes[0][0]
+    payload = {
+        "data": [
+            {
+                "code_insee": code_insee,
+                "risques_detail": [
+                    {"num_risque": numero, "libelle_risque_long": libelle}
+                    for _, numero, libelle, _ in lignes
+                ],
+            }
+        ]
+    }
+    return RisquesSite(
+        url=None,
+        risques=lire_gaspar(payload, {code_insee}),
+        maille="commune",
+        millesime=max(ligne[3] for ligne in lignes),
+    )
+
+
 def lire_risques(
     *,
     latitude: float,
     longitude: float,
     codes_commune: set[str],
     settings: Settings | None = None,
+    repli: RisquesSite | None = None,
 ) -> RisquesSite:
     with GeorisquesClient(settings) as client:
         try:
             return client.rapport(latitude=latitude, longitude=longitude)
         except GeorisquesError as error:
+            # L'API commune tombe d'ordinaire en même temps : le fichier local passe avant
+            if repli is not None:
+                logger.warning("rapport a l'adresse indisponible, repli sur GASPAR : %s", error)
+                return repli
             logger.warning("rapport a l'adresse indisponible, repli sur la commune : %s", error)
             return client.rapport_commune(
                 latitude=latitude, longitude=longitude, codes_commune=codes_commune
