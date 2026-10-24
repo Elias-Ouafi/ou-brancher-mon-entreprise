@@ -79,6 +79,7 @@ def pression_departements(diagnostic: Diagnostic, comparaisons: Comparaisons) ->
     return _png(fig)
 
 
+# Puissance appelée heure par heure, jour ouvré et week-end, part décalable en évidence
 def profil_journalier(diagnostic: Diagnostic, comparaisons: Comparaisons) -> bytes | None:
     if not comparaisons.profil or diagnostic.cout is None:
         return None
@@ -118,6 +119,7 @@ def profil_journalier(diagnostic: Diagnostic, comparaisons: Comparaisons) -> byt
     return _png(fig)
 
 
+# Historique du prix de la tranche de l'adresse : situe le prix actuel
 def prix_tranche(diagnostic: Diagnostic, comparaisons: Comparaisons) -> bytes | None:
     prix = diagnostic.prix
     if prix is None or not comparaisons.historique_prix:

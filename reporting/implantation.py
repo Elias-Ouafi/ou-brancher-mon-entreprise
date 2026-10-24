@@ -65,6 +65,7 @@ class Comparaisons:
     scenarios_prix: list[tuple[int, float, float, float]] = field(default_factory=list)
 
 
+# Repères pour situer l'adresse : régions, départements, historique des prix
 def lire_comparaisons(
     connection: duckdb.DuckDBPyConnection, *, tranche: str | None = None
 ) -> Comparaisons:
@@ -134,6 +135,7 @@ def nom_fichier(diagnostic: Diagnostic, format: Format) -> str:
     return f"implantation_{diagnostic.code_insee_commune}_{slug}.{format}"
 
 
+# Rapport de diagnostic à transmettre, en Markdown ou PDF
 def generer_rapport_implantation(
     diagnostic: Diagnostic,
     *,
@@ -183,6 +185,7 @@ def generer_rapport_implantation(
     return chemin
 
 
+# Diagnostic complet en JSON
 def en_json(diagnostic: Diagnostic) -> str:
     return json.dumps(diagnostic_en_dict(diagnostic), ensure_ascii=False, indent=2)
 
@@ -195,6 +198,7 @@ def pied_de_page(diagnostic: Diagnostic, commande: str | None) -> list[str]:
     return lignes
 
 
+# Texte sur une ligne, pour les cellules de tableau
 def texte_compact(contenu: str) -> str:
     return " ".join(contenu.split())
 
@@ -208,6 +212,7 @@ GRAPHIQUES = {
 }
 
 
+# Rapport de diagnostic en Markdown, graphiques à côté
 def rendre_markdown(
     diagnostic: Diagnostic,
     comparaisons: Comparaisons,

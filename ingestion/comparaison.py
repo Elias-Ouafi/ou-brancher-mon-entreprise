@@ -135,6 +135,7 @@ def _non_evalues(d: Diagnostic) -> str:
     return _liste_risques(d.risques.selon(Exposition.INCONNU)) or "aucun"
 
 
+# Un indicateur par ligne, une adresse par colonne : la matière de toutes les sorties
 def lignes(diagnostics: list[Diagnostic]) -> list[Ligne]:
 
     def ligne(
@@ -163,6 +164,7 @@ def lignes(diagnostics: list[Diagnostic]) -> list[Ligne]:
     return resultat
 
 
+# Ce qui ne change pas d'une adresse à l'autre, dit une fois sous le tableau
 def communs(diagnostics: list[Diagnostic]) -> list[str]:
     reference = next((d for d in diagnostics if not d.est_zni), diagnostics[0])
     blocs = sections(reference)
@@ -191,6 +193,7 @@ def communs(diagnostics: list[Diagnostic]) -> list[str]:
     return resultat
 
 
+# Limites des indicateurs affichés, pour ne pas surinterpréter un écart entre adresses
 def limites(diagnostics: list[Diagnostic], tableau: list[Ligne]) -> list[tuple[str, str]]:
     references = diagnostics[0].limites
     codes: list[str] = []
@@ -205,6 +208,7 @@ def limites(diagnostics: list[Diagnostic], tableau: list[Ligne]) -> list[tuple[s
 LARGEUR_INDICATEUR = 26
 
 
+# Tableau lisible au terminal, colonnes ajustées à la largeur
 def formater_comparaison(diagnostics: list[Diagnostic], *, largeur: int = 120) -> str:
     tableau = lignes(diagnostics)
     n = len(diagnostics)
@@ -239,6 +243,7 @@ def _cellule_md(texte: str) -> str:
     return texte.replace("|", "\\|")
 
 
+# Tableau à coller dans une note ou un dossier d'investissement
 def comparaison_en_markdown(diagnostics: list[Diagnostic]) -> str:
     tableau = lignes(diagnostics)
     entete = ["Indicateur", *(d.territoire.adresse for d in diagnostics)]
@@ -262,6 +267,7 @@ def comparaison_en_markdown(diagnostics: list[Diagnostic]) -> str:
     return "\n".join(texte) + "\n"
 
 
+# Tableau à ouvrir dans un tableur (séparateur point-virgule, comme Excel en français)
 def comparaison_en_csv(diagnostics: list[Diagnostic]) -> str:
     sortie = io.StringIO()
     ecrivain = csv.writer(sortie, delimiter=";", lineterminator="\n")
@@ -272,6 +278,7 @@ def comparaison_en_csv(diagnostics: list[Diagnostic]) -> str:
     return sortie.getvalue()
 
 
+# Tableau pour un autre programme
 def comparaison_en_json(diagnostics: list[Diagnostic]) -> str:
     tableau = lignes(diagnostics)
     contenu = {
