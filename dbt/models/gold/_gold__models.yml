@@ -373,6 +373,35 @@ models:
         data_tests: [not_null]
       - name: code_tranche
         data_tests: [not_null]
+  - name: fct_plans_prevention_commune
+    description: >
+      Plans de prévention des risques (PPRN, PPRT, PPRM) en vigueur dans chaque commune, selon
+      le dernier export GASPAR : approuvés ou prescrits, les caducs écartés. Un plan impose un
+      règlement aux constructions de ses zones : c'est ce qui fait passer le critère « risques »
+      du verdict à vérifier, à la maille commune (le zonage à la parcelle n'est pas publié ici).
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [code_insee_commune, code_procedure]
+    columns:
+      - name: code_insee_commune
+        data_tests:
+          - not_null
+          - exact_length:
+              arguments:
+                length: 5
+      - name: type_plan
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [PPRN, PPRT, PPRM]
+      - name: etat
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [approuvé, prescrit]
+      - name: millesime
+        data_tests: [not_null]
   - name: fct_risques_commune
     description: >
       Risques recensés dans chaque commune selon le dernier export GASPAR. Repli du
