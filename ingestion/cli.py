@@ -103,6 +103,11 @@ def _add_ca_option(parser: argparse.ArgumentParser) -> None:
         type=_parse_ca,
         help="chiffre d'affaires annuel en euros (avec --conso) : part de la facture",
     )
+    parser.add_argument(
+        "--va",
+        type=_parse_ca,
+        help="valeur ajoutée annuelle en euros (avec --conso) : électro-intensité fiscale",
+    )
 
 
 def _add_carte_option(parser: argparse.ArgumentParser) -> None:
@@ -333,10 +338,12 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    if getattr(args, "ca", None) is not None and args.conso is None and not args.courbe:
-        parser.error(
-            "--ca demande --conso ou --courbe : la facture se calcule sur la consommation annuelle"
-        )
+    for option in ("ca", "va"):
+        if getattr(args, option, None) is not None and args.conso is None and not args.courbe:
+            parser.error(
+                f"--{option} demande --conso ou --courbe : le calcul part de la consommation"
+                " annuelle"
+            )
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(asctime)s %(levelname)-8s %(name)s %(message)s",
@@ -410,6 +417,7 @@ def main(argv: list[str] | None = None) -> int:
                     puissance_mw=args.puissance,
                     conso_mwh=args.conso,
                     ca_eur=args.ca,
+                    va_eur=args.va,
                     courbe=_lire_courbe(args.courbe),
                     settings=settings,
                 )
@@ -453,6 +461,7 @@ def main(argv: list[str] | None = None) -> int:
                     puissance_mw=args.puissance,
                     conso_mwh=args.conso,
                     ca_eur=args.ca,
+                    va_eur=args.va,
                     courbe=_lire_courbe(args.courbe),
                     settings=settings,
                 )

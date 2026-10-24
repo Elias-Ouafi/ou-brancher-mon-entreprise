@@ -304,6 +304,7 @@ def test_every_figure_comes_with_its_limit(medallion_db: Path, warehouse: Any) -
             puissance_mw=50,
             conso_mwh=350,
             ca_eur=5_000_000,
+            va_eur=1_000_000,
             database=medallion_db,
         ),
         risques=lire_rapport(rapport),
@@ -312,7 +313,7 @@ def test_every_figure_comes_with_its_limit(medallion_db: Path, warehouse: Any) -
     limites = [
         limite for (limite,) in _rows(warehouse, "SELECT limite FROM gold.limites_methodologiques")
     ]
-    assert len(limites) == 14
+    assert len(limites) == 15
     for limite in limites:
         assert limite in texte
 
@@ -467,6 +468,31 @@ def test_essentiel_puts_the_bill_against_turnover(medallion_db: Path) -> None:
     reponse = essentiel_en_dict(diagnostic)
     assert reponse["part_chiffre_affaires"]["part"] == part.part
     assert "part_chiffre_affaires" in reponse["limites"]
+
+
+# 350 MWh à 26,58 € = 9 303 € d'accise : 0,93 % d'une VA de 1 M€ (premier palier), 0,47 % de
+# 2 M€ (sous le seuil), 7 % de 133 000 € (dernier palier)
+@pytest.mark.parametrize(
+    ("va", "palier"), [(1_000_000, 0.005), (2_000_000, None), (133_000, 0.0675)]
+)
+def test_value_added_share_places_the_fiscal_threshold(
+    medallion_db: Path, va: float, palier: float | None
+) -> None:
+    from ingestion.diagnostic import essentiel_en_dict, formater_essentiel
+
+    diagnostic = lire_diagnostic(
+        territoire("69123", "Lyon"), conso_mwh=350, va_eur=va, database=medallion_db
+    )
+    part = diagnostic.part_valeur_ajoutee
+    assert part is not None
+    assert part.electro_intensite == pytest.approx(350 * 26.58 / va)
+    assert part.palier == palier
+    texte = formater_essentiel(diagnostic)
+    assert "Part de la valeur ajoutée : facture" in texte
+    assert ("taux réduit d'accise possible" in texte) is (palier is not None)
+    reponse = essentiel_en_dict(diagnostic)
+    assert reponse["part_valeur_ajoutee"]["palier"] == palier
+    assert "part_valeur_ajoutee" in reponse["limites"]
 
 
 def test_turnover_share_follows_the_three_year_scenarios(medallion_db: Path) -> None:

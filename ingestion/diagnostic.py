@@ -337,6 +337,24 @@ class PrixEntreprise:
         return self.conso_mwh is None
 
 
+# Accise sur l'électricité au tarif normal (PME et haute puissance) depuis le 1er février 2026,
+# base légale du calcul d'électro-intensité (BOFiP BOI-RES-EAT-000240)
+ACCISE_NORMALE_EUR_MWH = 26.58
+# Paliers d'électro-intensité ouvrant les taux réduits d'accise (CIBS L312-65 et L312-71)
+PALIERS_ELECTRO_INTENSITE = (0.0675, 0.03375, 0.005)
+
+
+@dataclass(frozen=True, slots=True)
+class PartValeurAjoutee:
+    valeur_ajoutee_eur: float
+    facture_eur: float
+    part_facture: float
+    # Accise au tarif normal rapportée à la valeur ajoutée : le critère légal
+    electro_intensite: float
+    # Plus haut palier atteint ; `None` sous 0,5 %
+    palier: float | None
+
+
 @dataclass(frozen=True, slots=True)
 class PartChiffreAffaires:
     chiffre_affaires_eur: float
@@ -404,6 +422,7 @@ class Diagnostic:
     risques: RisquesSite | None = None
     risques_erreur: str | None = None
     ca_eur: float | None = None
+    va_eur: float | None = None
     # Dernier chargement de chaque source par `refresh` (voir `SOURCES_CHARGEES`)
     chargements: dict[str, date] = field(default_factory=dict)
     # Courbe de charge Enedis fournie par `--courbe`
@@ -412,6 +431,23 @@ class Diagnostic:
     @property
     def commune_a_des_sites(self) -> bool:
         return bool(self.nb_sites_commune)
+
+    # Poids de l'électricité dans la valeur ajoutée : ouvre ou non les taux réduits d'accise
+    @property
+    def part_valeur_ajoutee(self) -> PartValeurAjoutee | None:
+        p = self.prix
+        va = self.va_eur
+        if va is None or p is None or p.conso_mwh is None:
+            return None
+        intensite = p.conso_mwh * ACCISE_NORMALE_EUR_MWH / va
+        facture = p.facture_eur(p.prix_reference_eur_kwh)
+        return PartValeurAjoutee(
+            valeur_ajoutee_eur=va,
+            facture_eur=facture,
+            part_facture=facture / va,
+            electro_intensite=intensite,
+            palier=next((s for s in PALIERS_ELECTRO_INTENSITE if intensite >= s), None),
+        )
 
     @property
     def part_chiffre_affaires(self) -> PartChiffreAffaires | None:
@@ -436,6 +472,7 @@ def lire_diagnostic(
     puissance_mw: float | None = None,
     conso_mwh: float | None = None,
     ca_eur: float | None = None,
+    va_eur: float | None = None,
     courbe: Courbe | None = None,
     settings: Settings | None = None,
     database: Path | None = None,
@@ -522,6 +559,7 @@ def lire_diagnostic(
         seuil=seuil,
         conso_mwh=conso_mwh,
         ca_eur=ca_eur,
+        va_eur=va_eur,
         prix=prix,
         contraintes=contraintes,
         zone_rte=zone_rte,
@@ -619,6 +657,8 @@ def essentiel(diagnostic: Diagnostic) -> Section:
         section.elements.append(("texte", f"Heure par heure : {heures}"))
     if (part := d.part_chiffre_affaires) is not None:
         section.elements.append(("texte", f"Part du chiffre d'affaires : {_part_ca(part)}"))
+    if (va := d.part_valeur_ajoutee) is not None:
+        section.elements.append(("texte", f"Part de la valeur ajoutée : {_part_va(va)}"))
     if d.courbe is not None:
         section.elements.append(("texte", f"Votre courbe de charge : {ligne_courbe(d.courbe)}"))
     section.elements.append(("texte", f"À savoir : {A_SAVOIR}"))
@@ -643,6 +683,23 @@ def ligne_courbe(b: BilanCourbe) -> str:
             f" mêmes heures ({b.source_carbone})"
         )
     return phrase
+
+
+# Électro-intensité au sens fiscal : décide d'un taux d'accise réduit, donc de la facture
+def _part_va(va: PartValeurAjoutee) -> str:
+    phrase = (
+        f"facture {_pourcentage(va.part_facture)} ; électro-intensité"
+        f" {_pourcentage(va.electro_intensite)} (accise au tarif normal de"
+        f" {_nombre(ACCISE_NORMALE_EUR_MWH, 2)} €/MWh rapportée à la valeur ajoutée)"
+    )
+    if va.palier is None:
+        return phrase + ", sous le palier de 0,5 % : pas de taux réduit d'accise à ce titre"
+    palier = _nombre(va.palier * 100, 3).rstrip("0")
+    return phrase + (
+        f", au-dessus du palier de {palier} % : taux réduit d'accise possible"
+        f" (de 0,5 à 12 €/MWh au lieu de {_nombre(ACCISE_NORMALE_EUR_MWH, 2)}) si l'activité"
+        " principale relève de l'industrie, de l'énergie ou de l'eau (sections B à E de la NACE)"
+    )
 
 
 def _part_ca(part: PartChiffreAffaires) -> str:
@@ -807,6 +864,11 @@ def _critere_facture(d: Diagnostic) -> Critere:
     detail = f"{prix}, identique partout en France."
     if (part := d.part_chiffre_affaires) is not None:
         detail += f" {_pourcentage(part.part)} du chiffre d'affaires."
+    if (va := d.part_valeur_ajoutee) is not None and va.palier is not None:
+        detail += (
+            f" Électro-intensité {_pourcentage(va.electro_intensite)} : taux réduit d'accise"
+            " possible pour une activité industrielle."
+        )
     return Critere(
         "Facture",
         "info",
@@ -873,6 +935,9 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
         "part_chiffre_affaires": None
         if d.part_chiffre_affaires is None
         else asdict(d.part_chiffre_affaires),
+        "part_valeur_ajoutee": None
+        if d.part_valeur_ajoutee is None
+        else asdict(d.part_valeur_ajoutee),
         "carbone": None
         if c is None
         else {
@@ -895,9 +960,15 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
         },
         "limites": {
             code: d.limites[code]
-            for code in ("prix_entreprise", "carbone_territoire", "part_chiffre_affaires")
+            for code in (
+                "prix_entreprise",
+                "carbone_territoire",
+                "part_chiffre_affaires",
+                "part_valeur_ajoutee",
+            )
             if code in d.limites
             and (code != "part_chiffre_affaires" or d.part_chiffre_affaires is not None)
+            and (code != "part_valeur_ajoutee" or d.part_valeur_ajoutee is not None)
         },
     }
 
@@ -1151,6 +1222,9 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
         if (part := d.part_chiffre_affaires) is not None:
             texte(s, f"Facture rapportée au chiffre d'affaires : {_part_ca(part)}")
             limite(s, "part_chiffre_affaires")
+        if (va := d.part_valeur_ajoutee) is not None:
+            texte(s, f"Part de la valeur ajoutée : {_part_va(va)}")
+            limite(s, "part_valeur_ajoutee")
 
     s = bloc("5. Carbone du réseau et coût horaire d'un profil type")
     if d.carbone is not None:
@@ -1319,6 +1393,8 @@ def diagnostic_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
     contenu["commune_a_des_sites"] = diagnostic.commune_a_des_sites
     part = diagnostic.part_chiffre_affaires
     contenu["part_chiffre_affaires"] = None if part is None else asdict(part)
+    va = diagnostic.part_valeur_ajoutee
+    contenu["part_valeur_ajoutee"] = None if va is None else asdict(va)
     return convertir(contenu)
 
 

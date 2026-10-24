@@ -77,8 +77,8 @@ Toutes s'écrivent `.\.venv\Scripts\python.exe -m ingestion.cli <commande>`.
 
 | Commande | Effet |
 |---|---|
-| `essentiel --adresse "…" [--puissance MW] [--conso MWh] [--courbe CSV] [--ca €] [--format json]` | Réponse courte : prix, carbone et verdict « brancher ici ? » ; `--courbe` lit l'export Enedis, `--ca` donne la part de la facture dans le chiffre d'affaires |
-| `diagnose --adresse "…" [--puissance MW] [--conso MWh] [--courbe CSV] [--ca €] [--format pdf\|md\|json]` | Diagnostic complet : industrie locale, réseau, raccordement, prix, carbone, risques |
+| `essentiel --adresse "…" [--puissance MW] [--conso MWh] [--courbe CSV] [--ca €] [--va €] [--format json]` | Réponse courte : prix, carbone et verdict « brancher ici ? » ; `--courbe` lit l'export Enedis, `--ca` donne la part de la facture dans le chiffre d'affaires, `--va` l'électro-intensité fiscale (taux réduit d'accise dès 0,5 % de la valeur ajoutée) |
+| `diagnose --adresse "…" [--puissance MW] [--conso MWh] [--courbe CSV] [--ca €] [--va €] [--format pdf\|md\|json]` | Diagnostic complet : industrie locale, réseau, raccordement, prix, carbone, risques |
 | `compare --adresse "A" --adresse "B" …` | 2 à 6 adresses côte à côte, sans classement ; `texte`, `md`, `csv`, `json` |
 | `carte [--adresse "…"] [--puissance MW] [--reconstruire]` | Carte 3D hors ligne (`data/reports/carte.html`) |
 | `refresh [--months 180]` | Met à jour toutes les sources, puis `dbt build` |
@@ -135,7 +135,7 @@ flowchart LR
 .\.venv\Scripts\python.exe -m ruff check . ; .\.venv\Scripts\python.exe -m pytest
 ```
 
-375 tests sans réseau, dont un `dbt build` complet sur une base synthétique qui reproduit les
+378 tests sans réseau, dont un `dbt build` complet sur une base synthétique qui reproduit les
 pièges des sources, plus les tests de données dbt. La CI GitHub Actions les joue à chaque PR.
 
 ## Sources et licence
