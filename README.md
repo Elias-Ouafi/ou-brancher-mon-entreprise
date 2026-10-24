@@ -134,7 +134,9 @@ flowchart LR
   nouvelle source ; `limites_methodologiques` porte la limite de chaque indicateur.
 - **Fiabilité** : géocodage BAN sur cinq candidats, adresse refusée si trop approximative ou
   ambiguë ; date des données affichée partout, avec alerte au-delà de 45 jours ; risques en repli
-  local quand l'API Géorisques ne répond pas.
+  local quand l'API Géorisques ne répond pas. Les risques ne sont « à vérifier » que si un plan de
+  prévention (PPRN, PPRT, PPRM) approuvé ou prescrit couvre la commune, soit 13 919 communes : un
+  risque seulement recensé, ce qui touche 31 706 communes, est donné pour information.
 - `data/` n'est pas versionné et se recrée par `refresh`. DuckDB n'accepte qu'un writer : fermez
   toute session `duckdb` pendant un chargement.
 
@@ -144,7 +146,7 @@ flowchart LR
 .\.venv\Scripts\python.exe -m ruff check . ; .\.venv\Scripts\python.exe -m pytest
 ```
 
-396 tests sans réseau, dont un `dbt build` complet sur une base synthétique qui reproduit les
+402 tests sans réseau, dont un `dbt build` complet sur une base synthétique qui reproduit les
 pièges des sources, plus les tests de données dbt. La CI GitHub Actions les joue à chaque PR.
 
 ## Sources et licence

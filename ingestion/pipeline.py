@@ -13,6 +13,7 @@ from ingestion.datasets import (
     EMBER_INTENSITE_CARBONE,
     EUROSTAT_PRIX_ENTREPRISES,
     EUROSTAT_PRIX_UE,
+    GASPAR_PLANS,
     GASPAR_RISQUES,
     NATIONAL_TR,
     RTE_TEMPO,
@@ -22,7 +23,7 @@ from ingestion.datasets import (
 from ingestion.extract_edf_sei import telecharger_production
 from ingestion.extract_ember import telecharger_intensites
 from ingestion.extract_eurostat import EurostatClient
-from ingestion.extract_gaspar import telecharger_export
+from ingestion.extract_gaspar import lire_export, lire_plans, telecharger_archive
 from ingestion.extract_odre import ExtractionWindow, OdreClient
 from ingestion.extract_production import telecharger_centres, telecharger_sites
 from ingestion.extract_rte import DayRange, RteTempoClient
@@ -415,7 +416,7 @@ def _charger_fichier(
     return outcome, load_to_warehouse(path, settings=settings, spec=spec)
 
 
-# Risques recensés par commune : repli du diagnostic quand l'API Géorisques ne répond pas
+# Plans de prévention et risques recensés par commune, d'une seule archive GASPAR
 def run_gaspar_ingestion(
     *,
     settings: Settings | None = None,
@@ -423,8 +424,9 @@ def run_gaspar_ingestion(
     now: datetime | None = None,
 ) -> tuple[ExtractionOutcome, LoadResult]:
     settings = settings or get_settings()
-    lignes = telecharger_export(settings=settings)
-    return _charger_fichier(lignes, GASPAR_RISQUES, settings, run_id, now)
+    contenu = telecharger_archive(settings=settings)
+    _charger_fichier(lire_plans(contenu), GASPAR_PLANS, settings, run_id, now)
+    return _charger_fichier(lire_export(contenu), GASPAR_RISQUES, settings, run_id, now)
 
 
 # Prix et carbone des 27 pays de l'UE : le repère d'une implantation hors de France
