@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from datetime import UTC, datetime
 from pathlib import Path
 from statistics import fmean
@@ -39,6 +40,9 @@ VENDOR = Path(__file__).with_name("vendor")
 SCRIPTS = ("three.min.js", "OrbitControls.js")
 MARQUEUR_DONNEES = "/*__DONNEES__*/null"
 MARQUEUR_SCRIPTS = "<!--__SCRIPTS__-->"
+# Gardé dans la page générée : l'adresse se remplace sans reconstruire la carte
+MARQUEUR_ADRESSE = "/*__ADRESSE__*/"
+_LIGNE_ADRESSE = re.compile(r"^(DATA\.adresse = /\*__ADRESSE__\*/).*$", re.MULTILINE)
 
 _DEPARTEMENTS_SQL = """
 select
@@ -131,15 +135,6 @@ def construire_donnees(
                     round(case.lon, 2),
                 ]
             )
-    adresse = None
-    if territoire is not None:
-        adresse = {
-            "libelle": territoire.adresse,
-            "departement": territoire.code_departement,
-            "case": _reperer(
-                grilles, territoire.longitude, territoire.latitude, territoire.code_departement
-            ),
-        }
     return {
         "genereLe": (genere_le or datetime.now(UTC)).date().isoformat(),
         "rayonScene": RAYON_SCENE,
@@ -164,19 +159,46 @@ def construire_donnees(
             for z in gold["zones"]
         ],
         "prix": gold["prix"],
-        "adresse": adresse,
+        "adresse": construire_adresse(grilles, territoire),
     }
+
+
+def construire_adresse(
+    grilles: list[Grille], territoire: Territoire | None
+) -> dict[str, Any] | None:
+    if territoire is None:
+        return None
+    return {
+        "libelle": territoire.adresse,
+        "departement": territoire.code_departement,
+        "case": _reperer(
+            grilles, territoire.longitude, territoire.latitude, territoire.code_departement
+        ),
+    }
+
+
+# `</` échappé : un nom contenant `</script>` ne doit pas fermer la balise
+def _json(valeur: Any) -> str:
+    return json.dumps(valeur, ensure_ascii=False, default=str).replace("</", "<\\/")
 
 
 # Page autonome : gabarit, données et scripts three.js intégrés (fonctionne hors ligne)
 def rendre_html(donnees: dict[str, Any]) -> str:
-    # `</` échappé : un nom contenant `</script>` ne doit pas fermer la balise
-    json_donnees = json.dumps(donnees, ensure_ascii=False, default=str).replace("</", "<\\/")
+    donnees = dict(donnees)
+    adresse = donnees.pop("adresse", None)
     scripts = "\n".join(
         f"<script>\n{(VENDOR / nom).read_text(encoding='utf-8')}\n</script>" for nom in SCRIPTS
     )
     gabarit = GABARIT.read_text(encoding="utf-8")
-    return gabarit.replace(MARQUEUR_SCRIPTS, scripts).replace(MARQUEUR_DONNEES, json_donnees)
+    html = gabarit.replace(MARQUEUR_SCRIPTS, scripts).replace(MARQUEUR_DONNEES, _json(donnees))
+    return placer_adresse(html, adresse)
+
+
+def placer_adresse(html: str, adresse: dict[str, Any] | None) -> str:
+    html, remplacements = _LIGNE_ADRESSE.subn(lambda m: f"{m.group(1)}{_json(adresse)};", html)
+    if remplacements != 1:
+        raise ValueError("ligne de l'adresse introuvable dans la carte")
+    return html
 
 
 # GeoJSON du bronze, téléchargé à la première utilisation ; `None` si injoignable
@@ -190,6 +212,20 @@ def _geojson(jeu: str, url: str, settings: Settings) -> Path | None:
     return path
 
 
+def _grilles(settings: Settings) -> list[Grille]:
+    contours = _geojson(CONTOURS_JEU, settings.contours_url, settings)
+    if contours is None:
+        raise DiagnosticIndisponibleError("contours des departements introuvables (lancer refresh)")
+    terres = _geojson(TERRES_JEU, settings.terres_url, settings)
+    return construire_grilles(
+        lire_contours(contours), terres=lire_terres(terres) if terres else None
+    )
+
+
+def _chemin(settings: Settings, output: Path | None) -> Path:
+    return output or Path(settings.reports_dir) / "carte.html"
+
+
 def generer_carte(
     *,
     settings: Settings | None = None,
@@ -198,13 +234,7 @@ def generer_carte(
 ) -> Path:
     settings = settings or get_settings()
     gold = lire_donnees_gold(Path(settings.duckdb_path))
-    contours = _geojson(CONTOURS_JEU, settings.contours_url, settings)
-    if contours is None:
-        raise DiagnosticIndisponibleError("contours des departements introuvables (lancer refresh)")
-    terres = _geojson(TERRES_JEU, settings.terres_url, settings)
-    grilles = construire_grilles(
-        lire_contours(contours), terres=lire_terres(terres) if terres else None
-    )
+    grilles = _grilles(settings)
     try:
         altitudes = completer_altitudes(
             points_terrestres(grilles), settings=settings, run_id="carte"
@@ -213,7 +243,33 @@ def generer_carte(
         logger.warning("relief incomplet, cases manquantes a plat : %s", error)
         altitudes = lire_altitudes(settings)
     html = rendre_html(construire_donnees(grilles, altitudes, gold, territoire=territoire))
-    path = output or Path(settings.reports_dir) / "carte.html"
+    path = _chemin(settings, output)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(html, encoding="utf-8")
+    return path
+
+
+# Plus ancienne que le warehouse, le gabarit ou les contours, la carte est refaite
+def _carte_a_jour(path: Path, settings: Settings) -> bool:
+    if not path.exists() or MARQUEUR_ADRESSE not in path.read_text(encoding="utf-8"):
+        return False
+    sources = [Path(settings.duckdb_path), GABARIT, *(VENDOR / nom for nom in SCRIPTS)]
+    sources += [p for jeu in (CONTOURS_JEU, TERRES_JEU) if (p := dernier_geojson(jeu, settings))]
+    date_carte = path.stat().st_mtime
+    return all(not p.exists() or p.stat().st_mtime <= date_carte for p in sources)
+
+
+# Carte à jour : seule l'épingle bouge ; sinon reconstruction complète
+def mettre_a_jour_carte(
+    *,
+    settings: Settings | None = None,
+    territoire: Territoire | None = None,
+    output: Path | None = None,
+) -> Path:
+    settings = settings or get_settings()
+    path = _chemin(settings, output)
+    if not _carte_a_jour(path, settings):
+        return generer_carte(settings=settings, territoire=territoire, output=path)
+    adresse = construire_adresse(_grilles(settings), territoire)
+    path.write_text(placer_adresse(path.read_text(encoding="utf-8"), adresse), encoding="utf-8")
     return path

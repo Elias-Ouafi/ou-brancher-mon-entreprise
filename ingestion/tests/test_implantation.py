@@ -205,7 +205,15 @@ def test_diagnose_json_goes_to_standard_output(
     monkeypatch.setattr(cli, "get_settings", lambda: reglages)
 
     code = cli.main(
-        ["diagnose", "--adresse", "10 rue Garibaldi, Lyon", "--format", "json", "--sans-risques"]
+        [
+            "diagnose",
+            "--adresse",
+            "10 rue Garibaldi, Lyon",
+            "--format",
+            "json",
+            "--sans-risques",
+            "--sans-carte",
+        ]
     )
 
     assert code == 0
@@ -228,7 +236,8 @@ def test_diagnose_writes_the_requested_report(
     code = cli.main(
         [
             "diagnose", "--adresse", "10 rue Garibaldi, Lyon", "--puissance", "0,5",
-            "--format", "md", "--output", str(sortie), "--sans-graphiques", "--sans-risques",
+            "--format", "md", "--output", str(sortie), "--sans-graphiques",
+            "--sans-risques", "--sans-carte",
         ]
     )  # fmt: skip
 
