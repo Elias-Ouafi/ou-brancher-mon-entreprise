@@ -8,6 +8,7 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 from ingestion.config import Settings, get_settings
+from ingestion.courbe import Courbe, CourbeError, lire_courbe
 from ingestion.datasets import NATIONAL_CONS_DEF, NATIONAL_TR, SPECS, get_spec
 from ingestion.diagnostic import (
     Diagnostic,
@@ -110,6 +111,15 @@ def _add_carte_option(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="ne place pas l'adresse sur la carte (data/reports/carte.html)",
     )
+    parser.add_argument(
+        "--courbe",
+        help="export CSV de la courbe de charge Enedis : vraie consommation, pointe et carbone",
+    )
+
+
+# Courbe de charge réelle du site, lue avant le diagnostic qu'elle alimente
+def _lire_courbe(chemin: str | None) -> Courbe | None:
+    return None if chemin is None else lire_courbe(Path(chemin).read_bytes())
 
 
 # La carte montre le verdict de l'adresse ; son échec ne fait pas échouer la commande
@@ -323,8 +333,10 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    if getattr(args, "ca", None) is not None and args.conso is None:
-        parser.error("--ca demande --conso : la facture se calcule sur la consommation annuelle")
+    if getattr(args, "ca", None) is not None and args.conso is None and not args.courbe:
+        parser.error(
+            "--ca demande --conso ou --courbe : la facture se calcule sur la consommation annuelle"
+        )
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(asctime)s %(levelname)-8s %(name)s %(message)s",
@@ -398,6 +410,7 @@ def main(argv: list[str] | None = None) -> int:
                     puissance_mw=args.puissance,
                     conso_mwh=args.conso,
                     ca_eur=args.ca,
+                    courbe=_lire_courbe(args.courbe),
                     settings=settings,
                 )
             except AdresseIntrouvableError as error:
@@ -416,11 +429,18 @@ def main(argv: list[str] | None = None) -> int:
             except DiagnosticIndisponibleError as error:
                 logger.error("donnees indisponibles : %s", error)
                 return 1
+            except (CourbeError, OSError) as error:
+                logger.error("courbe de charge illisible : %s", error)
+                return 1
             diagnostic = avec_risques_locaux(diagnostic, settings=settings)
             if hasattr(sys.stdout, "reconfigure"):
                 sys.stdout.reconfigure(encoding="utf-8")
             if args.format == "json":
-                print(json.dumps(essentiel_en_dict(diagnostic), ensure_ascii=False, indent=2))
+                print(
+                    json.dumps(
+                        essentiel_en_dict(diagnostic), ensure_ascii=False, indent=2, default=str
+                    )
+                )
             else:
                 print(formater_essentiel(diagnostic))
             if not args.sans_carte:
@@ -433,9 +453,10 @@ def main(argv: list[str] | None = None) -> int:
                     puissance_mw=args.puissance,
                     conso_mwh=args.conso,
                     ca_eur=args.ca,
+                    courbe=_lire_courbe(args.courbe),
                     settings=settings,
                 )
-            except (GeocodingError, DiagnosticIndisponibleError) as error:
+            except (GeocodingError, DiagnosticIndisponibleError, CourbeError, OSError) as error:
                 logger.error("diagnostic impossible : %s", error)
                 return 1
             if not args.sans_risques:
