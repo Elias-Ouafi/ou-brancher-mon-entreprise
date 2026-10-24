@@ -194,3 +194,23 @@ sources:
             data_tests: [not_null]
           - name: millesime
             data_tests: [not_null]
+      - name: sites_production
+        description: >
+          Puissance de production en service par commune d'implantation et filière, d'après le
+          registre national des installations (ODRÉ), agrégée à la source : seules les
+          installations d'au moins 10 MW y figurent. Puissance en MW, énergie annuelle glissante
+          produite en GWh.
+        data_tests:
+          - unique_combination:
+              arguments:
+                columns: [code_commune, commune, filiere]
+        columns:
+          - name: filiere
+            data_tests: [not_null]
+      - name: communes_centres
+        description: >
+          Centre géographique de chaque commune (geo.api.gouv.fr, Etalab) : sert à poser les
+          pôles de production sur la carte, à la maille commune.
+        columns:
+          - name: code_commune
+            data_tests: [not_null, unique]

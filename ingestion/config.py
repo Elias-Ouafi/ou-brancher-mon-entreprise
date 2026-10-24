@@ -67,6 +67,9 @@ class Settings(BaseSettings):
         "ne_50m_land.geojson"
     )
 
+    # Centre de chaque commune (geo.api.gouv.fr, Etalab), sans clé : place les pôles de production
+    geo_communes_url: str = "https://geo.api.gouv.fr/communes"
+
     # Service d'altimétrie de la Géoplateforme (IGN, RGE ALTI), sans clé
     altimetrie_base_url: str = "https://data.geopf.fr/altimetrie"
 

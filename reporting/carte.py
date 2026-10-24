@@ -77,6 +77,11 @@ _ZONES_SQL = """
 select zone as n, priorite as pr, annee_capacite as a, latitude as la, longitude as lo
 from gold.zones_raccordement_rte order by priorite, zone
 """
+_PRODUCTION_SQL = """
+select commune as n, code_departement as c, filiere as f, puissance_mw as mw,
+    energie_gwh as gwh, nb_installations as ni, latitude as la, longitude as lo
+from gold.fct_sites_production order by puissance_mw desc
+"""
 
 
 def _lignes(connection: duckdb.DuckDBPyConnection, sql: str) -> list[dict[str, Any]]:
@@ -98,6 +103,11 @@ def lire_donnees_gold(database: Path) -> dict[str, Any]:
                 ("zones", _ZONES_SQL),
             )
         }
+        # Absent d'un warehouse antérieur aux pôles de production : la carte s'en passe
+        try:
+            gold["production"] = _lignes(connection, _PRODUCTION_SQL)
+        except duckdb.CatalogException:
+            gold["production"] = []
         gold["donnees"] = ligne_chargements(lire_chargements(connection))
         return gold
 
@@ -170,6 +180,18 @@ def construire_donnees(
         "zones": [
             {"n": z["n"], "pr": z["pr"], "a": z["a"], "case": _reperer(grilles, z["lo"], z["la"])}
             for z in gold["zones"]
+        ],
+        "production": [
+            {
+                "n": p["n"],
+                "c": p["c"],
+                "f": p["f"],
+                "mw": p["mw"],
+                "gwh": p["gwh"],
+                "ni": p["ni"],
+                "case": _reperer(grilles, p["lo"], p["la"], p["c"]),
+            }
+            for p in gold.get("production", [])
         ],
         "donnees": gold.get("donnees"),
         "adresse": construire_adresse(grilles, territoire, verdict_adresse),

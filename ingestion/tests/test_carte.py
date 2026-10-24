@@ -102,11 +102,12 @@ def test_chaque_departement_a_au_moins_une_case(grilles: list) -> None:
     assert {case.departement for case in guadeloupe.cases if case.departement} == {"971"}
 
 
-def test_collectivites_hors_carte_et_encart_a_l_ouest(grilles: list) -> None:
+def test_collectivites_hors_carte_et_une_carte_par_territoire(grilles: list) -> None:
     metropole, guadeloupe = grilles
     assert [g.code for g in grilles] == [None, "971"]
     largeur = math.sqrt(3) * RAYON_SCENE
-    assert guadeloupe.scene_x0 + guadeloupe.colonnes * largeur < metropole.scene_x0
+    # Assez loin pour que le brouillard de la scène cache la carte voisine
+    assert guadeloupe.scene_x0 - (metropole.scene_x0 + metropole.colonnes * largeur) > 300
 
 
 def test_un_encart_compte_environ_70_cases(grilles: list) -> None:
@@ -185,6 +186,9 @@ def test_donnees_de_la_carte(settings_carte: Settings, grilles: list) -> None:
     assert donnees["grilles"][0]["code"] is None and donnees["grilles"][1]["code"] == "971"
     assert donnees["departements"] and donnees["zones"]
     assert all(site["case"] for site in donnees["sites"])
+    # Pôles de production du gold, rattachés à une case de leur département
+    nucleaire = next(p for p in donnees["production"] if p["f"] == "Nucléaire")
+    assert nucleaire["mw"] == 3600 and nucleaire["case"][0] == 0
     assert donnees["adresse"]["departement"] == territoire().code_departement
     assert donnees["donnees"].startswith("Données chargées le 01/07/2026")
 
