@@ -47,10 +47,12 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 
 | Priorité | Étape | Bloqué par |
 |---|---|---|
-| 1 | Protéger `main` : CI et PR obligatoires | réglage GitHub, par le propriétaire |
 | 6 | Extension internationale, voir ci-dessous | jeton ENTSO-E (compte gratuit) et contours des zones de prix à sourcer |
 | 7 | Calendrier Tempo sur données réelles | compte RTE |
 | 8 | Repère de prix au-delà de 150 000 MWh/an (contrats CAPN) ; classement pondéré dans `compare` | décision |
+| 9 | Carte : maquettes 3D plus fidèles des centrales nucléaires, des barrages hydrauliques et des centrales fossiles | — |
+| 10 | Recherche de sources pour améliorer les données sur l'électricité | — |
+| 11 | Carte : très grandes zones de fret (grands ports, grands aéroports de fret), sans les petites | source et seuil de taille à fixer |
 
 **Extension internationale**, dans cet ordre (l'UE-27 à la maille pays est faite) :
 1. Zones de prix (Italie, pays nordiques) : ENTSO-E et point-dans-polygone avec l'extension
@@ -103,6 +105,7 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 | 24 oct. | Carte : décor (villes, forêts) et lentilles Terrain et Réseau retirés ; prix et compteurs hors de la barre du haut ; la fiche de l'adresse donne le verdict |
 | 24 oct. | Carte : une carte par système électrique, placées à 600 unités l'une de l'autre dans la même scène (le brouillard cache les autres) plutôt qu'une page par territoire |
 | 24 oct. | Pôles de production : registre ODRÉ agrégé à la source par commune et filière (installations en service d'au moins 10 MW ; les noms « Confidentiel » interdisent une clé par installation), centre de la commune comme position ; seuil 200 MW sur le continent, 20 MW en Corse et outre-mer ; stockage hors barrages exclu |
+| 24 oct. | `main` protégée par un ruleset GitHub : PR obligatoire (sans approbation), job CI `ruff + pytest + dbt build` vert sur une branche à jour, ni force-push ni suppression, aucun contournement |
 
 ## Écarté
 
