@@ -126,6 +126,24 @@ sources:
         columns:
           - name: code_poste
             data_tests: [unique, not_null]
+      - name: edf_sei_production
+        description: >
+          Production horaire par filière en Corse, Guadeloupe, Martinique, Guyane et à La
+          Réunion (EDF SEI, licence ouverte), en MW moyens, imports compris dans la production
+          totale. Les années récentes sont « Estimé » avant validation ; Mayotte est absente.
+        data_tests:
+          - unique_combination:
+              arguments:
+                columns: [territoire, date_heure]
+        columns:
+          - name: territoire
+            data_tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: [Corse, Guadeloupe, Martinique, Guyane, Réunion]
+          - name: date_heure
+            data_tests: [not_null]
       - name: gaspar_risques
         description: >
           Risques majeurs recensés par commune, d'après les dossiers départementaux des

@@ -19,6 +19,7 @@ from ingestion.diagnostic import (
     code_commune_parent,
     code_departement,
     formater_diagnostic,
+    formater_essentiel,
     lire_diagnostic,
     phrase_verdict,
     verdict,
@@ -260,6 +261,25 @@ def test_verdict_flags_carbon_heavy_grid(medallion_db: Path) -> None:
 
     assert carbone("2A004") == "attention"
     assert carbone("69123") == "ok"
+
+
+# Le profil horaire redonne le facteur annuel en moyenne et place la pointe du soir
+def test_hourly_carbon_profile_for_islands(medallion_db: Path, warehouse: Any) -> None:
+    corse = lire_diagnostic(territoire("2A004"), database=medallion_db).carbone
+    assert corse is not None and corse.annee_profil == 2025
+    assert [h for h, _ in corse.profil_horaire] == list(range(24))
+    moyenne = warehouse.execute(
+        "select sum(intensite_estimee_g_co2e_kwh * production_mwh) / sum(production_mwh)"
+        " from gold.fct_carbone_horaire_zni"
+    ).fetchone()[0]
+    assert moyenne == pytest.approx(corse.intensite_acv_g_co2e_kwh)
+    pointe = max(corse.profil_horaire, key=lambda heure: heure[1])[0]
+    assert 18 <= pointe <= 22
+    texte = formater_essentiel(lire_diagnostic(territoire("2A004"), database=medallion_db))
+    assert "Heure par heure : le moins carboné vers" in texte
+
+    lyon = lire_diagnostic(territoire("69123"), database=medallion_db).carbone
+    assert lyon is not None and lyon.profil_horaire == ()
 
 
 def test_verdict_sentence_lists_what_to_check() -> None:

@@ -8,12 +8,14 @@ from pathlib import Path
 from ingestion.config import Settings, get_settings
 from ingestion.datasets import (
     BRONZE_SPECS,
+    EDF_SEI_PRODUCTION,
     EUROSTAT_PRIX_ENTREPRISES,
     GASPAR_RISQUES,
     NATIONAL_TR,
     RTE_TEMPO,
     DatasetSpec,
 )
+from ingestion.extract_edf_sei import telecharger_production
 from ingestion.extract_eurostat import EurostatClient
 from ingestion.extract_gaspar import telecharger_export
 from ingestion.extract_odre import ExtractionWindow, OdreClient
@@ -374,6 +376,30 @@ def run_prix_entreprises_ingestion(
     return outcome, result
 
 
+# Un fichier téléchargé d'un bloc devient un lot du bronze, rechargé par clé sans doublon
+def _charger_fichier(
+    lignes: list[dict], spec: DatasetSpec, settings: Settings, run_id: str, now: datetime | None
+) -> tuple[ExtractionOutcome, LoadResult]:
+    ingested_at = (now or datetime.now(UTC)).astimezone(UTC)
+    table = records_to_table(lignes, spec=spec, ingested_at=ingested_at)
+    path = write_parquet(
+        table,
+        dataset_dir=spec.bronze_dataset_dir(settings.bronze_dir),
+        run_id=run_id,
+        ingest_date=ingested_at.date(),
+    )
+    outcome = ExtractionOutcome(
+        dataset_id=spec.dataset_id,
+        parquet_path=str(path),
+        rows=table.num_rows,
+        api_calls=1,
+        window_start=None,
+        window_end=None,
+    )
+    return outcome, load_to_warehouse(path, settings=settings, spec=spec)
+
+
+# Risques recensés par commune : repli du diagnostic quand l'API Géorisques ne répond pas
 def run_gaspar_ingestion(
     *,
     settings: Settings | None = None,
@@ -381,25 +407,20 @@ def run_gaspar_ingestion(
     now: datetime | None = None,
 ) -> tuple[ExtractionOutcome, LoadResult]:
     settings = settings or get_settings()
-    ingested_at = (now or datetime.now(UTC)).astimezone(UTC)
-    table = records_to_table(
-        telecharger_export(settings=settings), spec=GASPAR_RISQUES, ingested_at=ingested_at
-    )
-    path = write_parquet(
-        table,
-        dataset_dir=GASPAR_RISQUES.bronze_dataset_dir(settings.bronze_dir),
-        run_id=run_id,
-        ingest_date=ingested_at.date(),
-    )
-    outcome = ExtractionOutcome(
-        dataset_id=GASPAR_RISQUES.dataset_id,
-        parquet_path=str(path),
-        rows=table.num_rows,
-        api_calls=1,
-        window_start=None,
-        window_end=None,
-    )
-    return outcome, load_to_warehouse(path, settings=settings, spec=GASPAR_RISQUES)
+    lignes = telecharger_export(settings=settings)
+    return _charger_fichier(lignes, GASPAR_RISQUES, settings, run_id, now)
+
+
+# Production horaire des îles : dit à quelles heures l'électricité y est la moins carbonée
+def run_edf_sei_ingestion(
+    *,
+    settings: Settings | None = None,
+    run_id: str = "manual",
+    now: datetime | None = None,
+) -> tuple[ExtractionOutcome, LoadResult]:
+    settings = settings or get_settings()
+    lignes = telecharger_production(settings=settings)
+    return _charger_fichier(lignes, EDF_SEI_PRODUCTION, settings, run_id, now)
 
 
 def run_consolidation(

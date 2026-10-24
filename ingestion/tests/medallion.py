@@ -14,6 +14,7 @@ from ingestion.datasets import (
     CONSO_IRIS,
     CONTRAINTES_OUVRAGES,
     CONTRAINTES_REGIONALES,
+    EDF_SEI_PRODUCTION,
     EQUILIBRE_REGIONAL,
     EUROSTAT_PRIX_ENTREPRISES,
     GASPAR_RISQUES,
@@ -372,6 +373,25 @@ def gaspar_risques() -> list[dict[str, Any]]:
     ]
 
 
+# Corse, année 2025 complète : thermique triplé de 17 h à 20 h UTC, la pointe du soir
+def edf_sei_production() -> list[dict[str, Any]]:
+    debut = datetime(2025, 1, 1, tzinfo=UTC)
+    lignes = []
+    for n in range(365 * 24):
+        instant = debut + timedelta(hours=n)
+        lignes.append(
+            {
+                "territoire": "Corse",
+                "date_heure": instant.isoformat(),
+                "statut": "Estimé",
+                "production_totale_mw": 200.0,
+                "thermique_mw": 150.0 if 17 <= instant.hour <= 20 else 50.0,
+                "importations_mw": 50.0,
+            }
+        )
+    return lignes
+
+
 def load_bronze(
     database: Path, tmp_path: Path, spec: DatasetSpec, records: list[dict[str, Any]]
 ) -> None:
@@ -420,6 +440,7 @@ def build_warehouse(tmp_path: Path, *, with_tempo: bool = True) -> Path:
     load_bronze(database, tmp_path, POSTES_RTE, postes_rte())
     load_bronze(database, tmp_path, CONTRAINTES_OUVRAGES, contraintes_ouvrages())
     load_bronze(database, tmp_path, GASPAR_RISQUES, gaspar_risques())
+    load_bronze(database, tmp_path, EDF_SEI_PRODUCTION, edf_sei_production())
     ensure_bronze_tables(settings=Settings(_env_file=None, duckdb_path=database))
     dbt_build(database, tmp_path)
     return database

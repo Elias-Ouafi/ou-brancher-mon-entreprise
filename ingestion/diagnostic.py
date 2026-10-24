@@ -137,6 +137,13 @@ from gold.fct_carbone_territoire
 where code_insee_region = $region
 """
 
+_CARBONE_HORAIRE_SQL = """
+select annee, heure_locale, intensite_estimee_g_co2e_kwh
+from gold.fct_carbone_horaire_zni
+where code_insee_region = $region
+order by heure_locale
+"""
+
 _PRIX_SQL = """
 select *
 from gold.fct_prix_entreprise_tranche
@@ -240,6 +247,9 @@ class Carbone:
     intensite_directe_rte_g_co2_kwh: float | None
     rte_jour_debut: date | None
     rte_jour_fin: date | None
+    # Corse et outre-mer : (heure locale, gCO₂e/kWh estimés) sur l'année EDF SEI `annee_profil`
+    profil_horaire: tuple[tuple[int, float], ...] = ()
+    annee_profil: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -467,6 +477,12 @@ def lire_diagnostic(
                 if ligne is None
                 else _une_ligne(connection, _CARBONE_SQL, {"region": ligne["code_insee_region"]})
             )
+            if carbone is not None:
+                heures = connection.execute(
+                    _CARBONE_HORAIRE_SQL, {"region": ligne["code_insee_region"]}
+                ).fetchall()
+                carbone["profil_horaire"] = tuple((h, i) for _, h, i in heures)
+                carbone["annee_profil"] = heures[0][0] if heures else None
             limites = dict(
                 connection.execute(
                     "select indicateur, limite from gold.limites_methodologiques"
@@ -580,6 +596,8 @@ def essentiel(diagnostic: Diagnostic) -> Section:
             f" seuil de {_nombre_court(c.seuil_decarbone_g_co2e_kwh)} gCO₂e/kWh"
         )
     section.elements.append(("texte", f"Électricité décarbonée : {carbone}"))
+    if d.carbone is not None and (heures := heures_carbone(d.carbone)):
+        section.elements.append(("texte", f"Heure par heure : {heures}"))
     if (part := d.part_chiffre_affaires) is not None:
         section.elements.append(("texte", f"Part du chiffre d'affaires : {_part_ca(part)}"))
     section.elements.append(("texte", f"À savoir : {A_SAVOIR}"))
@@ -721,12 +739,17 @@ def _critere_carbone(d: Diagnostic) -> Critere:
     c = d.carbone
     if c is None:
         return Critere("Carbone", "inconnu", "non disponible", "Lancer refresh.")
+    detail = (
+        f"{c.systeme_electrique} : {'sous le' if c.est_decarbone else 'au-dessus du'} seuil de"
+        f" {_nombre_court(c.seuil_decarbone_g_co2e_kwh)} gCO₂e/kWh de la taxonomie européenne."
+    )
+    if heures := heures_carbone(c):
+        detail += f" {heures[0].upper()}{heures[1:]}."
     return Critere(
         "Carbone",
         "ok" if c.est_decarbone else "attention",
         f"{_nombre_court(c.intensite_acv_g_co2e_kwh)} gCO₂e/kWh",
-        f"{c.systeme_electrique} : {'sous le' if c.est_decarbone else 'au-dessus du'} seuil de"
-        f" {_nombre_court(c.seuil_decarbone_g_co2e_kwh)} gCO₂e/kWh de la taxonomie européenne.",
+        detail,
     )
 
 
@@ -817,6 +840,11 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
             "seuil_decarbone_g_co2e_kwh": c.seuil_decarbone_g_co2e_kwh,
             "systeme_electrique": c.systeme_electrique,
             "source": f"ADEME Base Carbone, {c.validite_source}",
+            "profil_horaire": [
+                {"heure_locale": h, "intensite_estimee_g_co2e_kwh": round(i, 1)}
+                for h, i in c.profil_horaire
+            ],
+            "annee_profil": c.annee_profil,
         },
         "a_savoir": A_SAVOIR,
         "verdict": {
@@ -1085,6 +1113,8 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
     s = bloc("5. Carbone du réseau et coût horaire d'un profil type")
     if d.carbone is not None:
         texte(s, _verdict_carbone(d.carbone))
+        if heures := heures_carbone(d.carbone):
+            texte(s, f"Heure par heure : {heures}")
         limite(s, "carbone_territoire")
     if d.cout is None:
         texte(s, "Aucun mois complet et tarifé : charger les données nationales récentes.")
@@ -1252,6 +1282,18 @@ _MOIS = [
     "janvier", "février", "mars", "avril", "mai", "juin",
     "juillet", "août", "septembre", "octobre", "novembre", "décembre",
 ]  # fmt: skip
+
+
+# Hors continent, l'heure de consommation change le carbone : à quelle heure décaler l'activité
+def heures_carbone(c: Carbone) -> str | None:
+    if not c.profil_horaire:
+        return None
+    bas = min(c.profil_horaire, key=lambda heure: heure[1])
+    haut = max(c.profil_horaire, key=lambda heure: heure[1])
+    return (
+        f"le moins carboné vers {bas[0]} h ({_nombre(bas[1])} gCO₂e/kWh), le plus vers"
+        f" {haut[0]} h ({_nombre(haut[1])}), heure locale ; profil EDF SEI {c.annee_profil}"
+    )
 
 
 def _verdict_carbone(c: Carbone) -> str:
