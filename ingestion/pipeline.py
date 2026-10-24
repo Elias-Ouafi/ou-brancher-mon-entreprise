@@ -9,13 +9,16 @@ from ingestion.config import Settings, get_settings
 from ingestion.datasets import (
     BRONZE_SPECS,
     EDF_SEI_PRODUCTION,
+    EMBER_INTENSITE_CARBONE,
     EUROSTAT_PRIX_ENTREPRISES,
+    EUROSTAT_PRIX_UE,
     GASPAR_RISQUES,
     NATIONAL_TR,
     RTE_TEMPO,
     DatasetSpec,
 )
 from ingestion.extract_edf_sei import telecharger_production
+from ingestion.extract_ember import telecharger_intensites
 from ingestion.extract_eurostat import EurostatClient
 from ingestion.extract_gaspar import telecharger_export
 from ingestion.extract_odre import ExtractionWindow, OdreClient
@@ -409,6 +412,23 @@ def run_gaspar_ingestion(
     settings = settings or get_settings()
     lignes = telecharger_export(settings=settings)
     return _charger_fichier(lignes, GASPAR_RISQUES, settings, run_id, now)
+
+
+# Prix et carbone des 27 pays de l'UE : le repère d'une implantation hors de France
+def run_europe_ingestion(
+    *,
+    settings: Settings | None = None,
+    run_id: str = "manual",
+    now: datetime | None = None,
+) -> list[tuple[ExtractionOutcome, LoadResult]]:
+    settings = settings or get_settings()
+    with EurostatClient(settings) as client:
+        prix = client.fetch_prix_entreprises_ue()
+    carbone = telecharger_intensites(settings=settings)
+    return [
+        _charger_fichier(prix, EUROSTAT_PRIX_UE, settings, run_id, now),
+        _charger_fichier(carbone, EMBER_INTENSITE_CARBONE, settings, run_id, now),
+    ]
 
 
 # Production horaire des îles : dit à quelles heures l'électricité y est la moins carbonée

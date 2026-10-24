@@ -67,13 +67,13 @@ def test_json_stat_cube_is_flattened_by_position() -> None:
         cube({"0": 0.18, "1": 0.17, "3": 0.20, "7": 0.25}, statuts={"7": "p"})
     )
     assert records == [
-        {"semestre": "2025-S2", "tranche": "MWH20-499", "fiscalite": "X_TAX",
+        {"pays": None, "semestre": "2025-S2", "tranche": "MWH20-499", "fiscalite": "X_TAX",
          "libelle_tranche": "tranche IB", "statut": None, "prix_eur_kwh": 0.18},
-        {"semestre": "2026-S1", "tranche": "MWH20-499", "fiscalite": "X_TAX",
+        {"pays": None, "semestre": "2026-S1", "tranche": "MWH20-499", "fiscalite": "X_TAX",
          "libelle_tranche": "tranche IB", "statut": None, "prix_eur_kwh": 0.17},
-        {"semestre": "2026-S1", "tranche": "MWH20-499", "fiscalite": "X_VAT",
+        {"pays": None, "semestre": "2026-S1", "tranche": "MWH20-499", "fiscalite": "X_VAT",
          "libelle_tranche": "tranche IB", "statut": None, "prix_eur_kwh": 0.20},
-        {"semestre": "2026-S1", "tranche": "MWH_LT20", "fiscalite": "X_VAT",
+        {"pays": None, "semestre": "2026-S1", "tranche": "MWH_LT20", "fiscalite": "X_VAT",
          "libelle_tranche": "tranche IA", "statut": "p", "prix_eur_kwh": 0.25},
     ]  # fmt: skip
 

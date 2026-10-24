@@ -126,6 +126,40 @@ sources:
         columns:
           - name: code_poste
             data_tests: [unique, not_null]
+      - name: eurostat_nrg_pc_205_ue
+        description: >
+          Prix semestriels de l'électricité des entreprises dans les 27 pays de l'UE (Eurostat
+          `nrg_pc_205`), mêmes tranches et fiscalités que le jeu France, depuis 2024. `pays` est
+          le code Eurostat (Grèce : EL).
+        data_tests:
+          - unique_combination:
+              arguments:
+                columns: [pays, semestre, tranche, fiscalite]
+        columns:
+          - name: pays
+            data_tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: ref('dim_pays_ue')
+                    field: code_eurostat
+      - name: ember_intensite_carbone
+        description: >
+          Intensité carbone annuelle de la production électrique des pays de l'UE, en cycle de
+          vie (gCO₂e/kWh), ligne « Total generation » du fichier européen d'Ember (CC BY 4.0).
+          Production du pays seulement : les échanges aux frontières n'y sont pas.
+        data_tests:
+          - unique_combination:
+              arguments:
+                columns: [iso3, annee]
+        columns:
+          - name: iso3
+            data_tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: ref('dim_pays_ue')
+                    field: iso3
       - name: edf_sei_production
         description: >
           Production horaire par filière en Corse, Guadeloupe, Martinique, Guyane et à La

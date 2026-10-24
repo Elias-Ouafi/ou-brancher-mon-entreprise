@@ -81,6 +81,7 @@ Toutes s'écrivent `.\.venv\Scripts\python.exe -m ingestion.cli <commande>`.
 | `diagnose --adresse "…" [--puissance MW] [--conso MWh] [--courbe CSV] [--ca €] [--va €] [--format pdf\|md\|json]` | Diagnostic complet : industrie locale, réseau, raccordement, prix, carbone, risques |
 | `compare --adresse "A" --adresse "B" …` | 2 à 6 adresses côte à côte, sans classement ; `texte`, `md`, `csv`, `json` |
 | `carte [--adresse "…"] [--puissance MW] [--reconstruire]` | Carte 3D hors ligne (`data/reports/carte.html`) |
+| `europe --adresse "…" [--conso MWh]` | Hors de France, dans l'UE : prix moyen du pays et carbone de sa production, comparés à la France à tranche égale (moyennes nationales) |
 | `refresh [--months 180]` | Met à jour toutes les sources, puis `dbt build` |
 | `report --month 2026-09` | Rapport mensuel carbone et créneaux Tempo (compte RTE requis) |
 
@@ -101,7 +102,7 @@ Ce fichier est ignoré par git et prime sur `.env`.
 
 ```mermaid
 flowchart LR
-    SRC[("ODRÉ · Eurostat · RTE · GASPAR · EDF SEI")] -->|"ingestion/ (PySpark)"| B["Bronze : Parquet + DuckDB (MERGE)"]
+    SRC[("ODRÉ · Eurostat · RTE · GASPAR · EDF SEI · Ember")] -->|"ingestion/ (PySpark)"| B["Bronze : Parquet + DuckDB (MERGE)"]
     B -->|dbt| S["Silver : nettoyé, codes INSEE"]
     S -->|dbt| G["Gold : prix, carbone, risques, diagnostic"]
     SEEDS[("Seeds : ADEME, tarifs, référentiels, limites")] --> G
@@ -135,7 +136,7 @@ flowchart LR
 .\.venv\Scripts\python.exe -m ruff check . ; .\.venv\Scripts\python.exe -m pytest
 ```
 
-378 tests sans réseau, dont un `dbt build` complet sur une base synthétique qui reproduit les
+389 tests sans réseau, dont un `dbt build` complet sur une base synthétique qui reproduit les
 pièges des sources, plus les tests de données dbt. La CI GitHub Actions les joue à chaque PR.
 
 ## Sources et licence
@@ -148,6 +149,8 @@ pièges des sources, plus les tests de données dbt. La CI GitHub Actions les jo
 [Natural Earth](https://www.naturalearthdata.com) ·
 [sites clés en main France 2030](https://www.data.gouv.fr/datasets/les-sites-cles-en-main-france-2030) ·
 [EDF SEI](https://opendata.edf.fr/datasets/courbe-de-charge-de-la-production-delectricite-par-filiere) ·
+[Ember](https://ember-energy.org/data/yearly-electricity-data/) (CC BY 4.0) ·
+[Nominatim](https://nominatim.openstreetmap.org), données © contributeurs OpenStreetMap (ODbL) ·
 SDDR 2025 de RTE · barèmes de la CRE.
 
 Code sous [licence MIT](LICENSE) ; les données restent sous la licence de leurs producteurs.
