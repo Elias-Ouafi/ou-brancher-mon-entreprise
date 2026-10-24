@@ -14,6 +14,7 @@ JOURS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"
 NBSP = chr(0xA0)
 
 
+# Formats français des nombres, montants et dates des rapports
 def nom_mois(mois: date) -> str:
     return f"{MOIS[mois.month - 1]} {mois.year}"
 
@@ -43,6 +44,7 @@ def heure(valeur: datetime | int) -> str:
     return f"{h}{NBSP}h"
 
 
+# Créneau lisible, sur un ou deux jours
 def plage(debut: datetime, fin: datetime) -> str:
     if debut.date() == fin.date():
         return f"{jour(debut.date())}, {heure(debut)}–{heure(fin)}"
@@ -52,6 +54,7 @@ def plage(debut: datetime, fin: datetime) -> str:
     return f"{jour(debut.date())} {heure(debut)} → {jour(fin.date())} {heure(fin)}"
 
 
+# Période tarifaire d'un créneau, avec la couleur Tempo si connue
 def creneau_tarif(creneau: Creneau) -> str:
     periode = "heures creuses" if creneau.periode == "hc" else "heures pleines"
     return periode if creneau.couleur is None else f"jour {creneau.couleur}, {periode}"

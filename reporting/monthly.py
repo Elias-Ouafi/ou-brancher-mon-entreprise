@@ -16,6 +16,7 @@ Format = Literal["pdf", "md"]
 FORMATS: tuple[Format, ...] = ("pdf", "md")
 
 
+# Mois AAAA-MM saisi en ligne de commande
 def parse_month(value: str) -> date:
     try:
         return datetime.strptime(value, "%Y-%m").date()
@@ -23,11 +24,13 @@ def parse_month(value: str) -> date:
         raise ValueError(f"mois invalide : {value!r} (format attendu AAAA-MM)") from None
 
 
+# Chemin par défaut d'un bilan mensuel
 def report_path(mois: date, *, settings: Settings | None = None, format: Format = "pdf") -> Path:
     settings = settings or get_settings()
     return settings.reports_dir / f"eco2mix_rapport_{mois:%Y-%m}.{format}"
 
 
+# Bilan mensuel carbone et créneaux Tempo, en PDF ou Markdown
 def generate_monthly_report(
     mois: date,
     *,

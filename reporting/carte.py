@@ -84,6 +84,7 @@ def _lignes(connection: duckdb.DuckDBPyConnection, sql: str) -> list[dict[str, A
     return [dict(zip(colonnes, ligne, strict=True)) for ligne in relation.fetchall()]
 
 
+# Indicateurs gold affichés sur la carte, lus en une connexion
 def lire_donnees_gold(database: Path) -> dict[str, Any]:
     if not Path(database).exists():
         raise DiagnosticIndisponibleError(
@@ -112,6 +113,7 @@ def _reperer(
     return [indice, case.c, case.r] if case else None
 
 
+# Données embarquées dans la page : cases, relief, indicateurs et adresse
 def construire_donnees(
     grilles: list[Grille],
     altitudes: dict[tuple[float, float], float | None],
@@ -188,6 +190,7 @@ def verdict_carte(diagnostic: Diagnostic) -> dict[str, Any]:
     }
 
 
+# Épingle de l'adresse et son verdict, rattachées à leur case
 def construire_adresse(
     grilles: list[Grille],
     territoire: Territoire | None,
@@ -222,6 +225,7 @@ def rendre_html(donnees: dict[str, Any]) -> str:
     return placer_adresse(html, adresse)
 
 
+# Remplace seulement l'épingle : la carte ne se refait pas pour une nouvelle adresse
 def placer_adresse(html: str, adresse: dict[str, Any] | None) -> str:
     html, remplacements = _LIGNE_ADRESSE.subn(lambda m: f"{m.group(1)}{_json(adresse)};", html)
     if remplacements != 1:
@@ -254,6 +258,7 @@ def _chemin(settings: Settings, output: Path | None) -> Path:
     return output or Path(settings.reports_dir) / "carte.html"
 
 
+# Écrit la carte complète, page HTML autonome qui s'ouvre sans réseau
 def generer_carte(
     *,
     settings: Settings | None = None,

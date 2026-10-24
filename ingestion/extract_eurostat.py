@@ -47,6 +47,7 @@ class EurostatResponseError(ExtractionError):
     pass
 
 
+# Client de l'API Eurostat : prix de l'électricité des entreprises par tranche
 class EurostatClient:
     def __init__(
         self,
@@ -123,6 +124,7 @@ class EurostatClient:
         return self._retrying(envoyer)
 
 
+# Cube JSON-stat d'Eurostat mis à plat, une ligne par cellule publiée
 def aplatir_json_stat(payload: dict[str, Any]) -> list[dict[str, Any]]:
     try:
         dimensions: list[str] = payload["id"]

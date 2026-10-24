@@ -60,12 +60,14 @@ class AdresseAmbigueError(GeocodingError):
         self.candidats = candidats
 
 
+# Arrondissement de Paris, Lyon ou Marseille ramené à sa commune : maille des données
 def code_commune_parent(code_insee: str) -> str:
     if len(code_insee) == 5 and code_insee[:3] in ARRONDISSEMENTS:
         return ARRONDISSEMENTS[code_insee[:3]]
     return code_insee
 
 
+# Nom comparable sans accents ni casse, pour relier des libellés de sources différentes
 def normalise(valeur: str) -> str:
     sans_accent = unicodedata.normalize("NFKD", valeur)
     sans_accent = "".join(c for c in sans_accent if not unicodedata.combining(c))
@@ -75,6 +77,7 @@ def normalise(valeur: str) -> str:
 _REGIONS_PAR_NOM: dict[str, str] = {normalise(nom): code for code, nom in REGIONS.items()}
 
 
+# Code INSEE d'une région à partir de son nom renvoyé par la BAN
 def code_region(nom: str) -> str | None:
     return _REGIONS_PAR_NOM.get(normalise(nom))
 
@@ -159,6 +162,7 @@ def _choisir(features: list[dict[str, Any]], demande: str) -> dict[str, Any]:
     return meilleur
 
 
+# Client de la Base Adresse Nationale : adresse vers commune, département et région
 class BanClient:
     def __init__(
         self,
@@ -264,6 +268,7 @@ class BanClient:
         return self._retrying(envoyer)
 
 
+# Adresse résolue en territoire, ou refusée si elle est ambiguë
 def geocode(adresse: str, *, settings: Settings | None = None) -> Territoire:
     with BanClient(settings) as client:
         return client.geocode(adresse)

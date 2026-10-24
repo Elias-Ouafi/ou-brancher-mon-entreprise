@@ -52,6 +52,7 @@ class GeorisquesError(ExtractionError):
     pass
 
 
+# Exposition d'une adresse à un risque, telle que Géorisques la qualifie
 class Exposition(StrEnum):
     # Risque existant (ou « concerné ») à l'adresse
     EXPOSE = "expose"
@@ -84,6 +85,7 @@ def exposition(statut: str | None) -> Exposition:
     return Exposition.INCONNU
 
 
+# Niveau d'un risque (« faible », « fort ») tiré du libellé Géorisques
 def niveau(statut: str | None) -> str | None:
     if statut and " - " in statut:
         return statut.split(" - ", 1)[1].strip().lower()
@@ -129,6 +131,7 @@ class RisquesSite:
         ]
 
 
+# Rapport Géorisques à l'adresse : la source la plus précise sur les risques
 def lire_rapport(payload: dict[str, Any]) -> RisquesSite:
     risques = []
     for bloc, famille in FAMILLES.items():
@@ -162,6 +165,7 @@ INTENSITES_SISMIQUES = {
 }
 
 
+# Risques de la commune (GASPAR) quand le rapport à l'adresse manque
 def lire_gaspar(payload: dict[str, Any], codes_commune: set[str]) -> list[Risque]:
     communes = payload.get("data")
     if not isinstance(communes, list) or not communes:
@@ -206,6 +210,7 @@ def lire_zonage(payload: dict[str, Any]) -> Risque | None:
     )
 
 
+# Client de l'API Géorisques
 class GeorisquesClient:
     def __init__(
         self,
@@ -306,6 +311,7 @@ def risques_gaspar(lignes: list[tuple[str, str, str, date]]) -> RisquesSite | No
     )
 
 
+# Risques du site : rapport à l'adresse, sinon export local, sinon API par commune
 def lire_risques(
     *,
     latitude: float,

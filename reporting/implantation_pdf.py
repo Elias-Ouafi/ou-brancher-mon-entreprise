@@ -72,6 +72,7 @@ def _synthese(d: Diagnostic) -> list:
     return [_kpis(cartes, par_ligne=2), Spacer(1, 8)]
 
 
+# Rapport de diagnostic en PDF
 def rendre(
     diagnostic: Diagnostic,
     comparaisons: Comparaisons,

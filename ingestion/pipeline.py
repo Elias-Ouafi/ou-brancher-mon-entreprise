@@ -99,6 +99,7 @@ def month_bounds(year: int, month: int) -> tuple[datetime, datetime]:
     return start.astimezone(UTC), end.astimezone(UTC)
 
 
+# Fenêtre des N derniers mois, en heure de Paris comme la publication
 def last_months_window(months: int, *, now: datetime | None = None) -> ExtractionWindow:
     reference = (now or datetime.now(UTC)).astimezone(PARIS_TZ)
     shifted = (reference.year * 12 + reference.month - 1) - months
@@ -110,6 +111,7 @@ def _expected_slots(start: datetime, end: datetime) -> int:
     return int((end - start) / timedelta(minutes=SLOT_MINUTES))
 
 
+# Extraction d'un jeu ODRÉ vers un Parquet bronze, sans le charger
 def extract_to_parquet(
     *,
     settings: Settings | None = None,
@@ -164,6 +166,7 @@ def tempo_days_for_month(month: date) -> DayRange:
     return DayRange(days.start - timedelta(days=1), days.end)
 
 
+# Extraction du calendrier Tempo vers un Parquet bronze
 def extract_tempo_to_parquet(
     days: DayRange,
     *,
@@ -198,6 +201,7 @@ def extract_tempo_to_parquet(
     )
 
 
+# Crée les tables bronze vides : dbt construit même si une source n'a jamais été chargée
 def ensure_bronze_tables(*, settings: Settings | None = None) -> None:
     settings = settings or get_settings()
     for spec in BRONZE_SPECS:
@@ -208,6 +212,7 @@ def ensure_bronze_tables(*, settings: Settings | None = None) -> None:
             loader.close()
 
 
+# Charge un Parquet dans DuckDB par MERGE : relancer ne crée pas de doublon
 def load_to_warehouse(
     parquet_path: Path | str,
     *,
@@ -223,6 +228,7 @@ def load_to_warehouse(
         loader.close()
 
 
+# Retard de la donnée la plus récente : alerte avant de répondre sur du périmé
 def check_freshness(
     *,
     settings: Settings | None = None,
@@ -272,6 +278,7 @@ def check_freshness(
     return report
 
 
+# Dernier mois révolu complet ou non : pas de bilan mensuel sur un mois troué
 def check_month_coverage(
     *,
     settings: Settings | None = None,
@@ -320,6 +327,7 @@ def _target_month(latest: datetime, reference: datetime) -> tuple[int, int]:
     return year, month
 
 
+# Extraction puis chargement d'un jeu ODRÉ
 def run_ingestion(
     *,
     settings: Settings | None = None,
@@ -336,6 +344,7 @@ def run_ingestion(
     return outcome, result
 
 
+# Extraction puis chargement du calendrier Tempo
 def run_tempo_ingestion(
     days: DayRange,
     *,
@@ -349,6 +358,7 @@ def run_tempo_ingestion(
     return outcome, result
 
 
+# Prix Eurostat de la France par tranche : la base du prix moyen et des scénarios
 def run_prix_entreprises_ingestion(
     *,
     settings: Settings | None = None,
@@ -443,6 +453,7 @@ def run_edf_sei_ingestion(
     return _charger_fichier(lignes, EDF_SEI_PRODUCTION, settings, run_id, now)
 
 
+# Relit les derniers mois consolidés, qui corrigent les données temps réel
 def run_consolidation(
     *,
     settings: Settings | None = None,

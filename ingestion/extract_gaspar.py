@@ -24,6 +24,7 @@ class GasparError(ExtractionError):
     pass
 
 
+# Risques par commune lus dans l'archive GASPAR : les risques sans dépendre de l'API
 def lire_export(contenu: bytes) -> list[dict[str, Any]]:
     try:
         archive = zipfile.ZipFile(io.BytesIO(contenu))
@@ -51,6 +52,7 @@ def lire_export(contenu: bytes) -> list[dict[str, Any]]:
     ]
 
 
+# Export GASPAR complet, relu à chaque refresh
 def telecharger_export(
     *, settings: Settings | None = None, client: httpx.Client | None = None
 ) -> list[dict[str, Any]]:

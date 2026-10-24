@@ -12,6 +12,7 @@ INGESTED_AT_COLUMN = "ingested_at_utc"
 SOURCE_COLUMN = "source_dataset"
 
 
+# Nature d'une colonne : fixe son type et sa normalisation à l'ingestion
 class ColumnKind(StrEnum):
     # Instant daté, normalisé en UTC à l'extraction
     INSTANT = "instant"
@@ -49,6 +50,7 @@ def instant(name: str) -> Column:
     return Column(name, ColumnKind.INSTANT)
 
 
+# Raccourcis de déclaration des colonnes d'un jeu de données
 def period(name: str) -> Column:
     return Column(name, ColumnKind.PERIOD)
 
@@ -411,6 +413,7 @@ BRONZE_SPECS: tuple[DatasetSpec, ...] = (
 )
 
 
+# Jeu de données par identifiant, avec la liste des jeux connus en cas d'erreur
 def get_spec(dataset_id: str) -> DatasetSpec:
     try:
         return SPECS[dataset_id]

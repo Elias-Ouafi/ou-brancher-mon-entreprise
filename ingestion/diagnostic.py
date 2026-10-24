@@ -206,6 +206,7 @@ def lire_chargements(connection: duckdb.DuckDBPyConnection) -> dict[str, date]:
     return chargements
 
 
+# Date des données sous chaque réponse, avec une alerte si une source a pris du retard
 def ligne_chargements(chargements: dict[str, date], *, aujourd_hui: date | None = None) -> str:
     if not chargements:
         return "Date des données inconnue (warehouse sans source chargée)."
@@ -466,6 +467,7 @@ class Diagnostic:
         )
 
 
+# Rassemble tout ce que le warehouse sait d'une adresse : la base de chaque réponse
 def lire_diagnostic(
     territoire: Territoire,
     *,
@@ -618,6 +620,7 @@ class Section:
     elements: list[tuple[str, str]]
 
 
+# Commune, département, région et zone : situe l'adresse avant tout chiffre
 def entete(diagnostic: Diagnostic) -> list[str]:
     d = diagnostic
     t = d.territoire
@@ -638,6 +641,7 @@ A_SAVOIR = (
 )
 
 
+# Les deux réponses attendues d'abord : prix moyen et verdict carbone
 def essentiel(diagnostic: Diagnostic) -> Section:
     d = diagnostic
     section = Section("L'essentiel : prix et carbone à cette adresse", [])
@@ -742,6 +746,7 @@ def _prix_court(d: Diagnostic) -> str:
     )
 
 
+# Réponse courte au terminal, terminée par le verdict « brancher ici ? »
 def formater_essentiel(diagnostic: Diagnostic) -> str:
     lignes = [diagnostic.territoire.adresse, *entete(diagnostic), ""]
     lignes += [contenu for _, contenu in essentiel(diagnostic).elements]
@@ -903,6 +908,7 @@ def phrase_verdict(criteres: list[Critere]) -> str:
     return phrase + "."
 
 
+# Réponse courte pour un autre programme (`--format json`)
 def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
     d = diagnostic
     t = d.territoire
@@ -973,6 +979,7 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
     }
 
 
+# Diagnostic complet, section par section, chaque chiffre suivi de sa limite
 def sections(diagnostic: Diagnostic) -> list[Section]:
     d = diagnostic
     resultat: list[Section] = []
@@ -1366,6 +1373,7 @@ def completer_risques(diagnostic: Diagnostic, *, settings: Settings | None = Non
     return replace(diagnostic, risques=risques)
 
 
+# Diagnostic complet au terminal
 def formater_diagnostic(diagnostic: Diagnostic) -> str:
     lignes = [f"DIAGNOSTIC D'IMPLANTATION — {diagnostic.territoire.adresse}"]
     lignes += entete(diagnostic)
@@ -1378,6 +1386,7 @@ def formater_diagnostic(diagnostic: Diagnostic) -> str:
     return "\n".join(lignes)
 
 
+# Diagnostic complet pour un autre programme, dates en ISO
 def diagnostic_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
 
     def convertir(valeur: Any) -> Any:

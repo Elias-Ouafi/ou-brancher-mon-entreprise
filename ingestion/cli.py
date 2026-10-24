@@ -165,6 +165,7 @@ def _add_dataset_option(parser: argparse.ArgumentParser, default: str) -> None:
     parser.add_argument("--dataset", choices=sorted(SPECS), default=default, help="dataset ODRÉ")
 
 
+# Toutes les commandes et leurs options : la porte d'entrée unique de l'outil
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="eco2mix",
@@ -347,6 +348,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+# Lance la commande demandée ; code de sortie 1 quand la réponse n'a pas pu être donnée
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)

@@ -119,6 +119,7 @@ class ExtractionWindow:
         return f"[{self.start.isoformat()} -> {self.end.isoformat()})"
 
 
+# Client de l'API ODRÉ (éCO2mix et jeux RTE), avec reprise sur erreur
 class OdreClient:
     def __init__(
         self,

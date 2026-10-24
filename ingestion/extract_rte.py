@@ -68,6 +68,7 @@ def _paris_midnight(day: date) -> str:
     return datetime(day.year, day.month, day.day, tzinfo=PARIS_TZ).isoformat()
 
 
+# Client de l'API Tempo de RTE (compte gratuit requis) : couleur des jours
 class RteTempoClient:
     def __init__(self, settings: Settings | None = None, *, client: httpx.Client | None = None):
         self.settings = settings or get_settings()
