@@ -15,6 +15,7 @@ from ingestion.diagnostic import (
     _nombre,
     _nombre_court,
     diagnostic_en_dict,
+    ligne_chargements,
     sections,
 )
 from ingestion.georisques import Exposition
@@ -165,7 +166,8 @@ def lignes(diagnostics: list[Diagnostic]) -> list[Ligne]:
 def communs(diagnostics: list[Diagnostic]) -> list[str]:
     reference = next((d for d in diagnostics if not d.est_zni), diagnostics[0])
     blocs = sections(reference)
-    resultat = []
+    # Même warehouse pour toutes les adresses : une seule date
+    resultat = [ligne_chargements(reference.chargements)]
     raccordement = next(s for s in blocs if s.titre.startswith("3."))
     resultat += [
         contenu

@@ -12,7 +12,11 @@ import duckdb
 import httpx
 
 from ingestion.config import Settings, get_settings
-from ingestion.diagnostic import DiagnosticIndisponibleError
+from ingestion.diagnostic import (
+    DiagnosticIndisponibleError,
+    ligne_chargements,
+    lire_chargements,
+)
 from ingestion.extract_geo import (
     CONTOURS_JEU,
     TERRES_JEU,
@@ -79,13 +83,13 @@ def _lignes(connection: duckdb.DuckDBPyConnection, sql: str) -> list[dict[str, A
     return [dict(zip(colonnes, ligne, strict=True)) for ligne in relation.fetchall()]
 
 
-def lire_donnees_gold(database: Path) -> dict[str, list[dict[str, Any]]]:
+def lire_donnees_gold(database: Path) -> dict[str, Any]:
     if not Path(database).exists():
         raise DiagnosticIndisponibleError(
             f"warehouse introuvable : {database} (lancer refresh avant la carte)"
         )
     with duckdb.connect(str(database), read_only=True) as connection:
-        return {
+        gold: dict[str, Any] = {
             cle: _lignes(connection, sql)
             for cle, sql in (
                 ("departements", _DEPARTEMENTS_SQL),
@@ -94,6 +98,8 @@ def lire_donnees_gold(database: Path) -> dict[str, list[dict[str, Any]]]:
                 ("prix", _PRIX_SQL),
             )
         }
+        gold["donnees"] = ligne_chargements(lire_chargements(connection))
+        return gold
 
 
 # Case terrestre d'un point : encart de son département d'outre-mer, sinon métropole
@@ -109,7 +115,7 @@ def _reperer(
 def construire_donnees(
     grilles: list[Grille],
     altitudes: dict[tuple[float, float], float | None],
-    gold: dict[str, list[dict[str, Any]]],
+    gold: dict[str, Any],
     *,
     territoire: Territoire | None = None,
     genere_le: datetime | None = None,
@@ -159,6 +165,7 @@ def construire_donnees(
             for z in gold["zones"]
         ],
         "prix": gold["prix"],
+        "donnees": gold.get("donnees"),
         "adresse": construire_adresse(grilles, territoire),
     }
 

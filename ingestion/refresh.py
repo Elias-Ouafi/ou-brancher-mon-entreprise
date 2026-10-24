@@ -14,6 +14,7 @@ from ingestion.datasets import NATIONAL_CONS_DEF, NATIONAL_TR, TERRITORIAL_SPECS
 from ingestion.extract_geo import run_geo_ingestion
 from ingestion.pipeline import (
     run_consolidation,
+    run_gaspar_ingestion,
     run_ingestion,
     run_prix_entreprises_ingestion,
 )
@@ -85,6 +86,7 @@ def run_refresh(
             "prix-eurostat",
             lambda: run_prix_entreprises_ingestion(settings=settings, run_id=run_id),
         ),
+        ("risques-gaspar", lambda: run_gaspar_ingestion(settings=settings, run_id=run_id)),
         ("dbt-build", lambda: dbt_build(settings)),
     ]
     bilan = []

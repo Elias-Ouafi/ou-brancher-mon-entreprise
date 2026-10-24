@@ -2,22 +2,28 @@ from __future__ import annotations
 
 import logging
 import re
-from dataclasses import asdict, dataclass, replace
-from datetime import date
+from dataclasses import asdict, dataclass, field, replace
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import duckdb
 
 from ingestion.config import Settings, get_settings
-from ingestion.geocode import Territoire
-from ingestion.georisques import Exposition, GeorisquesError, Risque, RisquesSite, lire_risques
+from ingestion.geocode import Territoire, code_commune_parent
+from ingestion.georisques import (
+    Exposition,
+    GeorisquesError,
+    Risque,
+    RisquesSite,
+    lire_risques,
+    risques_gaspar,
+)
 
 logger = logging.getLogger(__name__)
 
 # Arrondissements municipaux (3 premiers caractères du code) -> code de la commune
-ARRONDISSEMENTS: dict[str, str] = {"751": "75056", "693": "69123", "132": "13055"}
-
 _DIAGNOSTIC_SQL = """
 select
     territoire.*,
@@ -152,10 +158,62 @@ class DiagnosticIndisponibleError(RuntimeError):
     pass
 
 
-def code_commune_parent(code_insee: str) -> str:
-    if len(code_insee) == 5 and code_insee[:3] in ARRONDISSEMENTS:
-        return ARRONDISSEMENTS[code_insee[:3]]
-    return code_insee
+# Pas `transform.PARIS_TZ` : l'importer chargerait PySpark à chaque diagnostic
+PARIS_TZ = ZoneInfo("Europe/Paris")
+
+# Sources rechargées par `refresh`, dans l'ordre d'affichage ; les seeds n'y figurent pas
+SOURCES_CHARGEES: dict[str, str] = {
+    "eurostat_nrg_pc_205": "prix Eurostat",
+    "national_tr": "éCO2mix temps réel",
+    "national_cons_def": "éCO2mix consolidé",
+    "consommation_annuelle_par_iris": "industrie ODRÉ",
+    "equilibre_regional_mensuel_prod_conso_brute": "équilibre régional ODRÉ",
+    "contraintes_region": "contraintes RTE",
+    "postes_electriques_rte": "postes RTE",
+    "gaspar_risques": "risques GASPAR",
+}
+# Au-delà, une source n'a pas été rechargée depuis plus d'un cycle mensuel de `refresh`
+AGE_MAX_JOURS = 45
+# Une source rechargée à part (un `refresh` partiel) n'est signalée qu'au-delà
+ECART_TOLERE_JOURS = 7
+
+
+# Dernier chargement de chaque source présente dans le bronze, en heure de Paris
+def lire_chargements(connection: duckdb.DuckDBPyConnection) -> dict[str, date]:
+    presentes = {
+        nom
+        for (nom,) in connection.execute(
+            "select table_name from information_schema.tables where table_schema = 'bronze'"
+        ).fetchall()
+    }
+    chargements = {}
+    for table in SOURCES_CHARGEES:
+        if table not in presentes:
+            continue
+        (dernier,) = connection.execute(
+            f"select max(ingested_at_utc) from bronze.{table}"
+        ).fetchone()
+        if isinstance(dernier, datetime):
+            chargements[table] = dernier.astimezone(PARIS_TZ).date()
+    return chargements
+
+
+def ligne_chargements(chargements: dict[str, date], *, aujourd_hui: date | None = None) -> str:
+    if not chargements:
+        return "Date des données inconnue (warehouse sans source chargée)."
+    dernier, premier = max(chargements.values()), min(chargements.values())
+    en_retard = {t: j for t, j in chargements.items() if (dernier - j).days > ECART_TOLERE_JOURS}
+    if premier == dernier:
+        ligne = f"Données chargées le {dernier:%d/%m/%Y}"
+    elif not en_retard:
+        ligne = f"Données chargées du {premier:%d/%m/%Y} au {dernier:%d/%m/%Y}"
+    else:
+        retard = ", ".join(f"{SOURCES_CHARGEES[t]} le {j:%d/%m/%Y}" for t, j in en_retard.items())
+        ligne = f"Données chargées le {dernier:%d/%m/%Y}, sauf {retard}"
+    age = ((aujourd_hui or date.today()) - premier).days
+    if age > AGE_MAX_JOURS:
+        ligne += f" : plus de {AGE_MAX_JOURS} jours, relancer refresh"
+    return ligne + "."
 
 
 # Code département d'un code commune : 3 caractères outre-mer, 2 ailleurs
@@ -335,6 +393,8 @@ class Diagnostic:
     risques: RisquesSite | None = None
     risques_erreur: str | None = None
     ca_eur: float | None = None
+    # Dernier chargement de chaque source par `refresh` (voir `SOURCES_CHARGEES`)
+    chargements: dict[str, date] = field(default_factory=dict)
 
     @property
     def commune_a_des_sites(self) -> bool:
@@ -412,6 +472,7 @@ def lire_diagnostic(
                     "select indicateur, limite from gold.limites_methodologiques"
                 ).fetchall()
             )
+            chargements = lire_chargements(connection)
     except duckdb.CatalogException as error:
         raise DiagnosticIndisponibleError(
             f"couche gold incomplete, lancer dbt build ({error})"
@@ -435,6 +496,7 @@ def lire_diagnostic(
         cout=None if cout_ligne is None else CoutProfil(**cout_ligne),
         carbone=None if carbone is None else Carbone(**carbone),
         limites=limites,
+        chargements=chargements,
         **ligne,
     )
 
@@ -492,6 +554,7 @@ def entete(diagnostic: Diagnostic) -> list[str]:
     ]
     if not t.est_precis:
         lignes.append(f"Attention : adresse résolue à la maille « {t.precision} » seulement.")
+    lignes.append(ligne_chargements(d.chargements))
     return lignes
 
 
@@ -583,6 +646,7 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
         "region": d.region,
         "est_zni": d.est_zni,
         "precision_geocodage": t.precision,
+        "donnees_chargees": {table: jour.isoformat() for table, jour in d.chargements.items()},
         "prix": None
         if p is None
         else {
@@ -905,17 +969,19 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
     if d.risques_erreur is not None:
         texte(
             s,
-            "Géorisques n'a pas répondu, même après plusieurs tentatives : risques non évalués."
-            " À consulter sur georisques.gouv.fr avant tout engagement.",
+            "Géorisques n'a pas répondu, même après plusieurs tentatives, et l'export GASPAR"
+            " n'est pas chargé (lancer refresh) : risques non évalués. À consulter sur"
+            " georisques.gouv.fr avant tout engagement.",
         )
     elif d.risques is None:
         texte(s, "Non consulté (option --sans-risques).")
     elif d.risques.maille == "commune":
         r = d.risques
+        source = f"l'export GASPAR du {r.millesime:%d/%m/%Y}" if r.millesime else "l'API Géorisques"
         texte(
             s,
-            "Rapport à l'adresse indisponible (Géorisques n'a pas répondu) : repli sur les"
-            " risques recensés dans la commune, sans évaluation à l'adresse.",
+            "Rapport à l'adresse indisponible (Géorisques n'a pas répondu) : risques recensés"
+            f" dans la commune d'après {source}, sans évaluation à l'adresse.",
         )
         for famille, nom in (("naturel", "Naturels"), ("technologique", "Technologiques")):
             recenses = r.selon(Exposition.INCONNU, famille)
@@ -956,15 +1022,38 @@ def _liste_risques(risques: list[Risque]) -> str:
     return ", ".join(f"{r.libelle} ({r.niveau})" if r.niveau else r.libelle for r in risques)
 
 
+_GASPAR_SQL = """
+select code_insee_commune, num_risque, libelle_risque, millesime
+from gold.fct_risques_commune
+where code_insee_commune in (select unnest(?))
+order by code_insee_commune, num_risque
+"""
+
+
+# Export GASPAR chargé par `refresh` ; `None` s'il n'a jamais été chargé
+def _gaspar_local(codes_commune: set[str], settings: Settings | None) -> RisquesSite | None:
+    path = (settings or get_settings()).duckdb_path
+    if not Path(path).exists():
+        return None
+    try:
+        with duckdb.connect(str(path), read_only=True) as connection:
+            lignes = connection.execute(_GASPAR_SQL, [sorted(codes_commune)]).fetchall()
+    except duckdb.CatalogException:
+        return None
+    return risques_gaspar(lignes)
+
+
 # Ajoute le rapport Géorisques de l'adresse ; ne fait jamais échouer le diagnostic
 def completer_risques(diagnostic: Diagnostic, *, settings: Settings | None = None) -> Diagnostic:
     t = diagnostic.territoire
+    codes_commune = {t.code_insee_commune, diagnostic.code_insee_commune}
     try:
         risques = lire_risques(
             latitude=t.latitude,
             longitude=t.longitude,
-            codes_commune={t.code_insee_commune, diagnostic.code_insee_commune},
+            codes_commune=codes_commune,
             settings=settings,
+            repli=_gaspar_local(codes_commune, settings),
         )
     except GeorisquesError as error:
         logger.warning("risques non evalues : %s", error)

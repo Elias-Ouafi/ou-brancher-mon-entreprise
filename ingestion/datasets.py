@@ -319,6 +319,15 @@ RTE_TEMPO = DatasetSpec(
     description="Calendrier Tempo RTE (couleur de chaque jour)",
 )
 
+# Risques recensés par commune (DDRM), extraits de l'export GASPAR ; `millesime` : date du fichier
+GASPAR_RISQUES = DatasetSpec(
+    dataset_id="gaspar-risques",
+    keys=(code("code_commune"), code("num_risque")),
+    attributes=(label("libelle_commune"), label("libelle_risque"), period("millesime")),
+    measures=(),
+    description="Risques majeurs recensés par commune (GASPAR, DDRM)",
+)
+
 EUROSTAT_PRIX_ENTREPRISES = DatasetSpec(
     dataset_id="eurostat-nrg-pc-205",
     keys=(period("semestre"), code("tranche"), code("fiscalite")),
@@ -357,6 +366,7 @@ BRONZE_SPECS: tuple[DatasetSpec, ...] = (
     NATIONAL_CONS_DEF,
     RTE_TEMPO,
     EUROSTAT_PRIX_ENTREPRISES,
+    GASPAR_RISQUES,
     *TERRITORIAL_SPECS,
 )
 

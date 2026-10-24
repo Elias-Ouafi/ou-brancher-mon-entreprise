@@ -186,6 +186,7 @@ def test_donnees_de_la_carte(settings_carte: Settings, grilles: list) -> None:
     assert donnees["departements"] and donnees["prix"]
     assert all(site["case"] for site in donnees["sites"])
     assert donnees["adresse"]["departement"] == territoire().code_departement
+    assert donnees["donnees"].startswith("Données chargées le 01/07/2026")
 
 
 def test_page_autonome_et_echappee(settings_carte: Settings, grilles: list) -> None:
