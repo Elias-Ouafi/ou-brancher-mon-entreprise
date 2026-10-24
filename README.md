@@ -17,7 +17,7 @@ raccordement relève de RTE et une zone prioritaire est à 11 km (arc bleu), un 
 |---|---|---|
 | **1. Le prix ne dépend pas de l'adresse** | La péréquation tarifaire rend le prix identique partout, Corse et outre-mer compris : environ 0,20 €/kWh HTVA pour 350 MWh par an. C'est la consommation qui fait la facture, pas le site. | Les tranches Eurostat `nrg_pc_205` (semestrielles, HTVA) sont jointes à la consommation annuelle ; des scénarios à 3 ans sont calibrés sur les erreurs passées, sans regard vers le futur. |
 | **2. Le carbone change d'un facteur 10 à 18 entre systèmes électriques** | 51,9 gCO₂e/kWh sur tout le continent, 594 à 957 en Corse et outre-mer, non interconnectés. Le seuil européen (taxonomie) est 100 : il compte pour un financement vert. Sur une île, l'heure compte aussi : en Corse, 522 g vers 13 h contre 681 g vers 5 h. | Facteurs en cycle de vie de la Base Carbone ADEME, en seed daté ; jointure par système électrique dérivé du code INSEE, jamais par libellé. Profil horaire des îles tiré de la production par filière d'EDF SEI (263 000 heures), calé pour redonner le facteur ADEME annuel. |
-| **3. La capacité de raccordement n'est pas publique** | Au-delà de 40 MW, c'est RTE et des délais de 2 à 7 ans. L'outil dit qui raccorde selon la puissance et signale la zone prioritaire RTE la plus proche ; seule une étude Enedis ou RTE fait foi. | Seuils de tension en seed, zones du SDDR 2025 géolocalisées, distance au plus proche dans DuckDB. Quand l'API Géorisques tombe, les risques viennent de l'export GASPAR chargé au `refresh`. |
+| **3. La capacité de raccordement n'est pas publique** | Au-delà de 40 MW, c'est RTE et des délais de 2 à 7 ans. L'outil dit qui raccorde selon la puissance et signale la zone prioritaire RTE la plus proche ; seule une étude Enedis ou RTE fait foi. | Seuils de tension en seed, zones du SDDR 2025 géolocalisées, distance au plus proche dans DuckDB. Quand l'API Géorisques tombe, les risques viennent de l'export GASPAR chargé au `refresh`, qui fournit aussi les plans de prévention de chaque commune. |
 
 ## Prise en main (10 minutes)
 
@@ -89,8 +89,9 @@ Toutes s'écrivent `.\.venv\Scripts\python.exe -m ingestion.cli <commande>`.
 Les commandes qui répondent à une question (`essentiel`, `diagnose`, `compare`, `carte`, `europe`)
 n'affichent que la réponse, les alertes et le chemin des fichiers écrits ; `--verbose`, avant ou
 après la commande, montre le journal technique. `essentiel` et `diagnose` épinglent aussi leur
-adresse sur la carte (`--sans-carte` pour s'en passer). La carte n'est refaite que si le warehouse, les contours ou le gabarit sont plus récents
-qu'elle ; sinon seule l'épingle et son verdict changent.
+adresse sur la carte (`--sans-carte` pour s'en passer ; `carte --sans-ouvrir` écrit la page sans
+lancer le navigateur). La carte n'est refaite que si le warehouse, les contours ou le gabarit sont
+plus récents qu'elle ; sinon seule l'épingle et son verdict changent.
 
 **La carte** montre un système électrique à la fois : la métropole avec la Corse, puis chacun des
 cinq départements d'outre-mer, chacun sur sa propre carte. Elle s'ouvre sur celle de l'adresse ;
@@ -115,7 +116,7 @@ flowchart LR
     S -->|dbt| G["Gold : prix, carbone, risques, diagnostic"]
     SEEDS[("Seeds : ADEME, tarifs, référentiels, limites")] --> G
     GEO[("Contours Etalab · relief IGN · Natural Earth")] -->|"ingestion/ (Python)"| B
-    G --> CLI(["essentiel · diagnose · compare · carte"])
+    G --> CLI(["essentiel · diagnose · compare · carte · europe"])
     BAN[("BAN · Géorisques, à la demande")] --> CLI
 ```
 
@@ -129,8 +130,8 @@ flowchart LR
   code INSEE ; énergie = puissance × durée (jours de 23 ou 25 h) ; verdict carbone en cycle de vie.
 - **Gold principal** : `fct_diagnostic_territoire` (une ligne par département),
   `fct_prix_entreprise_tranche`, `fct_carbone_territoire`, `fct_carbone_horaire_zni`,
-  `fct_risques_commune`, `fct_mix`. Les
-  seeds datés (tarifs, SDDR, sites clés en main, facteurs ADEME) sont à mettre à jour à chaque
+  `fct_risques_commune`, `fct_plans_prevention_commune`, `fct_sites_production`, `fct_pays_ue`,
+  `fct_mix`. Les seeds datés (tarifs, SDDR, sites clés en main, facteurs ADEME) sont à mettre à jour à chaque
   nouvelle source ; `limites_methodologiques` porte la limite de chaque indicateur.
 - **Fiabilité** : géocodage BAN sur cinq candidats, adresse refusée si trop approximative ou
   ambiguë ; date des données affichée partout, avec alerte au-delà de 45 jours ; risques en repli
