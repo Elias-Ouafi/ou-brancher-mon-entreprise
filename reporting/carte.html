@@ -168,6 +168,7 @@ button { font: inherit; }
 <!--__SCRIPTS__-->
 <script>
 const DATA = /*__DONNEES__*/null;
+DATA.adresse = /*__ADRESSE__*/null;
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const fmt = (v, d = 0) => v == null ? "n.d." : Number(v).toLocaleString("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d });
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);

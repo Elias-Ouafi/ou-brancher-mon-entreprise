@@ -7,7 +7,7 @@ import sys
 from datetime import UTC, date, datetime
 from pathlib import Path
 
-from ingestion.config import get_settings
+from ingestion.config import Settings, get_settings
 from ingestion.datasets import NATIONAL_CONS_DEF, NATIONAL_TR, SPECS, get_spec
 from ingestion.diagnostic import (
     DiagnosticIndisponibleError,
@@ -19,7 +19,7 @@ from ingestion.diagnostic import (
 )
 from ingestion.extract_odre import ExtractionWindow
 from ingestion.extract_rte import DayRange, RteCredentialsMissingError
-from ingestion.geocode import AdresseIntrouvableError, GeocodingError, geocode
+from ingestion.geocode import AdresseIntrouvableError, GeocodingError, Territoire, geocode
 from ingestion.pipeline import (
     IncompleteMonthError,
     StaleDataError,
@@ -97,6 +97,37 @@ def _add_ca_option(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def _add_carte_option(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--sans-carte",
+        action="store_true",
+        help="ne place pas l'adresse sur la carte (data/reports/carte.html)",
+    )
+
+
+# La carte accompagne la réponse : son échec ne fait pas échouer la commande
+def _placer_sur_carte(territoire: Territoire, settings: Settings) -> None:
+    import duckdb
+    import httpx
+
+    from ingestion.extract_odre import RetryableStatusError
+    from reporting.carte import mettre_a_jour_carte
+
+    try:
+        path = mettre_a_jour_carte(settings=settings, territoire=territoire)
+    except (
+        DiagnosticIndisponibleError,
+        httpx.HTTPError,
+        RetryableStatusError,
+        duckdb.Error,
+        OSError,
+        ValueError,
+    ) as error:
+        logger.warning("carte non mise a jour : %s", error)
+        return
+    logger.info("carte mise a jour %s", path)
+
+
 def _add_dataset_option(parser: argparse.ArgumentParser, default: str) -> None:
     parser.add_argument("--dataset", choices=sorted(SPECS), default=default, help="dataset ODRÉ")
 
@@ -165,6 +196,7 @@ def build_parser() -> argparse.ArgumentParser:
     essentiel.add_argument(
         "--format", choices=["texte", "json"], default="texte", help="texte ou json"
     )
+    _add_carte_option(essentiel)
 
     diagnose = subparsers.add_parser(
         "diagnose", help="diagnostic d'implantation électrique d'une adresse"
@@ -196,6 +228,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Markdown uniquement : texte seul, sans images PNG",
     )
+    _add_carte_option(diagnose)
 
     compare = subparsers.add_parser(
         "compare", help="compare plusieurs adresses côte à côte, sans classement"
@@ -228,6 +261,11 @@ def build_parser() -> argparse.ArgumentParser:
     carte.add_argument("--output", help="chemin du fichier (défaut : data/reports/carte.html)")
     carte.add_argument(
         "--sans-ouvrir", action="store_true", help="écrit la page sans ouvrir le navigateur"
+    )
+    carte.add_argument(
+        "--reconstruire",
+        action="store_true",
+        help="refait toute la carte, même si ses données n'ont pas changé",
     )
 
     coverage = subparsers.add_parser(
@@ -353,6 +391,8 @@ def main(argv: list[str] | None = None) -> int:
                 print(json.dumps(essentiel_en_dict(diagnostic), ensure_ascii=False, indent=2))
             else:
                 print(formater_essentiel(diagnostic))
+            if not args.sans_carte:
+                _placer_sur_carte(territoire, settings)
         case "diagnose":
             try:
                 territoire = geocode(args.adresse, settings=settings)
@@ -389,6 +429,8 @@ def main(argv: list[str] | None = None) -> int:
                     graphiques=not args.sans_graphiques,
                 )
                 logger.info("rapport ecrit %s", path)
+            if not args.sans_carte:
+                _placer_sur_carte(territoire, settings)
         case "compare":
             from ingestion import comparaison
 
@@ -437,11 +479,11 @@ def main(argv: list[str] | None = None) -> int:
             # Import paresseux : la carte n'est utile qu'à cette commande
             import webbrowser
 
-            from reporting.carte import generer_carte
+            from reporting.carte import generer_carte, mettre_a_jour_carte
 
             try:
                 territoire = geocode(args.adresse, settings=settings) if args.adresse else None
-                path = generer_carte(
+                path = (generer_carte if args.reconstruire else mettre_a_jour_carte)(
                     settings=settings,
                     territoire=territoire,
                     output=Path(args.output) if args.output else None,
