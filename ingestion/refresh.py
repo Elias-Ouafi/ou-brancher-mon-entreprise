@@ -19,6 +19,7 @@ from ingestion.pipeline import (
     run_gaspar_ingestion,
     run_ingestion,
     run_prix_entreprises_ingestion,
+    run_production_ingestion,
 )
 
 logger = logging.getLogger(__name__)
@@ -91,6 +92,7 @@ def run_refresh(
         ),
         ("risques-gaspar", lambda: run_gaspar_ingestion(settings=settings, run_id=run_id)),
         ("carbone-iles", lambda: run_edf_sei_ingestion(settings=settings, run_id=run_id)),
+        ("production", lambda: run_production_ingestion(settings=settings, run_id=run_id)),
         ("europe", lambda: run_europe_ingestion(settings=settings, run_id=run_id)),
         ("dbt-build", lambda: dbt_build(settings)),
     ]
