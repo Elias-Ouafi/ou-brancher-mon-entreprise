@@ -16,11 +16,13 @@ from ingestion.config import Settings
 from ingestion.diagnostic import (
     Critere,
     DiagnosticIndisponibleError,
+    PlanPrevention,
     code_commune_parent,
     code_departement,
     formater_diagnostic,
     formater_essentiel,
     lire_diagnostic,
+    liste_plans,
     phrase_verdict,
     verdict,
 )
@@ -282,6 +284,58 @@ def test_hourly_carbon_profile_for_islands(medallion_db: Path, warehouse: Any) -
     assert lyon is not None and lyon.profil_horaire == ()
 
 
+def _risques(diagnostic: Any) -> Critere:
+    return next(c for c in verdict(diagnostic) if c.nom == "Risques")
+
+
+# Un plan de prévention en vigueur (approuvé ou prescrit) rend les risques à vérifier ; un plan
+# caduc ou d'un export dépassé ne compte pas, et un arrondissement hérite des plans de la commune
+def test_risks_need_checking_only_under_a_prevention_plan(medallion_db: Path) -> None:
+    lyon = lire_diagnostic(territoire("69382", "Lyon"), database=medallion_db)
+    assert [p.code_procedure for p in lyon.plans_prevention or []] == ["PPRT1", "PPRI1"]
+    critere = _risques(lyon)
+    assert (critere.etat, critere.valeur) == ("attention", "2 plans de prévention dans la commune")
+    assert critere.detail.startswith(
+        "Vallée de la chimie (risque industriel, approuvé en 2016),"
+        " PPRI du Grand Lyon (inondation, approuvé en 2009). Le règlement du plan"
+    )
+
+    ajaccio = _risques(lire_diagnostic(territoire("2A004", "Ajaccio"), database=medallion_db))
+    assert ajaccio.etat == "attention"
+    assert ajaccio.detail.startswith("PPRIF d'Ajaccio (feu de forêt, prescrit en 2007).")
+
+    paris = lire_diagnostic(territoire("75056", "Paris"), database=medallion_db)
+    assert paris.plans_prevention == []
+    assert (_risques(paris).etat, _risques(paris).valeur) == (
+        "info",
+        "aucun plan de prévention dans la commune",
+    )
+    assert "plans de prévention" not in phrase_verdict(verdict(paris))
+
+    non_charges = _risques(replace(paris, plans_prevention=None))
+    assert (non_charges.etat, non_charges.valeur) == ("inconnu", "plans de prévention non chargés")
+
+
+def test_full_diagnosis_lists_every_plan_with_its_limit(medallion_db: Path) -> None:
+    lyon = lire_diagnostic(territoire("69123", "Lyon"), database=medallion_db)
+    texte = formater_diagnostic(lyon)
+    assert "Plans de prévention en vigueur dans la commune : Vallée de la chimie" in texte
+    assert lyon.limites["plans_prevention"] in texte
+    paris = formater_diagnostic(lire_diagnostic(territoire("75056"), database=medallion_db))
+    assert "Plans de prévention en vigueur dans la commune : aucun" in paris
+
+
+def test_plan_list_is_cut_after_the_first_ones() -> None:
+    plans = [
+        PlanPrevention(f"P{i}", "PPRN", f"Plan {i}", None, "approuvé", None, None) for i in range(5)
+    ]
+    assert (
+        liste_plans(plans, 3)
+        == "Plan 0 (approuvé), Plan 1 (approuvé), Plan 2 (approuvé) et 2 autres"
+    )
+    assert liste_plans(plans[:4], 3).endswith("et 1 autre")
+
+
 def test_verdict_sentence_lists_what_to_check() -> None:
     criteres = [
         Critere("Raccordement", "attention", "HTB, RTE", ""),
@@ -313,7 +367,7 @@ def test_every_figure_comes_with_its_limit(medallion_db: Path, warehouse: Any) -
     limites = [
         limite for (limite,) in _rows(warehouse, "SELECT limite FROM gold.limites_methodologiques")
     ]
-    assert len(limites) == 15
+    assert len(limites) == 16
     for limite in limites:
         assert limite in texte
 
@@ -467,7 +521,8 @@ def test_essentiel_text_fits_in_a_few_lines(medallion_db: Path) -> None:
     from ingestion.diagnostic import formater_essentiel
 
     texte = formater_essentiel(
-        lire_diagnostic(territoire("69123", "Lyon"), conso_mwh=350, database=medallion_db)
+        # Paris : aucun plan de prévention dans la base synthétique, rien de bloquant
+        lire_diagnostic(territoire("75056", "Paris"), conso_mwh=350, database=medallion_db)
     )
     assert len(texte.splitlines()) <= 8
     assert texte.splitlines()[-1].startswith("Brancher ici ? Rien de bloquant")

@@ -19,6 +19,7 @@ from ingestion.datasets import (
     EQUILIBRE_REGIONAL,
     EUROSTAT_PRIX_ENTREPRISES,
     EUROSTAT_PRIX_UE,
+    GASPAR_PLANS,
     GASPAR_RISQUES,
     NATIONAL_CONS_DEF,
     NATIONAL_TR,
@@ -375,6 +376,43 @@ def gaspar_risques() -> list[dict[str, Any]]:
     ]
 
 
+# Lyon : un PPRI approuvé (deux aléas), un PPRT approuvé, un plan caduc, un plan d'un ancien
+# export ; Ajaccio : un plan seulement prescrit ; Paris, Lille et l'outre-mer : aucun plan
+def gaspar_plans() -> list[dict[str, Any]]:
+    lignes = [
+        ("69123", "PPRI1", "112", "PPRN", "PPRI du Grand Lyon", "Inondation", "Opposable",
+         "2004-01-07", "2009-03-02", "2026-10-05"),
+        ("69123", "PPRI1", "115", "PPRN", "PPRI du Grand Lyon", "Inondation", "Opposable",
+         "2004-01-07", "2009-03-02", "2026-10-05"),
+        ("69123", "PPRT1", "211", "PPRT", "Vallée de la chimie", "Risque industriel", "Opposable",
+         "2015-04-21", "2016-10-19", "2026-10-05"),
+        ("69123", "ABROGE", "112", "PPRN", "Ancien PPRI", "Inondation", "Caduque",
+         "1990-01-01", "1995-01-01", "2026-10-05"),
+        ("69123", "RETIRE", "13", "PPRN", "Plan retiré depuis", "Séisme", "Prescrit",
+         "2020-01-01", None, "2025-01-02"),
+        ("2A004", "PPRIF", "", "PPRN", "PPRIF d'Ajaccio", "Feu de forêt", "Prescrit",
+         "2007-01-11", None, "2026-10-05"),
+    ]  # fmt: skip
+    return [
+        {
+            "code_commune": commune,
+            "code_procedure": procedure,
+            "code_risque": risque,
+            "type_plan": type_plan,
+            "libelle_plan": libelle,
+            "libelle_risque": famille,
+            "libelle_alea": None,
+            "etat": etat,
+            "sous_etat": "Approuvé" if etat == "Opposable" else etat,
+            "date_prescription": prescription,
+            "date_approbation": approbation,
+            "millesime": millesime,
+        }
+        for (commune, procedure, risque, type_plan, libelle, famille, etat, prescription,
+             approbation, millesime) in lignes
+    ]  # fmt: skip
+
+
 # Corse, année 2025 complète : thermique triplé de 17 h à 20 h UTC, la pointe du soir
 def edf_sei_production() -> list[dict[str, Any]]:
     debut = datetime(2025, 1, 1, tzinfo=UTC)
@@ -475,6 +513,7 @@ def build_warehouse(tmp_path: Path, *, with_tempo: bool = True) -> Path:
     load_bronze(database, tmp_path, POSTES_RTE, postes_rte())
     load_bronze(database, tmp_path, CONTRAINTES_OUVRAGES, contraintes_ouvrages())
     load_bronze(database, tmp_path, GASPAR_RISQUES, gaspar_risques())
+    load_bronze(database, tmp_path, GASPAR_PLANS, gaspar_plans())
     load_bronze(database, tmp_path, EDF_SEI_PRODUCTION, edf_sei_production())
     load_bronze(database, tmp_path, EUROSTAT_PRIX_UE, prix_ue())
     load_bronze(database, tmp_path, EMBER_INTENSITE_CARBONE, ember_intensites())
