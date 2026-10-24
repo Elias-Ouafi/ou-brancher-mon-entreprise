@@ -126,3 +126,71 @@ sources:
         columns:
           - name: code_poste
             data_tests: [unique, not_null]
+      - name: eurostat_nrg_pc_205_ue
+        description: >
+          Prix semestriels de l'électricité des entreprises dans les 27 pays de l'UE (Eurostat
+          `nrg_pc_205`), mêmes tranches et fiscalités que le jeu France, depuis 2024. `pays` est
+          le code Eurostat (Grèce : EL).
+        data_tests:
+          - unique_combination:
+              arguments:
+                columns: [pays, semestre, tranche, fiscalite]
+        columns:
+          - name: pays
+            data_tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: ref('dim_pays_ue')
+                    field: code_eurostat
+      - name: ember_intensite_carbone
+        description: >
+          Intensité carbone annuelle de la production électrique des pays de l'UE, en cycle de
+          vie (gCO₂e/kWh), ligne « Total generation » du fichier européen d'Ember (CC BY 4.0).
+          Production du pays seulement : les échanges aux frontières n'y sont pas.
+        data_tests:
+          - unique_combination:
+              arguments:
+                columns: [iso3, annee]
+        columns:
+          - name: iso3
+            data_tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: ref('dim_pays_ue')
+                    field: iso3
+      - name: edf_sei_production
+        description: >
+          Production horaire par filière en Corse, Guadeloupe, Martinique, Guyane et à La
+          Réunion (EDF SEI, licence ouverte), en MW moyens, imports compris dans la production
+          totale. Les années récentes sont « Estimé » avant validation ; Mayotte est absente.
+        data_tests:
+          - unique_combination:
+              arguments:
+                columns: [territoire, date_heure]
+        columns:
+          - name: territoire
+            data_tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: [Corse, Guadeloupe, Martinique, Guyane, Réunion]
+          - name: date_heure
+            data_tests: [not_null]
+      - name: gaspar_risques
+        description: >
+          Risques majeurs recensés par commune, d'après les dossiers départementaux des
+          risques majeurs (export GASPAR de Géorisques, fichier `ddrm_risq_gaspar`).
+          `num_risque` est hiérarchique : « 11 » (inondation) se précise en « 112 » (crue à
+          débordement lent). `millesime` est la date du fichier : un risque retiré de la
+          source garde l'ancienne date, le silver ne retient que la dernière.
+        data_tests:
+          - unique_combination:
+              arguments:
+                columns: [code_commune, num_risque]
+        columns:
+          - name: code_commune
+            data_tests: [not_null]
+          - name: millesime
+            data_tests: [not_null]

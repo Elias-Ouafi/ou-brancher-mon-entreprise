@@ -6,7 +6,7 @@
 <title>Atlas électrique de France</title>
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:">
 <style>
-/* Plein écran façon jeu de stratégie : carte 3D au fond, ressources en haut, fiche en bas à gauche, lentilles en bas à droite */
+/* Plein écran : carte 3D au fond, adresse en haut, verdict ou fiche en bas à gauche, lentilles en bas à droite */
 :root {
   --ink: #0d1a26;
   --panel: #142334;
@@ -37,12 +37,7 @@ button { font: inherit; }
   padding: calc(8px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px));
   border-width: 0 0 1px; overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
 .brand { font-family: var(--f-display); font-weight: 700; letter-spacing: .08em; color: var(--gold); font-size: 15px; text-transform: uppercase; }
-.res { display: flex; align-items: center; gap: 7px; font-variant-numeric: tabular-nums; }
-.res svg { width: 18px; height: 18px; flex: none; }
-.res b { font-weight: 700; }
-#carbone { display: contents; }
-.res small { color: var(--parch-dim); font-size: 12.5px; }
-.res select { font: inherit; font-size: 13px; background: var(--ink); color: var(--parch); border: 1px solid var(--gold-dim); border-radius: 3px; padding: 2px 4px; }
+.res { overflow: hidden; text-overflow: ellipsis; font-weight: 700; }
 .sep { width: 1px; height: 22px; background: var(--gold-dim); opacity: .6; flex: none; }
 .chip { margin-left: auto; font-size: 12px; color: var(--parch-dim); border: 1px solid var(--gold-dim); padding: 2px 8px; border-radius: 10px; }
 
@@ -64,6 +59,12 @@ button { font: inherit; }
 .pill.good { background: color-mix(in srgb, var(--good) 25%, transparent); color: var(--good); }
 .pill.bad { background: color-mix(in srgb, var(--bad) 25%, transparent); color: var(--bad); }
 .pill.warn { background: color-mix(in srgb, var(--warn) 22%, transparent); color: var(--warn); }
+.pill.neutre { background: color-mix(in srgb, var(--parch-dim) 20%, transparent); color: var(--parch-dim); }
+.verdict { padding: 10px 14px; font-size: 14px; line-height: 1.4; background: var(--panel); }
+.critere { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 7px 14px; background: var(--panel); }
+.critere .k { font-size: 13.5px; color: var(--parch-dim); }
+.critere .v { font-weight: 700; text-align: right; }
+.critere .d { grid-column: 1 / -1; font-size: 12.5px; color: var(--parch-dim); line-height: 1.35; }
 .limit { padding: 8px 14px 10px; font-size: 12.5px; color: var(--parch-dim); background: var(--ink); border-top: 1px solid var(--gold-dim); }
 .limit b { color: var(--gold); font-weight: 500; }
 
@@ -97,6 +98,7 @@ button { font: inherit; }
 .banner .pr { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 11px; color: var(--ink); background: var(--gold); }
 .banner.p2 .pr { background: var(--parch-dim); }
 .banner .by { color: var(--parch-dim); font-variant-numeric: tabular-nums; }
+.banner.cible { border-color: var(--parch); box-shadow: 0 0 12px color-mix(in srgb, var(--gold) 60%, transparent); }
 .banner.adresse { border-color: var(--bad); padding: 3px 10px; font-weight: 700; max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
 .tip { position: fixed; z-index: 6; pointer-events: none; padding: 6px 10px; border-radius: 3px; font-size: 13px; max-width: 260px; }
 .tip b { font-family: var(--f-display); font-size: 13.5px; letter-spacing: .03em; }
@@ -106,7 +108,7 @@ button { font: inherit; }
 .erreur { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; font-size: 16px; }
 
 @media (max-width: 760px) {
-  .city { bottom: calc(100px + env(safe-area-inset-bottom, 0px)); width: auto; right: max(16px, env(safe-area-inset-right, 0px)); }
+  .city { bottom: calc(100px + env(safe-area-inset-bottom, 0px)); width: auto; right: max(16px, env(safe-area-inset-right, 0px)); max-height: 55vh; overflow-y: auto; }
   .city .y { padding: 5px 12px; }
   .legend, .hint, .chip { display: none; }
   .lenses { left: max(16px, env(safe-area-inset-left, 0px)); align-items: center; }
@@ -123,26 +125,7 @@ button { font: inherit; }
 <div class="topbar frame">
   <span class="brand">Atlas électrique</span>
   <span class="sep"></span>
-  <span class="res" title="Prix moyen HTVA (Eurostat nrg_pc_205), identique sur tout le territoire">
-    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#d6b26a"/><path d="M15.5 8.2a4.6 4.6 0 1 0 0 7.6M6.5 10.8h7M6.5 13.4h7" stroke="#0d1a26" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
-    <b id="prix">–</b><small>€/kWh HTVA</small>
-    <select id="tranche" aria-label="Tranche de consommation"></select>
-  </span>
-  <span class="sep"></span>
-  <span class="res" title="Intensité carbone en cycle de vie (Base Carbone de l'ADEME)">
-    <svg viewBox="0 0 24 24"><path d="M4 20C4 10 10 4 20 4c0 10-6 16-16 16Z" fill="#6fbf73"/><path d="M4 20 14 10" stroke="#0d1a26" stroke-width="1.6"/></svg>
-    <span id="carbone"></span>
-  </span>
-  <span class="sep"></span>
-  <span class="res" title="Zones de raccordement prioritaires (SDDR 2025 de RTE)">
-    <svg viewBox="0 0 24 24"><path d="M12 2 7 22h2.2l1-4h3.6l1 4H17L12 2Zm-1.2 13 1.2-5 1.2 5h-2.4ZM5 7h14M6.5 11h11" stroke="#c9d1d6" stroke-width="1.6" fill="none"/></svg>
-    <b id="nzones">–</b><small>zones prioritaires RTE</small>
-  </span>
-  <span class="sep"></span>
-  <span class="res" title="Sites clés en main France 2030">
-    <svg viewBox="0 0 24 24"><path d="m12 2 2.9 6.6 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 21l1.6-7L2 9.2l7.1-.6L12 2Z" fill="#e9c46a"/></svg>
-    <b id="nsites">–</b><small>sites clés en main</small>
-  </span>
+  <span class="res" id="adr">Aucune adresse : lancer essentiel ou carte --adresse</span>
   <span class="chip" id="genere"></span>
 </div>
 <div class="hint">Glisser pour se déplacer · clic droit pour pivoter · molette pour zoomer · cliquer sur une case</div>
@@ -157,9 +140,8 @@ button { font: inherit; }
   </div>
   <div class="legend frame" id="legend"></div>
   <div class="lensbar" role="toolbar" aria-label="Lentilles">
-    <button class="lens" data-lens="terrain" aria-pressed="true"><span class="disc"><svg viewBox="0 0 24 24"><path d="M2 20 9 7l4 6 2-3 7 10H2Z" fill="#a9b07a"/><path d="m9 7 1.8 3.3-1.8-.8-1.6.9L9 7Z" fill="#efe4c8"/></svg></span>Terrain</button>
+    <button class="lens" data-lens="raccordement" aria-pressed="true"><span class="disc"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" fill="#e3b341"/></svg></span>Raccorder</button>
     <button class="lens" data-lens="industrie" aria-pressed="false"><span class="disc"><svg viewBox="0 0 24 24"><path d="M3 21V11l5 3v-3l5 3v-3l5 3V4h3v17H3Z" fill="#e3892b"/></svg></span>Industrie</button>
-    <button class="lens" data-lens="reseau" aria-pressed="false"><span class="disc"><svg viewBox="0 0 24 24"><path d="M12 2 7 22h2.2l1-4h3.6l1 4H17L12 2Zm-1.2 13 1.2-5 1.2 5h-2.4ZM5 7h14M6.5 11h11" stroke="#c9d1d6" stroke-width="1.7" fill="none"/></svg></span>Réseau</button>
     <button class="lens" data-lens="equilibre" aria-pressed="false"><span class="disc"><svg viewBox="0 0 24 24"><path d="M12 3v17M6 20h12M4 7h16M4 7l-2.5 6h5L4 7Zm16 0-2.5 6h5L20 7Z" stroke="#58c4e6" stroke-width="1.7" fill="none" stroke-linejoin="round"/></svg></span>Équilibre</button>
   </div>
 </div>
@@ -175,8 +157,6 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;",
 if (!window.THREE) document.body.insertAdjacentHTML("beforeend", '<div class="erreur frame">WebGL ou three.js indisponible : ouvrir la carte dans un navigateur récent.</div>');
 
 const REGION_COLORS = { "11": "#f2cf4a", "24": "#c0663f", "27": "#8e5fc2", "28": "#4a8fd9", "32": "#d94f4f", "44": "#3fb59c", "52": "#58c4e6", "53": "#ece6d2", "75": "#e3892b", "76": "#c73f8a", "84": "#7bc043", "93": "#f08a7a", "94": "#a9a948", "01": "#e8c547", "02": "#e8c547", "03": "#e8c547", "04": "#e8c547", "06": "#e8c547" };
-// Grandes villes, en décor : lat, lon, étendue
-const CITIES = [[48.86, 2.35, 1.8], [45.76, 4.84, 1.2], [43.30, 5.37, 1.1], [50.63, 3.06, 1], [43.60, 1.44, 1], [44.84, -0.58, 1], [47.22, -1.55, .9], [48.58, 7.75, .9], [43.70, 7.27, .8], [48.11, -1.68, .8]];
 const MEDITERRANEE = new Set(["06", "11", "13", "30", "34", "66", "83", "84", "2A", "2B"]);
 
 const col = h => new THREE.Color(h).convertSRGBToLinear();
@@ -204,9 +184,7 @@ for (let step = 1; step < 7 && front.length; step++) { const nx = []; for (const
 
 // Relief réel : hauteur selon l'altitude moyenne, exagérée par une racine carrée
 const hauteur = alt => .45 + 2.6 * Math.sqrt(Math.max(alt, 0) / 4000);
-const nearCity = t => t.g === 0 && CITIES.some(([la, lo, s]) => Math.hypot((lo - t.lon) * 76, (la - t.lat) * 111) < GR[0].rayonKm * 1.05 * s);
 for (const t of land) {
-  t.city = nearCity(t);
   const code = GR[t.g].code;
   let base = t.lat > 48.6 ? "#5f8f3e" : t.lon < .5 ? "#6c9a45" : "#74a046";
   if (t.lat < 45.2 && t.lon < 1.5) base = "#8ea24b";
@@ -215,12 +193,10 @@ for (const t of land) {
   let c = col(base);
   if (t.alt > 300) c.lerp(col("#8c7f4e"), Math.min(1, (t.alt - 300) / 600));
   if (t.alt > 1300) c.lerp(col("#8f8c82"), Math.min(.8, (t.alt - 1300) / 800));
-  if (t.city) c = col("#a99f8c");
   c.offsetHSL(0, 0, (hash(t.c, t.r) - .5) * .06); t.biome = c;
-  t.forest = !t.city && t.altMax < 1500 && ((Math.sin(t.x * .35) + Math.sin(t.z * .29 + 1.3) + Math.sin((t.x + t.z) * .21)) > 1.2 || ["40", "88", "973"].includes(t.dep));
   t.baseH = hauteur(t.alt);
 }
-const MAXP = Math.max(...DATA.departements.map(d => d.p || 0)), MAXK = Math.max(...DATA.departements.map(d => d.k || 0)), MAXG = Math.max(...DATA.departements.map(d => d.gwh || 0));
+const MAXG = Math.max(...DATA.departements.map(d => d.gwh || 0));
 const RANG_MAX = Math.max(...DATA.departements.map(d => d.nc || 0));
 
 // Scène
@@ -268,27 +244,22 @@ GR.forEach((g, gi) => { if (!g.code) return; const ts = tiles.filter(t => t.g ==
   const x0 = Math.min(...ts.map(t => t.x)) - R, x1 = Math.max(...ts.map(t => t.x)) + R, z0 = Math.min(...ts.map(t => t.z)) - R, z1 = Math.max(...ts.map(t => t.z)) + R;
   scene.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints([[x0, z0], [x1, z0], [x1, z1], [x0, z1]].map(([x, z]) => new THREE.Vector3(x, .35, z))), cadreMat)); });
 
-// Décor : montagnes selon l'altitude maximale, forêts et villes
-const props = { terrain: new THREE.Group(), mountains: new THREE.Group() }; scene.add(props.terrain, props.mountains);
+// Montagnes selon l'altitude maximale : le relief pèse sur l'accès et les travaux
+const mountains = new THREE.Group(); scene.add(mountains);
 function instanced(geo, color, list, group) { const m = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ ...(color && { color: col(color) }), roughness: .8, flatShading: true }), Math.max(list.length, 1));
   m.count = list.length;
   list.forEach((o, i) => { dummy.position.set(o.x, o.y, o.z); dummy.rotation.set(0, o.ry || 0, 0); dummy.scale.set(o.sx, o.sy, o.sx); dummy.updateMatrix(); m.setMatrixAt(i, dummy.matrix); if (o.c) m.setColorAt(i, o.c); });
   m.castShadow = true; group.add(m); return m; }
 const coneGeo = new THREE.ConeGeometry(1, 1, 5); coneGeo.translate(0, .5, 0);
-const treeGeo = new THREE.ConeGeometry(1, 1, 6); treeGeo.translate(0, .5, 0);
-const boxGeo = new THREE.BoxGeometry(1, 1, 1); boxGeo.translate(0, .5, 0);
-const rocks = [], snows = [], trees = [], houses = [];
+const rocks = [], snows = [];
 for (const t of land) {
   const top = t.baseH;
   if (t.alt >= 900 || t.altMax >= 2000) { const n = t.altMax >= 2800 ? 2 : 1; for (let j = 0; j < n; j++) {
     const ox = n > 1 ? (j ? .45 : -.4) * PS : 0, oz = n > 1 ? (j ? .3 : -.28) * PS : 0, s = (.6 + hash(t.c + j, t.r) * .2) * PS, H = (.5 + 2 * Math.sqrt(t.altMax / 4800) - j * .35) * PS;
     rocks.push({ x: t.x + ox, y: top, z: t.z + oz, sx: s, sy: H, ry: hash(t.r, j) * 6 });
     if (t.altMax >= 2300) snows.push({ x: t.x + ox, y: top + H * .64, z: t.z + oz, sx: s * .37, sy: H * .37, ry: hash(t.r, j) * 6 }); } }
-  if (t.forest) for (let j = 0; j < 4; j++) { const a = hash(t.c, t.r + j) * 6.28, d = (.35 + hash(t.r + j, t.c) * .65) * PS; trees.push({ x: t.x + Math.cos(a) * d, y: top, z: t.z + Math.sin(a) * d, sx: .27 * PS, sy: (.8 + hash(j, t.c) * .3) * PS, c: col(j % 2 ? "#3c6a2e" : "#4d7d35") }); }
-  if (t.city) for (let j = 0; j < 6; j++) { const a = hash(t.c + j, t.r) * 6.28, d = hash(t.r, t.c + j) * .9 * PS; houses.push({ x: t.x + Math.cos(a) * d, y: top, z: t.z + Math.sin(a) * d, sx: .32 * PS, sy: (.3 + hash(j, t.r) * .7) * PS, ry: a, c: col(j % 3 ? "#e8dcc4" : "#b5523b") }); }
 }
-instanced(coneGeo, "#8b877c", rocks, props.mountains); instanced(coneGeo, "#f1f3f4", snows, props.mountains);
-instanced(treeGeo, null, trees, props.terrain); instanced(boxGeo, null, houses, props.terrain);
+instanced(coneGeo, "#8b877c", rocks, mountains); instanced(coneGeo, "#f1f3f4", snows, mountains);
 
 // Bandes de frontière qui suivent la hauteur des cases
 const vtx = (t, k, s) => { const a = 60 * k * Math.PI / 180; return [t.x + R * .97 * s * Math.sin(a), t.z + R * .97 * s * Math.cos(a)]; };
@@ -310,116 +281,107 @@ for (const t of land) for (let k = 0; k < 6; k++) { const n = nb(t, k);
 regionBand.set(rE); depBand.set(dE);
 const ringOf = (list, w, c) => { const set = new Set(list.map(t => t.i)), out = []; for (const t of list) for (let k = 0; k < 6; k++) { const n = nb(t, k); if (!n || !n.land || !set.has(n.i)) out.push({ i: t.i, k, w, c }); } return out; };
 
-// Repères : sites clés en main, pylônes, zones RTE, adresse
+// Repères : sites clés en main, zones RTE, adresse et liens vers ce qui compte pour elle
 const caseDe = ref => ref ? tileAt(...ref) : null;
+const VERDICT = DATA.adresse && DATA.adresse.verdict;
 const followers = [];
-const markers = { sites: new THREE.Group(), reseau: new THREE.Group() }; scene.add(markers.sites, markers.reseau);
+const markers = { sites: new THREE.Group(), zones: new THREE.Group(), liens: new THREE.Group() }; scene.add(markers.sites, markers.zones, markers.liens);
 const gemMat = new THREE.MeshStandardMaterial({ color: col("#f1c75b"), emissive: col("#7a5410"), roughness: .3, metalness: .6 });
 const beamMat = new THREE.MeshBasicMaterial({ color: col("#ffe3a1"), transparent: true, opacity: .35, blending: THREE.AdditiveBlending, depthWrite: false });
 for (const s of DATA.sites) { const t = caseDe(s.case); if (!t || !t.land) continue; const g = new THREE.Group();
   const gem = new THREE.Mesh(new THREE.OctahedronGeometry(.42 * PS), gemMat); gem.position.y = 1.3 * PS; gem.castShadow = true; g.add(gem);
   const beam = new THREE.Mesh(new THREE.CylinderGeometry(.06, .06, 1.3 * PS, 6), beamMat); beam.position.y = .65 * PS; g.add(beam);
   g.position.set(t.x + (hash(t.c, 9) - .5) * .8 * PS, 0, t.z + (hash(9, t.r) - .5) * .8 * PS); g.userData = { i: t.i, gem, ph: hash(t.c, t.r) * 6, nom: s.n }; markers.sites.add(g); followers.push(g); }
-const steel = new THREE.MeshStandardMaterial({ color: col("#cdd5da"), roughness: .5, metalness: .5, flatShading: true });
 const depTiles = {}; for (const t of land) (depTiles[t.dep] ||= []).push(t);
-const centreDe = ts => { const cx = ts.reduce((a, t) => a + t.x, 0) / ts.length, cz = ts.reduce((a, t) => a + t.z, 0) / ts.length; return ts.reduce((a, b) => ((b.x - cx) ** 2 + (b.z - cz) ** 2 < (a.x - cx) ** 2 + (a.z - cz) ** 2 ? b : a)); };
-for (const [code, ts] of Object.entries(depTiles)) { const d = DEP[code]; if (!d || !d.p) continue; const t = centreDe(ts);
-  const h = (.9 + d.p / MAXP * 2.6) * PS, g = new THREE.Group();
-  const mast = new THREE.Mesh(new THREE.CylinderGeometry(.07 * PS, .34 * PS, h, 4), steel); mast.position.y = h / 2; g.add(mast);
-  [.72, .9].forEach((f, j) => { const arm = new THREE.Mesh(new THREE.BoxGeometry((1.1 - j * .35) * PS, .07 * PS, .07 * PS), steel); arm.position.y = h * f; g.add(arm); });
-  g.children.forEach(m => m.castShadow = true); g.position.set(t.x, 0, t.z); g.userData = { i: t.i }; markers.reseau.add(g); followers.push(g); }
 const ringMat = new THREE.MeshBasicMaterial({ color: col("#7fe3ff"), transparent: true, opacity: .8, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false });
 const zoneObjs = DATA.zones.map(z => ({ z, t: caseDe(z.case) })).filter(o => o.t && o.t.land);
 for (const { t } of zoneObjs) { const m = new THREE.Mesh(new THREE.RingGeometry(R * .9, R * 1.12, 6), ringMat.clone()); m.rotation.x = -Math.PI / 2; m.rotation.z = Math.PI / 6;
-  m.position.set(t.x, 0, t.z); m.userData = { i: t.i, dy: .08, ring: true }; markers.reseau.add(m); followers.push(m); }
+  m.position.set(t.x, 0, t.z); m.userData = { i: t.i, dy: .08, ring: true }; markers.zones.add(m); followers.push(m); }
 const adresseTile = DATA.adresse ? caseDe(DATA.adresse.case) : null;
 if (adresseTile) { const g = new THREE.Group(), rouge = new THREE.MeshStandardMaterial({ color: col("#d9573f"), emissive: col("#5a160c"), roughness: .4 });
   const tige = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, 2.2 * PS, 6), rouge); tige.position.y = 1.1 * PS; g.add(tige);
   const tete = new THREE.Mesh(new THREE.SphereGeometry(.32 * PS, 12, 10), rouge); tete.position.y = 2.3 * PS; g.add(tete);
   g.children.forEach(m => m.castShadow = true); g.position.set(adresseTile.x, 0, adresseTile.z); g.userData = { i: adresseTile.i }; scene.add(g); followers.push(g); }
+// Arc lumineux de l'adresse vers la zone RTE utile et vers le site clé en main le plus proche
+const lienVers = (t, couleur) => { if (!adresseTile || !t) return; const a = adresseTile, ha = a.baseH + 2.3 * PS, hb = t.baseH + 1.3 * PS;
+  const haut = Math.max(ha, hb) + 1.5 * PS + Math.hypot(t.x - a.x, t.z - a.z) * .25;
+  const courbe = new THREE.QuadraticBezierCurve3(new THREE.Vector3(a.x, ha, a.z), new THREE.Vector3((a.x + t.x) / 2, haut, (a.z + t.z) / 2), new THREE.Vector3(t.x, hb, t.z));
+  markers.liens.add(new THREE.Mesh(new THREE.TubeGeometry(courbe, 48, .09 * PS, 6), new THREE.MeshBasicMaterial({ color: col(couleur) }))); };
+// Une zone RTE peut compter plusieurs pôles : on relie le plus proche de l'adresse
+const ecart = o => Math.hypot(o.t.x - adresseTile.x, o.t.z - adresseTile.z);
+const zoneCible = VERDICT && adresseTile && zoneObjs.filter(o => o.z.n === VERDICT.zone).sort((a, b) => ecart(a) - ecart(b))[0], siteCible = VERDICT && DATA.sites.find(s => s.id === VERDICT.site);
+if (zoneCible) lienVers(zoneCible.t, "#7fe3ff");
+if (siteCible) lienVers(caseDe(siteCible.case), "#f1c75b");
 
 // Étiquettes et bannières projetées en HTML
 const labelsEl = document.getElementById("labels"), labels = [];
 const addLabel = (html, cls, at, lenses) => { const el = document.createElement("div"); el.className = cls; el.innerHTML = html; labelsEl.appendChild(el); labels.push({ el, ...at, lenses }); };
 const regTiles = {}; for (const t of land) if (t.g === 0) (regTiles[t.reg] ||= []).push(t);
 for (const [r, ts] of Object.entries(regTiles)) { const d = DATA.departements.find(x => x.r === r); if (!d) continue;
-  addLabel(esc(d.rn).replace(/-/g, "-&#8203;"), "rlabel", { x: ts.reduce((a, t) => a + t.x, 0) / ts.length, z: ts.reduce((a, t) => a + t.z, 0) / ts.length, y: 3.2 }, ["terrain", "equilibre"]); }
+  addLabel(esc(d.rn).replace(/-/g, "-&#8203;"), "rlabel", { x: ts.reduce((a, t) => a + t.x, 0) / ts.length, z: ts.reduce((a, t) => a + t.z, 0) / ts.length, y: 3.2 }, ["equilibre"]); }
 GR.forEach((g, gi) => { if (!g.code) return; const ts = tiles.filter(t => t.g === gi);
   addLabel(`${esc(g.nom)}<small>1 case ≈ ${fmt(g.rayonKm * 2, 1)} km, contre ${fmt(GR[0].rayonKm * 2)} km en métropole</small>`, "rlabel",
-    { x: ts.reduce((a, t) => a + t.x, 0) / ts.length, z: Math.max(...ts.map(t => t.z)) + R * 1.2, y: 0 }, ["terrain", "industrie", "reseau", "equilibre"]); });
-for (const { z, t } of zoneObjs) addLabel(`<span class="pr">${esc(z.pr)}</span><span>${esc(z.n)}</span>${z.a ? `<span class="by">${z.a}</span>` : ""}`, "banner " + (z.pr === "P1" ? "p1" : "p2"), { i: t.i, x: t.x, z: t.z, y: 1.6 * PS }, ["reseau"]);
-if (adresseTile) addLabel(esc(DATA.adresse.libelle), "banner adresse", { i: adresseTile.i, x: adresseTile.x, z: adresseTile.z, y: 2.8 * PS }, ["terrain", "industrie", "reseau", "equilibre"]);
+    { x: ts.reduce((a, t) => a + t.x, 0) / ts.length, z: Math.max(...ts.map(t => t.z)) + R * 1.2, y: 0 }, ["raccordement", "industrie", "equilibre"]); });
+for (const o of zoneObjs) { const { z, t } = o; addLabel(`<span class="pr">${esc(z.pr)}</span><span>${esc(z.n)}</span>${z.a ? `<span class="by">${z.a}</span>` : ""}`, "banner " + (z.pr === "P1" ? "p1" : "p2") + (o === zoneCible ? " cible" : ""), { i: t.i, x: t.x, z: t.z, y: 1.6 * PS }, ["raccordement"]); }
+if (adresseTile) addLabel(esc(DATA.adresse.libelle), "banner adresse", { i: adresseTile.i, x: adresseTile.x, z: adresseTile.z, y: 3.6 * PS }, ["raccordement", "industrie", "equilibre"]);
 
 // Lentilles
 const ramp = (stops, s) => { s = Math.max(0, Math.min(1, s)); const n = stops.length - 1, k = Math.min(n - 1, Math.floor(s * n)); return col(stops[k]).lerp(col(stops[k + 1]), s * n - k); };
-const IND = ["#34444d", "#6b6a4a", "#d9a441", "#e0592a", "#f4d06b"], NET = ["#3f8f7f", "#a9b44a", "#e3b341", "#d64532"], EQ = ["#b8382b", "#d98a5e", "#e9dcb8", "#78b3c9", "#2f7fb3"];
+const IND = ["#34444d", "#6b6a4a", "#d9a441", "#e0592a", "#f4d06b"], EQ = ["#b8382b", "#d98a5e", "#e9dcb8", "#78b3c9", "#2f7fb3"];
 const indS = d => d && d.rk ? 1 - (d.rk - 1) / Math.max(1, d.nc - 1) : 0;
 const eqS = d => d && d.tc ? Math.max(-1, Math.min(1, Math.log2(d.tc) / 2)) * .5 + .5 : .5;
 const annee = (DATA.departements.find(d => d.an) || {}).an || "";
 const LENS = {
-  terrain: { tile: t => [t.biome, t.baseH], show: ["terrain", "mountains", "sites"],
-    legend: `<h3>Terrain</h3><p>Relief : altitude moyenne de chaque case (IGN, RGE ALTI), exagérée ; neiges au-dessus de 2 300 m. Bandes : régions, traits fins : départements. Losange doré : site clé en main France 2030. Forêts et bâtiments : décor.</p>` },
+  raccordement: { tile: t => [t.biome, t.baseH], show: ["mountains", "sites", "zones", "liens"],
+    legend: `<h3>Où se brancher</h3><p>Anneau bleu et bannière : zone de raccordement prioritaire RTE (SDDR 2025), avec l'année de capacité quand RTE la publie. Losange doré : site clé en main France 2030. Épingle rouge : votre adresse ; les arcs la relient à la zone RTE utile et au site le plus proche.</p>` },
   industrie: { tile: t => { const d = DEP[t.dep], s = indS(d); return [d && d.rk ? ramp(IND, s) : col("#2b363d"), .45 + t.alt / 4000 + Math.pow(s, 1.7) * 7.5]; }, show: ["sites"],
     legend: `<h3>Pression industrielle</h3><div class="bar" style="background:linear-gradient(90deg,${IND.join(",")})"></div><div class="ticks"><span>rang ${RANG_MAX}</span><span>rang 1 · ${fmt(MAXG)} GWh</span></div><p>Rang du département selon la consommation électrique de ses sites industriels (ODRÉ, ${annee}). Hauteur et couleur suivent le rang ; gris : non classé.</p>` },
-  reseau: { tile: t => { const d = DEP[t.dep]; return [d ? ramp(NET, (d.k || 0) / Math.max(1, MAXK)) : col("#2b363d"), t.baseH]; }, show: ["mountains", "reseau"],
-    legend: `<h3>Réseau RTE</h3><div class="bar" style="background:linear-gradient(90deg,${NET.join(",")})"></div><div class="ticks"><span>0</span><span>${Math.round(MAXK / 2)}</span><span>${MAXK} contraintes</span></div><p>Couleur : ouvrages en contrainte. Pylône : nombre de postes (jusqu'à ${MAXP}). Anneau et bannière : zone de raccordement prioritaire du SDDR 2025, avec l'année de capacité quand RTE la publie.</p>` },
   equilibre: { tile: t => [ramp(EQ, eqS(DEP[t.dep])), t.baseH], show: ["mountains"],
     legend: `<h3>Équilibre régional</h3><div class="bar" style="background:linear-gradient(90deg,${EQ.join(",")})"></div><div class="ticks"><span>×0,25</span><span>×1</span><span>×4</span></div><p>Production divisée par consommation de la région sur 12 mois. Sous ×1, la région importe.</p>` },
 };
-let lens = "terrain", animating = true;
+let lens = "raccordement", animating = true;
 function setLens(name) { lens = name; const L = LENS[name];
   land.forEach((t, i) => { const [c, h] = L.tile(t); c.toArray(tgtC, i * 3); tgtH[i] = h; if (REDUCED) { curH[i] = h; c.toArray(curC, i * 3); } });
-  props.terrain.visible = L.show.includes("terrain"); props.mountains.visible = L.show.includes("mountains");
-  markers.sites.visible = L.show.includes("sites"); markers.reseau.visible = L.show.includes("reseau");
+  mountains.visible = L.show.includes("mountains");
+  for (const [k, g] of Object.entries(markers)) g.visible = L.show.includes(k);
   document.querySelectorAll(".lens").forEach(b => b.setAttribute("aria-pressed", b.dataset.lens === name));
   document.getElementById("legend").innerHTML = L.legend; animating = true; }
 
-// Fiche du département
+// Verdict de l'adresse, ou fiche du département cliqué
 const ICON = {
-  bolt: '<svg viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" fill="#e3b341"/></svg>',
   factory: '<svg viewBox="0 0 24 24"><path d="M3 21V11l5 3v-3l5 3v-3l5 3V4h3v17H3Z" fill="#e3892b"/></svg>',
   pylon: '<svg viewBox="0 0 24 24"><path d="M12 2 7 22h2.2l1-4h3.6l1 4H17L12 2Zm-1.2 13 1.2-5 1.2 5h-2.4ZM5 7h14M6.5 11h11" stroke="#c9d1d6" stroke-width="1.7" fill="none"/></svg>',
-  warn: '<svg viewBox="0 0 24 24"><path d="M12 3 2 21h20L12 3Z" fill="#d9573f"/><path d="M12 10v5M12 17.5v.5" stroke="#0d1a26" stroke-width="2" stroke-linecap="round"/></svg>',
   scale: '<svg viewBox="0 0 24 24"><path d="M12 3v17M6 20h12M4 7h16M4 7l-2.5 6h5L4 7Zm16 0-2.5 6h5L20 7Z" stroke="#58c4e6" stroke-width="1.7" fill="none"/></svg>',
   leaf: '<svg viewBox="0 0 24 24"><path d="M4 20C4 10 10 4 20 4c0 10-6 16-16 16Z" fill="#6fbf73"/></svg>',
-  coin: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#d6b26a"/><path d="M15 8.6a4 4 0 1 0 0 6.8M7.5 11h6M7.5 13.3h6" stroke="#0d1a26" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>',
-  mount: '<svg viewBox="0 0 24 24"><path d="M2 20 9 7l4 6 2-3 7 10H2Z" fill="#a9b07a"/></svg>',
 };
-const cityEl = document.getElementById("city"); let selected = null;
-const ficheVide = () => { selected = null; selBand.set([]); cityEl.style.removeProperty("--rc");
-  cityEl.innerHTML = `<header><h2>Territoires</h2><div class="sub">${land.length} cases · ${Object.keys(depTiles).length} départements</div></header><div class="vide">Cliquez sur une case pour afficher les indicateurs de son département. Changez de lentille en bas à droite (touches 1 à 4).</div>`; };
-function showDep(code) { const d = DEP[code]; if (!d) return; selected = code;
-  const ts = depTiles[code] || [], alts = ts.map(t => t.alt), altMax = Math.max(0, ...ts.map(t => t.altMax));
+const PILL = { ok: ["good", "ok"], attention: ["warn", "à vérifier"], inconnu: ["neutre", "inconnu"], info: ["neutre", "info"] };
+const LIMITE = '<div class="limit"><b>Limite :</b> la capacité de raccordement n\'est pas publique ; seule une étude Enedis ou RTE fait foi.</div>';
+const cityEl = document.getElementById("city");
+const ficheVide = () => { selBand.set([]); cityEl.style.removeProperty("--rc");
+  cityEl.innerHTML = `<header><h2>Territoires</h2><div class="sub">${land.length} cases · ${Object.keys(depTiles).length} départements</div></header><div class="vide">Cliquez sur une case pour afficher les indicateurs de son département. Changez de lentille en bas à droite (touches 1 à 3).</div>`; };
+function showVerdict() { if (!VERDICT) return ficheVide(); selBand.set([]); cityEl.style.removeProperty("--rc");
+  cityEl.innerHTML = `<header><h2>Brancher ici ?</h2><div class="sub">${esc(DATA.adresse.libelle)}</div></header>
+  <div class="verdict">${esc(VERDICT.phrase)}</div>
+  <div class="yields">${VERDICT.criteres.map(c => { const [cls, mot] = PILL[c.etat] || PILL.info;
+    return `<div class="critere"><span class="k">${esc(c.nom)}<span class="pill ${cls}">${mot}</span></span><span class="v">${esc(c.valeur)}</span><span class="d">${esc(c.detail)}</span></div>`; }).join("")}</div>${LIMITE}`; }
+function showDep(code) { const d = DEP[code]; if (!d) return;
+  const ts = depTiles[code] || [];
   selBand.set(ringOf(ts, .26 * PS, col("#f6d27a")));
   const eqPill = d.tc == null ? "" : d.tc >= 1 ? '<span class="pill good">excédent</span>' : '<span class="pill bad">importe</span>';
   const co2Pill = d.co2 == null ? "" : d.co2 <= 100 ? '<span class="pill good">décarbonée</span>' : '<span class="pill bad">carbonée</span>';
-  const kPill = (d.k || 0) >= 10 ? '<span class="pill warn">tendu</span>' : "";
   cityEl.style.setProperty("--rc", REGION_COLORS[d.r] || "#d6b26a");
   cityEl.innerHTML = `<header><h2>${esc(d.n)}</h2><div class="sub">${esc(d.c)} · ${esc(d.rn)}</div><button class="close" aria-label="Fermer la fiche">×</button></header>
   <div class="yields">
-    <div class="y">${ICON.mount}<span class="k">Relief des cases</span><span class="v">${fmt(alts.reduce((a, b) => a + b, 0) / Math.max(1, alts.length))} m <small>moyenne, ${fmt(altMax)} m au plus haut</small></span></div>
     <div class="y">${ICON.factory}<span class="k">Conso. industrielle ${d.an || ""}</span><span class="v">${fmt(d.gwh)} GWh <small>${d.rk ? "rang " + d.rk + "/" + d.nc : ""}</small></span></div>
-    <div class="y">${ICON.bolt}<span class="k">Sites industriels suivis</span><span class="v">${fmt(d.s)}</span></div>
     <div class="y">${ICON.pylon}<span class="k">Postes RTE</span><span class="v">${fmt(d.p)} <small>dont ${fmt(d.p3)} en 400 kV${d.pp ? ", " + d.pp + " en projet" : ""}</small></span></div>
-    <div class="y">${ICON.warn}<span class="k">Ouvrages en contrainte</span><span class="v">${fmt(d.k)}${kPill}</span></div>
     <div class="y">${ICON.scale}<span class="k">Couverture régionale</span><span class="v">${d.tc == null ? "n.d." : fmt(d.tc * 100) + " %"}${eqPill}</span></div>
     <div class="y">${ICON.leaf}<span class="k">Carbone du réseau</span><span class="v">${fmt(d.co2, 1)} <small>g/kWh</small>${co2Pill}</span></div>
-    <div class="y">${ICON.coin}<span class="k">Prix moyen (${esc(trancheSel.value)})</span><span class="v">${fmt(prixOf(), 4)} € <small>partout</small></span></div>
-  </div>
-  <div class="limit"><b>Limite :</b> la capacité de raccordement n'est pas publique ; seule une étude RTE ou Enedis fait foi.</div>`;
-  cityEl.querySelector(".close").onclick = ficheVide; }
+  </div>${LIMITE}`;
+  cityEl.querySelector(".close").onclick = VERDICT ? showVerdict : ficheVide; }
 
-// Barre de ressources
-const trancheSel = document.getElementById("tranche");
-DATA.prix.forEach(p => trancheSel.add(new Option(`${p.t} · ${p.l}`, p.t)));
-trancheSel.value = DATA.prix.some(p => p.t === "IB") ? "IB" : (DATA.prix[0] || {}).t;
-const prixOf = () => (DATA.prix.find(p => p.t === trancheSel.value) || {}).p;
-const updPrix = () => { document.getElementById("prix").textContent = fmt(prixOf(), 4); if (selected) showDep(selected); };
-trancheSel.onchange = updPrix; updPrix();
-const co2s = [...new Set(DATA.departements.map(d => d.co2).filter(v => v != null))].sort((a, b) => a - b);
-document.getElementById("carbone").innerHTML = co2s.length ? `<b>${fmt(co2s[0], 1)}</b><small>gCO₂e/kWh continent</small><b style="color:var(--bad)">${fmt(co2s[1] ?? co2s[0])}–${fmt(co2s[co2s.length - 1])}</b><small>îles</small>` : "";
-document.getElementById("nzones").textContent = DATA.zones.length; document.getElementById("nsites").textContent = DATA.sites.length;
-document.getElementById("genere").textContent = `Généré le ${new Date(DATA.genereLe).toLocaleDateString("fr-FR")} · relief IGN, contours Etalab, indicateurs du gold`;
+// Barre du haut : l'adresse étudiée et la fraîcheur des données
+if (DATA.adresse) document.getElementById("adr").textContent = DATA.adresse.libelle;
+document.getElementById("genere").textContent = `Généré le ${new Date(DATA.genereLe).toLocaleDateString("fr-FR")} · ${DATA.donnees || "relief IGN, contours Etalab, indicateurs du gold"}`;
 
 // Caméra : cadrage initial et déplacements animés
 const bounds = { x0: Math.min(...tiles.map(t => t.x)), x1: Math.max(...tiles.map(t => t.x)), z0: Math.min(...tiles.map(t => t.z)), z1: Math.max(...tiles.map(t => t.z)) };
@@ -432,13 +394,13 @@ const vueMetropole = () => allerA(moyenne(metro, "x"), moyenne(metro, "z") + 4, 
 document.getElementById("vue-metropole").onclick = vueMetropole;
 document.getElementById("vue-outre-mer").onclick = () => allerA(moyenne(om, "x"), moyenne(om, "z"), 135);
 document.getElementById("vue-outre-mer").hidden = !om.length;
-const vueAdresse = () => allerA(adresseTile.x, adresseTile.z, 45);
-if (adresseTile) { const b = document.getElementById("vue-adresse"); b.hidden = false; b.onclick = vueAdresse; }
+const vueAdresse = () => allerA(adresseTile.x, adresseTile.z, 26);
+if (adresseTile) { const b = document.getElementById("vue-adresse"); b.hidden = false; b.onclick = () => { vueAdresse(); showVerdict(); }; }
 controls.target.set(moyenne(metro, "x"), 0, moyenne(metro, "z") + 4); camera.position.copy(controls.target).add(new THREE.Vector3(-4, 95, 84));
 
 // Survol et sélection
 const ray = new THREE.Raycaster(), mouse = new THREE.Vector2(), tip = document.getElementById("tip"); let hovered = -1, down = null;
-const lensLine = d => !d ? "" : lens === "industrie" ? `${fmt(d.gwh)} GWh industriels${d.rk ? " · rang " + d.rk : ""}` : lens === "reseau" ? `${fmt(d.p)} postes · ${fmt(d.k)} contraintes` : lens === "equilibre" ? `Couverture régionale ${d.tc == null ? "n.d." : fmt(d.tc * 100) + " %"}` : d.rn;
+const lensLine = d => !d ? "" : lens === "industrie" ? `${fmt(d.gwh)} GWh industriels${d.rk ? " · rang " + d.rk : ""}` : lens === "equilibre" ? `Couverture régionale ${d.tc == null ? "n.d." : fmt(d.tc * 100) + " %"}` : d.rn;
 function pick(e) { const b = renderer.domElement.getBoundingClientRect(); mouse.set((e.clientX - b.left) / b.width * 2 - 1, -(e.clientY - b.top) / b.height * 2 + 1); ray.setFromCamera(mouse, camera); const h = ray.intersectObject(landMesh)[0]; return h ? h.instanceId : -1; }
 renderer.domElement.addEventListener("pointermove", e => { if (e.pointerType !== "mouse") return; const i = pick(e);
   if (i !== hovered) { hovered = i; hoverBand.set(i < 0 ? [] : ringOf([land[i]], .16 * PS, col("#ffffff"))); renderer.domElement.style.cursor = i < 0 ? "" : "pointer"; }
@@ -449,7 +411,7 @@ renderer.domElement.addEventListener("pointerleave", () => { tip.hidden = true; 
 renderer.domElement.addEventListener("pointerdown", e => { down = [e.clientX, e.clientY]; vol = null; });
 renderer.domElement.addEventListener("pointerup", e => { if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 6 || e.button !== 0) return; const i = pick(e); if (i >= 0) showDep(land[i].dep); });
 document.querySelectorAll(".lens").forEach(b => b.onclick = () => setLens(b.dataset.lens));
-addEventListener("keydown", e => { const k = { "1": "terrain", "2": "industrie", "3": "reseau", "4": "equilibre" }[e.key]; if (k && e.target.tagName !== "SELECT") setLens(k); });
+addEventListener("keydown", e => { const k = { "1": "raccordement", "2": "industrie", "3": "equilibre" }[e.key]; if (k) setLens(k); });
 
 // Boucle de rendu
 const v3 = new THREE.Vector3(), tmpC = new THREE.Color();
@@ -476,8 +438,8 @@ function tick(ms) {
     L.el.hidden = false; L.el.style.left = (v3.x + 1) / 2 * innerWidth + "px"; L.el.style.top = (1 - v3.y) / 2 * innerHeight + "px"; }
   requestAnimationFrame(tick);
 }
-setLens("terrain");
-if (DATA.adresse && DEP[DATA.adresse.departement]) showDep(DATA.adresse.departement); else ficheVide();
+setLens("raccordement");
+if (VERDICT) showVerdict(); else if (DATA.adresse && DEP[DATA.adresse.departement]) showDep(DATA.adresse.departement); else ficheVide();
 if (adresseTile) vueAdresse();
 requestAnimationFrame(tick);
 </script>

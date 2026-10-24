@@ -14,6 +14,9 @@ from ingestion.datasets import NATIONAL_CONS_DEF, NATIONAL_TR, TERRITORIAL_SPECS
 from ingestion.extract_geo import run_geo_ingestion
 from ingestion.pipeline import (
     run_consolidation,
+    run_edf_sei_ingestion,
+    run_europe_ingestion,
+    run_gaspar_ingestion,
     run_ingestion,
     run_prix_entreprises_ingestion,
 )
@@ -38,6 +41,7 @@ def _env_sans_secrets() -> dict[str, str]:
     return {cle: valeur for cle, valeur in os.environ.items() if not cle.startswith("ECO2MIX_RTE_")}
 
 
+# Reconstruit silver et gold avec leurs tests de données
 def dbt_build(settings: Settings) -> None:
     dbt = shutil.which("dbt", path=str(Path(sys.executable).parent)) or shutil.which("dbt")
     if dbt is None:
@@ -85,6 +89,9 @@ def run_refresh(
             "prix-eurostat",
             lambda: run_prix_entreprises_ingestion(settings=settings, run_id=run_id),
         ),
+        ("risques-gaspar", lambda: run_gaspar_ingestion(settings=settings, run_id=run_id)),
+        ("carbone-iles", lambda: run_edf_sei_ingestion(settings=settings, run_id=run_id)),
+        ("europe", lambda: run_europe_ingestion(settings=settings, run_id=run_id)),
         ("dbt-build", lambda: dbt_build(settings)),
     ]
     bilan = []

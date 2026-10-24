@@ -35,11 +35,19 @@ FISCALITES: tuple[str, ...] = ("X_TAX", "X_VAT")
 
 PREMIER_SEMESTRE = "2007-S1"
 
+# Pays de l'UE-27 en codes Eurostat (Grèce : EL) ; l'historique récent suffit au repère
+PAYS_UE: tuple[str, ...] = (
+    "AT", "BE", "BG", "CY", "CZ", "DE", "DK", "EE", "EL", "ES", "FI", "FR", "HR", "HU",
+    "IE", "IT", "LT", "LU", "LV", "MT", "NL", "PL", "PT", "RO", "SE", "SI", "SK",
+)  # fmt: skip
+PREMIER_SEMESTRE_UE = "2024-S1"
+
 
 class EurostatResponseError(ExtractionError):
     pass
 
 
+# Client de l'API Eurostat : prix de l'électricité des entreprises par tranche
 class EurostatClient:
     def __init__(
         self,
@@ -90,6 +98,20 @@ class EurostatClient:
         ]
         return aplatir_json_stat(self._get(DATA_PATH, params).json())
 
+    # Mêmes tranches et fiscalités pour les 27 pays : comparer une implantation en Europe
+    def fetch_prix_entreprises_ue(self) -> list[dict[str, Any]]:
+        params: list[tuple[str, str]] = [
+            ("format", "JSON"),
+            ("lang", "fr"),
+            *(("geo", pays) for pays in PAYS_UE),
+            ("currency", "EUR"),
+            ("unit", "KWH"),
+            ("sinceTimePeriod", PREMIER_SEMESTRE_UE),
+            *(("nrg_cons", tranche) for tranche in TRANCHES),
+            *(("tax", fiscalite) for fiscalite in FISCALITES),
+        ]
+        return aplatir_json_stat(self._get(DATA_PATH, params).json())
+
     def _get(self, path: str, params: list[tuple[str, str]]) -> httpx.Response:
         def envoyer() -> httpx.Response:
             self.calls += 1
@@ -102,6 +124,7 @@ class EurostatClient:
         return self._retrying(envoyer)
 
 
+# Cube JSON-stat d'Eurostat mis à plat, une ligne par cellule publiée
 def aplatir_json_stat(payload: dict[str, Any]) -> list[dict[str, Any]]:
     try:
         dimensions: list[str] = payload["id"]
@@ -129,6 +152,7 @@ def aplatir_json_stat(payload: dict[str, Any]) -> list[dict[str, Any]]:
         cellule = dict(zip(dimensions, combinaison, strict=True))
         records.append(
             {
+                "pays": cellule.get("geo"),
                 "semestre": cellule["time"],
                 "tranche": cellule["nrg_cons"],
                 "fiscalite": cellule["tax"],

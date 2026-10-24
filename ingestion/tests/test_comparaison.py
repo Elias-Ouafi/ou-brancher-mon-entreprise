@@ -125,6 +125,7 @@ def test_address_independent_figures_are_given_once(medallion_db: Path) -> None:
     texte = "\n".join(communs(diagnostics))
 
     assert texte.count("Puissance 12 MW → HTA") == 1
+    assert texte.count("Données chargées le 01/07/2026") == 1
     assert "Prix de l'électricité pour l'entreprise" in texte
     assert "Carbone du réseau et coût horaire d'un profil type" in texte
     # Le verdict carbone dépend du territoire : il n'est pas répété sous le tableau

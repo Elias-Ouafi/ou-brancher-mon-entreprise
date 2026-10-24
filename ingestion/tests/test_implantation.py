@@ -55,6 +55,7 @@ def _lyon(medallion_db: Path) -> Diagnostic:
         puissance_mw=12,
         conso_mwh=350,
         ca_eur=5_000_000,
+        va_eur=1_000_000,
         database=medallion_db,
     )
     rapport = json.loads(
@@ -101,7 +102,11 @@ def test_markdown_without_charts_writes_no_image(medallion_db: Path, tmp_path: P
 
 def test_pdf_report_is_built(medallion_db: Path, reglages: Settings, tmp_path: Path) -> None:
     chemin = generer_rapport_implantation(
-        _lyon(medallion_db), format="pdf", settings=reglages, output=tmp_path / "lyon.pdf"
+        _lyon(medallion_db),
+        format="pdf",
+        settings=reglages,
+        output=tmp_path / "lyon.pdf",
+        commande="python -m ingestion.cli diagnose --adresse Lyon --format pdf",
     )
     contenu = chemin.read_bytes()
     assert contenu.startswith(b"%PDF")
@@ -245,6 +250,12 @@ def test_diagnose_writes_the_requested_report(
     texte = sortie.read_text(encoding="utf-8")
     assert "Puissance 0,5 MW → HTA" in texte
     assert "![" not in texte
+    # Pied de page : de quoi refaire le rapport et dater ses données
+    assert (
+        'Pour le refaire : python -m ingestion.cli diagnose --adresse "10 rue Garibaldi, Lyon"'
+        in texte
+    )
+    assert "Données chargées le 01/07/2026" in texte.split("---")[-1]
 
 
 @pytest.mark.parametrize("format", implantation.FORMATS)

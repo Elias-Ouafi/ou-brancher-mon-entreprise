@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import replace
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -265,3 +266,44 @@ def test_imprecise_address_is_flagged(medallion_db: Path) -> None:
         risques=lire_rapport(fixture("georisques_rapport_lyon.json")),
     )
     assert "Adresse résolue à la commune seulement" in _bloc_6(formater_diagnostic(diagnostic))
+
+
+@dbt_requis
+def test_gold_keeps_only_the_latest_gaspar_export(medallion_db: Path) -> None:
+    import duckdb
+
+    with duckdb.connect(str(medallion_db), read_only=True) as connection:
+        lyon = connection.execute(
+            "select num_risque, famille, millesime from gold.fct_risques_commune"
+            " where code_insee_commune = '69123' order by num_risque"
+        ).fetchall()
+    assert [(numero, famille) for numero, famille, _ in lyon] == [
+        ("11", "naturel"),
+        ("112", "naturel"),
+        ("24", "technologique"),
+    ]
+    assert {millesime.isoformat() for *_, millesime in lyon} == {"2026-10-05"}
+
+
+@dbt_requis
+def test_local_gaspar_export_replaces_the_silent_api(
+    httpx_mock: HTTPXMock, reglages: Settings, medallion_db: Path
+) -> None:
+    httpx_mock.add_exception(httpx.ConnectError("injoignable"), is_reusable=True)
+    reglages = reglages.model_copy(update={"duckdb_path": medallion_db})
+    diagnostic = completer_risques(
+        lire_diagnostic(territoire("69382", "Lyon"), database=medallion_db), settings=reglages
+    )
+
+    assert diagnostic.risques is not None and diagnostic.risques_erreur is None
+    assert diagnostic.risques.maille == "commune"
+    assert diagnostic.risques.millesime == date(2026, 10, 5)
+    # Seul le rapport à l'adresse est tenté : l'API commune tomberait avec lui
+    assert all("resultats_rapport_risque" in str(r.url) for r in httpx_mock.get_requests())
+    bloc = _bloc_6(formater_diagnostic(diagnostic))
+    assert "d'après l'export GASPAR du 05/10/2026" in bloc
+    assert (
+        "Naturels, recensés dans la commune :"
+        " Inondation par une crue à débordement lent de cours d'eau" in bloc
+    )
+    assert "Technologiques, recensés dans la commune : Transport de marchandises" in bloc
