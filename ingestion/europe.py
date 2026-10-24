@@ -8,6 +8,7 @@ import duckdb
 import httpx
 
 from ingestion.config import Settings, get_settings
+from ingestion.diagnostic import DonneesAbsentesError
 from ingestion.extract_odre import USER_AGENT
 from ingestion.geocode import AdresseIntrouvableError, GeocodingError
 
@@ -107,6 +108,8 @@ def lire_pays(
 ) -> tuple[Pays, Pays | None]:
     path = database or (settings or get_settings()).duckdb_path
     conso = CONSO_DEFAUT_MWH if conso_mwh is None else conso_mwh
+    if not Path(path).exists():
+        raise DonneesAbsentesError(f"warehouse introuvable : {path}")
     with duckdb.connect(str(path), read_only=True) as connection:
 
         def ligne(iso2: str) -> Pays | None:
@@ -117,8 +120,13 @@ def lire_pays(
             valeurs = dict(zip([d[0] for d in resultat.description], row, strict=True))
             return Pays(**{cle: valeurs[cle] for cle in Pays.__dataclass_fields__})
 
-        pays = ligne(code_pays)
-        france = ligne("FR") if code_pays != "FR" else None
+        try:
+            pays = ligne(code_pays)
+            france = ligne("FR") if code_pays != "FR" else None
+        except duckdb.CatalogException as error:
+            raise DonneesAbsentesError(
+                f"couche gold incomplete : {str(error).splitlines()[0]}"
+            ) from error
     if pays is None:
         raise HorsUnionEuropeenneError(
             f"pays {code_pays} hors de l'Union européenne ou absent des données (lancer refresh)"

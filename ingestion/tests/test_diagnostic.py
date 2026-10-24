@@ -331,10 +331,32 @@ def test_missing_warehouse_is_reported(tmp_path: Path) -> None:
         lire_diagnostic(territoire("69123"), database=tmp_path / "absent.duckdb")
 
 
+def test_first_launch_tells_which_command_loads_the_data(
+    settings: Settings,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(cli, "get_settings", lambda: settings)
+    monkeypatch.setattr(cli, "geocode", lambda adresse, **_: territoire("69123", "Lyon"))
+
+    for commande in ("essentiel", "diagnose"):
+        assert cli.main([commande, "--adresse", "1 rue X 69001 Lyon", "--sans-carte"]) == 1
+    assert caplog.text.count("python -m ingestion.cli refresh --months 180") == 2
+    assert capsys.readouterr().out == ""
+
+
+def test_verbose_is_accepted_before_or_after_the_command() -> None:
+    parser = cli.build_parser()
+    assert parser.parse_args(["essentiel", "--adresse", "x"]).verbose is False
+    assert parser.parse_args(["essentiel", "--adresse", "x", "--verbose"]).verbose is True
+    assert parser.parse_args(["--verbose", "essentiel", "--adresse", "x"]).verbose is True
+
+
 def test_warehouse_without_gold_layer_is_reported(tmp_path: Path) -> None:
     database = tmp_path / "vide.duckdb"
     duckdb.connect(str(database)).close()
-    with pytest.raises(DiagnosticIndisponibleError, match="dbt build"):
+    with pytest.raises(DiagnosticIndisponibleError, match="gold incomplete : Catalog Error"):
         lire_diagnostic(territoire("69123"), database=database)
 
 
