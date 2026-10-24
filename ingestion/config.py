@@ -36,6 +36,12 @@ class Settings(BaseSettings):
     # Export GASPAR (risques recensés par commune), servi hors de l'API : repli quand elle se tait
     gaspar_url: str = "https://files.georisques.fr/GASPAR/gaspar.zip"
 
+    # Production horaire par filière en Corse et outre-mer (EDF SEI, licence ouverte)
+    edf_sei_url: str = (
+        "https://opendata.edf.fr/data-fair/api/v1/datasets/"
+        "courbe-de-charge-de-la-production-delectricite-par-filiere/raw"
+    )
+
     # API de diffusion d'Eurostat (JSON-stat), sans compte ni clé
     eurostat_base_url: str = "https://ec.europa.eu/eurostat/api/dissemination"
 

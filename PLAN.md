@@ -15,6 +15,7 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 | Adresse → commune, département, région ; adresse ambiguë ou approximative refusée | `ingestion/geocode.py` (BAN) |
 | Prix par tranche Eurostat, scénarios à 3 ans calibrés sur les erreurs passées | `fct_prix_entreprise_tranche` |
 | Carbone par système électrique, seuil de 100 gCO₂e/kWh | `fct_carbone_territoire` |
+| Carbone heure par heure en Corse et outre-mer (production EDF SEI, profil calé sur l'ADEME) | `fct_carbone_horaire_zni` |
 | Part de la facture dans le chiffre d'affaires (`--ca`) | `essentiel`, `diagnose` |
 | Diagnostic complet : industrie, réseau, zone RTE, site clé en main, risques | `diagnose`, `compare` |
 | Verdict « brancher ici ? » en cinq critères (raccordement, risques, carbone, facture, foncier) | `verdict`, `phrase_verdict` |
@@ -31,14 +32,15 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
   dans la Base Empreinte : vérifier la version) ;
 - la fourchette de prix à 3 ans n'est pas validée : le contrôle sur le passé ne compte que 8
   périodes chevauchantes, toutes marquées par la crise de 2022 ;
-- le calendrier Tempo (`part-manual`, 31 jours) n'a tourné que sur des réponses simulées.
+- le calendrier Tempo (`part-manual`, 31 jours) n'a tourné que sur des réponses simulées ;
+- EDF SEI publie jusqu'à fin 2024 seulement (2021-2024 « estimé »), sans Mayotte ; le jeu a
+  quitté `opendata-corse-outremer.edf.fr` pour `opendata.edf.fr` (API data-fair).
 
 ## Suite
 
 | Priorité | Étape | Bloqué par |
 |---|---|---|
 | 1 | Protéger `main` : CI et PR obligatoires | réglage GitHub, par le propriétaire |
-| 3 | Carbone horaire en Corse et outre-mer (open data EDF SEI) | — |
 | 4 | Vraie courbe de charge (`--courbe`, export Enedis) à la place du profil type | — |
 | 5 | Part de la facture dans la valeur ajoutée (`--va`), critère du statut d'électro-intensif | — |
 | 6 | Extension internationale, voir ci-dessous | licences Ember et contours à vérifier |
@@ -89,6 +91,7 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 | 24 oct. | Chaque sortie donne la date de chargement de ses sources ; au-delà de 45 jours, elle demande un `refresh` |
 | 24 oct. | Commentaires : une ligne par fonction sur son but et son intérêt métier ; code simple, Python d'abord |
 | 24 oct. | Une étape n'est validée qu'après un test complet : ruff, pytest (dont `dbt build`), essai réel |
+| 24 oct. | Carbone horaire des îles : profil de la part thermique calé sur le facteur ADEME annuel, plutôt que des facteurs par filière non sourcés ; imports de la Corse comptés non thermiques |
 | 24 oct. | Carte : décor (villes, forêts) et lentilles Terrain et Réseau retirés ; prix et compteurs hors de la barre du haut ; la fiche de l'adresse donne le verdict |
 
 ## Écarté

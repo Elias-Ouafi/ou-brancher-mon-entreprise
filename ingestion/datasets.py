@@ -328,6 +328,27 @@ GASPAR_RISQUES = DatasetSpec(
     description="Risques majeurs recensés par commune (GASPAR, DDRM)",
 )
 
+EDF_SEI_PRODUCTION = DatasetSpec(
+    dataset_id="edf-sei-production",
+    keys=(code("territoire"), instant("date_heure")),
+    attributes=(label("statut"),),
+    measures=measures(
+        "production_totale_mw",
+        "thermique_mw",
+        "bagasse_charbon_mw",
+        "hydraulique_mw",
+        "micro_hydraulique_mw",
+        "photovoltaique_mw",
+        "eolien_mw",
+        "bioenergies_mw",
+        "geothermie_mw",
+        "importations_mw",
+        "stockage_mw",
+        "cout_moyen_de_production_eur_mwh",
+    ),
+    description="Production horaire par filière en Corse et outre-mer (EDF SEI)",
+)
+
 EUROSTAT_PRIX_ENTREPRISES = DatasetSpec(
     dataset_id="eurostat-nrg-pc-205",
     keys=(period("semestre"), code("tranche"), code("fiscalite")),
@@ -367,6 +388,7 @@ BRONZE_SPECS: tuple[DatasetSpec, ...] = (
     RTE_TEMPO,
     EUROSTAT_PRIX_ENTREPRISES,
     GASPAR_RISQUES,
+    EDF_SEI_PRODUCTION,
     *TERRITORIAL_SPECS,
 )
 
