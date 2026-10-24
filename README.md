@@ -58,7 +58,11 @@ Toutes s'écrivent `.\.venv\Scripts\python.exe -m ingestion.cli <commande>`.
 | `essentiel --adresse "…" [--conso MWh] [--ca €] [--format json]` | Prix moyen et verdict carbone ; sans `--conso`, tranche des petites entreprises (moins de 20 MWh/an) ; `--ca` donne la part de la facture dans le chiffre d'affaires |
 | `diagnose --adresse "…" [--puissance MW] [--conso MWh] [--ca €] [--format pdf\|md\|json]` | Diagnostic complet : industrie locale, réseau, raccordement, prix, carbone, risques (Géorisques) |
 | `compare --adresse "A" --adresse "B" …` | 2 à 6 adresses côte à côte, sans classement ; `texte`, `md`, `csv`, `json` |
-| `carte [--adresse "…"]` | Carte 3D hors ligne (`data/reports/carte.html`) : relief IGN en cases de 24 km, quatre lentilles (terrain, industrie, réseau RTE, équilibre régional), outre-mer en encarts |
+| `carte [--adresse "…"] [--reconstruire]` | Carte 3D hors ligne (`data/reports/carte.html`) : relief IGN en cases de 24 km, quatre lentilles (terrain, industrie, réseau RTE, équilibre régional), outre-mer en encarts |
+
+`essentiel` et `diagnose` épinglent aussi leur adresse sur la carte (`--sans-carte` pour s'en
+passer). La carte n'est refaite que si le warehouse, les contours ou le gabarit sont plus récents
+qu'elle ; sinon seule l'épingle change de place.
 | `refresh [--months 180]` | Met à jour toutes les sources, puis `dbt build` |
 | `report --month 2026-09` | Rapport mensuel carbone et créneaux Tempo |
 
