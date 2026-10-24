@@ -133,6 +133,13 @@ def test_country_outside_the_union_is_refused(medallion_db: Path) -> None:
         lire_pays("GB", database=medallion_db)
 
 
+def test_missing_warehouse_asks_for_a_refresh(tmp_path: Path) -> None:
+    from ingestion.diagnostic import DonneesAbsentesError
+
+    with pytest.raises(DonneesAbsentesError, match="introuvable"):
+        lire_pays("IT", database=tmp_path / "absent.duckdb")
+
+
 def test_europe_command_end_to_end(
     httpx_mock: HTTPXMock,
     settings: Settings,

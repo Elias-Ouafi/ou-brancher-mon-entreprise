@@ -17,6 +17,7 @@ from ingestion.diagnostic import (
     DISTANCE_ZONE_UTILE_KM,
     Diagnostic,
     DiagnosticIndisponibleError,
+    DonneesAbsentesError,
     ligne_chargements,
     lire_chargements,
     phrase_verdict,
@@ -87,9 +88,7 @@ def _lignes(connection: duckdb.DuckDBPyConnection, sql: str) -> list[dict[str, A
 # Indicateurs gold affichés sur la carte, lus en une connexion
 def lire_donnees_gold(database: Path) -> dict[str, Any]:
     if not Path(database).exists():
-        raise DiagnosticIndisponibleError(
-            f"warehouse introuvable : {database} (lancer refresh avant la carte)"
-        )
+        raise DonneesAbsentesError(f"warehouse introuvable : {database}")
     with duckdb.connect(str(database), read_only=True) as connection:
         gold: dict[str, Any] = {
             cle: _lignes(connection, sql)

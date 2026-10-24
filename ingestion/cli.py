@@ -13,6 +13,7 @@ from ingestion.datasets import NATIONAL_CONS_DEF, NATIONAL_TR, SPECS, get_spec
 from ingestion.diagnostic import (
     Diagnostic,
     DiagnosticIndisponibleError,
+    DonneesAbsentesError,
     avec_risques_locaux,
     completer_risques,
     essentiel_en_dict,
@@ -43,6 +44,28 @@ from ingestion.pipeline import (
 )
 
 logger = logging.getLogger("ingestion")
+
+# Commandes qui répondent à une question : seule la réponse s'affiche, sans journal technique
+QUESTIONS = frozenset({"essentiel", "diagnose", "compare", "carte", "europe", "geocode"})
+
+COMMANDE_REFRESH = "python -m ingestion.cli refresh --months 180"
+
+
+# Premier lancement ou refresh interrompu : dire quoi lancer plutôt qu'afficher l'erreur brute
+def _donnees_absentes(error: DonneesAbsentesError) -> int:
+    logger.error(
+        "Aucune donnée utilisable (%s). Lancez d'abord, une seule fois (une minute et demie"
+        " environ) :\n    %s\npuis reposez la question.",
+        error,
+        COMMANDE_REFRESH,
+    )
+    return 1
+
+
+# Fichier produit par une commande : annoncé après la réponse, même quand le journal est masqué
+def _signaler(message: str) -> None:
+    sys.stdout.flush()
+    print(message, file=sys.stderr)
 
 
 def _parse_instant(value: str) -> datetime:
@@ -151,7 +174,7 @@ def _placer_sur_carte(diagnostic: Diagnostic, settings: Settings) -> None:
     ) as error:
         logger.warning("carte non mise a jour : %s", error)
         return
-    logger.info("carte mise a jour %s", path)
+    _signaler(f"Carte : {path}")
 
 
 # Ligne de commande à recopier pour refaire un rapport, citée dans son pied de page
@@ -345,6 +368,14 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Markdown uniquement : texte et tableaux, sans images PNG",
     )
+    # Aussi après la commande ; SUPPRESS pour ne pas écraser `--verbose` placé avant elle
+    for sub in subparsers.choices.values():
+        sub.add_argument(
+            "--verbose",
+            action="store_true",
+            default=argparse.SUPPRESS,
+            help="affiche le journal technique (DEBUG)",
+        )
     return parser
 
 
@@ -358,10 +389,19 @@ def main(argv: list[str] | None = None) -> int:
                 f"--{option} demande --conso ou --courbe : le calcul part de la consommation"
                 " annuelle"
             )
-    logging.basicConfig(
-        level=logging.DEBUG if args.verbose else logging.INFO,
-        format="%(asctime)s %(levelname)-8s %(name)s %(message)s",
-    )
+    # Messages accentués : stderr redirigé sous Windows serait en cp1252, comme stdout
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8")
+    if args.verbose:
+        logging.basicConfig(
+            level=logging.DEBUG, format="%(asctime)s %(levelname)-8s %(name)s %(message)s"
+        )
+    elif args.command in QUESTIONS:
+        logging.basicConfig(level=logging.WARNING, format="%(message)s")
+    else:
+        logging.basicConfig(
+            level=logging.INFO, format="%(asctime)s %(levelname)-8s %(name)s %(message)s"
+        )
     settings = get_settings()
     spec = get_spec(args.dataset) if hasattr(args, "dataset") else None
 
@@ -448,6 +488,8 @@ def main(argv: list[str] | None = None) -> int:
             except GeocodingError as error:
                 logger.error("geocodage impossible : %s", error)
                 return 1
+            except DonneesAbsentesError as error:
+                return _donnees_absentes(error)
             except DiagnosticIndisponibleError as error:
                 logger.error("donnees indisponibles : %s", error)
                 return 1
@@ -479,6 +521,8 @@ def main(argv: list[str] | None = None) -> int:
                     courbe=_lire_courbe(args.courbe),
                     settings=settings,
                 )
+            except DonneesAbsentesError as error:
+                return _donnees_absentes(error)
             except (GeocodingError, DiagnosticIndisponibleError, CourbeError, OSError) as error:
                 logger.error("diagnostic impossible : %s", error)
                 return 1
@@ -505,7 +549,7 @@ def main(argv: list[str] | None = None) -> int:
                     graphiques=not args.sans_graphiques,
                     commande=_commande(argv),
                 )
-                logger.info("rapport ecrit %s", path)
+                _signaler(f"Rapport : {path}")
             if not args.sans_carte:
                 _placer_sur_carte(diagnostic, settings)
         case "compare":
@@ -528,6 +572,8 @@ def main(argv: list[str] | None = None) -> int:
                         conso_mwh=args.conso,
                         settings=settings,
                     )
+                except DonneesAbsentesError as error:
+                    return _donnees_absentes(error)
                 except (GeocodingError, DiagnosticIndisponibleError) as error:
                     logger.error("comparaison impossible pour %r : %s", adresse, error)
                     return 1
@@ -547,7 +593,7 @@ def main(argv: list[str] | None = None) -> int:
                 # BOM pour le CSV : Excel le lit alors en UTF-8 sans casser les accents
                 encodage = "utf-8-sig" if args.format == "csv" else "utf-8"
                 chemin.write_text(sortie, encoding=encodage)
-                logger.info("comparaison ecrite %s", chemin)
+                _signaler(f"Comparaison : {chemin}")
             else:
                 if hasattr(sys.stdout, "reconfigure"):
                     sys.stdout.reconfigure(encoding="utf-8")
@@ -574,10 +620,12 @@ def main(argv: list[str] | None = None) -> int:
                     verdict_adresse=verdict_adresse,
                     output=Path(args.output) if args.output else None,
                 )
+            except DonneesAbsentesError as error:
+                return _donnees_absentes(error)
             except (GeocodingError, DiagnosticIndisponibleError) as error:
                 logger.error("carte impossible : %s", error)
                 return 1
-            logger.info("carte ecrite %s", path)
+            _signaler(f"Carte : {path}")
             if not args.sans_ouvrir:
                 webbrowser.open(path.resolve().as_uri())
         case "europe":
@@ -594,6 +642,8 @@ def main(argv: list[str] | None = None) -> int:
             except GeocodingError as error:
                 logger.error("europe impossible : %s", error)
                 return 1
+            except DonneesAbsentesError as error:
+                return _donnees_absentes(error)
             if hasattr(sys.stdout, "reconfigure"):
                 sys.stdout.reconfigure(encoding="utf-8")
             print(formater_europe(localisation, pays, france))
