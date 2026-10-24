@@ -18,6 +18,7 @@ from ingestion.diagnostic import (
     diagnostic_en_dict,
     entete,
     essentiel,
+    ligne_chargements,
     sections,
 )
 
@@ -141,6 +142,7 @@ def generer_rapport_implantation(
     output: Path | None = None,
     graphiques: bool = True,
     now: datetime | None = None,
+    commande: str | None = None,
 ) -> Path:
     if format not in FORMATS:
         raise ValueError(f"format inconnu : {format!r} (attendu : {', '.join(FORMATS)})")
@@ -157,12 +159,21 @@ def generer_rapport_implantation(
                 connection, tranche=diagnostic.prix.tranche if diagnostic.prix else None
             )
         if format == "md":
-            rendre_markdown(diagnostic, comparaisons, chemin, graphiques=graphiques, now=genere_le)
+            rendre_markdown(
+                diagnostic,
+                comparaisons,
+                chemin,
+                graphiques=graphiques,
+                now=genere_le,
+                commande=commande,
+            )
         else:
             # Import paresseux : reportlab n'est utile qu'au PDF
             from reporting import implantation_pdf
 
-            implantation_pdf.rendre(diagnostic, comparaisons, chemin, now=genere_le)
+            implantation_pdf.rendre(
+                diagnostic, comparaisons, chemin, now=genere_le, commande=commande
+            )
     logger.info(
         "rapport d'implantation genere format=%s commune=%s path=%s",
         format,
@@ -174,6 +185,14 @@ def generer_rapport_implantation(
 
 def en_json(diagnostic: Diagnostic) -> str:
     return json.dumps(diagnostic_en_dict(diagnostic), ensure_ascii=False, indent=2)
+
+
+# Pied de page : de quoi refaire le rapport et juger de sa fraîcheur avant de le transmettre
+def pied_de_page(diagnostic: Diagnostic, commande: str | None) -> list[str]:
+    lignes = [ligne_chargements(diagnostic.chargements)]
+    if commande:
+        lignes.append(f"Pour le refaire : {commande}")
+    return lignes
 
 
 def texte_compact(contenu: str) -> str:
@@ -196,6 +215,7 @@ def rendre_markdown(
     *,
     graphiques: bool = True,
     now: datetime,
+    commande: str | None = None,
 ) -> Path:
     dossier = chemin.with_name(f"{chemin.stem}_graphiques")
     blocs = [
@@ -229,6 +249,12 @@ def rendre_markdown(
                 (dossier / f"{nom}.png").write_bytes(png)
                 blocs += [f"![{legende}]({dossier.name}/{nom}.png)", ""]
     blocs += ["## Sources", "", *[f"- {source}" for source in SOURCES], ""]
+    blocs += [
+        "---",
+        "",
+        *[f"*{texte_compact(ligne)}*  " for ligne in pied_de_page(diagnostic, commande)],
+        "",
+    ]
     # Les limites ajoutent leurs propres lignes vides : une seule suffit entre deux blocs
     chemin.write_text(re.sub(r"\n{3,}", "\n\n", "\n".join(blocs)), encoding="utf-8")
     return chemin
