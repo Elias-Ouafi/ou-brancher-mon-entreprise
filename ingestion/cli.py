@@ -8,9 +8,12 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 from ingestion.config import Settings, get_settings
+from ingestion.courbe import Courbe, CourbeError, lire_courbe
 from ingestion.datasets import NATIONAL_CONS_DEF, NATIONAL_TR, SPECS, get_spec
 from ingestion.diagnostic import (
+    Diagnostic,
     DiagnosticIndisponibleError,
+    avec_risques_locaux,
     completer_risques,
     essentiel_en_dict,
     formater_diagnostic,
@@ -19,7 +22,12 @@ from ingestion.diagnostic import (
 )
 from ingestion.extract_odre import ExtractionWindow
 from ingestion.extract_rte import DayRange, RteCredentialsMissingError
-from ingestion.geocode import AdresseIntrouvableError, GeocodingError, Territoire, geocode
+from ingestion.geocode import (
+    AdresseAmbigueError,
+    AdresseIntrouvableError,
+    GeocodingError,
+    geocode,
+)
 from ingestion.pipeline import (
     IncompleteMonthError,
     StaleDataError,
@@ -95,6 +103,11 @@ def _add_ca_option(parser: argparse.ArgumentParser) -> None:
         type=_parse_ca,
         help="chiffre d'affaires annuel en euros (avec --conso) : part de la facture",
     )
+    parser.add_argument(
+        "--va",
+        type=_parse_ca,
+        help="valeur ajoutée annuelle en euros (avec --conso) : électro-intensité fiscale",
+    )
 
 
 def _add_carte_option(parser: argparse.ArgumentParser) -> None:
@@ -103,18 +116,31 @@ def _add_carte_option(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="ne place pas l'adresse sur la carte (data/reports/carte.html)",
     )
+    parser.add_argument(
+        "--courbe",
+        help="export CSV de la courbe de charge Enedis : vraie consommation, pointe et carbone",
+    )
 
 
-# La carte accompagne la réponse : son échec ne fait pas échouer la commande
-def _placer_sur_carte(territoire: Territoire, settings: Settings) -> None:
+# Courbe de charge réelle du site, lue avant le diagnostic qu'elle alimente
+def _lire_courbe(chemin: str | None) -> Courbe | None:
+    return None if chemin is None else lire_courbe(Path(chemin).read_bytes())
+
+
+# La carte montre le verdict de l'adresse ; son échec ne fait pas échouer la commande
+def _placer_sur_carte(diagnostic: Diagnostic, settings: Settings) -> None:
     import duckdb
     import httpx
 
     from ingestion.extract_odre import RetryableStatusError
-    from reporting.carte import mettre_a_jour_carte
+    from reporting.carte import mettre_a_jour_carte, verdict_carte
 
     try:
-        path = mettre_a_jour_carte(settings=settings, territoire=territoire)
+        path = mettre_a_jour_carte(
+            settings=settings,
+            territoire=diagnostic.territoire,
+            verdict_adresse=verdict_carte(avec_risques_locaux(diagnostic, settings=settings)),
+        )
     except (
         DiagnosticIndisponibleError,
         httpx.HTTPError,
@@ -128,10 +154,18 @@ def _placer_sur_carte(territoire: Territoire, settings: Settings) -> None:
     logger.info("carte mise a jour %s", path)
 
 
+# Ligne de commande à recopier pour refaire un rapport, citée dans son pied de page
+def _commande(argv: list[str] | None) -> str:
+    arguments = sys.argv[1:] if argv is None else argv
+    cites = [f'"{a}"' if not a or " " in a else a for a in arguments]
+    return " ".join(["python -m ingestion.cli", *cites])
+
+
 def _add_dataset_option(parser: argparse.ArgumentParser, default: str) -> None:
     parser.add_argument("--dataset", choices=sorted(SPECS), default=default, help="dataset ODRÉ")
 
 
+# Toutes les commandes et leurs options : la porte d'entrée unique de l'outil
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="eco2mix",
@@ -187,6 +221,9 @@ def build_parser() -> argparse.ArgumentParser:
         "essentiel", help="prix moyen de l'électricité et verdict carbone d'une adresse"
     )
     essentiel.add_argument("--adresse", required=True, help="adresse, entre guillemets")
+    essentiel.add_argument(
+        "--puissance", type=_parse_puissance, help="puissance du projet en MW : qui raccorde"
+    )
     essentiel.add_argument(
         "--conso",
         type=_parse_conso,
@@ -258,6 +295,9 @@ def build_parser() -> argparse.ArgumentParser:
         "carte", help="carte 3D des territoires : relief, industrie, réseau (page HTML)"
     )
     carte.add_argument("--adresse", help="adresse à épingler sur la carte, entre guillemets")
+    carte.add_argument(
+        "--puissance", type=_parse_puissance, help="puissance du projet en MW : qui raccorde"
+    )
     carte.add_argument("--output", help="chemin du fichier (défaut : data/reports/carte.html)")
     carte.add_argument(
         "--sans-ouvrir", action="store_true", help="écrit la page sans ouvrir le navigateur"
@@ -266,6 +306,18 @@ def build_parser() -> argparse.ArgumentParser:
         "--reconstruire",
         action="store_true",
         help="refait toute la carte, même si ses données n'ont pas changé",
+    )
+
+    europe = subparsers.add_parser(
+        "europe", help="prix et carbone moyens d'un pays de l'UE, face à la France"
+    )
+    europe.add_argument(
+        "--adresse", required=True, help="adresse dans l'UE, entre guillemets (ex. Milano)"
+    )
+    europe.add_argument(
+        "--conso",
+        type=_parse_conso,
+        help="consommation annuelle en MWh (défaut : tranche des petites entreprises)",
     )
 
     coverage = subparsers.add_parser(
@@ -296,11 +348,16 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+# Lance la commande demandée ; code de sortie 1 quand la réponse n'a pas pu être donnée
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    if getattr(args, "ca", None) is not None and args.conso is None:
-        parser.error("--ca demande --conso : la facture se calcule sur la consommation annuelle")
+    for option in ("ca", "va"):
+        if getattr(args, option, None) is not None and args.conso is None and not args.courbe:
+            parser.error(
+                f"--{option} demande --conso ou --courbe : le calcul part de la consommation"
+                " annuelle"
+            )
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(asctime)s %(levelname)-8s %(name)s %(message)s",
@@ -370,7 +427,13 @@ def main(argv: list[str] | None = None) -> int:
             try:
                 territoire = geocode(args.adresse, settings=settings)
                 diagnostic = lire_diagnostic(
-                    territoire, conso_mwh=args.conso, ca_eur=args.ca, settings=settings
+                    territoire,
+                    puissance_mw=args.puissance,
+                    conso_mwh=args.conso,
+                    ca_eur=args.ca,
+                    va_eur=args.va,
+                    courbe=_lire_courbe(args.courbe),
+                    settings=settings,
                 )
             except AdresseIntrouvableError as error:
                 logger.error(
@@ -379,20 +442,31 @@ def main(argv: list[str] | None = None) -> int:
                     error,
                 )
                 return 1
+            except AdresseAmbigueError as error:
+                logger.error("adresse ambigue : %s. Preciser le code postal ou la commune.", error)
+                return 1
             except GeocodingError as error:
                 logger.error("geocodage impossible : %s", error)
                 return 1
             except DiagnosticIndisponibleError as error:
                 logger.error("donnees indisponibles : %s", error)
                 return 1
+            except (CourbeError, OSError) as error:
+                logger.error("courbe de charge illisible : %s", error)
+                return 1
+            diagnostic = avec_risques_locaux(diagnostic, settings=settings)
             if hasattr(sys.stdout, "reconfigure"):
                 sys.stdout.reconfigure(encoding="utf-8")
             if args.format == "json":
-                print(json.dumps(essentiel_en_dict(diagnostic), ensure_ascii=False, indent=2))
+                print(
+                    json.dumps(
+                        essentiel_en_dict(diagnostic), ensure_ascii=False, indent=2, default=str
+                    )
+                )
             else:
                 print(formater_essentiel(diagnostic))
             if not args.sans_carte:
-                _placer_sur_carte(territoire, settings)
+                _placer_sur_carte(diagnostic, settings)
         case "diagnose":
             try:
                 territoire = geocode(args.adresse, settings=settings)
@@ -401,9 +475,11 @@ def main(argv: list[str] | None = None) -> int:
                     puissance_mw=args.puissance,
                     conso_mwh=args.conso,
                     ca_eur=args.ca,
+                    va_eur=args.va,
+                    courbe=_lire_courbe(args.courbe),
                     settings=settings,
                 )
-            except (GeocodingError, DiagnosticIndisponibleError) as error:
+            except (GeocodingError, DiagnosticIndisponibleError, CourbeError, OSError) as error:
                 logger.error("diagnostic impossible : %s", error)
                 return 1
             if not args.sans_risques:
@@ -427,10 +503,11 @@ def main(argv: list[str] | None = None) -> int:
                     settings=settings,
                     output=Path(args.output) if args.output else None,
                     graphiques=not args.sans_graphiques,
+                    commande=_commande(argv),
                 )
                 logger.info("rapport ecrit %s", path)
             if not args.sans_carte:
-                _placer_sur_carte(territoire, settings)
+                _placer_sur_carte(diagnostic, settings)
         case "compare":
             from ingestion import comparaison
 
@@ -479,13 +556,22 @@ def main(argv: list[str] | None = None) -> int:
             # Import paresseux : la carte n'est utile qu'à cette commande
             import webbrowser
 
-            from reporting.carte import generer_carte, mettre_a_jour_carte
+            from reporting.carte import generer_carte, mettre_a_jour_carte, verdict_carte
 
             try:
                 territoire = geocode(args.adresse, settings=settings) if args.adresse else None
+                verdict_adresse = None
+                if territoire is not None:
+                    diagnostic = lire_diagnostic(
+                        territoire, puissance_mw=args.puissance, settings=settings
+                    )
+                    verdict_adresse = verdict_carte(
+                        avec_risques_locaux(diagnostic, settings=settings)
+                    )
                 path = (generer_carte if args.reconstruire else mettre_a_jour_carte)(
                     settings=settings,
                     territoire=territoire,
+                    verdict_adresse=verdict_adresse,
                     output=Path(args.output) if args.output else None,
                 )
             except (GeocodingError, DiagnosticIndisponibleError) as error:
@@ -494,6 +580,23 @@ def main(argv: list[str] | None = None) -> int:
             logger.info("carte ecrite %s", path)
             if not args.sans_ouvrir:
                 webbrowser.open(path.resolve().as_uri())
+        case "europe":
+            from ingestion.europe import formater_europe, lire_pays, localiser
+
+            try:
+                localisation = localiser(args.adresse, settings=settings)
+                pays, france = lire_pays(
+                    localisation.code_pays, conso_mwh=args.conso, settings=settings
+                )
+            except AdresseIntrouvableError as error:
+                logger.error("adresse introuvable : %s. Preciser la ville et le pays.", error)
+                return 1
+            except GeocodingError as error:
+                logger.error("europe impossible : %s", error)
+                return 1
+            if hasattr(sys.stdout, "reconfigure"):
+                sys.stdout.reconfigure(encoding="utf-8")
+            print(formater_europe(localisation, pays, france))
         case "tempo":
             if args.month:
                 days = tempo_days_for_month(args.month)

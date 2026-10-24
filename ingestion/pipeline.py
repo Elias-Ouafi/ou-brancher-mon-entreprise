@@ -8,12 +8,19 @@ from pathlib import Path
 from ingestion.config import Settings, get_settings
 from ingestion.datasets import (
     BRONZE_SPECS,
+    EDF_SEI_PRODUCTION,
+    EMBER_INTENSITE_CARBONE,
     EUROSTAT_PRIX_ENTREPRISES,
+    EUROSTAT_PRIX_UE,
+    GASPAR_RISQUES,
     NATIONAL_TR,
     RTE_TEMPO,
     DatasetSpec,
 )
+from ingestion.extract_edf_sei import telecharger_production
+from ingestion.extract_ember import telecharger_intensites
 from ingestion.extract_eurostat import EurostatClient
+from ingestion.extract_gaspar import telecharger_export
 from ingestion.extract_odre import ExtractionWindow, OdreClient
 from ingestion.extract_rte import DayRange, RteTempoClient
 from ingestion.transform import PARIS_TZ, records_to_table, write_parquet
@@ -92,6 +99,7 @@ def month_bounds(year: int, month: int) -> tuple[datetime, datetime]:
     return start.astimezone(UTC), end.astimezone(UTC)
 
 
+# Fenêtre des N derniers mois, en heure de Paris comme la publication
 def last_months_window(months: int, *, now: datetime | None = None) -> ExtractionWindow:
     reference = (now or datetime.now(UTC)).astimezone(PARIS_TZ)
     shifted = (reference.year * 12 + reference.month - 1) - months
@@ -103,6 +111,7 @@ def _expected_slots(start: datetime, end: datetime) -> int:
     return int((end - start) / timedelta(minutes=SLOT_MINUTES))
 
 
+# Extraction d'un jeu ODRÉ vers un Parquet bronze, sans le charger
 def extract_to_parquet(
     *,
     settings: Settings | None = None,
@@ -157,6 +166,7 @@ def tempo_days_for_month(month: date) -> DayRange:
     return DayRange(days.start - timedelta(days=1), days.end)
 
 
+# Extraction du calendrier Tempo vers un Parquet bronze
 def extract_tempo_to_parquet(
     days: DayRange,
     *,
@@ -191,6 +201,7 @@ def extract_tempo_to_parquet(
     )
 
 
+# Crée les tables bronze vides : dbt construit même si une source n'a jamais été chargée
 def ensure_bronze_tables(*, settings: Settings | None = None) -> None:
     settings = settings or get_settings()
     for spec in BRONZE_SPECS:
@@ -201,6 +212,7 @@ def ensure_bronze_tables(*, settings: Settings | None = None) -> None:
             loader.close()
 
 
+# Charge un Parquet dans DuckDB par MERGE : relancer ne crée pas de doublon
 def load_to_warehouse(
     parquet_path: Path | str,
     *,
@@ -216,6 +228,7 @@ def load_to_warehouse(
         loader.close()
 
 
+# Retard de la donnée la plus récente : alerte avant de répondre sur du périmé
 def check_freshness(
     *,
     settings: Settings | None = None,
@@ -265,6 +278,7 @@ def check_freshness(
     return report
 
 
+# Dernier mois révolu complet ou non : pas de bilan mensuel sur un mois troué
 def check_month_coverage(
     *,
     settings: Settings | None = None,
@@ -313,6 +327,7 @@ def _target_month(latest: datetime, reference: datetime) -> tuple[int, int]:
     return year, month
 
 
+# Extraction puis chargement d'un jeu ODRÉ
 def run_ingestion(
     *,
     settings: Settings | None = None,
@@ -329,6 +344,7 @@ def run_ingestion(
     return outcome, result
 
 
+# Extraction puis chargement du calendrier Tempo
 def run_tempo_ingestion(
     days: DayRange,
     *,
@@ -342,6 +358,7 @@ def run_tempo_ingestion(
     return outcome, result
 
 
+# Prix Eurostat de la France par tranche : la base du prix moyen et des scénarios
 def run_prix_entreprises_ingestion(
     *,
     settings: Settings | None = None,
@@ -372,6 +389,71 @@ def run_prix_entreprises_ingestion(
     return outcome, result
 
 
+# Un fichier téléchargé d'un bloc devient un lot du bronze, rechargé par clé sans doublon
+def _charger_fichier(
+    lignes: list[dict], spec: DatasetSpec, settings: Settings, run_id: str, now: datetime | None
+) -> tuple[ExtractionOutcome, LoadResult]:
+    ingested_at = (now or datetime.now(UTC)).astimezone(UTC)
+    table = records_to_table(lignes, spec=spec, ingested_at=ingested_at)
+    path = write_parquet(
+        table,
+        dataset_dir=spec.bronze_dataset_dir(settings.bronze_dir),
+        run_id=run_id,
+        ingest_date=ingested_at.date(),
+    )
+    outcome = ExtractionOutcome(
+        dataset_id=spec.dataset_id,
+        parquet_path=str(path),
+        rows=table.num_rows,
+        api_calls=1,
+        window_start=None,
+        window_end=None,
+    )
+    return outcome, load_to_warehouse(path, settings=settings, spec=spec)
+
+
+# Risques recensés par commune : repli du diagnostic quand l'API Géorisques ne répond pas
+def run_gaspar_ingestion(
+    *,
+    settings: Settings | None = None,
+    run_id: str = "manual",
+    now: datetime | None = None,
+) -> tuple[ExtractionOutcome, LoadResult]:
+    settings = settings or get_settings()
+    lignes = telecharger_export(settings=settings)
+    return _charger_fichier(lignes, GASPAR_RISQUES, settings, run_id, now)
+
+
+# Prix et carbone des 27 pays de l'UE : le repère d'une implantation hors de France
+def run_europe_ingestion(
+    *,
+    settings: Settings | None = None,
+    run_id: str = "manual",
+    now: datetime | None = None,
+) -> list[tuple[ExtractionOutcome, LoadResult]]:
+    settings = settings or get_settings()
+    with EurostatClient(settings) as client:
+        prix = client.fetch_prix_entreprises_ue()
+    carbone = telecharger_intensites(settings=settings)
+    return [
+        _charger_fichier(prix, EUROSTAT_PRIX_UE, settings, run_id, now),
+        _charger_fichier(carbone, EMBER_INTENSITE_CARBONE, settings, run_id, now),
+    ]
+
+
+# Production horaire des îles : dit à quelles heures l'électricité y est la moins carbonée
+def run_edf_sei_ingestion(
+    *,
+    settings: Settings | None = None,
+    run_id: str = "manual",
+    now: datetime | None = None,
+) -> tuple[ExtractionOutcome, LoadResult]:
+    settings = settings or get_settings()
+    lignes = telecharger_production(settings=settings)
+    return _charger_fichier(lignes, EDF_SEI_PRODUCTION, settings, run_id, now)
+
+
+# Relit les derniers mois consolidés, qui corrigent les données temps réel
 def run_consolidation(
     *,
     settings: Settings | None = None,

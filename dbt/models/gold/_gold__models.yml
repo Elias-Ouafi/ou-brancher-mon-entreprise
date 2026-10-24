@@ -332,3 +332,66 @@ models:
     columns:
       - name: code_departement
         data_tests: [unique, not_null]
+  - name: fct_carbone_horaire_zni
+    description: >
+      Intensité carbone estimée pour chaque heure locale de la journée, en Corse et outre-mer
+      (hors Mayotte), sur la dernière année complète publiée par EDF SEI. Profil de la part
+      thermique calé sur le facteur ADEME annuel ; les imports de la Corse comptent comme non
+      thermiques. Ordre de grandeur pour placer une consommation flexible, pas un facteur
+      opposable.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [code_insee_region, heure_locale]
+    columns:
+      - name: code_insee_region
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['94', '01', '02', '03', '04']
+      - name: heure_locale
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+      - name: intensite_estimee_g_co2e_kwh
+        data_tests: [not_null]
+  - name: fct_pays_ue
+    description: >
+      Prix moyen de l'électricité des entreprises (deux derniers semestres Eurostat, hors TVA
+      et taxes récupérables) et intensité carbone en cycle de vie (dernière année Ember) de
+      chaque pays de l'UE, par tranche de consommation. Moyennes nationales : repère pour une
+      implantation hors de France, pas un prix à l'adresse.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [code_eurostat, code_tranche]
+    columns:
+      - name: iso2
+        data_tests: [not_null]
+      - name: code_tranche
+        data_tests: [not_null]
+  - name: fct_risques_commune
+    description: >
+      Risques recensés dans chaque commune selon le dernier export GASPAR. Repli du
+      diagnostic quand l'API Géorisques ne répond pas : maille commune, jamais l'adresse.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [code_insee_commune, num_risque]
+    columns:
+      - name: code_insee_commune
+        data_tests:
+          - not_null
+          - exact_length:
+              arguments:
+                length: 5
+      - name: famille
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [naturel, technologique]
+      - name: millesime
+        data_tests: [not_null]

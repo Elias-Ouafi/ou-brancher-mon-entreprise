@@ -9,6 +9,7 @@ from pytest_httpx import HTTPXMock
 from ingestion.config import Settings
 from ingestion.geocode import (
     REGIONS,
+    AdresseAmbigueError,
     AdresseIntrouvableError,
     BanClient,
     GeocodingError,
@@ -90,7 +91,7 @@ def test_address_resolves_to_its_territory(httpx_mock: HTTPXMock, ban_settings: 
     assert territoire.est_precis
 
 
-def test_query_is_sent_with_the_address_and_a_single_result(
+def test_query_is_sent_with_the_address_and_a_few_candidates(
     httpx_mock: HTTPXMock, ban_settings: Settings
 ) -> None:
     httpx_mock.add_response(json=feature())
@@ -100,7 +101,7 @@ def test_query_is_sent_with_the_address_and_a_single_result(
     request = httpx_mock.get_requests()[0]
     assert str(request.url).startswith(f"{BAN_URL}/search")
     assert request.url.params["q"] == "12 rue de la Paix, Lyon"
-    assert request.url.params["limit"] == "1"
+    assert request.url.params["limit"] == "5"
     assert request.url.params["index"] == "address"
 
 
@@ -146,19 +147,90 @@ def test_empty_address_never_calls_the_api(httpx_mock: HTTPXMock, ban_settings: 
     assert httpx_mock.get_requests() == []
 
 
-# Un score faible reste exploitable : c'est à l'appelant de juger
-def test_low_score_is_warned_but_returned(
-    httpx_mock: HTTPXMock,
-    ban_settings: Settings,
-    caplog: pytest.LogCaptureFixture,
+def candidats(*features: dict[str, Any]) -> dict[str, Any]:
+    return {"type": "FeatureCollection", "features": [f["features"][0] for f in features]}
+
+
+# « 1 place de la mairie, Fort-de-France » : la BAN propose Dracy-le-Fort à 0,59
+def test_low_score_is_refused(httpx_mock: HTTPXMock, ban_settings: Settings) -> None:
+    httpx_mock.add_response(json=feature(score=0.59, label="1 Place de la Mairie 71640 Dracy"))
+
+    with pytest.raises(AdresseIntrouvableError, match=r"trop approximatif.*0.59"):
+        geocode("1 place de la mairie, Fort-de-France", settings=ban_settings)
+
+
+def test_same_street_in_several_communes_is_ambiguous(
+    httpx_mock: HTTPXMock, ban_settings: Settings
 ) -> None:
-    httpx_mock.add_response(json=feature(score=0.21))
+    httpx_mock.add_response(
+        json=candidats(
+            feature(score=0.98, citycode="33063", postcode="33000", label="3 A. 33000 Bordeaux"),
+            feature(score=0.975, citycode="02691", postcode="02100", label="3 A. 02100 Quentin"),
+            feature(score=0.90, citycode="59512", postcode="59100", label="3 A. 59100 Roubaix"),
+        )
+    )
 
-    with caplog.at_level("WARNING"):
-        territoire = geocode("rue qui n'existe pas", settings=ban_settings)
+    with pytest.raises(AdresseAmbigueError) as erreur:
+        geocode("3 allée des peupliers", settings=ban_settings)
 
-    assert territoire.score == 0.21
-    assert "score de geocodage faible" in caplog.text
+    assert erreur.value.candidats == ["3 A. 33000 Bordeaux", "3 A. 02100 Quentin"]
+
+
+def test_homonym_communes_are_told_apart_by_department(
+    httpx_mock: HTTPXMock, ban_settings: Settings
+) -> None:
+    commune = {"score": 0.958, "type": "municipality", "label": "Saint-Denis", "postcode": None}
+    httpx_mock.add_response(
+        json=candidats(
+            feature(**commune, citycode="97411", context="974, La Réunion"),
+            feature(**commune, citycode="93066", context="93, Seine-Saint-Denis, Île-de-France"),
+        )
+    )
+
+    with pytest.raises(AdresseAmbigueError) as erreur:
+        geocode("Saint-Denis", settings=ban_settings)
+
+    assert erreur.value.candidats == ["Saint-Denis (974)", "Saint-Denis (93)"]
+
+
+# Rue Garibaldi traverse trois arrondissements de Lyon : une seule commune
+def test_arrondissements_of_one_city_are_not_ambiguous(
+    httpx_mock: HTTPXMock, ban_settings: Settings
+) -> None:
+    httpx_mock.add_response(
+        json=candidats(
+            feature(score=0.762, type="street", citycode="69383"),
+            feature(score=0.761, type="street", citycode="69387"),
+        )
+    )
+
+    assert geocode("10 rue Garibaldi, Lyon", settings=ban_settings).code_insee_commune == "69383"
+
+
+def test_a_clear_winner_is_kept(httpx_mock: HTTPXMock, ban_settings: Settings) -> None:
+    httpx_mock.add_response(
+        json=candidats(
+            feature(score=0.964, type="municipality", citycode="69123", label="Lyon"),
+            feature(score=0.856, type="street", citycode="56002", label="Lyonne 56190 Ambon"),
+        )
+    )
+
+    assert geocode("Lyon", settings=ban_settings).code_insee_commune == "69123"
+
+
+def test_postcode_in_the_request_must_match(httpx_mock: HTTPXMock, ban_settings: Settings) -> None:
+    httpx_mock.add_response(
+        json=candidats(
+            feature(score=0.97, citycode="33063", postcode="33000"),
+            feature(score=0.80, citycode="91161", postcode="91380", label="Chilly-Mazarin"),
+        )
+    )
+    territoire = geocode("3 allée des peupliers 91380", settings=ban_settings)
+    assert territoire.code_insee_commune == "91161"
+
+    httpx_mock.add_response(json=feature(postcode="33000"))
+    with pytest.raises(AdresseIntrouvableError, match="code postal 75001"):
+        geocode("3 allée des peupliers 75001", settings=ban_settings)
 
 
 def test_commune_level_match_is_flagged(

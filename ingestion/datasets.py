@@ -12,6 +12,7 @@ INGESTED_AT_COLUMN = "ingested_at_utc"
 SOURCE_COLUMN = "source_dataset"
 
 
+# Nature d'une colonne : fixe son type et sa normalisation à l'ingestion
 class ColumnKind(StrEnum):
     # Instant daté, normalisé en UTC à l'extraction
     INSTANT = "instant"
@@ -49,6 +50,7 @@ def instant(name: str) -> Column:
     return Column(name, ColumnKind.INSTANT)
 
 
+# Raccourcis de déclaration des colonnes d'un jeu de données
 def period(name: str) -> Column:
     return Column(name, ColumnKind.PERIOD)
 
@@ -319,6 +321,52 @@ RTE_TEMPO = DatasetSpec(
     description="Calendrier Tempo RTE (couleur de chaque jour)",
 )
 
+# Risques recensés par commune (DDRM), extraits de l'export GASPAR ; `millesime` : date du fichier
+GASPAR_RISQUES = DatasetSpec(
+    dataset_id="gaspar-risques",
+    keys=(code("code_commune"), code("num_risque")),
+    attributes=(label("libelle_commune"), label("libelle_risque"), period("millesime")),
+    measures=(),
+    description="Risques majeurs recensés par commune (GASPAR, DDRM)",
+)
+
+EDF_SEI_PRODUCTION = DatasetSpec(
+    dataset_id="edf-sei-production",
+    keys=(code("territoire"), instant("date_heure")),
+    attributes=(label("statut"),),
+    measures=measures(
+        "production_totale_mw",
+        "thermique_mw",
+        "bagasse_charbon_mw",
+        "hydraulique_mw",
+        "micro_hydraulique_mw",
+        "photovoltaique_mw",
+        "eolien_mw",
+        "bioenergies_mw",
+        "geothermie_mw",
+        "importations_mw",
+        "stockage_mw",
+        "cout_moyen_de_production_eur_mwh",
+    ),
+    description="Production horaire par filière en Corse et outre-mer (EDF SEI)",
+)
+
+EUROSTAT_PRIX_UE = DatasetSpec(
+    dataset_id="eurostat-nrg-pc-205-ue",
+    keys=(code("pays"), period("semestre"), code("tranche"), code("fiscalite")),
+    attributes=(label("libelle_tranche"), label("statut")),
+    measures=measures("prix_eur_kwh"),
+    description="Prix de l'électricité des entreprises, pays de l'UE, par tranche (Eurostat)",
+)
+
+EMBER_INTENSITE_CARBONE = DatasetSpec(
+    dataset_id="ember-intensite-carbone",
+    keys=(code("iso3"), period("annee")),
+    attributes=(label("pays_ember"),),
+    measures=measures("production_twh", "intensite_g_co2e_kwh"),
+    description="Intensité carbone annuelle de la production électrique, pays de l'UE (Ember)",
+)
+
 EUROSTAT_PRIX_ENTREPRISES = DatasetSpec(
     dataset_id="eurostat-nrg-pc-205",
     keys=(period("semestre"), code("tranche"), code("fiscalite")),
@@ -357,10 +405,15 @@ BRONZE_SPECS: tuple[DatasetSpec, ...] = (
     NATIONAL_CONS_DEF,
     RTE_TEMPO,
     EUROSTAT_PRIX_ENTREPRISES,
+    GASPAR_RISQUES,
+    EDF_SEI_PRODUCTION,
+    EUROSTAT_PRIX_UE,
+    EMBER_INTENSITE_CARBONE,
     *TERRITORIAL_SPECS,
 )
 
 
+# Jeu de données par identifiant, avec la liste des jeux connus en cas d'erreur
 def get_spec(dataset_id: str) -> DatasetSpec:
     try:
         return SPECS[dataset_id]

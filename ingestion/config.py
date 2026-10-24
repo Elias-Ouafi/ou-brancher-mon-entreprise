@@ -11,6 +11,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 IDENTIFIANTS_LOCAUX = Path(__file__).resolve().parents[1] / "identifiants.local.txt"
 
 
+# Réglages de l'outil, surchargeables par variables ECO2MIX_* ou identifiants.local.txt
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="ECO2MIX_",
@@ -32,6 +33,24 @@ class Settings(BaseSettings):
 
     # API Géorisques (risques naturels et technologiques à l'adresse), sans clé
     georisques_base_url: str = "https://www.georisques.gouv.fr/api/v1/"
+
+    # Export GASPAR (risques recensés par commune), servi hors de l'API : repli quand elle se tait
+    gaspar_url: str = "https://files.georisques.fr/GASPAR/gaspar.zip"
+
+    # Intensité carbone annuelle des pays européens (Ember, CC BY 4.0)
+    ember_url: str = (
+        "https://files.ember-energy.org/public-downloads/generation/outputs/"
+        "release_generation_yearly_lower.csv"
+    )
+
+    # Pays d'une adresse hors de France (Nominatim, OpenStreetMap, ODbL) : une requête par appel
+    nominatim_url: str = "https://nominatim.openstreetmap.org/search"
+
+    # Production horaire par filière en Corse et outre-mer (EDF SEI, licence ouverte)
+    edf_sei_url: str = (
+        "https://opendata.edf.fr/data-fair/api/v1/datasets/"
+        "courbe-de-charge-de-la-production-delectricite-par-filiere/raw"
+    )
 
     # API de diffusion d'Eurostat (JSON-stat), sans compte ni clé
     eurostat_base_url: str = "https://ec.europa.eu/eurostat/api/dissemination"

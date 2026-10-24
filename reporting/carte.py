@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
 from statistics import fmean
@@ -12,7 +13,15 @@ import duckdb
 import httpx
 
 from ingestion.config import Settings, get_settings
-from ingestion.diagnostic import DiagnosticIndisponibleError
+from ingestion.diagnostic import (
+    DISTANCE_ZONE_UTILE_KM,
+    Diagnostic,
+    DiagnosticIndisponibleError,
+    ligne_chargements,
+    lire_chargements,
+    phrase_verdict,
+    verdict,
+)
 from ingestion.extract_geo import (
     CONTOURS_JEU,
     TERRES_JEU,
@@ -60,16 +69,12 @@ left join (
 order by d.code_departement
 """
 _SITES_SQL = """
-select commune as n, code_departement as c, latitude as la, longitude as lo
+select id_site as id, commune as n, code_departement as c, latitude as la, longitude as lo
 from gold.sites_cles_en_main order by id_site
 """
 _ZONES_SQL = """
 select zone as n, priorite as pr, annee_capacite as a, latitude as la, longitude as lo
 from gold.zones_raccordement_rte order by priorite, zone
-"""
-_PRIX_SQL = """
-select code_tranche as t, libelle_tranche as l, round(prix_reference_eur_kwh, 4) as p
-from gold.fct_prix_entreprise_tranche order by conso_min_mwh
 """
 
 
@@ -79,21 +84,23 @@ def _lignes(connection: duckdb.DuckDBPyConnection, sql: str) -> list[dict[str, A
     return [dict(zip(colonnes, ligne, strict=True)) for ligne in relation.fetchall()]
 
 
-def lire_donnees_gold(database: Path) -> dict[str, list[dict[str, Any]]]:
+# Indicateurs gold affichés sur la carte, lus en une connexion
+def lire_donnees_gold(database: Path) -> dict[str, Any]:
     if not Path(database).exists():
         raise DiagnosticIndisponibleError(
             f"warehouse introuvable : {database} (lancer refresh avant la carte)"
         )
     with duckdb.connect(str(database), read_only=True) as connection:
-        return {
+        gold: dict[str, Any] = {
             cle: _lignes(connection, sql)
             for cle, sql in (
                 ("departements", _DEPARTEMENTS_SQL),
                 ("sites", _SITES_SQL),
                 ("zones", _ZONES_SQL),
-                ("prix", _PRIX_SQL),
             )
         }
+        gold["donnees"] = ligne_chargements(lire_chargements(connection))
+        return gold
 
 
 # Case terrestre d'un point : encart de son département d'outre-mer, sinon métropole
@@ -106,12 +113,14 @@ def _reperer(
     return [indice, case.c, case.r] if case else None
 
 
+# Données embarquées dans la page : cases, relief, indicateurs et adresse
 def construire_donnees(
     grilles: list[Grille],
     altitudes: dict[tuple[float, float], float | None],
-    gold: dict[str, list[dict[str, Any]]],
+    gold: dict[str, Any],
     *,
     territoire: Territoire | None = None,
+    verdict_adresse: dict[str, Any] | None = None,
     genere_le: datetime | None = None,
 ) -> dict[str, Any]:
     cases: list[list[Any]] = []
@@ -151,20 +160,41 @@ def construire_donnees(
         "cases": cases,
         "departements": gold["departements"],
         "sites": [
-            {"n": s["n"], "c": s["c"], "case": _reperer(grilles, s["lo"], s["la"], s["c"])}
+            {
+                "id": s["id"],
+                "n": s["n"],
+                "c": s["c"],
+                "case": _reperer(grilles, s["lo"], s["la"], s["c"]),
+            }
             for s in gold["sites"]
         ],
         "zones": [
             {"n": z["n"], "pr": z["pr"], "a": z["a"], "case": _reperer(grilles, z["lo"], z["la"])}
             for z in gold["zones"]
         ],
-        "prix": gold["prix"],
-        "adresse": construire_adresse(grilles, territoire),
+        "donnees": gold.get("donnees"),
+        "adresse": construire_adresse(grilles, territoire, verdict_adresse),
     }
 
 
+# Verdict « brancher ici ? » de l'adresse, avec la zone RTE et le site à relier sur la carte
+def verdict_carte(diagnostic: Diagnostic) -> dict[str, Any]:
+    criteres = verdict(diagnostic)
+    zone = diagnostic.zone_rte
+    site = diagnostic.site_cle_en_main
+    return {
+        "phrase": phrase_verdict(criteres),
+        "criteres": [asdict(c) for c in criteres],
+        "zone": zone.zone if zone and zone.distance_km <= DISTANCE_ZONE_UTILE_KM else None,
+        "site": site.id_site if site else None,
+    }
+
+
+# Épingle de l'adresse et son verdict, rattachées à leur case
 def construire_adresse(
-    grilles: list[Grille], territoire: Territoire | None
+    grilles: list[Grille],
+    territoire: Territoire | None,
+    verdict_adresse: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     if territoire is None:
         return None
@@ -174,6 +204,7 @@ def construire_adresse(
         "case": _reperer(
             grilles, territoire.longitude, territoire.latitude, territoire.code_departement
         ),
+        "verdict": verdict_adresse,
     }
 
 
@@ -194,6 +225,7 @@ def rendre_html(donnees: dict[str, Any]) -> str:
     return placer_adresse(html, adresse)
 
 
+# Remplace seulement l'épingle : la carte ne se refait pas pour une nouvelle adresse
 def placer_adresse(html: str, adresse: dict[str, Any] | None) -> str:
     html, remplacements = _LIGNE_ADRESSE.subn(lambda m: f"{m.group(1)}{_json(adresse)};", html)
     if remplacements != 1:
@@ -226,10 +258,12 @@ def _chemin(settings: Settings, output: Path | None) -> Path:
     return output or Path(settings.reports_dir) / "carte.html"
 
 
+# Écrit la carte complète, page HTML autonome qui s'ouvre sans réseau
 def generer_carte(
     *,
     settings: Settings | None = None,
     territoire: Territoire | None = None,
+    verdict_adresse: dict[str, Any] | None = None,
     output: Path | None = None,
 ) -> Path:
     settings = settings or get_settings()
@@ -242,7 +276,11 @@ def generer_carte(
     except (httpx.HTTPError, RetryableStatusError) as error:
         logger.warning("relief incomplet, cases manquantes a plat : %s", error)
         altitudes = lire_altitudes(settings)
-    html = rendre_html(construire_donnees(grilles, altitudes, gold, territoire=territoire))
+    html = rendre_html(
+        construire_donnees(
+            grilles, altitudes, gold, territoire=territoire, verdict_adresse=verdict_adresse
+        )
+    )
     path = _chemin(settings, output)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(html, encoding="utf-8")
@@ -264,12 +302,15 @@ def mettre_a_jour_carte(
     *,
     settings: Settings | None = None,
     territoire: Territoire | None = None,
+    verdict_adresse: dict[str, Any] | None = None,
     output: Path | None = None,
 ) -> Path:
     settings = settings or get_settings()
     path = _chemin(settings, output)
     if not _carte_a_jour(path, settings):
-        return generer_carte(settings=settings, territoire=territoire, output=path)
-    adresse = construire_adresse(_grilles(settings), territoire)
+        return generer_carte(
+            settings=settings, territoire=territoire, verdict_adresse=verdict_adresse, output=path
+        )
+    adresse = construire_adresse(_grilles(settings), territoire, verdict_adresse)
     path.write_text(placer_adresse(path.read_text(encoding="utf-8"), adresse), encoding="utf-8")
     return path

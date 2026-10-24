@@ -14,11 +14,15 @@ from pytest_httpx import HTTPXMock
 from ingestion import cli
 from ingestion.config import Settings
 from ingestion.diagnostic import (
+    Critere,
     DiagnosticIndisponibleError,
     code_commune_parent,
     code_departement,
     formater_diagnostic,
+    formater_essentiel,
     lire_diagnostic,
+    phrase_verdict,
+    verdict,
 )
 from ingestion.geocode import Territoire
 from ingestion.georisques import lire_rapport
@@ -229,6 +233,67 @@ def test_connection_threshold_follows_project_power(
     assert seuil.domaine_tension == domaine
 
 
+# Sans puissance, on ne sait pas qui raccorde : le verdict le dit au lieu de deviner
+def test_verdict_without_power_leaves_connection_unknown(medallion_db: Path) -> None:
+    criteres = verdict(lire_diagnostic(territoire("69123"), database=medallion_db))
+    assert [c.nom for c in criteres] == ["Raccordement", "Risques", "Carbone", "Facture", "Foncier"]
+    assert criteres[0].etat == "inconnu"
+    assert "non évalué : raccordement" in phrase_verdict(criteres)
+
+
+# Petit projet chez Enedis : rien à signaler ; gros projet chez RTE : étude indispensable
+@pytest.mark.parametrize(("puissance", "etat"), [(0.25, "ok"), (100, "attention")])
+def test_verdict_connection_follows_who_connects(
+    medallion_db: Path, puissance: float, etat: str
+) -> None:
+    raccordement = verdict(
+        lire_diagnostic(territoire("69123"), puissance_mw=puissance, database=medallion_db)
+    )[0]
+    assert raccordement.etat == etat
+    assert ("RTE" in raccordement.detail) is (etat == "attention")
+
+
+# Réseau insulaire au-dessus du seuil européen : le carbone passe à vérifier
+def test_verdict_flags_carbon_heavy_grid(medallion_db: Path) -> None:
+    def carbone(commune: str) -> str:
+        criteres = verdict(lire_diagnostic(territoire(commune), database=medallion_db))
+        return next(c.etat for c in criteres if c.nom == "Carbone")
+
+    assert carbone("2A004") == "attention"
+    assert carbone("69123") == "ok"
+
+
+# Le profil horaire redonne le facteur annuel en moyenne et place la pointe du soir
+def test_hourly_carbon_profile_for_islands(medallion_db: Path, warehouse: Any) -> None:
+    corse = lire_diagnostic(territoire("2A004"), database=medallion_db).carbone
+    assert corse is not None and corse.annee_profil == 2025
+    assert [h for h, _ in corse.profil_horaire] == list(range(24))
+    moyenne = warehouse.execute(
+        "select sum(intensite_estimee_g_co2e_kwh * production_mwh) / sum(production_mwh)"
+        " from gold.fct_carbone_horaire_zni"
+    ).fetchone()[0]
+    assert moyenne == pytest.approx(corse.intensite_acv_g_co2e_kwh)
+    pointe = max(corse.profil_horaire, key=lambda heure: heure[1])[0]
+    assert 18 <= pointe <= 22
+    texte = formater_essentiel(lire_diagnostic(territoire("2A004"), database=medallion_db))
+    assert "Heure par heure : le moins carboné vers" in texte
+
+    lyon = lire_diagnostic(territoire("69123"), database=medallion_db).carbone
+    assert lyon is not None and lyon.profil_horaire == ()
+
+
+def test_verdict_sentence_lists_what_to_check() -> None:
+    criteres = [
+        Critere("Raccordement", "attention", "HTB, RTE", ""),
+        Critere("Risques", "inconnu", "non consultés", ""),
+        Critere("Carbone", "ok", "40 gCO₂e/kWh", ""),
+    ]
+    assert phrase_verdict(criteres) == (
+        "À vérifier avant de s'engager : raccordement (non évalué : risques)."
+    )
+    assert phrase_verdict(criteres[2:]) == "Rien de bloquant dans les données publiques."
+
+
 def test_every_figure_comes_with_its_limit(medallion_db: Path, warehouse: Any) -> None:
     rapport = json.loads(
         (FIXTURES_DIR / "georisques_rapport_lyon.json").read_text(encoding="utf-8")
@@ -239,6 +304,7 @@ def test_every_figure_comes_with_its_limit(medallion_db: Path, warehouse: Any) -
             puissance_mw=50,
             conso_mwh=350,
             ca_eur=5_000_000,
+            va_eur=1_000_000,
             database=medallion_db,
         ),
         risques=lire_rapport(rapport),
@@ -247,7 +313,7 @@ def test_every_figure_comes_with_its_limit(medallion_db: Path, warehouse: Any) -
     limites = [
         limite for (limite,) in _rows(warehouse, "SELECT limite FROM gold.limites_methodologiques")
     ]
-    assert len(limites) == 14
+    assert len(limites) == 15
     for limite in limites:
         assert limite in texte
 
@@ -371,6 +437,8 @@ def test_essentiel_command_answers_price_and_carbon(
     assert reponse["carbone"]["est_decarbone"] is False
     assert reponse["carbone"]["systeme_electrique"] == "Corse"
     assert set(reponse["limites"]) == {"prix_entreprise", "carbone_territoire"}
+    assert "carbone" in reponse["verdict"]["phrase"]
+    assert len(reponse["verdict"]["criteres"]) == 5
 
 
 def test_essentiel_text_fits_in_a_few_lines(medallion_db: Path) -> None:
@@ -379,7 +447,8 @@ def test_essentiel_text_fits_in_a_few_lines(medallion_db: Path) -> None:
     texte = formater_essentiel(
         lire_diagnostic(territoire("69123", "Lyon"), conso_mwh=350, database=medallion_db)
     )
-    assert len(texte.splitlines()) <= 7
+    assert len(texte.splitlines()) <= 8
+    assert texte.splitlines()[-1].startswith("Brancher ici ? Rien de bloquant")
     assert "Prix moyen : 0,1925 €/kWh HTVA, soit environ 67 400 € par an pour 350 MWh" in texte
     assert "Électricité décarbonée : oui (France continentale), 51,9 gCO₂e/kWh" in texte
 
@@ -399,6 +468,31 @@ def test_essentiel_puts_the_bill_against_turnover(medallion_db: Path) -> None:
     reponse = essentiel_en_dict(diagnostic)
     assert reponse["part_chiffre_affaires"]["part"] == part.part
     assert "part_chiffre_affaires" in reponse["limites"]
+
+
+# 350 MWh à 26,58 € = 9 303 € d'accise : 0,93 % d'une VA de 1 M€ (premier palier), 0,47 % de
+# 2 M€ (sous le seuil), 7 % de 133 000 € (dernier palier)
+@pytest.mark.parametrize(
+    ("va", "palier"), [(1_000_000, 0.005), (2_000_000, None), (133_000, 0.0675)]
+)
+def test_value_added_share_places_the_fiscal_threshold(
+    medallion_db: Path, va: float, palier: float | None
+) -> None:
+    from ingestion.diagnostic import essentiel_en_dict, formater_essentiel
+
+    diagnostic = lire_diagnostic(
+        territoire("69123", "Lyon"), conso_mwh=350, va_eur=va, database=medallion_db
+    )
+    part = diagnostic.part_valeur_ajoutee
+    assert part is not None
+    assert part.electro_intensite == pytest.approx(350 * 26.58 / va)
+    assert part.palier == palier
+    texte = formater_essentiel(diagnostic)
+    assert "Part de la valeur ajoutée : facture" in texte
+    assert ("taux réduit d'accise possible" in texte) is (palier is not None)
+    reponse = essentiel_en_dict(diagnostic)
+    assert reponse["part_valeur_ajoutee"]["palier"] == palier
+    assert "part_valeur_ajoutee" in reponse["limites"]
 
 
 def test_turnover_share_follows_the_three_year_scenarios(medallion_db: Path) -> None:
@@ -458,3 +552,50 @@ def test_essentiel_explains_an_unknown_address(
 
     assert cli.main(["essentiel", "--adresse", "nulle part"]) == 1
     assert "adresse introuvable" in caplog.text
+
+
+def test_data_dates_come_from_the_last_load_of_each_source(medallion_db: Path) -> None:
+    diagnostic = lire_diagnostic(territoire("69123", "Lyon"), database=medallion_db)
+
+    assert set(diagnostic.chargements) >= {"eurostat_nrg_pc_205", "gaspar_risques"}
+    assert set(diagnostic.chargements.values()) == {date(2026, 7, 1)}
+    assert "Données chargées le 01/07/2026" in formater_diagnostic(diagnostic)
+
+
+@pytest.mark.parametrize(
+    ("chargements", "attendu"),
+    [
+        ({}, "Date des données inconnue"),
+        ({"eurostat_nrg_pc_205": date(2026, 10, 23)}, "Données chargées le 23/10/2026."),
+        (
+            {"eurostat_nrg_pc_205": date(2026, 10, 23), "gaspar_risques": date(2026, 10, 24)},
+            "Données chargées du 23/10/2026 au 24/10/2026.",
+        ),
+        (
+            {"eurostat_nrg_pc_205": date(2026, 9, 1), "gaspar_risques": date(2026, 10, 24)},
+            "Données chargées le 24/10/2026, sauf prix Eurostat le 01/09/2026 : plus de 45 jours,"
+            " relancer refresh.",
+        ),
+    ],
+)
+def test_data_date_line_flags_late_sources(chargements: dict, attendu: str) -> None:
+    from ingestion.diagnostic import ligne_chargements
+
+    assert ligne_chargements(chargements, aujourd_hui=date(2026, 10, 24)).startswith(attendu)
+
+
+def test_essentiel_lists_the_candidates_of_an_ambiguous_address(
+    settings: Settings, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    from ingestion.geocode import AdresseAmbigueError
+
+    def ambigue(adresse: str, **_: object) -> None:
+        raise AdresseAmbigueError(adresse, ["3 A. 33000 Bordeaux", "3 A. 02100 Saint-Quentin"])
+
+    monkeypatch.setattr(cli, "get_settings", lambda: settings)
+    monkeypatch.setattr(cli, "geocode", ambigue)
+
+    assert cli.main(["essentiel", "--adresse", "3 allée des peupliers"]) == 1
+    assert "adresse ambigue" in caplog.text
+    assert "33000 Bordeaux ; 3 A. 02100 Saint-Quentin" in caplog.text
+    assert "Preciser le code postal ou la commune" in caplog.text

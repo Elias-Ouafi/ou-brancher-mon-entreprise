@@ -2,22 +2,29 @@ from __future__ import annotations
 
 import logging
 import re
-from dataclasses import asdict, dataclass, replace
-from datetime import date
+from dataclasses import asdict, dataclass, field, replace
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import duckdb
 
 from ingestion.config import Settings, get_settings
-from ingestion.geocode import Territoire
-from ingestion.georisques import Exposition, GeorisquesError, Risque, RisquesSite, lire_risques
+from ingestion.courbe import BilanCourbe, Courbe, bilan_courbe
+from ingestion.geocode import Territoire, code_commune_parent
+from ingestion.georisques import (
+    Exposition,
+    GeorisquesError,
+    Risque,
+    RisquesSite,
+    lire_risques,
+    risques_gaspar,
+)
 
 logger = logging.getLogger(__name__)
 
 # Arrondissements municipaux (3 premiers caractères du code) -> code de la commune
-ARRONDISSEMENTS: dict[str, str] = {"751": "75056", "693": "69123", "132": "13055"}
-
 _DIAGNOSTIC_SQL = """
 select
     territoire.*,
@@ -131,6 +138,13 @@ from gold.fct_carbone_territoire
 where code_insee_region = $region
 """
 
+_CARBONE_HORAIRE_SQL = """
+select annee, heure_locale, intensite_estimee_g_co2e_kwh
+from gold.fct_carbone_horaire_zni
+where code_insee_region = $region
+order by heure_locale
+"""
+
 _PRIX_SQL = """
 select *
 from gold.fct_prix_entreprise_tranche
@@ -152,10 +166,63 @@ class DiagnosticIndisponibleError(RuntimeError):
     pass
 
 
-def code_commune_parent(code_insee: str) -> str:
-    if len(code_insee) == 5 and code_insee[:3] in ARRONDISSEMENTS:
-        return ARRONDISSEMENTS[code_insee[:3]]
-    return code_insee
+# Pas `transform.PARIS_TZ` : l'importer chargerait PySpark à chaque diagnostic
+PARIS_TZ = ZoneInfo("Europe/Paris")
+
+# Sources rechargées par `refresh`, dans l'ordre d'affichage ; les seeds n'y figurent pas
+SOURCES_CHARGEES: dict[str, str] = {
+    "eurostat_nrg_pc_205": "prix Eurostat",
+    "national_tr": "éCO2mix temps réel",
+    "national_cons_def": "éCO2mix consolidé",
+    "consommation_annuelle_par_iris": "industrie ODRÉ",
+    "equilibre_regional_mensuel_prod_conso_brute": "équilibre régional ODRÉ",
+    "contraintes_region": "contraintes RTE",
+    "postes_electriques_rte": "postes RTE",
+    "gaspar_risques": "risques GASPAR",
+}
+# Au-delà, une source n'a pas été rechargée depuis plus d'un cycle mensuel de `refresh`
+AGE_MAX_JOURS = 45
+# Une source rechargée à part (un `refresh` partiel) n'est signalée qu'au-delà
+ECART_TOLERE_JOURS = 7
+
+
+# Dernier chargement de chaque source présente dans le bronze, en heure de Paris
+def lire_chargements(connection: duckdb.DuckDBPyConnection) -> dict[str, date]:
+    presentes = {
+        nom
+        for (nom,) in connection.execute(
+            "select table_name from information_schema.tables where table_schema = 'bronze'"
+        ).fetchall()
+    }
+    chargements = {}
+    for table in SOURCES_CHARGEES:
+        if table not in presentes:
+            continue
+        (dernier,) = connection.execute(
+            f"select max(ingested_at_utc) from bronze.{table}"
+        ).fetchone()
+        if isinstance(dernier, datetime):
+            chargements[table] = dernier.astimezone(PARIS_TZ).date()
+    return chargements
+
+
+# Date des données sous chaque réponse, avec une alerte si une source a pris du retard
+def ligne_chargements(chargements: dict[str, date], *, aujourd_hui: date | None = None) -> str:
+    if not chargements:
+        return "Date des données inconnue (warehouse sans source chargée)."
+    dernier, premier = max(chargements.values()), min(chargements.values())
+    en_retard = {t: j for t, j in chargements.items() if (dernier - j).days > ECART_TOLERE_JOURS}
+    if premier == dernier:
+        ligne = f"Données chargées le {dernier:%d/%m/%Y}"
+    elif not en_retard:
+        ligne = f"Données chargées du {premier:%d/%m/%Y} au {dernier:%d/%m/%Y}"
+    else:
+        retard = ", ".join(f"{SOURCES_CHARGEES[t]} le {j:%d/%m/%Y}" for t, j in en_retard.items())
+        ligne = f"Données chargées le {dernier:%d/%m/%Y}, sauf {retard}"
+    age = ((aujourd_hui or date.today()) - premier).days
+    if age > AGE_MAX_JOURS:
+        ligne += f" : plus de {AGE_MAX_JOURS} jours, relancer refresh"
+    return ligne + "."
 
 
 # Code département d'un code commune : 3 caractères outre-mer, 2 ailleurs
@@ -182,6 +249,9 @@ class Carbone:
     intensite_directe_rte_g_co2_kwh: float | None
     rte_jour_debut: date | None
     rte_jour_fin: date | None
+    # Corse et outre-mer : (heure locale, gCO₂e/kWh estimés) sur l'année EDF SEI `annee_profil`
+    profil_horaire: tuple[tuple[int, float], ...] = ()
+    annee_profil: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -268,6 +338,24 @@ class PrixEntreprise:
         return self.conso_mwh is None
 
 
+# Accise sur l'électricité au tarif normal (PME et haute puissance) depuis le 1er février 2026,
+# base légale du calcul d'électro-intensité (BOFiP BOI-RES-EAT-000240)
+ACCISE_NORMALE_EUR_MWH = 26.58
+# Paliers d'électro-intensité ouvrant les taux réduits d'accise (CIBS L312-65 et L312-71)
+PALIERS_ELECTRO_INTENSITE = (0.0675, 0.03375, 0.005)
+
+
+@dataclass(frozen=True, slots=True)
+class PartValeurAjoutee:
+    valeur_ajoutee_eur: float
+    facture_eur: float
+    part_facture: float
+    # Accise au tarif normal rapportée à la valeur ajoutée : le critère légal
+    electro_intensite: float
+    # Plus haut palier atteint ; `None` sous 0,5 %
+    palier: float | None
+
+
 @dataclass(frozen=True, slots=True)
 class PartChiffreAffaires:
     chiffre_affaires_eur: float
@@ -335,10 +423,32 @@ class Diagnostic:
     risques: RisquesSite | None = None
     risques_erreur: str | None = None
     ca_eur: float | None = None
+    va_eur: float | None = None
+    # Dernier chargement de chaque source par `refresh` (voir `SOURCES_CHARGEES`)
+    chargements: dict[str, date] = field(default_factory=dict)
+    # Courbe de charge Enedis fournie par `--courbe`
+    courbe: BilanCourbe | None = None
 
     @property
     def commune_a_des_sites(self) -> bool:
         return bool(self.nb_sites_commune)
+
+    # Poids de l'électricité dans la valeur ajoutée : ouvre ou non les taux réduits d'accise
+    @property
+    def part_valeur_ajoutee(self) -> PartValeurAjoutee | None:
+        p = self.prix
+        va = self.va_eur
+        if va is None or p is None or p.conso_mwh is None:
+            return None
+        intensite = p.conso_mwh * ACCISE_NORMALE_EUR_MWH / va
+        facture = p.facture_eur(p.prix_reference_eur_kwh)
+        return PartValeurAjoutee(
+            valeur_ajoutee_eur=va,
+            facture_eur=facture,
+            part_facture=facture / va,
+            electro_intensite=intensite,
+            palier=next((s for s in PALIERS_ELECTRO_INTENSITE if intensite >= s), None),
+        )
 
     @property
     def part_chiffre_affaires(self) -> PartChiffreAffaires | None:
@@ -357,16 +467,23 @@ class Diagnostic:
         )
 
 
+# Rassemble tout ce que le warehouse sait d'une adresse : la base de chaque réponse
 def lire_diagnostic(
     territoire: Territoire,
     *,
     puissance_mw: float | None = None,
     conso_mwh: float | None = None,
     ca_eur: float | None = None,
+    va_eur: float | None = None,
+    courbe: Courbe | None = None,
     settings: Settings | None = None,
     database: Path | None = None,
 ) -> Diagnostic:
     path = database or (settings or get_settings()).duckdb_path
+    # La courbe réelle donne la consommation et la pointe quand elles ne sont pas déclarées
+    if courbe is not None:
+        conso_mwh = round(courbe.conso_annuelle_mwh, 1) if conso_mwh is None else conso_mwh
+        puissance_mw = courbe.puissance_max_kw / 1000 if puissance_mw is None else puissance_mw
     if not Path(path).exists():
         raise DiagnosticIndisponibleError(
             f"warehouse introuvable : {path} (charger les donnees puis lancer dbt build)"
@@ -407,11 +524,28 @@ def lire_diagnostic(
                 if ligne is None
                 else _une_ligne(connection, _CARBONE_SQL, {"region": ligne["code_insee_region"]})
             )
+            if carbone is not None:
+                heures = connection.execute(
+                    _CARBONE_HORAIRE_SQL, {"region": ligne["code_insee_region"]}
+                ).fetchall()
+                carbone["profil_horaire"] = tuple((h, i) for _, h, i in heures)
+                carbone["annee_profil"] = heures[0][0] if heures else None
+            bilan = (
+                None
+                if courbe is None or ligne is None
+                else bilan_courbe(
+                    courbe,
+                    connection,
+                    profil_horaire=carbone["profil_horaire"] if carbone else (),
+                    code_region=ligne["code_insee_region"],
+                )
+            )
             limites = dict(
                 connection.execute(
                     "select indicateur, limite from gold.limites_methodologiques"
                 ).fetchall()
             )
+            chargements = lire_chargements(connection)
     except duckdb.CatalogException as error:
         raise DiagnosticIndisponibleError(
             f"couche gold incomplete, lancer dbt build ({error})"
@@ -427,6 +561,7 @@ def lire_diagnostic(
         seuil=seuil,
         conso_mwh=conso_mwh,
         ca_eur=ca_eur,
+        va_eur=va_eur,
         prix=prix,
         contraintes=contraintes,
         zone_rte=zone_rte,
@@ -435,6 +570,8 @@ def lire_diagnostic(
         cout=None if cout_ligne is None else CoutProfil(**cout_ligne),
         carbone=None if carbone is None else Carbone(**carbone),
         limites=limites,
+        chargements=chargements,
+        courbe=bilan,
         **ligne,
     )
 
@@ -483,6 +620,7 @@ class Section:
     elements: list[tuple[str, str]]
 
 
+# Commune, département, région et zone : situe l'adresse avant tout chiffre
 def entete(diagnostic: Diagnostic) -> list[str]:
     d = diagnostic
     t = d.territoire
@@ -492,6 +630,7 @@ def entete(diagnostic: Diagnostic) -> list[str]:
     ]
     if not t.est_precis:
         lignes.append(f"Attention : adresse résolue à la maille « {t.precision} » seulement.")
+    lignes.append(ligne_chargements(d.chargements))
     return lignes
 
 
@@ -502,6 +641,7 @@ A_SAVOIR = (
 )
 
 
+# Les deux réponses attendues d'abord : prix moyen et verdict carbone
 def essentiel(diagnostic: Diagnostic) -> Section:
     d = diagnostic
     section = Section("L'essentiel : prix et carbone à cette adresse", [])
@@ -517,10 +657,53 @@ def essentiel(diagnostic: Diagnostic) -> Section:
             f" seuil de {_nombre_court(c.seuil_decarbone_g_co2e_kwh)} gCO₂e/kWh"
         )
     section.elements.append(("texte", f"Électricité décarbonée : {carbone}"))
+    if d.carbone is not None and (heures := heures_carbone(d.carbone)):
+        section.elements.append(("texte", f"Heure par heure : {heures}"))
     if (part := d.part_chiffre_affaires) is not None:
         section.elements.append(("texte", f"Part du chiffre d'affaires : {_part_ca(part)}"))
+    if (va := d.part_valeur_ajoutee) is not None:
+        section.elements.append(("texte", f"Part de la valeur ajoutée : {_part_va(va)}"))
+    if d.courbe is not None:
+        section.elements.append(("texte", f"Votre courbe de charge : {ligne_courbe(d.courbe)}"))
     section.elements.append(("texte", f"À savoir : {A_SAVOIR}"))
     return section
+
+
+# La consommation réelle du site : volume, pointe, heures creuses, coût et carbone
+def ligne_courbe(b: BilanCourbe) -> str:
+    phrase = (
+        f"du {b.debut:%d/%m/%Y} au {b.fin:%d/%m/%Y}, {_nombre(b.conso_annuelle_mwh, 1)} MWh"
+        f" par an, pointe de {_nombre(b.puissance_max_kw)} kW,"
+        f" {_nombre(b.part_hc * 100)} % en heures creuses (22 h – 6 h)"
+    )
+    if b.cout_htva_eur_an is not None:
+        cout = _euros_arrondis(b.cout_htva_eur_an)
+        phrase += f" ; environ {cout} HTVA par an au tarif HP/HC actuel"
+    if b.intensite_courbe_g_kwh is not None and b.intensite_reseau_g_kwh:
+        ecart = b.intensite_courbe_g_kwh / b.intensite_reseau_g_kwh - 1
+        sens = "de plus" if ecart >= 0 else "de moins"
+        phrase += (
+            f" ; cette consommation émet {_nombre(abs(ecart) * 100)} % {sens} que le réseau aux"
+            f" mêmes heures ({b.source_carbone})"
+        )
+    return phrase
+
+
+# Électro-intensité au sens fiscal : décide d'un taux d'accise réduit, donc de la facture
+def _part_va(va: PartValeurAjoutee) -> str:
+    phrase = (
+        f"facture {_pourcentage(va.part_facture)} ; électro-intensité"
+        f" {_pourcentage(va.electro_intensite)} (accise au tarif normal de"
+        f" {_nombre(ACCISE_NORMALE_EUR_MWH, 2)} €/MWh rapportée à la valeur ajoutée)"
+    )
+    if va.palier is None:
+        return phrase + ", sous le palier de 0,5 % : pas de taux réduit d'accise à ce titre"
+    palier = _nombre(va.palier * 100, 3).rstrip("0")
+    return phrase + (
+        f", au-dessus du palier de {palier} % : taux réduit d'accise possible"
+        f" (de 0,5 à 12 €/MWh au lieu de {_nombre(ACCISE_NORMALE_EUR_MWH, 2)}) si l'activité"
+        " principale relève de l'industrie, de l'énergie ou de l'eau (sections B à E de la NACE)"
+    )
 
 
 def _part_ca(part: PartChiffreAffaires) -> str:
@@ -563,12 +746,169 @@ def _prix_court(d: Diagnostic) -> str:
     )
 
 
+# Réponse courte au terminal, terminée par le verdict « brancher ici ? »
 def formater_essentiel(diagnostic: Diagnostic) -> str:
     lignes = [diagnostic.territoire.adresse, *entete(diagnostic), ""]
     lignes += [contenu for _, contenu in essentiel(diagnostic).elements]
+    lignes.append(f"Brancher ici ? {phrase_verdict(verdict(diagnostic))}")
     return "\n".join(lignes)
 
 
+# Au-delà, une zone prioritaire RTE n'aide plus un projet à cette adresse
+DISTANCE_ZONE_UTILE_KM = 50
+
+
+@dataclass(frozen=True, slots=True)
+class Critere:
+    nom: str
+    # `ok`, `attention` (à vérifier avant de s'engager), `inconnu` (donnée manquante), `info`
+    etat: str
+    valeur: str
+    detail: str
+
+
+# Les cinq questions d'un chef d'entreprise avant de signer un bail ou un terrain
+def verdict(diagnostic: Diagnostic) -> list[Critere]:
+    return [
+        _critere_raccordement(diagnostic),
+        _critere_risques(diagnostic),
+        _critere_carbone(diagnostic),
+        _critere_facture(diagnostic),
+        _critere_foncier(diagnostic),
+    ]
+
+
+# Qui raccorde (Enedis ou RTE) et, pour RTE, si une zone prioritaire promet de la capacité
+def _critere_raccordement(d: Diagnostic) -> Critere:
+    if d.seuil is None:
+        return Critere(
+            "Raccordement",
+            "inconnu",
+            "puissance non précisée",
+            "Préciser --puissance (en MW) pour savoir qui raccorde : Enedis ou RTE.",
+        )
+    valeur = f"{d.seuil.domaine_tension}, {d.seuil.gestionnaire}"
+    if "RTE" not in d.seuil.gestionnaire:
+        return Critere(
+            "Raccordement",
+            "ok",
+            valeur,
+            "Raccordement courant au réseau de distribution ; délai et coût fixés par l'étude"
+            " du gestionnaire.",
+        )
+    zone = d.zone_rte
+    if zone is not None and zone.distance_km <= DISTANCE_ZONE_UTILE_KM:
+        annee = f" dès {zone.annee_capacite}" if zone.annee_capacite else ""
+        detail = (
+            f"Zone prioritaire RTE {zone.zone} ({zone.priorite}) {_distance(zone.distance_km)} :"
+            f" capacité supplémentaire prévue{annee}. Étude RTE indispensable."
+        )
+    else:
+        detail = (
+            f"Aucune zone prioritaire RTE à moins de {DISTANCE_ZONE_UTILE_KM} km : délais de 2 à"
+            " 7 ans annoncés, étude RTE indispensable."
+        )
+    return Critere("Raccordement", "attention", valeur, detail)
+
+
+# Risques naturels et technologiques : à l'adresse si Géorisques répond, sinon dans la commune
+def _critere_risques(d: Diagnostic) -> Critere:
+    r = d.risques
+    if r is None:
+        return Critere("Risques", "inconnu", "non consultés", "À vérifier sur georisques.gouv.fr.")
+    if r.maille == "adresse":
+        exposes = r.selon(Exposition.EXPOSE)
+        if not exposes:
+            return Critere("Risques", "ok", "aucun recensé à l'adresse", "Rapport Géorisques.")
+        return Critere(
+            "Risques",
+            "attention",
+            f"{len(exposes)} à l'adresse",
+            _liste_risques(exposes) + ".",
+        )
+    recenses = r.selon(Exposition.INCONNU)
+    if not recenses:
+        return Critere("Risques", "ok", "aucun recensé dans la commune", "Export GASPAR.")
+    return Critere(
+        "Risques",
+        "attention",
+        f"{len(recenses)} dans la commune",
+        _liste_risques(recenses) + " ; non évalués à l'adresse.",
+    )
+
+
+# Électricité du réseau sous le seuil de la taxonomie européenne, ou non
+def _critere_carbone(d: Diagnostic) -> Critere:
+    c = d.carbone
+    if c is None:
+        return Critere("Carbone", "inconnu", "non disponible", "Lancer refresh.")
+    detail = (
+        f"{c.systeme_electrique} : {'sous le' if c.est_decarbone else 'au-dessus du'} seuil de"
+        f" {_nombre_court(c.seuil_decarbone_g_co2e_kwh)} gCO₂e/kWh de la taxonomie européenne."
+    )
+    if heures := heures_carbone(c):
+        detail += f" {heures[0].upper()}{heures[1:]}."
+    return Critere(
+        "Carbone",
+        "ok" if c.est_decarbone else "attention",
+        f"{_nombre_court(c.intensite_acv_g_co2e_kwh)} gCO₂e/kWh",
+        detail,
+    )
+
+
+# Ordre de grandeur de la facture, identique partout en France (péréquation)
+def _critere_facture(d: Diagnostic) -> Critere:
+    p = d.prix
+    if p is None:
+        return Critere("Facture", "inconnu", "prix non disponible", _prix_court(d))
+    prix = f"{_nombre(p.prix_reference_eur_kwh, 4)} €/kWh HTVA ({p.code_tranche})"
+    if p.conso_mwh is None:
+        return Critere(
+            "Facture", "info", prix, "Préciser --conso (MWh par an) pour la facture annuelle."
+        )
+    detail = f"{prix}, identique partout en France."
+    if (part := d.part_chiffre_affaires) is not None:
+        detail += f" {_pourcentage(part.part)} du chiffre d'affaires."
+    if (va := d.part_valeur_ajoutee) is not None and va.palier is not None:
+        detail += (
+            f" Électro-intensité {_pourcentage(va.electro_intensite)} : taux réduit d'accise"
+            " possible pour une activité industrielle."
+        )
+    return Critere(
+        "Facture",
+        "info",
+        f"{_euros_arrondis(p.facture_eur(p.prix_reference_eur_kwh))} HTVA par an",
+        detail,
+    )
+
+
+# Terrain déjà viabilisé et pré-autorisé le plus proche (sites clés en main France 2030)
+def _critere_foncier(d: Diagnostic) -> Critere:
+    site = d.site_cle_en_main
+    if site is None:
+        return Critere("Foncier", "info", "aucun site clé en main", "Dans ce territoire.")
+    return Critere(
+        "Foncier",
+        "info",
+        f"site clé en main {_distance(site.distance_km)}",
+        f"{site.commune}, annoncé prêt en {site.maturite_site}.",
+    )
+
+
+# Phrase de synthèse : ce qu'il reste à vérifier avant de s'engager
+def phrase_verdict(criteres: list[Critere]) -> str:
+    a_verifier = [c.nom.lower() for c in criteres if c.etat == "attention"]
+    inconnus = [c.nom.lower() for c in criteres if c.etat == "inconnu"]
+    if a_verifier:
+        phrase = "À vérifier avant de s'engager : " + ", ".join(a_verifier)
+    else:
+        phrase = "Rien de bloquant dans les données publiques"
+    if inconnus:
+        phrase += " (non évalué : " + ", ".join(inconnus) + ")"
+    return phrase + "."
+
+
+# Réponse courte pour un autre programme (`--format json`)
 def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
     d = diagnostic
     t = d.territoire
@@ -583,6 +923,7 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
         "region": d.region,
         "est_zni": d.est_zni,
         "precision_geocodage": t.precision,
+        "donnees_chargees": {table: jour.isoformat() for table, jour in d.chargements.items()},
         "prix": None
         if p is None
         else {
@@ -600,6 +941,9 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
         "part_chiffre_affaires": None
         if d.part_chiffre_affaires is None
         else asdict(d.part_chiffre_affaires),
+        "part_valeur_ajoutee": None
+        if d.part_valeur_ajoutee is None
+        else asdict(d.part_valeur_ajoutee),
         "carbone": None
         if c is None
         else {
@@ -608,17 +952,34 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
             "seuil_decarbone_g_co2e_kwh": c.seuil_decarbone_g_co2e_kwh,
             "systeme_electrique": c.systeme_electrique,
             "source": f"ADEME Base Carbone, {c.validite_source}",
+            "profil_horaire": [
+                {"heure_locale": h, "intensite_estimee_g_co2e_kwh": round(i, 1)}
+                for h, i in c.profil_horaire
+            ],
+            "annee_profil": c.annee_profil,
         },
         "a_savoir": A_SAVOIR,
+        "courbe": None if d.courbe is None else asdict(d.courbe),
+        "verdict": {
+            "phrase": phrase_verdict(criteres := verdict(d)),
+            "criteres": [asdict(c) for c in criteres],
+        },
         "limites": {
             code: d.limites[code]
-            for code in ("prix_entreprise", "carbone_territoire", "part_chiffre_affaires")
+            for code in (
+                "prix_entreprise",
+                "carbone_territoire",
+                "part_chiffre_affaires",
+                "part_valeur_ajoutee",
+            )
             if code in d.limites
             and (code != "part_chiffre_affaires" or d.part_chiffre_affaires is not None)
+            and (code != "part_valeur_ajoutee" or d.part_valeur_ajoutee is not None)
         },
     }
 
 
+# Diagnostic complet, section par section, chaque chiffre suivi de sa limite
 def sections(diagnostic: Diagnostic) -> list[Section]:
     d = diagnostic
     resultat: list[Section] = []
@@ -868,11 +1229,18 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
         if (part := d.part_chiffre_affaires) is not None:
             texte(s, f"Facture rapportée au chiffre d'affaires : {_part_ca(part)}")
             limite(s, "part_chiffre_affaires")
+        if (va := d.part_valeur_ajoutee) is not None:
+            texte(s, f"Part de la valeur ajoutée : {_part_va(va)}")
+            limite(s, "part_valeur_ajoutee")
 
     s = bloc("5. Carbone du réseau et coût horaire d'un profil type")
     if d.carbone is not None:
         texte(s, _verdict_carbone(d.carbone))
+        if heures := heures_carbone(d.carbone):
+            texte(s, f"Heure par heure : {heures}")
         limite(s, "carbone_territoire")
+    if d.courbe is not None:
+        texte(s, f"Votre courbe de charge : {ligne_courbe(d.courbe)}")
     if d.cout is None:
         texte(s, "Aucun mois complet et tarifé : charger les données nationales récentes.")
     else:
@@ -905,17 +1273,19 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
     if d.risques_erreur is not None:
         texte(
             s,
-            "Géorisques n'a pas répondu, même après plusieurs tentatives : risques non évalués."
-            " À consulter sur georisques.gouv.fr avant tout engagement.",
+            "Géorisques n'a pas répondu, même après plusieurs tentatives, et l'export GASPAR"
+            " n'est pas chargé (lancer refresh) : risques non évalués. À consulter sur"
+            " georisques.gouv.fr avant tout engagement.",
         )
     elif d.risques is None:
         texte(s, "Non consulté (option --sans-risques).")
     elif d.risques.maille == "commune":
         r = d.risques
+        source = f"l'export GASPAR du {r.millesime:%d/%m/%Y}" if r.millesime else "l'API Géorisques"
         texte(
             s,
-            "Rapport à l'adresse indisponible (Géorisques n'a pas répondu) : repli sur les"
-            " risques recensés dans la commune, sans évaluation à l'adresse.",
+            "Rapport à l'adresse indisponible (Géorisques n'a pas répondu) : risques recensés"
+            f" dans la commune d'après {source}, sans évaluation à l'adresse.",
         )
         for famille, nom in (("naturel", "Naturels"), ("technologique", "Technologiques")):
             recenses = r.selon(Exposition.INCONNU, famille)
@@ -956,15 +1326,46 @@ def _liste_risques(risques: list[Risque]) -> str:
     return ", ".join(f"{r.libelle} ({r.niveau})" if r.niveau else r.libelle for r in risques)
 
 
+_GASPAR_SQL = """
+select code_insee_commune, num_risque, libelle_risque, millesime
+from gold.fct_risques_commune
+where code_insee_commune in (select unnest(?))
+order by code_insee_commune, num_risque
+"""
+
+
+# Export GASPAR chargé par `refresh` ; `None` s'il n'a jamais été chargé
+def _gaspar_local(codes_commune: set[str], settings: Settings | None) -> RisquesSite | None:
+    path = (settings or get_settings()).duckdb_path
+    if not Path(path).exists():
+        return None
+    try:
+        with duckdb.connect(str(path), read_only=True) as connection:
+            lignes = connection.execute(_GASPAR_SQL, [sorted(codes_commune)]).fetchall()
+    except duckdb.CatalogException:
+        return None
+    return risques_gaspar(lignes)
+
+
+# Risques de la commune sans appeler Géorisques : assez pour le verdict rapide de `essentiel`
+def avec_risques_locaux(diagnostic: Diagnostic, *, settings: Settings | None = None) -> Diagnostic:
+    if diagnostic.risques is not None:
+        return diagnostic
+    codes = {diagnostic.territoire.code_insee_commune, diagnostic.code_insee_commune}
+    return replace(diagnostic, risques=_gaspar_local(codes, settings))
+
+
 # Ajoute le rapport Géorisques de l'adresse ; ne fait jamais échouer le diagnostic
 def completer_risques(diagnostic: Diagnostic, *, settings: Settings | None = None) -> Diagnostic:
     t = diagnostic.territoire
+    codes_commune = {t.code_insee_commune, diagnostic.code_insee_commune}
     try:
         risques = lire_risques(
             latitude=t.latitude,
             longitude=t.longitude,
-            codes_commune={t.code_insee_commune, diagnostic.code_insee_commune},
+            codes_commune=codes_commune,
             settings=settings,
+            repli=_gaspar_local(codes_commune, settings),
         )
     except GeorisquesError as error:
         logger.warning("risques non evalues : %s", error)
@@ -972,6 +1373,7 @@ def completer_risques(diagnostic: Diagnostic, *, settings: Settings | None = Non
     return replace(diagnostic, risques=risques)
 
 
+# Diagnostic complet au terminal
 def formater_diagnostic(diagnostic: Diagnostic) -> str:
     lignes = [f"DIAGNOSTIC D'IMPLANTATION — {diagnostic.territoire.adresse}"]
     lignes += entete(diagnostic)
@@ -984,6 +1386,7 @@ def formater_diagnostic(diagnostic: Diagnostic) -> str:
     return "\n".join(lignes)
 
 
+# Diagnostic complet pour un autre programme, dates en ISO
 def diagnostic_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
 
     def convertir(valeur: Any) -> Any:
@@ -999,6 +1402,8 @@ def diagnostic_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
     contenu["commune_a_des_sites"] = diagnostic.commune_a_des_sites
     part = diagnostic.part_chiffre_affaires
     contenu["part_chiffre_affaires"] = None if part is None else asdict(part)
+    va = diagnostic.part_valeur_ajoutee
+    contenu["part_valeur_ajoutee"] = None if va is None else asdict(va)
     return convertir(contenu)
 
 
@@ -1006,6 +1411,18 @@ _MOIS = [
     "janvier", "février", "mars", "avril", "mai", "juin",
     "juillet", "août", "septembre", "octobre", "novembre", "décembre",
 ]  # fmt: skip
+
+
+# Hors continent, l'heure de consommation change le carbone : à quelle heure décaler l'activité
+def heures_carbone(c: Carbone) -> str | None:
+    if not c.profil_horaire:
+        return None
+    bas = min(c.profil_horaire, key=lambda heure: heure[1])
+    haut = max(c.profil_horaire, key=lambda heure: heure[1])
+    return (
+        f"le moins carboné vers {bas[0]} h ({_nombre(bas[1])} gCO₂e/kWh), le plus vers"
+        f" {haut[0]} h ({_nombre(haut[1])}), heure locale ; profil EDF SEI {c.annee_profil}"
+    )
 
 
 def _verdict_carbone(c: Carbone) -> str:

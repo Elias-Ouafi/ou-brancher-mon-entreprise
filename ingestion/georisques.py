@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import unicodedata
 from dataclasses import dataclass
+from datetime import date
 from enum import StrEnum
 from typing import Any
 
@@ -51,6 +52,7 @@ class GeorisquesError(ExtractionError):
     pass
 
 
+# Exposition d'une adresse à un risque, telle que Géorisques la qualifie
 class Exposition(StrEnum):
     # Risque existant (ou « concerné ») à l'adresse
     EXPOSE = "expose"
@@ -83,6 +85,7 @@ def exposition(statut: str | None) -> Exposition:
     return Exposition.INCONNU
 
 
+# Niveau d'un risque (« faible », « fort ») tiré du libellé Géorisques
 def niveau(statut: str | None) -> str | None:
     if statut and " - " in statut:
         return statut.split(" - ", 1)[1].strip().lower()
@@ -117,6 +120,8 @@ class RisquesSite:
     risques: list[Risque]
     # `adresse` (rapport Géorisques) ou `commune` (repli : GASPAR et zonage sismique)
     maille: str = "adresse"
+    # Repli sur l'export GASPAR local : date du fichier, l'API n'ayant pas répondu
+    millesime: date | None = None
 
     def selon(self, situation: Exposition, famille: str | None = None) -> list[Risque]:
         return [
@@ -126,6 +131,7 @@ class RisquesSite:
         ]
 
 
+# Rapport Géorisques à l'adresse : la source la plus précise sur les risques
 def lire_rapport(payload: dict[str, Any]) -> RisquesSite:
     risques = []
     for bloc, famille in FAMILLES.items():
@@ -159,6 +165,7 @@ INTENSITES_SISMIQUES = {
 }
 
 
+# Risques de la commune (GASPAR) quand le rapport à l'adresse manque
 def lire_gaspar(payload: dict[str, Any], codes_commune: set[str]) -> list[Risque]:
     communes = payload.get("data")
     if not isinstance(communes, list) or not communes:
@@ -203,6 +210,7 @@ def lire_zonage(payload: dict[str, Any]) -> Risque | None:
     )
 
 
+# Client de l'API Géorisques
 class GeorisquesClient:
     def __init__(
         self,
@@ -279,17 +287,47 @@ class GeorisquesClient:
         return payload
 
 
+# Risques recensés dans la commune d'après l'export GASPAR chargé par `refresh`
+def risques_gaspar(lignes: list[tuple[str, str, str, date]]) -> RisquesSite | None:
+    if not lignes:
+        return None
+    code_insee = lignes[0][0]
+    payload = {
+        "data": [
+            {
+                "code_insee": code_insee,
+                "risques_detail": [
+                    {"num_risque": numero, "libelle_risque_long": libelle}
+                    for _, numero, libelle, _ in lignes
+                ],
+            }
+        ]
+    }
+    return RisquesSite(
+        url=None,
+        risques=lire_gaspar(payload, {code_insee}),
+        maille="commune",
+        millesime=max(ligne[3] for ligne in lignes),
+    )
+
+
+# Risques du site : rapport à l'adresse, sinon export local, sinon API par commune
 def lire_risques(
     *,
     latitude: float,
     longitude: float,
     codes_commune: set[str],
     settings: Settings | None = None,
+    repli: RisquesSite | None = None,
 ) -> RisquesSite:
     with GeorisquesClient(settings) as client:
         try:
             return client.rapport(latitude=latitude, longitude=longitude)
         except GeorisquesError as error:
+            # L'API commune tombe d'ordinaire en même temps : le fichier local passe avant
+            if repli is not None:
+                logger.warning("rapport a l'adresse indisponible, repli sur GASPAR : %s", error)
+                return repli
             logger.warning("rapport a l'adresse indisponible, repli sur la commune : %s", error)
             return client.rapport_commune(
                 latitude=latitude, longitude=longitude, codes_commune=codes_commune

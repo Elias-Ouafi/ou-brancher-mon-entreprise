@@ -191,6 +191,17 @@ seeds:
               arguments:
                 min_value: 0
 
+  - name: dim_pays_ue
+    description: >
+      Les 27 pays de l'UE : code Eurostat (Grèce : EL), ISO 3166 alpha-2 (renvoyé par
+      Nominatim), alpha-3 (Ember) et nom français. Relie les trois sources d'un même pays.
+    columns:
+      - name: code_eurostat
+        data_tests: [unique, not_null]
+      - name: iso2
+        data_tests: [unique, not_null]
+      - name: iso3
+        data_tests: [unique, not_null]
   - name: tranches_eurostat
     description: >
       Tranches de consommation annuelle d'électricité des entreprises, nomenclature

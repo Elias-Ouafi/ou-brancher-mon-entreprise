@@ -72,6 +72,7 @@ def _duckdb_type(arrow_type: pa.DataType) -> str:
     raise TypeError(f"type pyarrow non pris en charge par la DDL DuckDB : {arrow_type}")
 
 
+# Chargement du bronze dans DuckDB, par MERGE sur la clé du jeu
 class DuckDBLoader:
     def __init__(
         self,
@@ -279,6 +280,7 @@ class DuckDBLoader:
         return None if row is None else row[0]
 
 
+# Chargeur du warehouse configuré
 def build_loader(
     settings: Settings | None = None,
     *,

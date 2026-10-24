@@ -430,6 +430,7 @@ def _pied_de_page(titre: str):
     return dessiner
 
 
+# Bilan mensuel en PDF
 def rendre(rapport: RapportMensuel, chemin: Path) -> Path:
     chemin.parent.mkdir(parents=True, exist_ok=True)
     titre = f"Électricité en France — {nom_mois(rapport.mois)}"

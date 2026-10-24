@@ -14,8 +14,12 @@ from ingestion.datasets import (
     CONSO_IRIS,
     CONTRAINTES_OUVRAGES,
     CONTRAINTES_REGIONALES,
+    EDF_SEI_PRODUCTION,
+    EMBER_INTENSITE_CARBONE,
     EQUILIBRE_REGIONAL,
     EUROSTAT_PRIX_ENTREPRISES,
+    EUROSTAT_PRIX_UE,
+    GASPAR_RISQUES,
     NATIONAL_CONS_DEF,
     NATIONAL_TR,
     POSTES_RTE,
@@ -349,6 +353,80 @@ def contraintes_ouvrages() -> list[dict[str, Any]]:
     ]
 
 
+# Lyon et Ajaccio ; une ligne d'un export plus ancien, retirée depuis, et un « Autre risque »
+def gaspar_risques() -> list[dict[str, Any]]:
+    lignes = [
+        ("69123", "Lyon", "11", "Inondation", "2026-10-05"),
+        ("69123", "Lyon", "112", "Par une crue à débordement lent de cours d'eau", "2026-10-05"),
+        ("69123", "Lyon", "24", "Transport de marchandises dangereuses", "2026-10-05"),
+        ("69123", "Lyon", "AUTRE", "Autre risque", "2026-10-05"),
+        ("69123", "Lyon", "13", "Séisme", "2025-01-02"),
+        ("2A004", "Ajaccio", "16", "Feu de forêt", "2026-10-05"),
+    ]
+    return [
+        {
+            "code_commune": commune,
+            "libelle_commune": nom,
+            "num_risque": numero,
+            "libelle_risque": libelle,
+            "millesime": millesime,
+        }
+        for commune, nom, numero, libelle, millesime in lignes
+    ]
+
+
+# Corse, année 2025 complète : thermique triplé de 17 h à 20 h UTC, la pointe du soir
+def edf_sei_production() -> list[dict[str, Any]]:
+    debut = datetime(2025, 1, 1, tzinfo=UTC)
+    lignes = []
+    for n in range(365 * 24):
+        instant = debut + timedelta(hours=n)
+        lignes.append(
+            {
+                "territoire": "Corse",
+                "date_heure": instant.isoformat(),
+                "statut": "Estimé",
+                "production_totale_mw": 200.0,
+                "thermique_mw": 150.0 if 17 <= instant.hour <= 20 else 50.0,
+                "importations_mw": 50.0,
+            }
+        )
+    return lignes
+
+
+# Italie et France, tranche IB : la moyenne des deux derniers semestres vaut 0,26 et 0,20
+def prix_ue() -> list[dict[str, Any]]:
+    series = {"IT": (0.24, 0.25, 0.27), "FR": (0.18, 0.19, 0.21)}
+    return [
+        {
+            "pays": pays,
+            "semestre": semestre,
+            "tranche": "MWH20-499",
+            "fiscalite": "X_VAT",
+            "libelle_tranche": "tranche IB",
+            "statut": None,
+            "prix_eur_kwh": prix,
+        }
+        for pays, valeurs in series.items()
+        for semestre, prix in zip(("2025-S1", "2025-S2", "2026-S1"), valeurs, strict=True)
+    ]
+
+
+# La dernière année compte : France 40 g en 2025 (50 g en 2024), Italie 300 g
+def ember_intensites() -> list[dict[str, Any]]:
+    lignes = [("FRA", "2024", 50.0), ("FRA", "2025", 40.0), ("ITA", "2025", 300.0)]
+    return [
+        {
+            "iso3": iso3,
+            "annee": annee,
+            "pays_ember": iso3,
+            "production_twh": 100.0,
+            "intensite_g_co2e_kwh": intensite,
+        }
+        for iso3, annee, intensite in lignes
+    ]
+
+
 def load_bronze(
     database: Path, tmp_path: Path, spec: DatasetSpec, records: list[dict[str, Any]]
 ) -> None:
@@ -396,6 +474,10 @@ def build_warehouse(tmp_path: Path, *, with_tempo: bool = True) -> Path:
     load_bronze(database, tmp_path, EUROSTAT_PRIX_ENTREPRISES, prix_entreprises())
     load_bronze(database, tmp_path, POSTES_RTE, postes_rte())
     load_bronze(database, tmp_path, CONTRAINTES_OUVRAGES, contraintes_ouvrages())
+    load_bronze(database, tmp_path, GASPAR_RISQUES, gaspar_risques())
+    load_bronze(database, tmp_path, EDF_SEI_PRODUCTION, edf_sei_production())
+    load_bronze(database, tmp_path, EUROSTAT_PRIX_UE, prix_ue())
+    load_bronze(database, tmp_path, EMBER_INTENSITE_CARBONE, ember_intensites())
     ensure_bronze_tables(settings=Settings(_env_file=None, duckdb_path=database))
     dbt_build(database, tmp_path)
     return database
