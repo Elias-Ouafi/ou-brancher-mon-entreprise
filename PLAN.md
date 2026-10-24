@@ -17,6 +17,7 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 | Carbone par système électrique, seuil de 100 gCO₂e/kWh | `fct_carbone_territoire` |
 | Carbone heure par heure en Corse et outre-mer (production EDF SEI, profil calé sur l'ADEME) | `fct_carbone_horaire_zni` |
 | Part de la facture dans le chiffre d'affaires (`--ca`) | `essentiel`, `diagnose` |
+| Courbe de charge Enedis (`--courbe`) : consommation, pointe, heures creuses, coût et carbone réels | `ingestion/courbe.py` |
 | Diagnostic complet : industrie, réseau, zone RTE, site clé en main, risques | `diagnose`, `compare` |
 | Verdict « brancher ici ? » en cinq critères (raccordement, risques, carbone, facture, foncier) | `verdict`, `phrase_verdict` |
 | Carte 3D épurée autour du verdict : vue « Raccorder » par défaut, adresse reliée à la zone RTE utile et au site clé en main ; épinglée par `essentiel` et `diagnose` (seule l'épingle bouge si les données n'ont pas changé) | `carte`, `reporting/carte.py` |
@@ -41,7 +42,6 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 | Priorité | Étape | Bloqué par |
 |---|---|---|
 | 1 | Protéger `main` : CI et PR obligatoires | réglage GitHub, par le propriétaire |
-| 4 | Vraie courbe de charge (`--courbe`, export Enedis) à la place du profil type | — |
 | 5 | Part de la facture dans la valeur ajoutée (`--va`), critère du statut d'électro-intensif | — |
 | 6 | Extension internationale, voir ci-dessous | licences Ember et contours à vérifier |
 | 7 | Calendrier Tempo sur données réelles | compte RTE |
@@ -91,6 +91,7 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 | 24 oct. | Chaque sortie donne la date de chargement de ses sources ; au-delà de 45 jours, elle demande un `refresh` |
 | 24 oct. | Commentaires : une ligne par fonction sur son but et son intérêt métier ; code simple, Python d'abord |
 | 24 oct. | Une étape n'est validée qu'après un test complet : ruff, pytest (dont `dbt build`), essai réel |
+| 24 oct. | `--courbe` : export Enedis lu en Python à la demande, jamais stocké ; horodate = fin du pas ; tient lieu de `--conso` et `--puissance` s'ils manquent ; coût au barème HP/HC en vigueur, seulement jusqu'à 36 kW |
 | 24 oct. | Carbone horaire des îles : profil de la part thermique calé sur le facteur ADEME annuel, plutôt que des facteurs par filière non sourcés ; imports de la Corse comptés non thermiques |
 | 24 oct. | Carte : décor (villes, forêts) et lentilles Terrain et Réseau retirés ; prix et compteurs hors de la barre du haut ; la fiche de l'adresse donne le verdict |
 

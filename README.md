@@ -58,6 +58,15 @@ Prix moyen : 0,1997 €/kWh HTVA, soit environ 69 900 € par an pour 350 MWh (t
 Brancher ici ? À vérifier avant de s'engager : raccordement, risques.
 ```
 
+Avec l'export de votre **courbe de charge** (CSV téléchargé depuis votre espace client
+Enedis), l'outil prend votre vraie consommation : volume annuel, pointe de puissance (donc qui
+raccorde), part en heures creuses, coût au tarif HP/HC actuel et carbone de vos heures de
+consommation. Un exemple est fourni pour essayer :
+
+```powershell
+.\.venv\Scripts\python.exe -m ingestion.cli essentiel --adresse "3 allée des peupliers 91380 Chilly-Mazarin" --courbe docs/exemples/courbe_bureau_septembre.csv
+```
+
 **4. Ouvrir la carte** `data/reports/carte.html` dans un navigateur : l'adresse y est épinglée et
 la fiche « Brancher ici ? » détaille les cinq critères. Une adresse ambiguë (deux communes
 possibles) est refusée avec les candidats : précisez le code postal.
@@ -68,8 +77,8 @@ Toutes s'écrivent `.\.venv\Scripts\python.exe -m ingestion.cli <commande>`.
 
 | Commande | Effet |
 |---|---|
-| `essentiel --adresse "…" [--puissance MW] [--conso MWh] [--ca €] [--format json]` | Réponse courte : prix, carbone et verdict « brancher ici ? » ; `--ca` donne la part de la facture dans le chiffre d'affaires |
-| `diagnose --adresse "…" [--puissance MW] [--conso MWh] [--ca €] [--format pdf\|md\|json]` | Diagnostic complet : industrie locale, réseau, raccordement, prix, carbone, risques |
+| `essentiel --adresse "…" [--puissance MW] [--conso MWh] [--courbe CSV] [--ca €] [--format json]` | Réponse courte : prix, carbone et verdict « brancher ici ? » ; `--courbe` lit l'export Enedis, `--ca` donne la part de la facture dans le chiffre d'affaires |
+| `diagnose --adresse "…" [--puissance MW] [--conso MWh] [--courbe CSV] [--ca €] [--format pdf\|md\|json]` | Diagnostic complet : industrie locale, réseau, raccordement, prix, carbone, risques |
 | `compare --adresse "A" --adresse "B" …` | 2 à 6 adresses côte à côte, sans classement ; `texte`, `md`, `csv`, `json` |
 | `carte [--adresse "…"] [--puissance MW] [--reconstruire]` | Carte 3D hors ligne (`data/reports/carte.html`) |
 | `refresh [--months 180]` | Met à jour toutes les sources, puis `dbt build` |
@@ -126,7 +135,7 @@ flowchart LR
 .\.venv\Scripts\python.exe -m ruff check . ; .\.venv\Scripts\python.exe -m pytest
 ```
 
-369 tests sans réseau, dont un `dbt build` complet sur une base synthétique qui reproduit les
+375 tests sans réseau, dont un `dbt build` complet sur une base synthétique qui reproduit les
 pièges des sources, plus les tests de données dbt. La CI GitHub Actions les joue à chaque PR.
 
 ## Sources et licence

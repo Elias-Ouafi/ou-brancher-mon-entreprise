@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo
 import duckdb
 
 from ingestion.config import Settings, get_settings
+from ingestion.courbe import BilanCourbe, Courbe, bilan_courbe
 from ingestion.geocode import Territoire, code_commune_parent
 from ingestion.georisques import (
     Exposition,
@@ -405,6 +406,8 @@ class Diagnostic:
     ca_eur: float | None = None
     # Dernier chargement de chaque source par `refresh` (voir `SOURCES_CHARGEES`)
     chargements: dict[str, date] = field(default_factory=dict)
+    # Courbe de charge Enedis fournie par `--courbe`
+    courbe: BilanCourbe | None = None
 
     @property
     def commune_a_des_sites(self) -> bool:
@@ -433,10 +436,15 @@ def lire_diagnostic(
     puissance_mw: float | None = None,
     conso_mwh: float | None = None,
     ca_eur: float | None = None,
+    courbe: Courbe | None = None,
     settings: Settings | None = None,
     database: Path | None = None,
 ) -> Diagnostic:
     path = database or (settings or get_settings()).duckdb_path
+    # La courbe réelle donne la consommation et la pointe quand elles ne sont pas déclarées
+    if courbe is not None:
+        conso_mwh = round(courbe.conso_annuelle_mwh, 1) if conso_mwh is None else conso_mwh
+        puissance_mw = courbe.puissance_max_kw / 1000 if puissance_mw is None else puissance_mw
     if not Path(path).exists():
         raise DiagnosticIndisponibleError(
             f"warehouse introuvable : {path} (charger les donnees puis lancer dbt build)"
@@ -483,6 +491,16 @@ def lire_diagnostic(
                 ).fetchall()
                 carbone["profil_horaire"] = tuple((h, i) for _, h, i in heures)
                 carbone["annee_profil"] = heures[0][0] if heures else None
+            bilan = (
+                None
+                if courbe is None or ligne is None
+                else bilan_courbe(
+                    courbe,
+                    connection,
+                    profil_horaire=carbone["profil_horaire"] if carbone else (),
+                    code_region=ligne["code_insee_region"],
+                )
+            )
             limites = dict(
                 connection.execute(
                     "select indicateur, limite from gold.limites_methodologiques"
@@ -513,6 +531,7 @@ def lire_diagnostic(
         carbone=None if carbone is None else Carbone(**carbone),
         limites=limites,
         chargements=chargements,
+        courbe=bilan,
         **ligne,
     )
 
@@ -600,8 +619,30 @@ def essentiel(diagnostic: Diagnostic) -> Section:
         section.elements.append(("texte", f"Heure par heure : {heures}"))
     if (part := d.part_chiffre_affaires) is not None:
         section.elements.append(("texte", f"Part du chiffre d'affaires : {_part_ca(part)}"))
+    if d.courbe is not None:
+        section.elements.append(("texte", f"Votre courbe de charge : {ligne_courbe(d.courbe)}"))
     section.elements.append(("texte", f"À savoir : {A_SAVOIR}"))
     return section
+
+
+# La consommation réelle du site : volume, pointe, heures creuses, coût et carbone
+def ligne_courbe(b: BilanCourbe) -> str:
+    phrase = (
+        f"du {b.debut:%d/%m/%Y} au {b.fin:%d/%m/%Y}, {_nombre(b.conso_annuelle_mwh, 1)} MWh"
+        f" par an, pointe de {_nombre(b.puissance_max_kw)} kW,"
+        f" {_nombre(b.part_hc * 100)} % en heures creuses (22 h – 6 h)"
+    )
+    if b.cout_htva_eur_an is not None:
+        cout = _euros_arrondis(b.cout_htva_eur_an)
+        phrase += f" ; environ {cout} HTVA par an au tarif HP/HC actuel"
+    if b.intensite_courbe_g_kwh is not None and b.intensite_reseau_g_kwh:
+        ecart = b.intensite_courbe_g_kwh / b.intensite_reseau_g_kwh - 1
+        sens = "de plus" if ecart >= 0 else "de moins"
+        phrase += (
+            f" ; cette consommation émet {_nombre(abs(ecart) * 100)} % {sens} que le réseau aux"
+            f" mêmes heures ({b.source_carbone})"
+        )
+    return phrase
 
 
 def _part_ca(part: PartChiffreAffaires) -> str:
@@ -847,6 +888,7 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
             "annee_profil": c.annee_profil,
         },
         "a_savoir": A_SAVOIR,
+        "courbe": None if d.courbe is None else asdict(d.courbe),
         "verdict": {
             "phrase": phrase_verdict(criteres := verdict(d)),
             "criteres": [asdict(c) for c in criteres],
@@ -1116,6 +1158,8 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
         if heures := heures_carbone(d.carbone):
             texte(s, f"Heure par heure : {heures}")
         limite(s, "carbone_territoire")
+    if d.courbe is not None:
+        texte(s, f"Votre courbe de charge : {ligne_courbe(d.courbe)}")
     if d.cout is None:
         texte(s, "Aucun mois complet et tarifé : charger les données nationales récentes.")
     else:
