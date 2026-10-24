@@ -350,6 +350,28 @@ GASPAR_PLANS = DatasetSpec(
     description="Plans de prévention des risques par commune (GASPAR : PPRN, PPRT, PPRM)",
 )
 
+# Puissance en service par commune et filière, installations d'au moins 10 MW (registre ODRÉ)
+SITES_PRODUCTION = DatasetSpec(
+    dataset_id="sites-production",
+    keys=(
+        code("code_commune", vide_si_absent=True),
+        code("commune", vide_si_absent=True),
+        code("filiere"),
+    ),
+    attributes=(label("code_departement"),),
+    measures=measures("puissance_mw", "energie_gwh", "nb_installations"),
+    description="Puissance de production en service par commune et filière (registre ODRÉ)",
+)
+
+# Centre de chaque commune (geo.api.gouv.fr) : position des pôles de production sur la carte
+COMMUNES_CENTRES = DatasetSpec(
+    dataset_id="communes-centres",
+    keys=(code("code_commune"),),
+    attributes=(label("nom"), label("code_departement")),
+    measures=measures("longitude", "latitude"),
+    description="Centre géographique de chaque commune (geo.api.gouv.fr)",
+)
+
 EDF_SEI_PRODUCTION = DatasetSpec(
     dataset_id="edf-sei-production",
     keys=(code("territoire"), instant("date_heure")),
@@ -427,6 +449,8 @@ BRONZE_SPECS: tuple[DatasetSpec, ...] = (
     EUROSTAT_PRIX_ENTREPRISES,
     GASPAR_RISQUES,
     GASPAR_PLANS,
+    SITES_PRODUCTION,
+    COMMUNES_CENTRES,
     EDF_SEI_PRODUCTION,
     EUROSTAT_PRIX_UE,
     EMBER_INTENSITE_CARBONE,

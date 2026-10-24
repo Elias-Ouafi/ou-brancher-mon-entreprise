@@ -92,11 +92,16 @@ après la commande, montre le journal technique. `essentiel` et `diagnose` épin
 adresse sur la carte (`--sans-carte` pour s'en passer). La carte n'est refaite que si le warehouse, les contours ou le gabarit sont plus récents
 qu'elle ; sinon seule l'épingle et son verdict changent.
 
-**La carte** s'ouvre sur la vue « Raccorder » : relief IGN en cases de 24 km, zones prioritaires RTE
-(anneau et bannière avec l'année de capacité), sites clés en main France 2030 (losange doré), et
-l'adresse reliée à la zone RTE utile et au site le plus proche. Deux vues secondaires : pression
-industrielle par département et équilibre production/consommation régional (touches 1 à 3). Un
-clic sur une case affiche la fiche du département.
+**La carte** montre un système électrique à la fois : la métropole avec la Corse, puis chacun des
+cinq départements d'outre-mer, chacun sur sa propre carte. Elle s'ouvre sur celle de l'adresse ;
+les boutons en bas à droite passent d'une carte à l'autre. Vue « Raccorder » par défaut : relief
+IGN en cases de 24 km, zones prioritaires RTE (anneau et bannière avec l'année de capacité), sites
+clés en main France 2030 (losange doré), et l'adresse reliée à la zone RTE utile et au site le plus
+proche. Trois vues secondaires (touches 1 à 4) : pression industrielle par département, pôles de
+production (« Produire » : maquette par filière, taille selon la puissance, au moins 200 MW sur le
+continent et 20 MW en Corse et outre-mer, d'après le registre national des installations) et
+équilibre production/consommation régional. Un clic sur une case affiche la fiche du département,
+le survol d'un pôle sa puissance et sa production.
 
 **Identifiants** (Tempo seulement) : copiez `identifiants.exemple.txt` en `identifiants.local.txt`.
 Ce fichier est ignoré par git et prime sur `.env`.
@@ -105,7 +110,7 @@ Ce fichier est ignoré par git et prime sur `.env`.
 
 ```mermaid
 flowchart LR
-    SRC[("ODRÉ · Eurostat · RTE · GASPAR · EDF SEI · Ember")] -->|"ingestion/ (PySpark)"| B["Bronze : Parquet + DuckDB (MERGE)"]
+    SRC[("ODRÉ · Eurostat · RTE · GASPAR · EDF SEI · Ember · geo.api")] -->|"ingestion/ (PySpark)"| B["Bronze : Parquet + DuckDB (MERGE)"]
     B -->|dbt| S["Silver : nettoyé, codes INSEE"]
     S -->|dbt| G["Gold : prix, carbone, risques, diagnostic"]
     SEEDS[("Seeds : ADEME, tarifs, référentiels, limites")] --> G
@@ -141,7 +146,7 @@ flowchart LR
 .\.venv\Scripts\python.exe -m ruff check . ; .\.venv\Scripts\python.exe -m pytest
 ```
 
-398 tests sans réseau, dont un `dbt build` complet sur une base synthétique qui reproduit les
+402 tests sans réseau, dont un `dbt build` complet sur une base synthétique qui reproduit les
 pièges des sources, plus les tests de données dbt. La CI GitHub Actions les joue à chaque PR.
 
 ## Sources et licence
@@ -155,6 +160,8 @@ pièges des sources, plus les tests de données dbt. La CI GitHub Actions les jo
 [sites clés en main France 2030](https://www.data.gouv.fr/datasets/les-sites-cles-en-main-france-2030) ·
 [EDF SEI](https://opendata.edf.fr/datasets/courbe-de-charge-de-la-production-delectricite-par-filiere) ·
 [Ember](https://ember-energy.org/data/yearly-electricity-data/) (CC BY 4.0) ·
+[registre national des installations de production](https://odre.opendatasoft.com/explore/dataset/registre-national-installation-production-stockage-electricite-agrege/) ·
+[geo.api.gouv.fr](https://geo.api.gouv.fr) ·
 [Nominatim](https://nominatim.openstreetmap.org), données © contributeurs OpenStreetMap (ODbL) ·
 SDDR 2025 de RTE · barèmes de la CRE.
 

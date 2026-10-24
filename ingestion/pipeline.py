@@ -8,6 +8,7 @@ from pathlib import Path
 from ingestion.config import Settings, get_settings
 from ingestion.datasets import (
     BRONZE_SPECS,
+    COMMUNES_CENTRES,
     EDF_SEI_PRODUCTION,
     EMBER_INTENSITE_CARBONE,
     EUROSTAT_PRIX_ENTREPRISES,
@@ -16,6 +17,7 @@ from ingestion.datasets import (
     GASPAR_RISQUES,
     NATIONAL_TR,
     RTE_TEMPO,
+    SITES_PRODUCTION,
     DatasetSpec,
 )
 from ingestion.extract_edf_sei import telecharger_production
@@ -23,6 +25,7 @@ from ingestion.extract_ember import telecharger_intensites
 from ingestion.extract_eurostat import EurostatClient
 from ingestion.extract_gaspar import lire_export, lire_plans, telecharger_archive
 from ingestion.extract_odre import ExtractionWindow, OdreClient
+from ingestion.extract_production import telecharger_centres, telecharger_sites
 from ingestion.extract_rte import DayRange, RteTempoClient
 from ingestion.transform import PARIS_TZ, records_to_table, write_parquet
 from ingestion.warehouse import LoadResult, build_loader
@@ -441,6 +444,22 @@ def run_europe_ingestion(
         _charger_fichier(prix, EUROSTAT_PRIX_UE, settings, run_id, now),
         _charger_fichier(carbone, EMBER_INTENSITE_CARBONE, settings, run_id, now),
     ]
+
+
+# Pôles de production (registre ODRÉ) et centres des communes qui les placent sur la carte
+def run_production_ingestion(
+    *,
+    settings: Settings | None = None,
+    run_id: str = "manual",
+    now: datetime | None = None,
+) -> tuple[ExtractionOutcome, LoadResult]:
+    settings = settings or get_settings()
+    _charger_fichier(
+        telecharger_centres(settings=settings), COMMUNES_CENTRES, settings, run_id, now
+    )
+    return _charger_fichier(
+        telecharger_sites(settings=settings), SITES_PRODUCTION, settings, run_id, now
+    )
 
 
 # Production horaire des îles : dit à quelles heures l'électricité y est la moins carbonée
