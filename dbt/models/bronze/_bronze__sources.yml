@@ -178,6 +178,26 @@ sources:
                     values: [Corse, Guadeloupe, Martinique, Guyane, Réunion]
           - name: date_heure
             data_tests: [not_null]
+      - name: gaspar_plans
+        description: >
+          Plans de prévention des risques naturels, technologiques et miniers par commune
+          (export GASPAR, fichiers `pprn`, `pprt` et `pprm`) : une ligne par commune, procédure
+          et aléa. `etat` vaut « Opposable », « Prescrit » ou « Caduque » ; `millesime` est la
+          date du fichier, propre à chaque type de plan.
+        data_tests:
+          - unique_combination:
+              arguments:
+                columns: [code_commune, code_procedure, code_risque]
+        columns:
+          - name: code_commune
+            data_tests: [not_null]
+          - name: type_plan
+            data_tests:
+              - accepted_values:
+                  arguments:
+                    values: [PPRN, PPRT, PPRM]
+          - name: millesime
+            data_tests: [not_null]
       - name: gaspar_risques
         description: >
           Risques majeurs recensés par commune, d'après les dossiers départementaux des
