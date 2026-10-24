@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 from pathlib import Path
 
 import httpx
@@ -215,14 +216,85 @@ def test_carte_sans_warehouse(settings: Settings) -> None:
         carte.generer_carte(settings=settings)
 
 
+def _libelle_epingle(path: Path) -> str | None:
+    ligne = next(
+        ligne
+        for ligne in path.read_text(encoding="utf-8").splitlines()
+        if ligne.startswith("DATA.adresse = ")
+    )
+    adresse = json.loads(ligne.removeprefix("DATA.adresse = /*__ADRESSE__*/").removesuffix(";"))
+    return adresse and adresse["libelle"]
+
+
+def test_carte_a_jour_seule_l_epingle_bouge(
+    settings_carte: Settings, httpx_mock: HTTPXMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    httpx_mock.add_exception(httpx.ConnectError("hors ligne"), is_reusable=True)
+    path = carte.mettre_a_jour_carte(settings=settings_carte, territoire=territoire())
+    assert _libelle_epingle(path) == territoire().adresse
+
+    def interdit(**kwargs: object) -> None:
+        raise AssertionError("carte reconstruite alors qu'elle est à jour")
+
+    monkeypatch.setattr(carte, "generer_carte", interdit)
+    ailleurs = _territoire("01053", "Bourg-en-Bresse", latitude=45.5, longitude=4.5)
+    carte.mettre_a_jour_carte(settings=settings_carte, territoire=ailleurs)
+    assert _libelle_epingle(path) == ailleurs.adresse
+    assert path.read_text(encoding="utf-8").count(carte.MARQUEUR_ADRESSE) == 1
+
+    carte.mettre_a_jour_carte(settings=settings_carte)
+    assert _libelle_epingle(path) is None
+
+
+def test_carte_refaite_quand_le_warehouse_change(
+    settings_carte: Settings, httpx_mock: HTTPXMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    httpx_mock.add_exception(httpx.ConnectError("hors ligne"), is_reusable=True)
+    path = carte.generer_carte(settings=settings_carte)
+    plus_tard = path.stat().st_mtime + 60
+    os.utime(settings_carte.duckdb_path, (plus_tard, plus_tard))
+
+    appels: list[dict] = []
+    monkeypatch.setattr(carte, "generer_carte", lambda **kwargs: appels.append(kwargs) or path)
+    carte.mettre_a_jour_carte(settings=settings_carte, territoire=territoire())
+    assert appels and appels[0]["territoire"] == territoire()
+
+
+def test_essentiel_place_l_adresse_sur_la_carte(
+    settings_carte: Settings,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    appels: list[dict] = []
+    monkeypatch.setattr(cli, "get_settings", lambda: settings_carte)
+    monkeypatch.setattr(cli, "geocode", lambda *args, **kwargs: territoire())
+    monkeypatch.setattr(
+        carte, "mettre_a_jour_carte", lambda **kwargs: appels.append(kwargs) or Path("c.html")
+    )
+    assert cli.main(["essentiel", "--adresse", "Lyon"]) == 0
+    assert appels[0]["territoire"] == territoire()
+    assert cli.main(["essentiel", "--adresse", "Lyon", "--sans-carte"]) == 0
+    assert len(appels) == 1
+
+    def en_panne(**kwargs: object) -> None:
+        raise carte.DiagnosticIndisponibleError("contours introuvables")
+
+    monkeypatch.setattr(carte, "mettre_a_jour_carte", en_panne)
+    assert cli.main(["essentiel", "--adresse", "Lyon"]) == 0
+    assert "carte non mise a jour : contours introuvables" in caplog.text
+
+
 def test_commande_carte(monkeypatch: pytest.MonkeyPatch, settings: Settings) -> None:
     appels: list[dict] = []
     monkeypatch.setattr(cli, "get_settings", lambda: settings)
     monkeypatch.setattr(
-        carte, "generer_carte", lambda **kwargs: appels.append(kwargs) or Path("carte.html")
+        carte, "mettre_a_jour_carte", lambda **kwargs: appels.append(kwargs) or Path("carte.html")
     )
+    monkeypatch.setattr(carte, "generer_carte", lambda **kwargs: Path("refaite.html"))
     assert cli.main(["carte", "--sans-ouvrir", "--output", "x.html"]) == 0
     assert appels[0]["territoire"] is None and appels[0]["output"] == Path("x.html")
+    assert cli.main(["carte", "--sans-ouvrir", "--reconstruire"]) == 0
+    assert len(appels) == 1
 
     def introuvable(*args: object, **kwargs: object) -> None:
         raise AdresseIntrouvableError("rien")

@@ -305,7 +305,15 @@ def test_diagnose_command_end_to_end(
     monkeypatch.setattr(cli, "get_settings", lambda: reglages)
 
     code = cli.main(
-        ["diagnose", "--adresse", "10 rue Garibaldi, Lyon", "--puissance", "0,5", "--sans-risques"]
+        [
+            "diagnose",
+            "--adresse",
+            "10 rue Garibaldi, Lyon",
+            "--puissance",
+            "0,5",
+            "--sans-risques",
+            "--sans-carte",
+        ]
     )
 
     sortie = capsys.readouterr().out
@@ -352,7 +360,9 @@ def test_essentiel_command_answers_price_and_carbon(
     )
     monkeypatch.setattr(cli, "get_settings", lambda: reglages)
 
-    code = cli.main(["essentiel", "--adresse", "1 cours Napoléon, Ajaccio", "--format", "json"])
+    code = cli.main(
+        ["essentiel", "--adresse", "1 cours Napoléon, Ajaccio", "--format", "json", "--sans-carte"]
+    )
     assert code == 0
     reponse = json.loads(capsys.readouterr().out)
     assert reponse["prix"]["code_tranche"] == "IA"
