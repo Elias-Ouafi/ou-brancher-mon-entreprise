@@ -166,6 +166,11 @@ class DiagnosticIndisponibleError(RuntimeError):
     pass
 
 
+# Warehouse absent ou couche gold incomplète : seul un `refresh` y remédie
+class DonneesAbsentesError(DiagnosticIndisponibleError):
+    pass
+
+
 # Pas `transform.PARIS_TZ` : l'importer chargerait PySpark à chaque diagnostic
 PARIS_TZ = ZoneInfo("Europe/Paris")
 
@@ -485,9 +490,7 @@ def lire_diagnostic(
         conso_mwh = round(courbe.conso_annuelle_mwh, 1) if conso_mwh is None else conso_mwh
         puissance_mw = courbe.puissance_max_kw / 1000 if puissance_mw is None else puissance_mw
     if not Path(path).exists():
-        raise DiagnosticIndisponibleError(
-            f"warehouse introuvable : {path} (charger les donnees puis lancer dbt build)"
-        )
+        raise DonneesAbsentesError(f"warehouse introuvable : {path}")
 
     commune = code_commune_parent(territoire.code_insee_commune)
     departement = code_departement(commune)
@@ -547,8 +550,8 @@ def lire_diagnostic(
             )
             chargements = lire_chargements(connection)
     except duckdb.CatalogException as error:
-        raise DiagnosticIndisponibleError(
-            f"couche gold incomplete, lancer dbt build ({error})"
+        raise DonneesAbsentesError(
+            f"couche gold incomplete : {str(error).splitlines()[0]}"
         ) from error
 
     if ligne is None:

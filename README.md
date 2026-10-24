@@ -38,7 +38,8 @@ Copy-Item .env.example .env
 ```
 
 Rien ne se met à jour tout seul : relancez `refresh` quand vous voulez des données fraîches. Chaque
-réponse affiche la date des données utilisées.
+réponse affiche la date des données utilisées. Une question posée avant ce premier chargement, ou
+après un `refresh` interrompu, rappelle la commande à lancer.
 
 **3. Poser la question** pour votre adresse, avec la puissance du projet en MW et la consommation
 annuelle en MWh si vous les connaissez :
@@ -85,8 +86,10 @@ Toutes s'écrivent `.\.venv\Scripts\python.exe -m ingestion.cli <commande>`.
 | `refresh [--months 180]` | Met à jour toutes les sources, puis `dbt build` |
 | `report --month 2026-09` | Rapport mensuel carbone et créneaux Tempo (compte RTE requis) |
 
-`essentiel` et `diagnose` épinglent aussi leur adresse sur la carte (`--sans-carte` pour s'en
-passer). La carte n'est refaite que si le warehouse, les contours ou le gabarit sont plus récents
+Les commandes qui répondent à une question (`essentiel`, `diagnose`, `compare`, `carte`, `europe`)
+n'affichent que la réponse, les alertes et le chemin des fichiers écrits ; `--verbose`, avant ou
+après la commande, montre le journal technique. `essentiel` et `diagnose` épinglent aussi leur
+adresse sur la carte (`--sans-carte` pour s'en passer). La carte n'est refaite que si le warehouse, les contours ou le gabarit sont plus récents
 qu'elle ; sinon seule l'épingle et son verdict changent.
 
 **La carte** s'ouvre sur la vue « Raccorder » : relief IGN en cases de 24 km, zones prioritaires RTE
@@ -136,7 +139,7 @@ flowchart LR
 .\.venv\Scripts\python.exe -m ruff check . ; .\.venv\Scripts\python.exe -m pytest
 ```
 
-389 tests sans réseau, dont un `dbt build` complet sur une base synthétique qui reproduit les
+392 tests sans réseau, dont un `dbt build` complet sur une base synthétique qui reproduit les
 pièges des sources, plus les tests de données dbt. La CI GitHub Actions les joue à chaque PR.
 
 ## Sources et licence
