@@ -36,6 +36,15 @@ class Settings(BaseSettings):
     # Export GASPAR (risques recensés par commune), servi hors de l'API : repli quand elle se tait
     gaspar_url: str = "https://files.georisques.fr/GASPAR/gaspar.zip"
 
+    # Intensité carbone annuelle des pays européens (Ember, CC BY 4.0)
+    ember_url: str = (
+        "https://files.ember-energy.org/public-downloads/generation/outputs/"
+        "release_generation_yearly_lower.csv"
+    )
+
+    # Pays d'une adresse hors de France (Nominatim, OpenStreetMap, ODbL) : une requête par appel
+    nominatim_url: str = "https://nominatim.openstreetmap.org/search"
+
     # Production horaire par filière en Corse et outre-mer (EDF SEI, licence ouverte)
     edf_sei_url: str = (
         "https://opendata.edf.fr/data-fair/api/v1/datasets/"

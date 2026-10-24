@@ -349,6 +349,22 @@ EDF_SEI_PRODUCTION = DatasetSpec(
     description="Production horaire par filière en Corse et outre-mer (EDF SEI)",
 )
 
+EUROSTAT_PRIX_UE = DatasetSpec(
+    dataset_id="eurostat-nrg-pc-205-ue",
+    keys=(code("pays"), period("semestre"), code("tranche"), code("fiscalite")),
+    attributes=(label("libelle_tranche"), label("statut")),
+    measures=measures("prix_eur_kwh"),
+    description="Prix de l'électricité des entreprises, pays de l'UE, par tranche (Eurostat)",
+)
+
+EMBER_INTENSITE_CARBONE = DatasetSpec(
+    dataset_id="ember-intensite-carbone",
+    keys=(code("iso3"), period("annee")),
+    attributes=(label("pays_ember"),),
+    measures=measures("production_twh", "intensite_g_co2e_kwh"),
+    description="Intensité carbone annuelle de la production électrique, pays de l'UE (Ember)",
+)
+
 EUROSTAT_PRIX_ENTREPRISES = DatasetSpec(
     dataset_id="eurostat-nrg-pc-205",
     keys=(period("semestre"), code("tranche"), code("fiscalite")),
@@ -389,6 +405,8 @@ BRONZE_SPECS: tuple[DatasetSpec, ...] = (
     EUROSTAT_PRIX_ENTREPRISES,
     GASPAR_RISQUES,
     EDF_SEI_PRODUCTION,
+    EUROSTAT_PRIX_UE,
+    EMBER_INTENSITE_CARBONE,
     *TERRITORIAL_SPECS,
 )
 

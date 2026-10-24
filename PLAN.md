@@ -23,6 +23,7 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 | Carte 3D épurée autour du verdict : vue « Raccorder » par défaut, adresse reliée à la zone RTE utile et au site clé en main ; épinglée par `essentiel` et `diagnose` (seule l'épingle bouge si les données n'ont pas changé) | `carte`, `reporting/carte.py` |
 | Risques sans dépendre de l'API Géorisques : export GASPAR chargé par `refresh` | `fct_risques_commune` |
 | Date de chargement de chaque source dans toutes les sorties ; pied de page des rapports avec la commande pour les refaire | `ligne_chargements`, `pied_de_page` |
+| Pays de l'UE-27 : prix Eurostat et carbone Ember du pays, face à la France à tranche égale ; pays trouvé par Nominatim | `europe`, `fct_pays_ue` |
 | Mise à jour de toutes les sources, puis `dbt build` | `refresh` |
 
 **À surveiller** :
@@ -44,16 +45,14 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 | Priorité | Étape | Bloqué par |
 |---|---|---|
 | 1 | Protéger `main` : CI et PR obligatoires | réglage GitHub, par le propriétaire |
-| 6 | Extension internationale, voir ci-dessous | licences Ember et contours à vérifier |
+| 6 | Extension internationale, voir ci-dessous | contours des zones de prix à sourcer |
 | 7 | Calendrier Tempo sur données réelles | compte RTE |
 | 8 | Repère de prix au-delà de 150 000 MWh/an (contrats CAPN) ; classement pondéré dans `compare` | décision |
 
-**Extension internationale**, dans cet ordre :
-1. UE-27 à la maille pays : prix Eurostat (déjà ingéré, retirer le filtre France) et carbone
-   Ember (CC BY 4.0) ; Nominatim pour trouver le pays.
-2. Zones de prix (Italie, pays nordiques) : ENTSO-E et point-dans-polygone avec l'extension
+**Extension internationale**, dans cet ordre (l'UE-27 à la maille pays est faite) :
+1. Zones de prix (Italie, pays nordiques) : ENTSO-E et point-dans-polygone avec l'extension
    `spatial` de DuckDB.
-3. Royaume-Uni (intensité régionale officielle) et États-Unis (EIA, eGRID), où prix et carbone
+2. Royaume-Uni (intensité régionale officielle) et États-Unis (EIA, eGRID), où prix et carbone
    dépendent vraiment de l'adresse.
 
 ## Ce que les études ont établi (9 et 15 octobre)
@@ -95,6 +94,7 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 | 24 oct. | `--va` : électro-intensité = consommation × accise au tarif normal (26,58 €/MWh au 1er février 2026) ÷ valeur ajoutée, paliers 0,5 %, 3,375 % et 6,75 % (CIBS L312-65, L312-71) ; montant du taux réduit non chiffré |
 | 24 oct. | `--courbe` : export Enedis lu en Python à la demande, jamais stocké ; horodate = fin du pas ; tient lieu de `--conso` et `--puissance` s'ils manquent ; coût au barème HP/HC en vigueur, seulement jusqu'à 36 kW |
 | 24 oct. | Carbone horaire des îles : profil de la part thermique calé sur le facteur ADEME annuel, plutôt que des facteurs par filière non sourcés ; imports de la Corse comptés non thermiques |
+| 24 oct. | UE-27 : moyennes nationales seulement (Eurostat depuis 2024-S1, deux derniers semestres ; Ember, dernière année, production sans échanges) ; jointure des trois codes pays par le seed `dim_pays_ue` ; hors UE refusé |
 | 24 oct. | Carte : décor (villes, forêts) et lentilles Terrain et Réseau retirés ; prix et compteurs hors de la barre du haut ; la fiche de l'adresse donne le verdict |
 
 ## Écarté

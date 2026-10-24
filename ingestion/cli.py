@@ -307,6 +307,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="refait toute la carte, même si ses données n'ont pas changé",
     )
 
+    europe = subparsers.add_parser(
+        "europe", help="prix et carbone moyens d'un pays de l'UE, face à la France"
+    )
+    europe.add_argument(
+        "--adresse", required=True, help="adresse dans l'UE, entre guillemets (ex. Milano)"
+    )
+    europe.add_argument(
+        "--conso",
+        type=_parse_conso,
+        help="consommation annuelle en MWh (défaut : tranche des petites entreprises)",
+    )
+
     coverage = subparsers.add_parser(
         "coverage", help="contrôle la complétude du dernier mois révolu"
     )
@@ -566,6 +578,23 @@ def main(argv: list[str] | None = None) -> int:
             logger.info("carte ecrite %s", path)
             if not args.sans_ouvrir:
                 webbrowser.open(path.resolve().as_uri())
+        case "europe":
+            from ingestion.europe import formater_europe, lire_pays, localiser
+
+            try:
+                localisation = localiser(args.adresse, settings=settings)
+                pays, france = lire_pays(
+                    localisation.code_pays, conso_mwh=args.conso, settings=settings
+                )
+            except AdresseIntrouvableError as error:
+                logger.error("adresse introuvable : %s. Preciser la ville et le pays.", error)
+                return 1
+            except GeocodingError as error:
+                logger.error("europe impossible : %s", error)
+                return 1
+            if hasattr(sys.stdout, "reconfigure"):
+                sys.stdout.reconfigure(encoding="utf-8")
+            print(formater_europe(localisation, pays, france))
         case "tempo":
             if args.month:
                 days = tempo_days_for_month(args.month)
