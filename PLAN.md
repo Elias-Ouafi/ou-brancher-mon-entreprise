@@ -45,7 +45,7 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 | Priorité | Étape | Bloqué par |
 |---|---|---|
 | 1 | Protéger `main` : CI et PR obligatoires | réglage GitHub, par le propriétaire |
-| 6 | Extension internationale, voir ci-dessous | contours des zones de prix à sourcer |
+| 6 | Extension internationale, voir ci-dessous | jeton ENTSO-E (compte gratuit) et contours des zones de prix à sourcer |
 | 7 | Calendrier Tempo sur données réelles | compte RTE |
 | 8 | Repère de prix au-delà de 150 000 MWh/an (contrats CAPN) ; classement pondéré dans `compare` | décision |
 
