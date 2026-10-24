@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
 from statistics import fmean
@@ -13,9 +14,13 @@ import httpx
 
 from ingestion.config import Settings, get_settings
 from ingestion.diagnostic import (
+    DISTANCE_ZONE_UTILE_KM,
+    Diagnostic,
     DiagnosticIndisponibleError,
     ligne_chargements,
     lire_chargements,
+    phrase_verdict,
+    verdict,
 )
 from ingestion.extract_geo import (
     CONTOURS_JEU,
@@ -64,16 +69,12 @@ left join (
 order by d.code_departement
 """
 _SITES_SQL = """
-select commune as n, code_departement as c, latitude as la, longitude as lo
+select id_site as id, commune as n, code_departement as c, latitude as la, longitude as lo
 from gold.sites_cles_en_main order by id_site
 """
 _ZONES_SQL = """
 select zone as n, priorite as pr, annee_capacite as a, latitude as la, longitude as lo
 from gold.zones_raccordement_rte order by priorite, zone
-"""
-_PRIX_SQL = """
-select code_tranche as t, libelle_tranche as l, round(prix_reference_eur_kwh, 4) as p
-from gold.fct_prix_entreprise_tranche order by conso_min_mwh
 """
 
 
@@ -95,7 +96,6 @@ def lire_donnees_gold(database: Path) -> dict[str, Any]:
                 ("departements", _DEPARTEMENTS_SQL),
                 ("sites", _SITES_SQL),
                 ("zones", _ZONES_SQL),
-                ("prix", _PRIX_SQL),
             )
         }
         gold["donnees"] = ligne_chargements(lire_chargements(connection))
@@ -118,6 +118,7 @@ def construire_donnees(
     gold: dict[str, Any],
     *,
     territoire: Territoire | None = None,
+    verdict_adresse: dict[str, Any] | None = None,
     genere_le: datetime | None = None,
 ) -> dict[str, Any]:
     cases: list[list[Any]] = []
@@ -157,21 +158,40 @@ def construire_donnees(
         "cases": cases,
         "departements": gold["departements"],
         "sites": [
-            {"n": s["n"], "c": s["c"], "case": _reperer(grilles, s["lo"], s["la"], s["c"])}
+            {
+                "id": s["id"],
+                "n": s["n"],
+                "c": s["c"],
+                "case": _reperer(grilles, s["lo"], s["la"], s["c"]),
+            }
             for s in gold["sites"]
         ],
         "zones": [
             {"n": z["n"], "pr": z["pr"], "a": z["a"], "case": _reperer(grilles, z["lo"], z["la"])}
             for z in gold["zones"]
         ],
-        "prix": gold["prix"],
         "donnees": gold.get("donnees"),
-        "adresse": construire_adresse(grilles, territoire),
+        "adresse": construire_adresse(grilles, territoire, verdict_adresse),
+    }
+
+
+# Verdict « brancher ici ? » de l'adresse, avec la zone RTE et le site à relier sur la carte
+def verdict_carte(diagnostic: Diagnostic) -> dict[str, Any]:
+    criteres = verdict(diagnostic)
+    zone = diagnostic.zone_rte
+    site = diagnostic.site_cle_en_main
+    return {
+        "phrase": phrase_verdict(criteres),
+        "criteres": [asdict(c) for c in criteres],
+        "zone": zone.zone if zone and zone.distance_km <= DISTANCE_ZONE_UTILE_KM else None,
+        "site": site.id_site if site else None,
     }
 
 
 def construire_adresse(
-    grilles: list[Grille], territoire: Territoire | None
+    grilles: list[Grille],
+    territoire: Territoire | None,
+    verdict_adresse: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     if territoire is None:
         return None
@@ -181,6 +201,7 @@ def construire_adresse(
         "case": _reperer(
             grilles, territoire.longitude, territoire.latitude, territoire.code_departement
         ),
+        "verdict": verdict_adresse,
     }
 
 
@@ -237,6 +258,7 @@ def generer_carte(
     *,
     settings: Settings | None = None,
     territoire: Territoire | None = None,
+    verdict_adresse: dict[str, Any] | None = None,
     output: Path | None = None,
 ) -> Path:
     settings = settings or get_settings()
@@ -249,7 +271,11 @@ def generer_carte(
     except (httpx.HTTPError, RetryableStatusError) as error:
         logger.warning("relief incomplet, cases manquantes a plat : %s", error)
         altitudes = lire_altitudes(settings)
-    html = rendre_html(construire_donnees(grilles, altitudes, gold, territoire=territoire))
+    html = rendre_html(
+        construire_donnees(
+            grilles, altitudes, gold, territoire=territoire, verdict_adresse=verdict_adresse
+        )
+    )
     path = _chemin(settings, output)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(html, encoding="utf-8")
@@ -271,12 +297,15 @@ def mettre_a_jour_carte(
     *,
     settings: Settings | None = None,
     territoire: Territoire | None = None,
+    verdict_adresse: dict[str, Any] | None = None,
     output: Path | None = None,
 ) -> Path:
     settings = settings or get_settings()
     path = _chemin(settings, output)
     if not _carte_a_jour(path, settings):
-        return generer_carte(settings=settings, territoire=territoire, output=path)
-    adresse = construire_adresse(_grilles(settings), territoire)
+        return generer_carte(
+            settings=settings, territoire=territoire, verdict_adresse=verdict_adresse, output=path
+        )
+    adresse = construire_adresse(_grilles(settings), territoire, verdict_adresse)
     path.write_text(placer_adresse(path.read_text(encoding="utf-8"), adresse), encoding="utf-8")
     return path

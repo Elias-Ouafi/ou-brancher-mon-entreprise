@@ -10,7 +10,9 @@ from pathlib import Path
 from ingestion.config import Settings, get_settings
 from ingestion.datasets import NATIONAL_CONS_DEF, NATIONAL_TR, SPECS, get_spec
 from ingestion.diagnostic import (
+    Diagnostic,
     DiagnosticIndisponibleError,
+    avec_risques_locaux,
     completer_risques,
     essentiel_en_dict,
     formater_diagnostic,
@@ -23,7 +25,6 @@ from ingestion.geocode import (
     AdresseAmbigueError,
     AdresseIntrouvableError,
     GeocodingError,
-    Territoire,
     geocode,
 )
 from ingestion.pipeline import (
@@ -111,16 +112,20 @@ def _add_carte_option(parser: argparse.ArgumentParser) -> None:
     )
 
 
-# La carte accompagne la réponse : son échec ne fait pas échouer la commande
-def _placer_sur_carte(territoire: Territoire, settings: Settings) -> None:
+# La carte montre le verdict de l'adresse ; son échec ne fait pas échouer la commande
+def _placer_sur_carte(diagnostic: Diagnostic, settings: Settings) -> None:
     import duckdb
     import httpx
 
     from ingestion.extract_odre import RetryableStatusError
-    from reporting.carte import mettre_a_jour_carte
+    from reporting.carte import mettre_a_jour_carte, verdict_carte
 
     try:
-        path = mettre_a_jour_carte(settings=settings, territoire=territoire)
+        path = mettre_a_jour_carte(
+            settings=settings,
+            territoire=diagnostic.territoire,
+            verdict_adresse=verdict_carte(avec_risques_locaux(diagnostic, settings=settings)),
+        )
     except (
         DiagnosticIndisponibleError,
         httpx.HTTPError,
@@ -201,6 +206,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     essentiel.add_argument("--adresse", required=True, help="adresse, entre guillemets")
     essentiel.add_argument(
+        "--puissance", type=_parse_puissance, help="puissance du projet en MW : qui raccorde"
+    )
+    essentiel.add_argument(
         "--conso",
         type=_parse_conso,
         help="consommation annuelle en MWh (défaut : tranche des petites entreprises)",
@@ -271,6 +279,9 @@ def build_parser() -> argparse.ArgumentParser:
         "carte", help="carte 3D des territoires : relief, industrie, réseau (page HTML)"
     )
     carte.add_argument("--adresse", help="adresse à épingler sur la carte, entre guillemets")
+    carte.add_argument(
+        "--puissance", type=_parse_puissance, help="puissance du projet en MW : qui raccorde"
+    )
     carte.add_argument("--output", help="chemin du fichier (défaut : data/reports/carte.html)")
     carte.add_argument(
         "--sans-ouvrir", action="store_true", help="écrit la page sans ouvrir le navigateur"
@@ -383,7 +394,11 @@ def main(argv: list[str] | None = None) -> int:
             try:
                 territoire = geocode(args.adresse, settings=settings)
                 diagnostic = lire_diagnostic(
-                    territoire, conso_mwh=args.conso, ca_eur=args.ca, settings=settings
+                    territoire,
+                    puissance_mw=args.puissance,
+                    conso_mwh=args.conso,
+                    ca_eur=args.ca,
+                    settings=settings,
                 )
             except AdresseIntrouvableError as error:
                 logger.error(
@@ -401,6 +416,7 @@ def main(argv: list[str] | None = None) -> int:
             except DiagnosticIndisponibleError as error:
                 logger.error("donnees indisponibles : %s", error)
                 return 1
+            diagnostic = avec_risques_locaux(diagnostic, settings=settings)
             if hasattr(sys.stdout, "reconfigure"):
                 sys.stdout.reconfigure(encoding="utf-8")
             if args.format == "json":
@@ -408,7 +424,7 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 print(formater_essentiel(diagnostic))
             if not args.sans_carte:
-                _placer_sur_carte(territoire, settings)
+                _placer_sur_carte(diagnostic, settings)
         case "diagnose":
             try:
                 territoire = geocode(args.adresse, settings=settings)
@@ -447,7 +463,7 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 logger.info("rapport ecrit %s", path)
             if not args.sans_carte:
-                _placer_sur_carte(territoire, settings)
+                _placer_sur_carte(diagnostic, settings)
         case "compare":
             from ingestion import comparaison
 
@@ -496,13 +512,22 @@ def main(argv: list[str] | None = None) -> int:
             # Import paresseux : la carte n'est utile qu'à cette commande
             import webbrowser
 
-            from reporting.carte import generer_carte, mettre_a_jour_carte
+            from reporting.carte import generer_carte, mettre_a_jour_carte, verdict_carte
 
             try:
                 territoire = geocode(args.adresse, settings=settings) if args.adresse else None
+                verdict_adresse = None
+                if territoire is not None:
+                    diagnostic = lire_diagnostic(
+                        territoire, puissance_mw=args.puissance, settings=settings
+                    )
+                    verdict_adresse = verdict_carte(
+                        avec_risques_locaux(diagnostic, settings=settings)
+                    )
                 path = (generer_carte if args.reconstruire else mettre_a_jour_carte)(
                     settings=settings,
                     territoire=territoire,
+                    verdict_adresse=verdict_adresse,
                     output=Path(args.output) if args.output else None,
                 )
             except (GeocodingError, DiagnosticIndisponibleError) as error:

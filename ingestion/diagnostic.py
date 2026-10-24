@@ -629,7 +629,152 @@ def _prix_court(d: Diagnostic) -> str:
 def formater_essentiel(diagnostic: Diagnostic) -> str:
     lignes = [diagnostic.territoire.adresse, *entete(diagnostic), ""]
     lignes += [contenu for _, contenu in essentiel(diagnostic).elements]
+    lignes.append(f"Brancher ici ? {phrase_verdict(verdict(diagnostic))}")
     return "\n".join(lignes)
+
+
+# Au-delà, une zone prioritaire RTE n'aide plus un projet à cette adresse
+DISTANCE_ZONE_UTILE_KM = 50
+
+
+@dataclass(frozen=True, slots=True)
+class Critere:
+    nom: str
+    # `ok`, `attention` (à vérifier avant de s'engager), `inconnu` (donnée manquante), `info`
+    etat: str
+    valeur: str
+    detail: str
+
+
+# Les cinq questions d'un chef d'entreprise avant de signer un bail ou un terrain
+def verdict(diagnostic: Diagnostic) -> list[Critere]:
+    return [
+        _critere_raccordement(diagnostic),
+        _critere_risques(diagnostic),
+        _critere_carbone(diagnostic),
+        _critere_facture(diagnostic),
+        _critere_foncier(diagnostic),
+    ]
+
+
+# Qui raccorde (Enedis ou RTE) et, pour RTE, si une zone prioritaire promet de la capacité
+def _critere_raccordement(d: Diagnostic) -> Critere:
+    if d.seuil is None:
+        return Critere(
+            "Raccordement",
+            "inconnu",
+            "puissance non précisée",
+            "Préciser --puissance (en MW) pour savoir qui raccorde : Enedis ou RTE.",
+        )
+    valeur = f"{d.seuil.domaine_tension}, {d.seuil.gestionnaire}"
+    if "RTE" not in d.seuil.gestionnaire:
+        return Critere(
+            "Raccordement",
+            "ok",
+            valeur,
+            "Raccordement courant au réseau de distribution ; délai et coût fixés par l'étude"
+            " du gestionnaire.",
+        )
+    zone = d.zone_rte
+    if zone is not None and zone.distance_km <= DISTANCE_ZONE_UTILE_KM:
+        annee = f" dès {zone.annee_capacite}" if zone.annee_capacite else ""
+        detail = (
+            f"Zone prioritaire RTE {zone.zone} ({zone.priorite}) {_distance(zone.distance_km)} :"
+            f" capacité supplémentaire prévue{annee}. Étude RTE indispensable."
+        )
+    else:
+        detail = (
+            f"Aucune zone prioritaire RTE à moins de {DISTANCE_ZONE_UTILE_KM} km : délais de 2 à"
+            " 7 ans annoncés, étude RTE indispensable."
+        )
+    return Critere("Raccordement", "attention", valeur, detail)
+
+
+# Risques naturels et technologiques : à l'adresse si Géorisques répond, sinon dans la commune
+def _critere_risques(d: Diagnostic) -> Critere:
+    r = d.risques
+    if r is None:
+        return Critere("Risques", "inconnu", "non consultés", "À vérifier sur georisques.gouv.fr.")
+    if r.maille == "adresse":
+        exposes = r.selon(Exposition.EXPOSE)
+        if not exposes:
+            return Critere("Risques", "ok", "aucun recensé à l'adresse", "Rapport Géorisques.")
+        return Critere(
+            "Risques",
+            "attention",
+            f"{len(exposes)} à l'adresse",
+            _liste_risques(exposes) + ".",
+        )
+    recenses = r.selon(Exposition.INCONNU)
+    if not recenses:
+        return Critere("Risques", "ok", "aucun recensé dans la commune", "Export GASPAR.")
+    return Critere(
+        "Risques",
+        "attention",
+        f"{len(recenses)} dans la commune",
+        _liste_risques(recenses) + " ; non évalués à l'adresse.",
+    )
+
+
+# Électricité du réseau sous le seuil de la taxonomie européenne, ou non
+def _critere_carbone(d: Diagnostic) -> Critere:
+    c = d.carbone
+    if c is None:
+        return Critere("Carbone", "inconnu", "non disponible", "Lancer refresh.")
+    return Critere(
+        "Carbone",
+        "ok" if c.est_decarbone else "attention",
+        f"{_nombre_court(c.intensite_acv_g_co2e_kwh)} gCO₂e/kWh",
+        f"{c.systeme_electrique} : {'sous le' if c.est_decarbone else 'au-dessus du'} seuil de"
+        f" {_nombre_court(c.seuil_decarbone_g_co2e_kwh)} gCO₂e/kWh de la taxonomie européenne.",
+    )
+
+
+# Ordre de grandeur de la facture, identique partout en France (péréquation)
+def _critere_facture(d: Diagnostic) -> Critere:
+    p = d.prix
+    if p is None:
+        return Critere("Facture", "inconnu", "prix non disponible", _prix_court(d))
+    prix = f"{_nombre(p.prix_reference_eur_kwh, 4)} €/kWh HTVA ({p.code_tranche})"
+    if p.conso_mwh is None:
+        return Critere(
+            "Facture", "info", prix, "Préciser --conso (MWh par an) pour la facture annuelle."
+        )
+    detail = f"{prix}, identique partout en France."
+    if (part := d.part_chiffre_affaires) is not None:
+        detail += f" {_pourcentage(part.part)} du chiffre d'affaires."
+    return Critere(
+        "Facture",
+        "info",
+        f"{_euros_arrondis(p.facture_eur(p.prix_reference_eur_kwh))} HTVA par an",
+        detail,
+    )
+
+
+# Terrain déjà viabilisé et pré-autorisé le plus proche (sites clés en main France 2030)
+def _critere_foncier(d: Diagnostic) -> Critere:
+    site = d.site_cle_en_main
+    if site is None:
+        return Critere("Foncier", "info", "aucun site clé en main", "Dans ce territoire.")
+    return Critere(
+        "Foncier",
+        "info",
+        f"site clé en main {_distance(site.distance_km)}",
+        f"{site.commune}, annoncé prêt en {site.maturite_site}.",
+    )
+
+
+# Phrase de synthèse : ce qu'il reste à vérifier avant de s'engager
+def phrase_verdict(criteres: list[Critere]) -> str:
+    a_verifier = [c.nom.lower() for c in criteres if c.etat == "attention"]
+    inconnus = [c.nom.lower() for c in criteres if c.etat == "inconnu"]
+    if a_verifier:
+        phrase = "À vérifier avant de s'engager : " + ", ".join(a_verifier)
+    else:
+        phrase = "Rien de bloquant dans les données publiques"
+    if inconnus:
+        phrase += " (non évalué : " + ", ".join(inconnus) + ")"
+    return phrase + "."
 
 
 def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
@@ -674,6 +819,10 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
             "source": f"ADEME Base Carbone, {c.validite_source}",
         },
         "a_savoir": A_SAVOIR,
+        "verdict": {
+            "phrase": phrase_verdict(criteres := verdict(d)),
+            "criteres": [asdict(c) for c in criteres],
+        },
         "limites": {
             code: d.limites[code]
             for code in ("prix_entreprise", "carbone_territoire", "part_chiffre_affaires")
@@ -1041,6 +1190,14 @@ def _gaspar_local(codes_commune: set[str], settings: Settings | None) -> Risques
     except duckdb.CatalogException:
         return None
     return risques_gaspar(lignes)
+
+
+# Risques de la commune sans appeler Géorisques : assez pour le verdict rapide de `essentiel`
+def avec_risques_locaux(diagnostic: Diagnostic, *, settings: Settings | None = None) -> Diagnostic:
+    if diagnostic.risques is not None:
+        return diagnostic
+    codes = {diagnostic.territoire.code_insee_commune, diagnostic.code_insee_commune}
+    return replace(diagnostic, risques=_gaspar_local(codes, settings))
 
 
 # Ajoute le rapport Géorisques de l'adresse ; ne fait jamais échouer le diagnostic
