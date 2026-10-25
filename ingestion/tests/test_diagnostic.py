@@ -572,6 +572,38 @@ def test_value_added_share_places_the_fiscal_threshold(
     assert "part_valeur_ajoutee" in reponse["limites"]
 
 
+def test_excise_rate_comes_from_the_dated_seed(medallion_db: Path) -> None:
+    diagnostic = lire_diagnostic(
+        territoire("69123", "Lyon"), conso_mwh=350, va_eur=1_000_000, database=medallion_db
+    )
+    assert diagnostic.accise is not None
+    assert diagnostic.accise.tarif_eur_mwh == 26.58
+    assert diagnostic.accise.date_debut == date(2026, 2, 1)
+    sans_va = lire_diagnostic(territoire("69123", "Lyon"), conso_mwh=350, database=medallion_db)
+    assert sans_va.accise is None
+    assert sans_va.part_valeur_ajoutee is None
+
+
+# Indexation chaque 1er février : un barème du 1er février 2026 vaut jusqu'au 31 janvier 2027
+@pytest.mark.parametrize(
+    ("debut", "aujourd_hui", "a_reverifier"),
+    [
+        (date(2026, 2, 1), date(2026, 10, 25), False),
+        (date(2026, 2, 1), date(2027, 1, 31), False),
+        (date(2026, 2, 1), date(2027, 2, 1), True),
+        (date(2025, 8, 1), date(2026, 1, 31), False),
+        (date(2025, 8, 1), date(2026, 2, 1), True),
+        (date(2026, 1, 1), date(2026, 2, 1), True),
+    ],
+)
+def test_excise_rate_is_flagged_after_each_february_indexation(
+    debut: date, aujourd_hui: date, a_reverifier: bool
+) -> None:
+    from ingestion.diagnostic import Accise
+
+    assert Accise(26.58, debut).a_reverifier(aujourd_hui) is a_reverifier
+
+
 def test_turnover_share_follows_the_three_year_scenarios(medallion_db: Path) -> None:
     from ingestion.diagnostic import formater_essentiel
 

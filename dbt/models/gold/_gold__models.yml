@@ -306,7 +306,14 @@ models:
       - name: prix_3_ans_central_eur_kwh
         description: >
           Le scénario central est encadré par les scénarios bas et haut (test
-          `assert_scenarios_prix_ordonnes`).
+          `assert_scenarios_prix_ordonnes`). Les scénarios bas et haut encadrent aussi le
+          prix des 12 derniers mois : un prix inchangé n'est jamais exclu.
+      - name: est_fourchette_validee
+        description: >
+          Vrai quand le contrôle sur le passé porte sur au moins 20 périodes (variable dbt
+          `prix_nb_periodes_validation`, soit dix ans d'origines). En dessous, la fourchette
+          est affichée comme indicative : les périodes se chevauchent et peuvent toutes tenir
+          dans une même crise.
 
   - name: fct_contraintes_departement
     description: >

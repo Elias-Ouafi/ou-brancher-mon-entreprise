@@ -61,6 +61,9 @@ select
     trois_ans.prix_3_ans_haut_eur_kwh,
     trois_ans.nb_erreurs_observees,
     coalesce(calibration.nb_periodes_controlees, 0) as nb_periodes_controlees,
+    -- Fourchette validée seulement sur assez de périodes contrôlées ; sinon indicative
+    coalesce(calibration.nb_periodes_controlees, 0)
+    >= {{ var('prix_nb_periodes_validation', 20) }} as est_fourchette_validee,
     calibration.nb_dans_eventail,
     calibration.nb_au_dessus,
     calibration.nb_en_dessous,

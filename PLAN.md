@@ -1,6 +1,6 @@
 # Plan du projet
 
-> Mis à jour le 24 octobre 2026. Périmètre : la France (métropole, Corse, outre-mer), en ligne de
+> Mis à jour le 25 octobre 2026. Périmètre : la France (métropole, Corse, outre-mer), en ligne de
 > commande, en local et à la demande.
 
 ## État
@@ -33,13 +33,14 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 - l'API Géorisques coupe toute connexion vers `/api/…` depuis le 24 octobre au moins (la page
   d'accueil répond) ; le diagnostic passe alors sur l'export GASPAR, à la maille commune, sans le
   zonage sismique (aucun fichier national officiel à jour) ;
-- les facteurs ADEME de la Corse et de l'outre-mer datent de décembre 2020 (Base Carbone fondue
-  dans la Base Empreinte : vérifier la version) ;
-- la fourchette de prix à 3 ans n'est pas validée : le contrôle sur le passé ne compte que 8
-  périodes chevauchantes, toutes marquées par la crise de 2022 ;
+- les facteurs ADEME de la Corse et de l'outre-mer datent de décembre 2020 : vérifié le 25
+  octobre, c'est toujours le dernier millésime valide de la Base Carbone (jeu mis à jour le 3
+  juillet 2025) ;
+- la fourchette de prix à 3 ans reste indicative tant que le contrôle sur le passé compte moins
+  de 20 périodes (8 aujourd'hui, chevauchantes, toutes marquées par la crise de 2022) ;
 - le calendrier Tempo (`part-manual`, 31 jours) n'a tourné que sur des réponses simulées ;
-- l'accise au tarif normal (26,58 €/MWh) est une constante de `diagnostic.py` : à revoir à chaque
-  indexation du 1er février ;
+- l'accise au tarif normal (26,58 €/MWh) vit dans le seed daté `accise_electricite` : à compléter
+  à chaque indexation du 1er février, que `--va` signale une fois la date passée ;
 - EDF SEI publie jusqu'à fin 2024 seulement (2021-2024 « estimé »), sans Mayotte ; le jeu a
   quitté `opendata-corse-outremer.edf.fr` pour `opendata.edf.fr` (API data-fair).
 
@@ -130,6 +131,8 @@ Inondations.
 | 24 oct. | Pôles de production : registre ODRÉ agrégé à la source par commune et filière (installations en service d'au moins 10 MW ; les noms « Confidentiel » interdisent une clé par installation), centre de la commune comme position ; seuil 200 MW sur le continent, 20 MW en Corse et outre-mer ; stockage hors barrages exclu |
 | 24 oct. | Après le MVP, extension par adresse en Europe de l'Ouest dans l'ordre de facilité des données : Pays-Bas, Belgique, Espagne, Autriche, Luxembourg, Suisse, Portugal, Allemagne, Royaume-Uni, Irlande, Italie, puis les micro-États (détail dans « Suite ») |
 | 24 oct. | `main` protégée par un ruleset GitHub : PR obligatoire (sans approbation), job CI `ruff + pytest + dbt build` vert sur une branche à jour, ni force-push ni suppression, aucun contournement |
+| 25 oct. | Accise au tarif normal dans le seed daté `accise_electricite` (ligne sans `date_fin` = barème en vigueur) ; passé le 1er février suivant sa date d'effet, `--va` demande de le mettre à jour |
+| 25 oct. | Fourchette de prix à 3 ans élargie pour contenir toujours le prix des 12 derniers mois ; dite « indicative » tant que moins de 20 périodes sont contrôlées sur le passé (variable dbt `prix_nb_periodes_validation`) |
 
 ## Écarté
 

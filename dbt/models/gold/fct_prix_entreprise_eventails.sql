@@ -124,9 +124,17 @@ select
     erreur_bas,
     erreur_centrale,
     erreur_haut,
-    case when est_publiable then prix_central_brut_eur_kwh * erreur_bas end as prix_bas_eur_kwh,
+    -- Le statu quo reste toujours dans l'éventail : des erreurs passées toutes de même signe
+    -- (crise de 2022) ne doivent pas exclure un prix inchangé
+    case
+        when est_publiable
+            then least(prix_central_brut_eur_kwh * erreur_bas, prix_reference_eur_kwh)
+    end as prix_bas_eur_kwh,
     case when est_publiable then prix_central_brut_eur_kwh * erreur_centrale end
         as prix_central_eur_kwh,
-    case when est_publiable then prix_central_brut_eur_kwh * erreur_haut end as prix_haut_eur_kwh,
+    case
+        when est_publiable
+            then greatest(prix_central_brut_eur_kwh * erreur_haut, prix_reference_eur_kwh)
+    end as prix_haut_eur_kwh,
     prix_realise_eur_kwh
 from publiables

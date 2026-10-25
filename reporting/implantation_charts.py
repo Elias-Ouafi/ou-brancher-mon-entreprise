@@ -136,11 +136,12 @@ def prix_tranche(diagnostic: Diagnostic, comparaisons: Comparaisons) -> bytes | 
             depart.replace(year=depart.year + h) for h, *_ in comparaisons.scenarios_prix
         ]
         reference = prix.prix_reference_eur_kwh
+        statut = "" if prix.est_fourchette_validee else ", indicatifs"
         bas = [reference] + [b for _, b, _, _ in comparaisons.scenarios_prix]
         centre = [reference] + [c for _, _, c, _ in comparaisons.scenarios_prix]
         haut = [reference] + [t for _, _, _, t in comparaisons.scenarios_prix]
         ax.fill_between(horizons, bas, haut, color=FLEXIBLE, alpha=0.18, linewidth=0,
-                        label="scénarios bas – haut (10e – 90e centile)")  # fmt: skip
+                        label=f"scénarios bas – haut (10e – 90e centile){statut}")  # fmt: skip
         ax.plot(horizons, centre, color=FLEXIBLE, linestyle="--", linewidth=1.2,
                 label="scénario central (médiane)")  # fmt: skip
         # Point de départ : la moyenne des deux derniers semestres, pas le dernier seul
