@@ -12,7 +12,7 @@ import duckdb
 
 from ingestion.config import Settings, get_settings
 from ingestion.courbe import BilanCourbe, Courbe, bilan_courbe
-from ingestion.geocode import Territoire, code_commune_parent
+from ingestion.geocode import Territoire, adresse_normalisee, code_commune_parent
 from ingestion.georisques import (
     Exposition,
     GeorisquesError,
@@ -108,6 +108,36 @@ group by zone, priorite, annee_capacite, ouvrages
 order by distance_km
 """
 
+_ENTREPRISES_COMMUNE_SQL = """
+select
+    annee,
+    nb_sites,
+    consommation_mwh / 1000 as consommation_gwh,
+    consommation_industrie_mwh / 1000 as consommation_industrie_gwh,
+    nb_sites_industrie,
+    code_naf2_principal,
+    libelle_naf2_principal,
+    consommation_naf2_principal_mwh / 1000 as consommation_naf2_principal_gwh,
+    rang_industrie_departement,
+    nb_communes_departement
+from gold.fct_conso_entreprises_commune
+where code_insee_commune = $commune
+"""
+
+_ENTREPRISES_ADRESSE_SQL = """
+select
+    adresse.annee,
+    adresse.adresse,
+    adresse.nb_sites,
+    adresse.consommation_mwh,
+    adresse.grand_secteur,
+    adresse.code_naf2,
+    naf.libelle_naf2
+from gold.fct_conso_entreprises_adresse as adresse
+left join gold.dim_naf2 as naf on naf.code_naf2 = adresse.code_naf2
+where adresse.code_insee_commune = $commune and adresse.adresse_normalisee = $adresse
+"""
+
 _SITE_SQL = f"""
 select
     id_site,
@@ -197,6 +227,7 @@ SOURCES_CHARGEES: dict[str, str] = {
     "national_tr": "éCO2mix temps réel",
     "national_cons_def": "éCO2mix consolidé",
     "consommation_annuelle_par_iris": "industrie ODRÉ",
+    "enedis_conso_entreprises_adresse": "entreprises Enedis",
     "equilibre_regional_mensuel_prod_conso_brute": "équilibre régional ODRÉ",
     "contraintes_region": "contraintes RTE",
     "postes_electriques_rte": "postes RTE",
@@ -299,6 +330,33 @@ class ZoneRte:
     ouvrages: str
     point_reference: str
     distance_km: float
+
+
+# Entreprises raccordées à Enedis dans la commune : le tissu économique déjà branché
+@dataclass(frozen=True, slots=True)
+class EntreprisesCommune:
+    annee: int
+    nb_sites: int
+    consommation_gwh: float
+    consommation_industrie_gwh: float
+    nb_sites_industrie: int
+    code_naf2_principal: str | None
+    libelle_naf2_principal: str | None
+    consommation_naf2_principal_gwh: float | None
+    rang_industrie_departement: int
+    nb_communes_departement: int
+
+
+# Consommation déjà relevée à l'adresse demandée : un raccordement existe sans doute
+@dataclass(frozen=True, slots=True)
+class EntreprisesAdresse:
+    annee: int
+    adresse: str
+    nb_sites: int
+    consommation_mwh: float
+    grand_secteur: str
+    code_naf2: str | None
+    libelle_naf2: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -482,6 +540,9 @@ class Diagnostic:
     plans_prevention: list[PlanPrevention] | None = None
     # Barème d'accise en vigueur, lu seulement si `--va` est fourni
     accise: Accise | None = None
+    # Entreprises raccordées à Enedis (dernière année publiée), dans la commune et à l'adresse
+    entreprises_commune: EntreprisesCommune | None = None
+    entreprises_adresse: EntreprisesAdresse | None = None
 
     @property
     def commune_a_des_sites(self) -> bool:
@@ -600,6 +661,19 @@ def lire_diagnostic(
             )
             chargements = lire_chargements(connection)
             accise = None if va_eur is None else _une_ligne(connection, _ACCISE_SQL, {})
+            entreprises_commune = _une_ligne(
+                connection, _ENTREPRISES_COMMUNE_SQL, {"commune": commune}
+            )
+            # Seule une adresse au numéro près se compare à celles d'Enedis
+            entreprises_adresse = (
+                _une_ligne(
+                    connection,
+                    _ENTREPRISES_ADRESSE_SQL,
+                    {"commune": commune, "adresse": adresse_normalisee(territoire.voie)},
+                )
+                if territoire.voie and territoire.precision == "housenumber"
+                else None
+            )
             plans = (
                 _plans(connection, {territoire.code_insee_commune, commune})
                 if "gaspar_plans" in chargements
@@ -633,6 +707,12 @@ def lire_diagnostic(
         courbe=bilan,
         plans_prevention=plans,
         accise=None if accise is None else Accise(**accise),
+        entreprises_commune=None
+        if entreprises_commune is None
+        else EntreprisesCommune(**entreprises_commune),
+        entreprises_adresse=None
+        if entreprises_adresse is None
+        else EntreprisesAdresse(**entreprises_adresse),
         **ligne,
     )
 
@@ -731,6 +811,8 @@ def essentiel(diagnostic: Diagnostic) -> Section:
     section.elements.append(("texte", f"Électricité décarbonée : {carbone}"))
     if d.carbone is not None and (heures := heures_carbone(d.carbone)):
         section.elements.append(("texte", f"Heure par heure : {heures}"))
+    if (deja := d.entreprises_adresse) is not None:
+        section.elements.append(("texte", f"Déjà raccordé ici : {ligne_entreprises_adresse(deja)}"))
     if (part := d.part_chiffre_affaires) is not None:
         section.elements.append(("texte", f"Part du chiffre d'affaires : {_part_ca(part)}"))
     if (va := d.part_valeur_ajoutee) is not None:
@@ -739,6 +821,43 @@ def essentiel(diagnostic: Diagnostic) -> Section:
         section.elements.append(("texte", f"Votre courbe de charge : {ligne_courbe(d.courbe)}"))
     section.elements.append(("texte", f"À savoir : {A_SAVOIR}"))
     return section
+
+
+_GRANDS_SECTEURS = {
+    "INDUSTRIE": "industrie",
+    "TERTIAIRE": "tertiaire",
+    "AGRICULTURE": "agriculture",
+    "INCONNU": "secteur inconnu",
+}
+
+
+# Ce qu'Enedis relève déjà à l'adresse : un raccordement existe, sa puissance reste inconnue
+def ligne_entreprises_adresse(e: EntreprisesAdresse) -> str:
+    secteur = _GRANDS_SECTEURS.get(e.grand_secteur, e.grand_secteur.lower())
+    activite = f", {e.libelle_naf2}" if e.libelle_naf2 else ""
+    return (
+        f"{e.nb_sites} site(s) d'entreprise consommant {_nombre(e.consommation_mwh, 1)} MWh"
+        f" en {e.annee} ({secteur}{activite} ; Enedis)"
+    )
+
+
+# Tissu économique déjà branché sur la distribution dans la commune, et le poids de son industrie
+def ligne_entreprises_commune(e: EntreprisesCommune) -> str:
+    phrase = (
+        f"{e.nb_sites} site(s), {_gwh(e.consommation_gwh)}/an en {e.annee}, dont industrie"
+        f" {_gwh(e.consommation_industrie_gwh)} ({e.nb_sites_industrie} site(s))"
+    )
+    if e.consommation_industrie_gwh > 0:
+        phrase += (
+            f" — rang {e.rang_industrie_departement} sur {e.nb_communes_departement} communes"
+            " du département"
+        )
+    if e.libelle_naf2_principal:
+        phrase += (
+            f" ; premier secteur : {e.libelle_naf2_principal}"
+            f" ({_gwh(e.consommation_naf2_principal_gwh or 0)})"
+        )
+    return phrase
 
 
 # La consommation réelle du site : volume, pointe, heures creuses, coût et carbone
@@ -1073,6 +1192,9 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
             "annee_profil": c.annee_profil,
         },
         "a_savoir": A_SAVOIR,
+        "entreprises_adresse": None
+        if d.entreprises_adresse is None
+        else asdict(d.entreprises_adresse),
         "courbe": None if d.courbe is None else asdict(d.courbe),
         "plans_prevention": None
         if d.plans_prevention is None
@@ -1088,10 +1210,12 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
                 "carbone_territoire",
                 "part_chiffre_affaires",
                 "part_valeur_ajoutee",
+                "entreprises_enedis",
             )
             if code in d.limites
             and (code != "part_chiffre_affaires" or d.part_chiffre_affaires is not None)
             and (code != "part_valeur_ajoutee" or d.part_valeur_ajoutee is not None)
+            and (code != "entreprises_enedis" or d.entreprises_adresse is not None)
         },
     }
 
@@ -1139,6 +1263,12 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
     else:
         texte(s, "Département : aucun site raccordé au transport")
     limite(s, "pression_industrielle")
+    if (entreprises := d.entreprises_commune) is not None:
+        texte(s, f"Entreprises raccordées à Enedis : {ligne_entreprises_commune(entreprises)}")
+    if (deja := d.entreprises_adresse) is not None:
+        texte(s, f"À cette adresse : {ligne_entreprises_adresse(deja)}")
+    if entreprises is not None or deja is not None:
+        limite(s, "entreprises_enedis")
 
     if d.taux_couverture_region is None:
         zni = " (zone non interconnectée)" if d.est_zni else ""

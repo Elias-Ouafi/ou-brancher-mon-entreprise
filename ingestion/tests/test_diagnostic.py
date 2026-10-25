@@ -367,7 +367,7 @@ def test_every_figure_comes_with_its_limit(medallion_db: Path, warehouse: Any) -
     limites = [
         limite for (limite,) in _rows(warehouse, "SELECT limite FROM gold.limites_methodologiques")
     ]
-    assert len(limites) == 16
+    assert len(limites) == 17
     for limite in limites:
         assert limite in texte
 
@@ -708,3 +708,69 @@ def test_essentiel_lists_the_candidates_of_an_ambiguous_address(
     assert "adresse ambigue" in caplog.text
     assert "33000 Bordeaux ; 3 A. 02100 Saint-Quentin" in caplog.text
     assert "Preciser le code postal ou la commune" in caplog.text
+
+
+def test_enedis_addresses_are_grouped_on_the_latest_year(
+    warehouse: duckdb.DuckDBPyConnection,
+) -> None:
+    assert _rows(
+        warehouse,
+        "select annee, adresse_normalisee, nb_sites, consommation_mwh, grand_secteur, code_naf2,"
+        " nb_lignes from gold.fct_conso_entreprises_adresse where code_insee_commune = '69123'"
+        " order by adresse_normalisee",
+    ) == [
+        (2025, "13bruejouffroydabbans", 1, 20.0, "TERTIAIRE", "62", 1),
+        (2025, "9rueampere", 3, 350.0, "INDUSTRIE", "24", 2),
+    ]
+
+
+def test_enedis_communes_rank_their_industry_within_the_department(
+    warehouse: duckdb.DuckDBPyConnection,
+) -> None:
+    assert _rows(
+        warehouse,
+        "select code_insee_commune, nb_sites, consommation_mwh, consommation_industrie_mwh,"
+        " code_naf2_principal, rang_industrie_departement, nb_communes_departement"
+        " from gold.fct_conso_entreprises_commune order by code_insee_commune",
+    ) == [("69123", 5, 375.0, 300.0, "24", 2, 2), ("69266", 4, 1000.0, 1000.0, "20", 1, 2)]
+
+
+@pytest.mark.parametrize("voie", ["9 Rue Ampère", "9 rue Ampere"])
+def test_address_already_connected_is_found_in_enedis_data(medallion_db: Path, voie: str) -> None:
+    from ingestion.diagnostic import essentiel_en_dict, formater_diagnostic, formater_essentiel
+
+    diagnostic = lire_diagnostic(territoire("69383", "Lyon", voie=voie), database=medallion_db)
+
+    deja = diagnostic.entreprises_adresse
+    assert deja is not None
+    assert (deja.annee, deja.nb_sites, deja.consommation_mwh) == (2025, 3, 350.0)
+    assert deja.libelle_naf2 == "Métallurgie"
+    assert (
+        "Déjà raccordé ici : 3 site(s) d'entreprise consommant 350,0 MWh en 2025"
+        " (industrie, Métallurgie ; Enedis)"
+    ) in formater_essentiel(diagnostic)
+    complet = formater_diagnostic(diagnostic)
+    assert "Entreprises raccordées à Enedis : 5 site(s)" in complet
+    assert "rang 2 sur 2 communes du département" in complet
+    reponse = essentiel_en_dict(diagnostic)
+    assert reponse["entreprises_adresse"]["nb_sites"] == 3
+    assert "entreprises_enedis" in reponse["limites"]
+
+
+# Une adresse à la rue seulement, ou absente des données Enedis, ne prouve rien
+@pytest.mark.parametrize(
+    ("voie", "precision"), [("9 Rue Ampère", "street"), ("11 Rue Ampère", "housenumber")]
+)
+def test_unmatched_address_shows_only_the_commune(
+    medallion_db: Path, voie: str, precision: str
+) -> None:
+    from ingestion.diagnostic import essentiel_en_dict, formater_essentiel
+
+    diagnostic = lire_diagnostic(
+        territoire("69123", "Lyon", voie=voie, precision=precision), database=medallion_db
+    )
+
+    assert diagnostic.entreprises_adresse is None
+    assert diagnostic.entreprises_commune is not None
+    assert "Déjà raccordé" not in formater_essentiel(diagnostic)
+    assert "entreprises_enedis" not in essentiel_en_dict(diagnostic)["limites"]

@@ -15,6 +15,7 @@ from ingestion.extract_geo import run_geo_ingestion
 from ingestion.pipeline import (
     run_consolidation,
     run_edf_sei_ingestion,
+    run_enedis_entreprises_ingestion,
     run_europe_ingestion,
     run_gaspar_ingestion,
     run_ingestion,
@@ -94,6 +95,10 @@ def run_refresh(
         ("carbone-iles", lambda: run_edf_sei_ingestion(settings=settings, run_id=run_id)),
         ("production", lambda: run_production_ingestion(settings=settings, run_id=run_id)),
         ("europe", lambda: run_europe_ingestion(settings=settings, run_id=run_id)),
+        (
+            "entreprises-enedis",
+            lambda: run_enedis_entreprises_ingestion(settings=settings, run_id=run_id),
+        ),
         ("dbt-build", lambda: dbt_build(settings)),
     ]
     bilan = []
