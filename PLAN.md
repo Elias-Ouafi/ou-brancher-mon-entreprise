@@ -27,6 +27,7 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 | Date de chargement de chaque source dans toutes les sorties ; pied de page des rapports avec la commande pour les refaire | `ligne_chargements`, `pied_de_page` |
 | Pays de l'UE-27 : prix Eurostat et carbone Ember du pays, face à la France à tranche égale ; pays trouvé par Nominatim | `europe`, `fct_pays_ue` |
 | Mise à jour de toutes les sources, puis `dbt build` | `refresh` |
+| Rapport mensuel carbone et créneaux Tempo, sur le calendrier réel de l'API RTE (vérifié le 25 octobre sur septembre 2026 et janvier 2026) | `tempo`, `report` |
 | Sortie réduite à la réponse (journal sous `--verbose`) ; avant tout chargement, la commande `refresh` à lancer | `ingestion/cli.py` |
 
 **À surveiller** :
@@ -38,7 +39,8 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
   juillet 2025) ;
 - la fourchette de prix à 3 ans reste indicative tant que le contrôle sur le passé compte moins
   de 20 périodes (8 aujourd'hui, chevauchantes, toutes marquées par la crise de 2022) ;
-- le calendrier Tempo (`part-manual`, 31 jours) n'a tourné que sur des réponses simulées ;
+- les prix Tempo (seed `tarifs_tempo`) ne remontent qu'au 1er février 2026 : un rapport plus ancien
+  classe les créneaux sur le seul carbone ;
 - l'accise au tarif normal (26,58 €/MWh) vit dans le seed daté `accise_electricite` : à compléter
   à chaque indexation du 1er février, que `--va` signale une fois la date passée ;
 - EDF SEI publie jusqu'à fin 2024 seulement (2021-2024 « estimé »), sans Mayotte ; le jeu a
@@ -49,7 +51,6 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 | Priorité | Étape | Bloqué par |
 |---|---|---|
 | 6 | Extension internationale, voir ci-dessous | jeton ENTSO-E (compte gratuit) et contours des zones de prix à sourcer |
-| 7 | Calendrier Tempo sur données réelles | compte RTE |
 | 8 | Repère de prix au-delà de 150 000 MWh/an (contrats CAPN) ; classement pondéré dans `compare` | décision |
 | 9 | Carte : maquettes 3D plus fidèles des centrales nucléaires, des barrages hydrauliques et des centrales fossiles | — |
 | 10 | Recherche de sources pour améliorer les données sur l'électricité | — |
@@ -133,6 +134,8 @@ Inondations.
 | 24 oct. | `main` protégée par un ruleset GitHub : PR obligatoire (sans approbation), job CI `ruff + pytest + dbt build` vert sur une branche à jour, ni force-push ni suppression, aucun contournement |
 | 25 oct. | Accise au tarif normal dans le seed daté `accise_electricite` (ligne sans `date_fin` = barème en vigueur) ; passé le 1er février suivant sa date d'effet, `--va` demande de le mettre à jour |
 | 25 oct. | Fourchette de prix à 3 ans élargie pour contenir toujours le prix des 12 derniers mois ; dite « indicative » tant que moins de 20 périodes sont contrôlées sur le passé (variable dbt `prix_nb_periodes_validation`) |
+| 25 oct. | Bronze : un Parquet n'est jamais écrasé ; un même `run_id` le même jour prend le suffixe `-2`, `-3`… (deux mois Tempo chargés à la suite écrasaient le premier) |
+| 25 oct. | Tempo hors `refresh` : il demande un compte RTE, que les autres commandes n'exigent pas ; `tempo --month` se lance avant `report` |
 
 ## Écarté
 
