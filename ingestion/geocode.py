@@ -74,6 +74,20 @@ def normalise(valeur: str) -> str:
     return "".join(c for c in sans_accent.lower() if c.isalnum())
 
 
+# Indice de répétition écrit en entier par la BAN (« 13 bis »), en une lettre par Enedis (« 13 B »)
+_INDICES = {"bis": "b", "ter": "t", "quater": "q", "quinquies": "c"}
+
+
+# Numéro et voie comparables à l'adresse publiée par Enedis (même règle que la macro dbt)
+def adresse_normalisee(voie: str) -> str:
+    sans_accent = unicodedata.normalize("NFKD", voie)
+    texte = "".join(c for c in sans_accent if not unicodedata.combining(c)).lower()
+    texte = re.sub(
+        r"^\s*(\d+)\s*(bis|ter|quater|quinquies)\b", lambda m: m[1] + _INDICES[m[2]], texte
+    )
+    return re.sub(r"[^a-z0-9]", "", texte)
+
+
 _REGIONS_PAR_NOM: dict[str, str] = {normalise(nom): code for code, nom in REGIONS.items()}
 
 
@@ -97,6 +111,8 @@ class Territoire:
     score: float
     # Précision du résultat BAN : `housenumber`, `street`, `locality`, `municipality`
     precision: str
+    # Numéro et voie seuls (« 9 Rue Ampère »), sans code postal ni commune
+    voie: str | None = None
 
     @property
     def est_precis(self) -> bool:
@@ -253,6 +269,7 @@ class BanClient:
             longitude=float(coords[0]) if coords[0] is not None else 0.0,
             score=score,
             precision=precision,
+            voie=str(props["name"]) if props.get("name") else None,
         )
 
     def _get(self, path: str, params: dict[str, Any]) -> httpx.Response:

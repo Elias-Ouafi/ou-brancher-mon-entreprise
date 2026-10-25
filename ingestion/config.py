@@ -52,6 +52,9 @@ class Settings(BaseSettings):
         "courbe-de-charge-de-la-production-delectricite-par-filiere/raw"
     )
 
+    # Open data d'Enedis (data-fair), sans compte ni clé : consommation des entreprises par adresse
+    enedis_base_url: str = "https://opendata.enedis.fr/data-fair/api/v1/datasets/"
+
     # API de diffusion d'Eurostat (JSON-stat), sans compte ni clé
     eurostat_base_url: str = "https://ec.europa.eu/eurostat/api/dissemination"
 
