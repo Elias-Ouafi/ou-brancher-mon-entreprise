@@ -92,6 +92,49 @@ models:
               arguments:
                 values: [bleu, blanc, rouge]
 
+  - name: conso_entreprises_adresse
+    description: >
+      Consommation annuelle d'électricité des entreprises raccordées à Enedis, une ligne
+      par adresse et secteur, avec l'adresse normalisée (sans accent, casse ni ponctuation)
+      qui sert à la rapprocher de l'adresse géocodée par la BAN. Hiérarchie commune →
+      département → région résolue localement.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [annee, code_insee_commune, tri_des_adresses]
+    columns:
+      - name: annee
+        data_tests:
+          - not_null
+          - accepted_range:
+              arguments:
+                min_value: 2018
+                max_value: 2030
+      - name: code_iris
+        data_tests:
+          - not_null
+          - exact_length:
+              arguments:
+                length: 9
+      - name: code_departement
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_departement')
+                field: code_departement
+      - name: code_naf2
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_naf2')
+                field: code_naf2
+      - name: consommation_mwh
+        data_tests:
+          - accepted_range:
+              arguments:
+                min_value: 0
+
   - name: conso_industrielle_iris
     description: >
       Consommation électrique annuelle des sites raccordés au transport, par IRIS,

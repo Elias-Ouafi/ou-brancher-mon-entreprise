@@ -19,6 +19,7 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 | Part de la facture dans le chiffre d'affaires (`--ca`) et électro-intensité fiscale dans la valeur ajoutée (`--va`) | `essentiel`, `diagnose` |
 | Courbe de charge Enedis (`--courbe`) : consommation, pointe, heures creuses, coût et carbone réels | `ingestion/courbe.py` |
 | Diagnostic complet : industrie, réseau, zone RTE, site clé en main, risques | `diagnose`, `compare` |
+| Entreprises raccordées à Enedis (2025) : volume, industrie et premier secteur NAF de la commune, rang dans le département ; consommation déjà relevée à l'adresse (« Déjà raccordé ici ») | `fct_conso_entreprises_commune`, `fct_conso_entreprises_adresse`, seed `dim_naf2` |
 | Verdict « brancher ici ? » en cinq critères (raccordement, risques, carbone, facture, foncier) | `verdict`, `phrase_verdict` |
 | Carte 3D épurée autour du verdict : vue « Raccorder » par défaut, adresse reliée à la zone RTE utile et au site clé en main ; épinglée par `essentiel` et `diagnose` (seule l'épingle bouge si les données n'ont pas changé) | `carte`, `reporting/carte.py` |
 | Une carte par système électrique (métropole et Corse, chaque DROM), ouverte sur celle de l'adresse ; lentille « Produire » : 95 pôles de production du registre national, en maquettes par filière | `ingestion/hexagones.py`, `fct_sites_production` |
@@ -52,7 +53,7 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 |---|---|---|
 | 8 | Repère de prix au-delà de 150 000 MWh/an (contrats CAPN) ; classement pondéré dans `compare` | décision |
 | 9 | Carte : maquettes 3D plus fidèles des centrales nucléaires, des barrages hydrauliques et des centrales fossiles | — |
-| 10 | Intégrer les sources retenues par l'étude du 25 octobre, dans l'ordre ci-dessous (la recherche est faite) | voir chaque source |
+| 10 | Intégrer les sources retenues par l'étude du 25 octobre, dans l'ordre ci-dessous (10.1 faite le 25 octobre) | voir chaque source |
 | 11 | Carte : très grandes zones de fret (grands ports, grands aéroports de fret), sans les petites | source et seuil de taille à fixer |
 | 6 | Extension internationale, en dernier, voir ci-dessous | jeton ENTSO-E (compte gratuit) et contours des zones de prix à sourcer |
 
@@ -63,7 +64,7 @@ nouvelle dépendance.
 
 | Rang | Source | Producteur, accès | Ce qu'elle apporte | Limite ou blocage |
 |---|---|---|---|---|
-| 10.1 | Consommation d'électricité annuelle des entreprises par adresse (2,79 M lignes, jusqu'à 2025) | Enedis, data-fair `opendata.enedis.fr`, jeu `consommation-annuelle-entreprise-par-adresse` | Industrie et tertiaire réels autour de l'adresse (MWh, code NAF, IRIS, commune), au lieu des seuls sites raccordés à RTE ; atténue le secret statistique des IRIS | Réseau Enedis seulement (ni ELD ni RTE) ; vérifier le regroupement des petites adresses (`tri_des_adresses`) |
+| ~~10.1~~ | **Fait le 25 octobre.** Consommation d'électricité annuelle des entreprises par adresse : dernière année seulement (2025, 499 125 lignes, 142 TWh, en 18 s) | Enedis, data-fair `opendata.enedis.fr`, jeu `consommation-annuelle-entreprise-par-adresse` | Industrie et tertiaire réels de la commune et de l'adresse (MWh, code NAF), au lieu des seuls sites raccordés à RTE | Réseau Enedis seulement (ni ELD ni RTE) ; 7 043 lignes sans adresse, comptées à la commune seulement |
 | 10.2 | Grille TURPE 7 HTA-BT au 1er août 2026 | CRE, délibération n° 2026-105 du 21 mai 2026 (annexes) ; seed daté comme `tarifs_hphc` | Coût d'acheminement selon le domaine de tension (BT > 36 kVA, HTA courte ou longue utilisation) : la seule part de la facture qui dépend du raccordement, donc de la puissance | Valeurs à relever dans le PDF ; mise à jour chaque 1er août |
 | 10.3 | Continuité d'alimentation : indicateur réglementaire par département (2009-2024), durée et fréquence moyennes des coupures BT et HTA (nationales) | Agence ORE et Enedis, data-fair `opendata.agenceore.fr` | Repère « qualité de fourniture » dans `diagnose` : part des clients du département hors des seuils réglementaires, comparée à la moyenne nationale | Maille du département ; pas de critère B par commune en open data |
 | 10.4 | Zonage sismique réglementaire par commune | Annexe du décret n° 2010-1255 (articles R563-1 à R563-8 du code de l'environnement) et tableur de planseisme.fr (ministère, BRGM) ; seed par code INSEE | Comble le zonage sismique absent quand l'API Géorisques est coupée | Tableur à recaler sur le code officiel géographique actuel (communes fusionnées) |
@@ -162,6 +163,8 @@ Inondations.
 | 25 oct. | Tempo hors `refresh` : il demande un compte RTE, que les autres commandes n'exigent pas ; `tempo --month` se lance avant `report` |
 | 25 oct. | L'extension internationale (étape 6) passe en dernier |
 | 25 oct. | Nouvelles sources : producteur officiel et licence ouverte seulement, méthode publiée ou bibliothèque maintenue et testée ; une copie tierce sert au mieux de repli signalé |
+| 25 oct. | Chaque nouvelle source suit l'architecture médaillon : extraction vers un Parquet bronze immuable puis `MERGE` DuckDB, silver nettoyé et gold en dbt, limite dans `limites_methodologiques` |
+| 25 oct. | Enedis par adresse : pages CSV data-fair de 10 000 lignes (le JSON prenait 9 min pour une année), dernière année publiée seulement ; adresse rapprochée sur « numéro + voie » normalisés, seulement si la BAN trouve le numéro ; une consommation à l'adresse prouve un raccordement, pas une puissance disponible |
 
 ## Écarté
 

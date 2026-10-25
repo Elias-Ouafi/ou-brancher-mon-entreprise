@@ -160,6 +160,25 @@ sources:
                   arguments:
                     to: ref('dim_pays_ue')
                     field: iso3
+      - name: enedis_conso_entreprises_adresse
+        description: >
+          Consommation annuelle d'électricité des entreprises raccordées au réseau Enedis,
+          par adresse (Enedis, data-fair, licence ouverte), dernière année publiée. Une
+          ligne par adresse et par secteur : une même adresse peut porter plusieurs lignes
+          (secteurs NAF différents). `tri_des_adresses` identifie la ligne dans l'année ;
+          `adresse` est vide sur environ 1,4 % des lignes ; `code_secteur_naf2` est vide
+          pour le grand secteur INCONNU. Hors ELD et hors sites raccordés à RTE.
+        data_tests:
+          - unique_combination:
+              arguments:
+                columns: [annee, code_commune, tri_des_adresses]
+        columns:
+          - name: code_grand_secteur
+            data_tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: [INDUSTRIE, TERTIAIRE, AGRICULTURE, INCONNU]
       - name: edf_sei_production
         description: >
           Production horaire par filière en Corse, Guadeloupe, Martinique, Guyane et à La

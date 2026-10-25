@@ -31,7 +31,7 @@ python -m venv .venv
 Copy-Item .env.example .env
 ```
 
-**2. Charger les données publiques** (une minute et demie environ) :
+**2. Charger les données publiques** (deux minutes environ) :
 
 ```powershell
 .\.venv\Scripts\python.exe -m ingestion.cli refresh --months 180
@@ -112,7 +112,7 @@ Ce fichier est ignoré par git et prime sur `.env`.
 
 ```mermaid
 flowchart LR
-    SRC[("ODRÉ · Eurostat · RTE · GASPAR · EDF SEI · Ember · geo.api")] -->|"ingestion/ (PySpark)"| B["Bronze : Parquet + DuckDB (MERGE)"]
+    SRC[("ODRÉ · Eurostat · RTE · Enedis · GASPAR · EDF SEI · Ember · geo.api")] -->|"ingestion/ (PySpark)"| B["Bronze : Parquet + DuckDB (MERGE)"]
     B -->|dbt| S["Silver : nettoyé, codes INSEE"]
     S -->|dbt| G["Gold : prix, carbone, risques, diagnostic"]
     SEEDS[("Seeds : ADEME, tarifs, référentiels, limites")] --> G
@@ -132,10 +132,12 @@ flowchart LR
 - **Gold principal** : `fct_diagnostic_territoire` (une ligne par département),
   `fct_prix_entreprise_tranche`, `fct_carbone_territoire`, `fct_carbone_horaire_zni`,
   `fct_risques_commune`, `fct_plans_prevention_commune`, `fct_sites_production`, `fct_pays_ue`,
-  `fct_mix`. Les seeds datés (tarifs, accise, SDDR, sites clés en main, facteurs ADEME) sont à mettre à jour à chaque
+  `fct_mix`, `fct_conso_entreprises_commune` et `fct_conso_entreprises_adresse` (entreprises
+  raccordées à Enedis, dernière année publiée). Les seeds datés (tarifs, accise, SDDR, sites clés en main, facteurs ADEME) sont à mettre à jour à chaque
   nouvelle source ; `limites_methodologiques` porte la limite de chaque indicateur.
 - **Fiabilité** : géocodage BAN sur cinq candidats, adresse refusée si trop approximative ou
-  ambiguë ; date des données affichée partout, avec alerte au-delà de 45 jours ; risques en repli
+  ambiguë ; consommation Enedis cherchée à l'adresse seulement quand la BAN la trouve au numéro
+  près (clé « numéro + voie » sans accents ni ponctuation, « 13 bis » = « 13 B ») ; date des données affichée partout, avec alerte au-delà de 45 jours ; risques en repli
   local quand l'API Géorisques ne répond pas. Les risques ne sont « à vérifier » que si un plan de
   prévention (PPRN, PPRT, PPRM) approuvé ou prescrit couvre la commune, soit 13 919 communes : un
   risque seulement recensé, ce qui touche 31 706 communes, est donné pour information.
@@ -148,7 +150,7 @@ flowchart LR
 .\.venv\Scripts\python.exe -m ruff check . ; .\.venv\Scripts\python.exe -m pytest
 ```
 
-410 tests sans réseau, dont un `dbt build` complet sur une base synthétique qui reproduit les
+423 tests sans réseau, dont un `dbt build` complet sur une base synthétique qui reproduit les
 pièges des sources, plus les tests de données dbt. La CI GitHub Actions les joue à chaque PR.
 
 ## Sources et licence
@@ -160,6 +162,7 @@ pièges des sources, plus les tests de données dbt. La CI GitHub Actions les jo
 [altimétrie IGN](https://geoservices.ign.fr/documentation/services/services-geoplateforme/altimetrie) ·
 [Natural Earth](https://www.naturalearthdata.com) ·
 [sites clés en main France 2030](https://www.data.gouv.fr/datasets/les-sites-cles-en-main-france-2030) ·
+[consommation des entreprises par adresse d'Enedis](https://opendata.enedis.fr/datasets/consommation-annuelle-entreprise-par-adresse) ·
 [EDF SEI](https://opendata.edf.fr/datasets/courbe-de-charge-de-la-production-delectricite-par-filiere) ·
 [Ember](https://ember-energy.org/data/yearly-electricity-data/) (CC BY 4.0) ·
 [registre national des installations de production](https://odre.opendatasoft.com/explore/dataset/registre-national-installation-production-stockage-electricite-agrege/) ·

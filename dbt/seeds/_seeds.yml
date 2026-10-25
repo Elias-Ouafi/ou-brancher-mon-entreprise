@@ -123,6 +123,25 @@ seeds:
       - name: limite
         data_tests: [not_null]
 
+  - name: dim_naf2
+    description: >
+      Les 88 divisions de la nomenclature d'activités française NAF rév. 2 (niveau 2),
+      relevées le 25 octobre 2026 sur les pages officielles de l'INSEE
+      (insee.fr/fr/metadonnees/nafr2/division/<code>). Stable depuis 2008.
+    config:
+      column_types:
+        code_naf2: varchar
+    columns:
+      - name: code_naf2
+        data_tests:
+          - unique
+          - not_null
+          - exact_length:
+              arguments:
+                length: 2
+      - name: libelle_naf2
+        data_tests: [not_null]
+
   - name: accise_electricite
     description: >
       Accise sur l'électricité au tarif normal des PME et de la haute puissance (plus de

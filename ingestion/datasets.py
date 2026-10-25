@@ -242,6 +242,20 @@ CONSO_IRIS = DatasetSpec(
     description="Consommation annuelle des sites industriels raccordés au transport, par IRIS",
 )
 
+# Entreprises raccordées à la distribution, adresse par adresse : le tissu économique réel
+ENEDIS_CONSO_ENTREPRISES = DatasetSpec(
+    dataset_id="enedis-conso-entreprises-adresse",
+    keys=(period("annee"), code("code_commune"), code("tri_des_adresses")),
+    attributes=(
+        code("code_iris"),
+        label("adresse"),
+        code("code_grand_secteur"),
+        code("code_secteur_naf2"),
+    ),
+    measures=measures("nombre_de_sites", "consommation_annuelle_totale_de_ladresse_mwh"),
+    description="Consommation annuelle d'électricité des entreprises par adresse (Enedis)",
+)
+
 # Région excédentaire ou déficitaire, mois par mois
 EQUILIBRE_REGIONAL = DatasetSpec(
     dataset_id="equilibre-regional-mensuel-prod-conso-brute",
@@ -454,6 +468,7 @@ BRONZE_SPECS: tuple[DatasetSpec, ...] = (
     EDF_SEI_PRODUCTION,
     EUROSTAT_PRIX_UE,
     EMBER_INTENSITE_CARBONE,
+    ENEDIS_CONSO_ENTREPRISES,
     *TERRITORIAL_SPECS,
 )
 
