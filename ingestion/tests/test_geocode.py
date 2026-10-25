@@ -13,6 +13,7 @@ from ingestion.geocode import (
     AdresseIntrouvableError,
     BanClient,
     GeocodingError,
+    adresse_normalisee,
     code_region,
     geocode,
     normalise,
@@ -33,6 +34,7 @@ def feature(**props: Any) -> dict[str, Any]:
         "type": "housenumber",
         "citycode": "69383",
         "city": "Lyon",
+        "name": "12 Rue de la Paix",
         "postcode": "69003",
         "context": "69, Rhône, Auvergne-Rhône-Alpes",
     }
@@ -68,6 +70,23 @@ def test_normalise_strips_accents_case_and_punctuation() -> None:
     assert normalise("Côte d'Azur") == normalise("COTE D AZUR")
 
 
+# La BAN écrit « 13 bis », Enedis « 13 B » : les deux doivent donner la même clé
+@pytest.mark.parametrize(
+    ("ban", "enedis"),
+    [
+        ("13 bis Rue Jouffroy d'Abbans", "13 B RUE JOUFFROY D ABBANS"),
+        ("4 ter Avenue Émile Zola", "4 T Avenue Emile Zola"),
+        ("9 Rue Ampère", "9 RUE AMPERE"),
+    ],
+)
+def test_ban_and_enedis_addresses_share_one_key(ban: str, enedis: str) -> None:
+    assert adresse_normalisee(ban) == adresse_normalisee(enedis)
+
+
+def test_street_names_starting_like_an_index_are_kept() -> None:
+    assert adresse_normalisee("12 Bistrot du Port") == "12bistrotduport"
+
+
 def test_every_region_code_is_unique_and_two_digits() -> None:
     assert len(REGIONS) == 18
     assert all(len(c) == 2 and c.isdigit() for c in REGIONS)
@@ -89,6 +108,7 @@ def test_address_resolves_to_its_territory(httpx_mock: HTTPXMock, ban_settings: 
     assert territoire.code_insee_region == "84"
     assert (territoire.latitude, territoire.longitude) == (45.7578, 4.8456)
     assert territoire.est_precis
+    assert territoire.voie == "12 Rue de la Paix"
 
 
 def test_query_is_sent_with_the_address_and_a_few_candidates(

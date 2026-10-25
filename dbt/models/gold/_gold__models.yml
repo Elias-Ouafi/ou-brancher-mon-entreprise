@@ -87,6 +87,32 @@ models:
       - name: est_minorant
         description: Vrai si au moins un IRIS est sous secret statistique.
 
+  - name: fct_conso_entreprises_adresse
+    description: >
+      Entreprises raccordées à Enedis à une adresse, dernière année publiée : une ligne par
+      commune et adresse normalisée, secteurs additionnés. Une consommation déjà présente à
+      l'adresse demandée signale un raccordement existant ; son absence ne prouve rien
+      (adresse libellée autrement, site raccordé à RTE ou à une ELD).
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [code_insee_commune, adresse_normalisee]
+    columns:
+      - name: consommation_mwh
+        data_tests: [not_null]
+
+  - name: fct_conso_entreprises_commune
+    description: >
+      Tissu économique raccordé à Enedis par commune, dernière année publiée : consommation
+      totale et par grand secteur, sites industriels, premier secteur NAF par consommation et
+      rang de la commune dans son département pour l'industrie. Complète
+      `fct_pression_industrielle_commune`, limitée aux sites raccordés au transport.
+    columns:
+      - name: code_insee_commune
+        data_tests: [unique, not_null]
+      - name: libelle_naf2_principal
+        description: Libellé INSEE du secteur NAF qui consomme le plus dans la commune.
+
   - name: fct_pression_industrielle_departement
     description: >
       Pression industrielle par département (dernière année sans secret statistique), une ligne pour

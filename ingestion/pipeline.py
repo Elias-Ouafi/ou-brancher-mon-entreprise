@@ -11,6 +11,7 @@ from ingestion.datasets import (
     COMMUNES_CENTRES,
     EDF_SEI_PRODUCTION,
     EMBER_INTENSITE_CARBONE,
+    ENEDIS_CONSO_ENTREPRISES,
     EUROSTAT_PRIX_ENTREPRISES,
     EUROSTAT_PRIX_UE,
     GASPAR_PLANS,
@@ -22,6 +23,7 @@ from ingestion.datasets import (
 )
 from ingestion.extract_edf_sei import telecharger_production
 from ingestion.extract_ember import telecharger_intensites
+from ingestion.extract_enedis import telecharger_conso_entreprises
 from ingestion.extract_eurostat import EurostatClient
 from ingestion.extract_gaspar import lire_export, lire_plans, telecharger_archive
 from ingestion.extract_odre import ExtractionWindow, OdreClient
@@ -472,6 +474,19 @@ def run_edf_sei_ingestion(
     settings = settings or get_settings()
     lignes = telecharger_production(settings=settings)
     return _charger_fichier(lignes, EDF_SEI_PRODUCTION, settings, run_id, now)
+
+
+# Entreprises raccordées à Enedis, adresse par adresse, sur la dernière année publiée
+def run_enedis_entreprises_ingestion(
+    *,
+    settings: Settings | None = None,
+    annee: str | None = None,
+    run_id: str = "manual",
+    now: datetime | None = None,
+) -> tuple[ExtractionOutcome, LoadResult]:
+    settings = settings or get_settings()
+    lignes = telecharger_conso_entreprises(annee=annee, settings=settings)
+    return _charger_fichier(lignes, ENEDIS_CONSO_ENTREPRISES, settings, run_id, now)
 
 
 # Relit les derniers mois consolidés, qui corrigent les données temps réel

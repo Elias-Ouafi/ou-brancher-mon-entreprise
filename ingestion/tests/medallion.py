@@ -17,6 +17,7 @@ from ingestion.datasets import (
     CONTRAINTES_REGIONALES,
     EDF_SEI_PRODUCTION,
     EMBER_INTENSITE_CARBONE,
+    ENEDIS_CONSO_ENTREPRISES,
     EQUILIBRE_REGIONAL,
     EUROSTAT_PRIX_ENTREPRISES,
     EUROSTAT_PRIX_UE,
@@ -514,6 +515,33 @@ def communes_centres() -> list[dict[str, Any]]:
     ]
 
 
+# Lyon : deux lignes à la même adresse (casse différente) et une ligne sans adresse ;
+# Villeurbanne plus industrielle ; l'année 2024 doit être ignorée par le gold
+def conso_entreprises() -> list[dict[str, Any]]:
+    return [
+        {
+            "annee": str(annee),
+            "code_commune": commune,
+            "tri_des_adresses": tri,
+            "code_iris": iris,
+            "adresse": adresse,
+            "nombre_de_sites": sites,
+            "consommation_annuelle_totale_de_ladresse_mwh": mwh,
+            "code_grand_secteur": secteur,
+            "code_secteur_naf2": naf,
+        }
+        for annee, commune, tri, iris, adresse, sites, mwh, secteur, naf in [
+            (2024, "69123", "1", "691230101", "9 Rue Ampère", 9, 9_000.0, "INDUSTRIE", "24"),
+            (2025, "69123", "1", "691230101", "9 Rue Ampère", 2, 300.0, "INDUSTRIE", "24"),
+            (2025, "69123", "2", "691230101", "9 RUE AMPERE", 1, 50.0, "TERTIAIRE", "47"),
+            (2025, "69123", "3", "691230102", "13 B Rue Jouffroy d'Abbans", 1, 20.0,
+             "TERTIAIRE", "62"),
+            (2025, "69123", "4", "691230102", None, 1, 5.0, "INCONNU", None),
+            (2025, "69266", "1", "692660101", "1 Rue du Test", 4, 1_000.0, "INDUSTRIE", "20"),
+        ]
+    ]  # fmt: skip
+
+
 def load_bronze(
     database: Path, tmp_path: Path, spec: DatasetSpec, records: list[dict[str, Any]]
 ) -> None:
@@ -568,6 +596,7 @@ def build_warehouse(tmp_path: Path, *, with_tempo: bool = True) -> Path:
     load_bronze(database, tmp_path, EMBER_INTENSITE_CARBONE, ember_intensites())
     load_bronze(database, tmp_path, SITES_PRODUCTION, sites_production())
     load_bronze(database, tmp_path, COMMUNES_CENTRES, communes_centres())
+    load_bronze(database, tmp_path, ENEDIS_CONSO_ENTREPRISES, conso_entreprises())
     ensure_bronze_tables(settings=Settings(_env_file=None, duckdb_path=database))
     dbt_build(database, tmp_path)
     return database
