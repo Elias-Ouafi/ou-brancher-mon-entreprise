@@ -50,11 +50,28 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 
 | Priorité | Étape | Bloqué par |
 |---|---|---|
-| 6 | Extension internationale, voir ci-dessous | jeton ENTSO-E (compte gratuit) et contours des zones de prix à sourcer |
 | 8 | Repère de prix au-delà de 150 000 MWh/an (contrats CAPN) ; classement pondéré dans `compare` | décision |
 | 9 | Carte : maquettes 3D plus fidèles des centrales nucléaires, des barrages hydrauliques et des centrales fossiles | — |
-| 10 | Recherche de sources pour améliorer les données sur l'électricité | — |
+| 10 | Intégrer les sources retenues par l'étude du 25 octobre, dans l'ordre ci-dessous (la recherche est faite) | voir chaque source |
 | 11 | Carte : très grandes zones de fret (grands ports, grands aéroports de fret), sans les petites | source et seuil de taille à fixer |
+| 6 | Extension internationale, en dernier, voir ci-dessous | jeton ENTSO-E (compte gratuit) et contours des zones de prix à sourcer |
+
+**Sources à intégrer (étude du 25 octobre)**, de la plus utile à « brancher ici ? » à la moins
+utile. Toutes sont publiées par leur producteur officiel, sous licence ouverte, et se lisent avec
+les clients HTTP déjà en place (data-fair comme EDF SEI, Opendatasoft comme ODRÉ) : aucune
+nouvelle dépendance.
+
+| Rang | Source | Producteur, accès | Ce qu'elle apporte | Limite ou blocage |
+|---|---|---|---|---|
+| 10.1 | Consommation d'électricité annuelle des entreprises par adresse (2,79 M lignes, jusqu'à 2025) | Enedis, data-fair `opendata.enedis.fr`, jeu `consommation-annuelle-entreprise-par-adresse` | Industrie et tertiaire réels autour de l'adresse (MWh, code NAF, IRIS, commune), au lieu des seuls sites raccordés à RTE ; atténue le secret statistique des IRIS | Réseau Enedis seulement (ni ELD ni RTE) ; vérifier le regroupement des petites adresses (`tri_des_adresses`) |
+| 10.2 | Grille TURPE 7 HTA-BT au 1er août 2026 | CRE, délibération n° 2026-105 du 21 mai 2026 (annexes) ; seed daté comme `tarifs_hphc` | Coût d'acheminement selon le domaine de tension (BT > 36 kVA, HTA courte ou longue utilisation) : la seule part de la facture qui dépend du raccordement, donc de la puissance | Valeurs à relever dans le PDF ; mise à jour chaque 1er août |
+| 10.3 | Continuité d'alimentation : indicateur réglementaire par département (2009-2024), durée et fréquence moyennes des coupures BT et HTA (nationales) | Agence ORE et Enedis, data-fair `opendata.agenceore.fr` | Repère « qualité de fourniture » dans `diagnose` : part des clients du département hors des seuils réglementaires, comparée à la moyenne nationale | Maille du département ; pas de critère B par commune en open data |
+| 10.4 | Zonage sismique réglementaire par commune | Annexe du décret n° 2010-1255 (articles R563-1 à R563-8 du code de l'environnement) et tableur de planseisme.fr (ministère, BRGM) ; seed par code INSEE | Comble le zonage sismique absent quand l'API Géorisques est coupée | Tableur à recaler sur le code officiel géographique actuel (communes fusionnées) |
+| 10.5 | Agrégats de consommation au pas d'une demi-heure des points de soutirage de plus de 36 kVA, par secteur d'activité et puissance souscrite (maille régionale) | Enedis, data-fair, jeu `conso-sup36-region` | Profils de charge réels par secteur pour `fct_cout_horaire_profil`, au lieu des profils du seed | Volume (34,6 M lignes) : filtrer à la source par région et secteur |
+| 10.6 | Signal Ecowatt (tension du système électrique, J à J+3) | RTE, API Ecowatt v5 (même compte que Tempo) | Jours de tension dans le rapport mensuel, à côté des jours rouges Tempo | Le bac à sable répond ; l'API réelle renvoie 403 tant que l'application n'est pas abonnée à « Ecowatt » sur le portail RTE |
+
+Pour l'étape 6, la bibliothèque `entsoe-py` (EnergieID, MIT, publiée sur PyPI, maintenue en
+2026) est le client ENTSO-E de référence, plutôt qu'un client maison.
 
 **Extension internationale**, dans cet ordre (l'UE-27 à la maille pays est faite) :
 1. Zones de prix (Italie, pays nordiques) : ENTSO-E et point-dans-polygone avec l'extension
@@ -96,10 +113,17 @@ Inondations.
 - **Limites de l'open data** : capacité de raccordement non publiée ; postes RTE sans
   coordonnées (maille du département seulement) ; ~40 % des IRIS sous secret statistique
   depuis 2022.
+- **Sources de données (étude du 25 octobre)** : RTE a retiré les coordonnées GPS de ses postes
+  et de ses lignes « pour des raisons de sécurité publique » (jeux ODRÉ au 16 juin 2026), et EDF
+  a fait de même pour ses postes sources ; le seul jeu de postes sources Enedis géolocalisés est
+  local (agglomération du Puy-en-Velay). Toute distance à un poste est donc exclue. Enedis et
+  l'Agence ORE ont quitté l'API Opendatasoft pour data-fair (`/data-fair/api/v1/datasets`) :
+  l'ancienne API répond 410. La capacité en soutirage d'Enedis reste réservée au portail client
+  entreprise ; l'outil Toprac de RTE, cité par la CRE, n'a pas de version publique trouvée.
 - **Ce qui peut bouger (étude du 24 octobre)** : la CRE impose à RTE de refondre Caparéseau
   d'ici le 1er janvier 2027 et RTE étudie une carte de ses capacités en soutirage (délibération
   CRE 2026-173) : à intégrer dès sa publication. Enedis publie ses postes HTA/BT géolocalisés
-  (licence ouverte) ; un jeu des postes sources géolocalisés reste à trouver.
+  (licence ouverte) ; pas de jeu national des postes sources géolocalisés (voir ci-dessus).
 
 ## Décisions en vigueur
 
@@ -136,6 +160,8 @@ Inondations.
 | 25 oct. | Fourchette de prix à 3 ans élargie pour contenir toujours le prix des 12 derniers mois ; dite « indicative » tant que moins de 20 périodes sont contrôlées sur le passé (variable dbt `prix_nb_periodes_validation`) |
 | 25 oct. | Bronze : un Parquet n'est jamais écrasé ; un même `run_id` le même jour prend le suffixe `-2`, `-3`… (deux mois Tempo chargés à la suite écrasaient le premier) |
 | 25 oct. | Tempo hors `refresh` : il demande un compte RTE, que les autres commandes n'exigent pas ; `tempo --month` se lance avant `report` |
+| 25 oct. | L'extension internationale (étape 6) passe en dernier |
+| 25 oct. | Nouvelles sources : producteur officiel et licence ouverte seulement, méthode publiée ou bibliothèque maintenue et testée ; une copie tierce sert au mieux de repli signalé |
 
 ## Écarté
 
@@ -144,5 +170,7 @@ Inondations.
 | Prix « à l'adresse » | Péréquation : identique partout |
 | Carbone régional en métropole | Un seul réseau continental, pas de facteur régional opposable |
 | Capacité de raccordement chiffrée, distance au poste RTE | Absentes de l'open data |
+| Distance aux postes sources et aux lignes | Coordonnées retirées par RTE et EDF en 2026 (sécurité publique) ; jeu Enedis seulement local |
+| Zonage sismique national publié par wpd (data.gouv.fr, 2018) | Producteur non officiel (un développeur éolien) : le décret et planseisme.fr font foi |
 | Spark pour silver et gold | dbt-duckdb suffit à ce volume |
 | Site web, exécution planifiée, Airflow | Hors périmètre : ligne de commande, en local |
