@@ -169,7 +169,13 @@ def write_parquet(
 ) -> Path:
     partition = dataset_dir / f"ingest_date={ingest_date.isoformat()}"
     partition.mkdir(parents=True, exist_ok=True)
-    path = partition / f"part-{safe_run_id(run_id)}.parquet"
+    nom = f"part-{safe_run_id(run_id)}"
+    path = partition / f"{nom}.parquet"
+    # Même run_id le même jour (deux mois Tempo chargés à la suite) : nouveau fichier, sans écraser
+    rang = 2
+    while path.exists():
+        path = partition / f"{nom}-{rang}.parquet"
+        rang += 1
     pq.write_table(table, path, compression="zstd")
     logger.info("parquet ecrit rows=%d path=%s", table.num_rows, path)
     return path

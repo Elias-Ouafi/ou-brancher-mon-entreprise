@@ -175,3 +175,25 @@ def test_write_parquet_creates_hive_partition(tmp_path) -> None:
     reloaded = pq.read_table(path)
     assert reloaded.schema == SCHEMA
     assert reloaded.num_rows == 1
+
+
+# Le bronze garde chaque extraction : un même run_id le même jour n'écrase pas la précédente
+def test_write_parquet_never_overwrites_an_earlier_run(tmp_path) -> None:
+    table = records_to_table(
+        [{"date_heure": "2026-09-07T03:00:00+00:00", "consommation": 42000}],
+        spec=NATIONAL_TR,
+        ingested_at=INGESTED_AT,
+    )
+    chemins = [
+        write_parquet(
+            table, dataset_dir=tmp_path / "rte_tempo", run_id="manual", ingest_date=date(2026, 9, 7)
+        )
+        for _ in range(3)
+    ]
+
+    assert [c.name for c in chemins] == [
+        "part-manual.parquet",
+        "part-manual-2.parquet",
+        "part-manual-3.parquet",
+    ]
+    assert all(pq.read_table(c).num_rows == 1 for c in chemins)
