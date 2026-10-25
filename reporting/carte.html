@@ -142,9 +142,7 @@ button { font: inherit; }
   <div class="legend frame" id="legend"></div>
   <div class="lensbar" role="toolbar" aria-label="Lentilles">
     <button class="lens" data-lens="raccordement" aria-pressed="true"><span class="disc"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" fill="#e3b341"/></svg></span>Raccorder</button>
-    <button class="lens" data-lens="industrie" aria-pressed="false"><span class="disc"><svg viewBox="0 0 24 24"><path d="M3 21V11l5 3v-3l5 3v-3l5 3V4h3v17H3Z" fill="#e3892b"/></svg></span>Industrie</button>
-    <button class="lens" data-lens="production" aria-pressed="false"><span class="disc"><svg viewBox="0 0 24 24"><path d="M6 21c1.5-4 1.5-8 0-12h7c-1.5 4-1.5 8 0 12H6Z" fill="#e9dcb8"/><path d="M15 21V11h2v10h-2Zm3 0V8h2v13h-2Z" fill="#8b877c"/><circle cx="9.5" cy="5" r="2.6" fill="#f1f3f4" opacity=".8"/></svg></span>Produire</button>
-    <button class="lens" data-lens="equilibre" aria-pressed="false"><span class="disc"><svg viewBox="0 0 24 24"><path d="M12 3v17M6 20h12M4 7h16M4 7l-2.5 6h5L4 7Zm16 0-2.5 6h5L20 7Z" stroke="#58c4e6" stroke-width="1.7" fill="none" stroke-linejoin="round"/></svg></span>Équilibre</button>
+    <button class="lens" data-lens="territoire" aria-pressed="false"><span class="disc"><svg viewBox="0 0 24 24"><path d="M6 21c1.5-4 1.5-8 0-12h7c-1.5 4-1.5 8 0 12H6Z" fill="#e9dcb8"/><path d="M15 21V11h2v10h-2Zm3 0V8h2v13h-2Z" fill="#8b877c"/><circle cx="9.5" cy="5" r="2.6" fill="#f1f3f4" opacity=".8"/></svg></span>Territoire</button>
   </div>
 </div>
 <div class="tip frame" id="tip" hidden></div>
@@ -199,7 +197,6 @@ for (const t of land) {
   t.baseH = hauteur(t.alt);
 }
 const MAXG = Math.max(...DATA.departements.map(d => d.gwh || 0));
-const RANG_MAX = Math.max(...DATA.departements.map(d => d.nc || 0));
 
 // Scène
 const host = document.getElementById("scene");
@@ -314,7 +311,7 @@ const zoneCible = VERDICT && adresseTile && zoneObjs.filter(o => o.z.n === VERDI
 if (zoneCible) lienVers(zoneCible.t, "#7fe3ff");
 if (siteCible) lienVers(caseDe(siteCible.case), "#f1c75b");
 
-// Pôles de production en maquettes basses, taille selon la puissance rapportée au plus gros de leur carte
+// Pôles de production en maquettes : la plus puissante d'une carte couvre les deux tiers de la case
 const FILIERES = {
   "Nucléaire": "#e9dcb8", "Hydraulique": "#58c4e6", "Thermique non renouvelable": "#b0603f", "Eolien": "#f1f3f4",
   "Solaire": "#e3b341", "Bioénergies": "#6fbf73", "Energies Marines": "#2f7fb3", "Géothermie": "#c73f8a" };
@@ -322,37 +319,61 @@ const NOM_FILIERE = { "Thermique non renouvelable": "Thermique fossile", "Energi
 const nomFiliere = f => NOM_FILIERE[f] || f;
 markers.production = new THREE.Group(); scene.add(markers.production);
 const mat = (c, extra) => new THREE.MeshStandardMaterial({ color: col(c), roughness: .75, flatShading: true, ...extra });
-const tourGeo = new THREE.LatheGeometry([[.5, 0], [.4, .35], [.32, .7], [.36, 1]].map(([x, y]) => new THREE.Vector2(x, y)), 10);
-const vapeurMat = new THREE.MeshStandardMaterial({ color: col("#f1f3f4"), transparent: true, opacity: .55, roughness: 1, depthWrite: false });
 const piece = (geo, m, x, y, z, sx = 1, sy = 1, sz = 1) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.scale.set(sx, sy, sz); o.castShadow = true; return o; };
-const boite = new THREE.BoxGeometry(1, 1, 1), cyl = new THREE.CylinderGeometry(.5, .5, 1, 8), boule = new THREE.SphereGeometry(.5, 10, 8), dome = new THREE.SphereGeometry(.5, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2);
-[boite, cyl].forEach(g => g.translate(0, .5, 0));
+const boite = new THREE.BoxGeometry(1, 1, 1), cyl = new THREE.CylinderGeometry(.5, .5, 1, 10), cone = new THREE.ConeGeometry(.5, 1, 5), fut = new THREE.CylinderGeometry(.3, .5, 1, 10);
+const dome = new THREE.SphereGeometry(.5, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), bulle = new THREE.IcosahedronGeometry(.5, 0);
+[boite, cyl, cone, fut].forEach(g => g.translate(0, .5, 0));
+// Tour aéroréfrigérante à paroi épaisse : fermée, elle se voit de dos comme de face
+const tourGeo = new THREE.LatheGeometry([[.5, 0], [.39, .4], [.31, .78], [.34, 1], [.3, 1], [.27, .78], [.35, .4], [.45, 0]].map(([x, y]) => new THREE.Vector2(x, y)), 16);
+// Prisme vertical tiré d'un contour au sol [x, z] : barrage et retenue fermés de tous côtés
+const prisme = (pts, h) => { const geo = new THREE.ExtrudeGeometry(new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, -z))), { depth: h, bevelEnabled: false }); geo.rotateX(-Math.PI / 2); return geo; };
+const arc = (cx, cz, r, a0, a1, n) => Array.from({ length: n + 1 }, (_, k) => { const a = a0 + (a1 - a0) * k / n; return [cx + r * Math.sin(a), cz - r * Math.cos(a)]; });
+const rangee = (n, pas) => Array.from({ length: n }, (_, k) => (k - (n - 1) / 2) * pas);
+// Panache opaque et immobile : pas de transparence qui scintille selon l'angle de vue
+const panache = (m, x, y, z, s) => [piece(bulle, m, x, y + s * .3, z, s, s * .7, s), piece(bulle, m, x + s * .35, y + s * .65, z - s * .1, s * .75, s * .55, s * .75)].map(o => (o.castShadow = false, o));
+// Chaque maquette tient dans un disque de diamètre 1, socle compris
 const MAQUETTES = {
-  "Nucléaire": g => { const m = mat(FILIERES["Nucléaire"]);
-    g.add(piece(tourGeo, m, -.28, 0, 0), piece(tourGeo, m, .32, 0, .1, .85, .85, .85));
-    const v = piece(boule, vapeurMat, -.28, 1.25, 0, .7, .45, .7); v.castShadow = false; v.userData.base = v.scale.clone(); g.add(v); g.userData.vapeur = v; },
-  "Hydraulique": g => { g.add(piece(boite, mat("#9aa3a8"), 0, 0, 0, 1.4, .75, .28), piece(boite, mat(FILIERES["Hydraulique"], { roughness: .3 }), 0, 0, -.45, 1.3, .62, .6)); },
-  "Thermique non renouvelable": g => { const m = mat("#8b877c"), bande = mat(FILIERES["Thermique non renouvelable"]);
-    g.add(piece(boite, m, 0, 0, 0, .9, .4, .6), piece(cyl, m, -.2, .4, 0, .18, .95, .18), piece(cyl, bande, -.2, 1.25, 0, .2, .12, .2), piece(cyl, m, .22, .4, .1, .15, .7, .15));
-    const v = piece(boule, vapeurMat, -.2, 1.55, 0, .35, .3, .35); v.castShadow = false; v.userData.base = v.scale.clone(); g.add(v); g.userData.vapeur = v; },
-  "Eolien": g => { const m = mat(FILIERES["Eolien"]); g.add(piece(cyl, m, 0, 0, 0, .07, 1.3, .07));
-    const rotor = new THREE.Group(); rotor.position.set(0, 1.3, .06);
-    for (let k = 0; k < 3; k++) { const pale = piece(boite, m, 0, 0, 0, .07, .6, .03); pale.rotation.z = k * 2 * Math.PI / 3; rotor.add(pale); }
+  // Un réacteur pour 1 200 MW environ (4 au plus) : enceinte à dôme, salle des machines, tour aéroréfrigérante
+  "Nucléaire": (g, p) => { const n = Math.max(1, Math.min(4, Math.round(p.mw / 1200))), beton = mat("#cfc9ba"), hall = mat("#8f9aa3"), vapeur = mat("#eef1f3", { roughness: 1 });
+    const tour = mat(FILIERES["Nucléaire"], { side: THREE.DoubleSide }), rt = n > 2 ? .17 : .2, ht = n > 2 ? .26 : .3;
+    for (const x of rangee(n, .2)) g.add(piece(cyl, beton, x, 0, .16, .12, .13, .12), piece(dome, beton, x, .13, .16, .12, .09, .12), piece(boite, hall, x, 0, .01, .16, .07, .1));
+    for (const x of rangee(n, n > 2 ? .21 : .26)) g.add(piece(tourGeo, tour, x, 0, -.22, rt, ht, rt), ...panache(vapeur, x, ht, -.22, rt * .55)); },
+  // Barrage-voûte entre deux versants, retenue en amont, usine et canal de fuite en aval
+  // Tourné d'un demi-tour : la retenue fait face à la caméra
+  "Hydraulique": g => { const A = .63, beton = mat("#d6d2c6"), eau = mat("#1f6f9e", { roughness: .2, metalness: .1 }), roche = mat("#7d7466"), v = new THREE.Group();
+    v.rotation.y = Math.PI; g.add(v); g = v;
+    const lac = arc(0, .2, .395, A, -A, 12).concat([[-.26, -.4], [.26, -.4]]);
+    g.add(piece(prisme(arc(0, .2, .42, -A, A, 12).concat(arc(0, .2, .37, A, -A, 12)), .24), beton, 0, 0, 0),
+      piece(prisme(lac, .16), mat("#6f7d52"), 0, 0, 0), piece(prisme(lac, .03), eau, 0, .155, 0),
+      piece(cone, roche, -.3, 0, -.15, .28, .34, .28), piece(cone, roche, .3, 0, -.15, .28, .3, .28),
+      piece(boite, beton, 0, 0, .1, .14, .06, .07), piece(boite, eau, 0, 0, .25, .08, .012, .16));
+    g.children[3].rotation.y = .6; },
+  // Chaudière, salle des machines, cheminée rayée rouge et blanc, cuves de combustible
+  "Thermique non renouvelable": g => { const murs = mat("#9a958a"), toit = mat("#6f6c66"), cheminee = mat("#d8d4cb"), rouge = mat(FILIERES["Thermique non renouvelable"]), cuve = mat("#c9c3b4"), fumee = mat("#b7b9bb", { roughness: 1 });
+    g.add(piece(boite, murs, -.08, 0, -.04, .2, .26, .2), piece(boite, toit, -.08, .25, -.04, .22, .03, .22), piece(boite, murs, .12, 0, .14, .3, .12, .13),
+      piece(fut, cheminee, -.27, 0, -.22, .1, .56, .1), piece(cyl, rouge, -.27, .43, -.22, .075, .04, .075), piece(cyl, rouge, -.27, .51, -.22, .07, .04, .07),
+      piece(cyl, cuve, .26, 0, -.2, .14, .08, .14), piece(cyl, cuve, .08, 0, -.3, .12, .07, .12), ...panache(fumee, -.27, .56, -.22, .09)); },
+  "Eolien": g => { const m = mat(FILIERES["Eolien"]); g.add(piece(cyl, m, 0, 0, 0, .07, .95, .07), piece(boite, m, 0, .92, -.03, .08, .07, .16));
+    const rotor = new THREE.Group(); rotor.position.set(0, .95, .06);
+    for (let k = 0; k < 3; k++) { const pale = piece(boite, m, 0, 0, 0, .06, .42, .03); pale.rotation.z = k * 2 * Math.PI / 3; rotor.add(pale); }
     g.add(rotor); g.userData.rotor = rotor; },
-  "Solaire": g => { const m = mat("#3c6fa0", { metalness: .3 }); for (const x of [-.4, 0, .4]) { const p = piece(boite, m, x, .12, 0, .34, .04, .7); p.rotation.x = -.5; g.add(p); } },
-  "Bioénergies": g => { g.add(piece(dome, mat(FILIERES["Bioénergies"]), 0, 0, 0, 1, 1.1, 1), piece(cyl, mat("#8b877c"), .35, 0, 0, .12, .8, .12)); },
+  "Solaire": g => { const m = mat("#3c6fa0", { metalness: .3 }); for (const x of [-.27, 0, .27]) { const p = piece(boite, m, x, .1, 0, .22, .03, .5); p.rotation.x = -.5; g.add(p); } },
+  "Bioénergies": g => { g.add(piece(dome, mat(FILIERES["Bioénergies"]), -.05, 0, 0, .8, .9, .8), piece(cyl, mat("#8b877c"), .32, 0, 0, .1, .7, .1)); },
 };
-const socleGeo = new THREE.CylinderGeometry(.62, .62, .06, 6); socleGeo.translate(0, -.03, 0);
-const autre = (g, f) => g.add(piece(new THREE.ConeGeometry(.45, 1, 6), mat(FILIERES[f] || "#7fe3ff"), 0, .5, 0));
-const MAX_MW = {}; for (const p of DATA.production) { const t = caseDe(p.case); if (t) MAX_MW[t.g] = Math.max(MAX_MW[t.g] || 0, p.mw); }
+// Socle hexagonal posé sur la case, pas affleurant : deux faces au même niveau scintillent
+const socleGeo = new THREE.CylinderGeometry(.5, .5, .035, 6); socleGeo.translate(0, .0175, 0);
+const autre = (g, f) => g.add(piece(cone, mat(FILIERES[f] || "#7fe3ff"), 0, 0, 0, .9, 1, .9));
+const D_MAX = 2 / 3 * HW * .97;
+const MAX_MW = {}, nCase = {}; for (const p of DATA.production) { const t = caseDe(p.case); if (!t) continue; MAX_MW[t.g] = Math.max(MAX_MW[t.g] || 0, p.mw); if (t.land) nCase[t.i] = (nCase[t.i] || 0) + 1; }
 const parCase = {}, prodObjs = [];
 for (const p of DATA.production) { const t = caseDe(p.case); if (!t || !t.land) continue;
-  const rang = parCase[t.i] = (parCase[t.i] || 0) + 1, angle = rang * 2.1, ecartP = rang > 1 ? .55 * PS : 0;
-  const g = new THREE.Group(), s = PS * (1.1 + 2.2 * Math.sqrt(p.mw / MAX_MW[t.g]));
-  (MAQUETTES[p.f] || (h => autre(h, p.f)))(g); g.scale.set(s, s, s);
-  // Socle hexagonal à la couleur de la filière : le pôle se repère même de loin
+  // Plusieurs pôles d'une case se partagent les deux tiers, côte à côte sur un cercle
+  const n = nCase[t.i], k = parCase[t.i] = (parCase[t.i] || 0) + 1, sin = Math.sin(Math.PI / n);
+  const d = n > 1 ? D_MAX / (1 + 1 / sin) : D_MAX, rayon = n > 1 ? d / (2 * sin) : 0, angle = k * 2 * Math.PI / n + hash(t.c, t.r) * 6;
+  const g = new THREE.Group(), s = d * (.45 + .55 * Math.sqrt(p.mw / MAX_MW[t.g]));
+  (MAQUETTES[p.f] || (h => autre(h, p.f)))(g, p); g.scale.set(s, s, s);
   const socle = piece(socleGeo, mat(FILIERES[p.f] || "#7fe3ff", { emissive: col(FILIERES[p.f] || "#7fe3ff"), emissiveIntensity: .25 }), 0, 0, 0); socle.castShadow = false; g.add(socle);
-  g.position.set(t.x + Math.cos(angle) * ecartP, 0, t.z + Math.sin(angle) * ecartP); g.rotation.y = hash(t.c, t.r) * .8 - .4;
+  g.position.set(t.x + Math.cos(angle) * rayon, 0, t.z + Math.sin(angle) * rayon); g.rotation.y = hash(t.c, t.r) * .8 - .4;
   g.userData = { ...g.userData, i: t.i, hub: p, ph: hash(t.r, t.c) * 6 }; g.traverse(o => o.userData.hub = p);
   markers.production.add(g); followers.push(g); prodObjs.push({ p, t }); }
 
@@ -361,36 +382,48 @@ const labelsEl = document.getElementById("labels"), labels = [];
 const addLabel = (html, cls, at, lenses) => { const el = document.createElement("div"); el.className = cls; el.innerHTML = html; labelsEl.appendChild(el); labels.push({ el, g: 0, ...at, lenses }); };
 const regTiles = {}; for (const t of land) if (t.g === 0) (regTiles[t.reg] ||= []).push(t);
 for (const [r, ts] of Object.entries(regTiles)) { const d = DATA.departements.find(x => x.r === r); if (!d) continue;
-  addLabel(esc(d.rn).replace(/-/g, "-&#8203;"), "rlabel", { x: ts.reduce((a, t) => a + t.x, 0) / ts.length, z: ts.reduce((a, t) => a + t.z, 0) / ts.length, y: 3.2 }, ["equilibre"]); }
+  addLabel(esc(d.rn).replace(/-/g, "-&#8203;"), "rlabel", { x: ts.reduce((a, t) => a + t.x, 0) / ts.length, z: ts.reduce((a, t) => a + t.z, 0) / ts.length, y: 3.2 }, ["territoire"]); }
 GR.forEach((g, gi) => { if (!g.code) return; const ts = tiles.filter(t => t.g === gi);
   addLabel(`${esc(g.nom)}<small>1 case ≈ ${fmt(g.rayonKm * 2, 1)} km, contre ${fmt(GR[0].rayonKm * 2)} km en métropole</small>`, "rlabel",
-    { g: gi, x: ts.reduce((a, t) => a + t.x, 0) / ts.length, z: Math.max(...ts.map(t => t.z)) + R * 1.2, y: 0 }, ["raccordement", "industrie", "equilibre"]); });
+    { g: gi, x: ts.reduce((a, t) => a + t.x, 0) / ts.length, z: Math.max(...ts.map(t => t.z)) + R * 1.2, y: 0 }, ["raccordement", "territoire"]); });
 for (const o of zoneObjs) { const { z, t } = o; addLabel(`<span class="pr">${esc(z.pr)}</span><span>${esc(z.n)}</span>${z.a ? `<span class="by">${z.a}</span>` : ""}`, "banner " + (z.pr === "P1" ? "p1" : "p2") + (o === zoneCible ? " cible" : ""), { g: t.g, i: t.i, x: t.x, z: t.z, y: 1.6 * PS }, ["raccordement"]); }
 const parCarte = {}; for (const o of prodObjs) (parCarte[o.t.g] ||= []).push(o);
 for (const os of Object.values(parCarte)) for (const { p, t } of os.slice(0, 6))
-  addLabel(`<span>${esc(p.n)}</span><span class="by">${fmt(p.mw)} MW</span>`, "banner prod", { g: t.g, i: t.i, x: t.x, z: t.z, y: 2.4 * PS }, ["production"]);
-if (adresseTile) addLabel(esc(DATA.adresse.libelle), "banner adresse", { g: adresseTile.g, i: adresseTile.i, x: adresseTile.x, z: adresseTile.z, y: 3.6 * PS }, ["raccordement", "industrie", "equilibre"]);
+  addLabel(`<span>${esc(p.n)}</span><span class="by">${fmt(p.mw)} MW</span>`, "banner prod", { g: t.g, i: t.i, x: t.x, z: t.z, y: 2.4 * PS }, ["territoire"]);
+if (adresseTile) addLabel(esc(DATA.adresse.libelle), "banner adresse", { g: adresseTile.g, i: adresseTile.i, x: adresseTile.x, z: adresseTile.z, y: 3.6 * PS }, ["raccordement", "territoire"]);
 
 // Lentilles
 const ramp = (stops, s) => { s = Math.max(0, Math.min(1, s)); const n = stops.length - 1, k = Math.min(n - 1, Math.floor(s * n)); return col(stops[k]).lerp(col(stops[k + 1]), s * n - k); };
-const IND = ["#34444d", "#6b6a4a", "#d9a441", "#e0592a", "#f4d06b"], EQ = ["#b8382b", "#d98a5e", "#e9dcb8", "#78b3c9", "#2f7fb3"];
+const EQ = ["#6b3fa0", "#a98bc4", "#e9dcb8", "#78b3c9", "#2f7fb3"], NOTE = ["#c0392b", "#e8a59a", "#f2f2ee", "#9fd19a", "#2e8b3e"];
 const indS = d => d && d.rk ? 1 - (d.rk - 1) / Math.max(1, d.nc - 1) : 0;
 const eqS = d => d && d.tc ? Math.max(-1, Math.min(1, Math.log2(d.tc) / 2)) * .5 + .5 : .5;
 const annee = (DATA.departements.find(d => d.an) || {}).an || "";
+// Note de chaque case, de -1 (défavorable) à +1 (favorable) : zone RTE prioritaire et site clé en main proches,
+// postes 400 kV, contraintes RTE prévues au-delà de la médiane (4 par département), carbone, équilibre régional et relief
+const enCases = (a, b) => Math.hypot(a.x - b.x, a.z - b.z) / HW;
+const siteCases = DATA.sites.map(s => caseDe(s.case)).filter(t => t && t.land), POIDS_ZONE = { P1: 1, P2: .8, P3: .6 };
+for (const t of land) { const d = DEP[t.dep] || {}, r = [];
+  const zone = Math.max(0, ...zoneObjs.filter(o => o.t.g === t.g).map(o => (POIDS_ZONE[o.z.pr] || .6) * Math.max(0, 1 - enCases(t, o.t) / 3)));
+  const site = Math.max(0, ...siteCases.filter(c => c.g === t.g).map(c => Math.max(0, 1 - enCases(t, c) / 2)));
+  const eq = d.tc ? Math.max(-1, Math.min(1, Math.log2(d.tc) / 2)) : 0, contraintes = Math.max(0, Math.min(1, ((d.k || 0) - 4) / 16));
+  const relief = t.alt >= 900 || t.altMax >= 2000 ? .5 : t.alt >= 600 ? .25 : 0, carbone = d.co2 > 100 ? .6 : 0, postes = d.p3 > 0 ? .1 : d.p === 0 ? -.2 : 0;
+  t.note = Math.max(-1, Math.min(1, .6 * zone + .25 * site + .15 * eq + postes - .35 * contraintes - relief - carbone));
+  if (zone > .2) r.push("zone RTE prioritaire proche"); if (site > .2) r.push("site clé en main proche"); if (d.p3 > 0) r.push("poste 400 kV dans le département");
+  if (d.k >= 10) r.push(`${d.k} contraintes RTE prévues`); if (relief) r.push("relief"); if (carbone) r.push("électricité carbonée"); if (eq < -.3) r.push("région importatrice");
+  t.raisons = r; }
+const avis = n => n > .15 ? "favorable" : n < -.15 ? "défavorable" : "neutre";
 const LENS = {
-  raccordement: { tile: t => [t.biome, t.baseH], show: ["mountains", "sites", "zones", "liens"],
-    legend: `<h3>Où se brancher</h3><p>Anneau bleu et bannière : zone de raccordement prioritaire RTE (SDDR 2025), avec l'année de capacité quand RTE la publie. Losange doré : site clé en main France 2030. Épingle rouge : votre adresse ; les arcs la relient à la zone RTE utile et au site le plus proche.</p>` },
-  industrie: { tile: t => { const d = DEP[t.dep], s = indS(d); return [d && d.rk ? ramp(IND, s) : col("#2b363d"), .45 + t.alt / 4000 + Math.pow(s, 1.7) * 7.5]; }, show: ["sites"],
-    legend: `<h3>Pression industrielle</h3><div class="bar" style="background:linear-gradient(90deg,${IND.join(",")})"></div><div class="ticks"><span>rang ${RANG_MAX}</span><span>rang 1 · ${fmt(MAXG)} GWh</span></div><p>Rang du département selon la consommation électrique de ses sites industriels (ODRÉ, ${annee}). Hauteur et couleur suivent le rang ; gris : non classé.</p>` },
-  production: { tile: t => [t.biome.clone().lerp(col("#2b363d"), .35), t.baseH], show: ["production"], legend: () => legendeProduction() },
-  equilibre: { tile: t => [ramp(EQ, eqS(DEP[t.dep])), t.baseH], show: ["mountains"],
-    legend: `<h3>Équilibre régional</h3><div class="bar" style="background:linear-gradient(90deg,${EQ.join(",")})"></div><div class="ticks"><span>×0,25</span><span>×1</span><span>×4</span></div><p>Production divisée par consommation de la région sur 12 mois. Sous ×1, la région importe.</p>` },
+  raccordement: { tile: t => [ramp(NOTE, (t.note + 1) / 2), t.baseH], show: ["mountains", "sites", "zones", "liens"],
+    legend: `<h3>Où se brancher</h3><div class="bar" style="background:linear-gradient(90deg,${NOTE.join(",")})"></div><div class="ticks"><span>défavorable</span><span>neutre</span><span>favorable</span></div><p>Vert : zone de raccordement prioritaire RTE ou site clé en main à proximité, poste 400 kV dans le département. Rouge : contraintes RTE prévues, relief, électricité carbonée, région importatrice. Indicatif : seule une étude Enedis ou RTE fait foi.</p><p>Anneau bleu et bannière : zone prioritaire RTE (SDDR 2025). Losange doré : site clé en main France 2030. Épingle rouge : votre adresse, reliée à la zone RTE utile et au site le plus proche.</p>` },
+  // Industrie, production et équilibre réunis : couleur, hauteur et maquettes ne se recouvrent pas
+  territoire: { tile: t => { const d = DEP[t.dep]; return [ramp(EQ, eqS(d)), .45 + t.alt / 4000 + Math.pow(indS(d), 1.7) * 5]; }, show: ["production"],
+    legend: () => `<h3>Territoire</h3><div class="bar" style="background:linear-gradient(90deg,${EQ.join(",")})"></div><div class="ticks"><span>×0,25</span><span>×1</span><span>×4</span></div><p>Couleur : production divisée par consommation de la région sur 12 mois ; sous ×1, la région importe. Hauteur : rang du département selon la consommation électrique de ses sites industriels (ODRÉ, ${annee}), le rang 1 consommant ${fmt(MAXG)} GWh.</p>${legendeProduction()}` },
 };
 function legendeProduction() { const ps = prodObjs.filter(o => o.t.g === carte).map(o => o.p), tot = {};
   for (const p of ps) tot[p.f] = (tot[p.f] || 0) + p.mw;
   const lignes = Object.entries(tot).sort((a, b) => b[1] - a[1]).map(([f, mw]) => `<span><i style="background:${FILIERES[f] || "#7fe3ff"}"></i>${esc(nomFiliere(f))}</span><span>${fmt(mw)} MW</span>`).join("");
   const seuil = GR[carte].code ? 20 : 200;
-  return `<h3>Où l'électricité est produite</h3>${lignes ? `<div class="filieres">${lignes}</div>` : "<p>Aucun pôle au-dessus du seuil sur cette carte.</p>"}<p>Puissance en service par commune et filière, installations d'au moins 10 MW (registre national, ODRÉ) ; pôles d'au moins ${seuil} MW${GR[carte].code ? "" : " (20 MW en Corse)"}. Taille selon la puissance ; position au centre de la commune.</p>`; }
+  return `<h3>Production</h3>${lignes ? `<div class="filieres">${lignes}</div>` : "<p>Aucun pôle au-dessus du seuil sur cette carte.</p>"}<p>Puissance en service par commune et filière, installations d'au moins 10 MW (registre national, ODRÉ) ; pôles d'au moins ${seuil} MW${GR[carte].code ? "" : " (20 MW en Corse)"}. Taille selon la puissance, le plus gros pôle couvrant les deux tiers de sa case ; un réacteur nucléaire figuré par 1 200 MW environ ; position au centre de la commune.</p>`; }
 let lens = "raccordement", animating = true;
 function setLens(name) { lens = name; const L = LENS[name];
   land.forEach((t, i) => { const [c, h] = L.tile(t); c.toArray(tgtC, i * 3); tgtH[i] = h; if (REDUCED) { curH[i] = h; c.toArray(curC, i * 3); } });
@@ -411,7 +444,7 @@ const LIMITE = '<div class="limit"><b>Limite :</b> la capacité de raccordement 
 const cityEl = document.getElementById("city");
 const ficheVide = () => { selBand.set([]); cityEl.style.removeProperty("--rc");
   const ts = land.filter(t => t.g === carte), deps = new Set(ts.map(t => t.dep)).size;
-  cityEl.innerHTML = `<header><h2>${esc(nomCarte(carte))}</h2><div class="sub">${ts.length} cases · ${deps} département${deps > 1 ? "s" : ""}</div></header><div class="vide">Cliquez sur une case pour afficher les indicateurs de son département. Changez de carte ou de lentille en bas à droite (touches 1 à 4 pour les lentilles).</div>`; };
+  cityEl.innerHTML = `<header><h2>${esc(nomCarte(carte))}</h2><div class="sub">${ts.length} cases · ${deps} département${deps > 1 ? "s" : ""}</div></header><div class="vide">Cliquez sur une case pour afficher les indicateurs de son département. Changez de carte ou de lentille en bas à droite (touches 1 et 2 pour les lentilles).</div>`; };
 function showVerdict() { if (!VERDICT) return ficheVide(); selBand.set([]); cityEl.style.removeProperty("--rc");
   cityEl.innerHTML = `<header><h2>Brancher ici ?</h2><div class="sub">${esc(DATA.adresse.libelle)}</div></header>
   <div class="verdict">${esc(VERDICT.phrase)}</div>
@@ -449,7 +482,7 @@ function montrerCarte(gi, immediat) { carte = gi; const ts = tiles.filter(t => t
   soleil(cx, cz); allerA(cx, cz + (gi ? 0 : 4), Math.max(30, etendue * 1.2), immediat);
   boutons.querySelectorAll("[data-carte]").forEach(b => b.setAttribute("aria-pressed", +b.dataset.carte === gi));
   if (cityEl.querySelector(".vide")) ficheVide();
-  if (lens === "production") setLens("production"); }
+  if (lens === "territoire") setLens("territoire"); }
 GR.forEach((g, gi) => { if (!tiles.some(t => t.g === gi && t.land)) return; const b = document.createElement("button");
   b.dataset.carte = gi; b.textContent = nomCarte(gi); b.onclick = () => montrerCarte(gi); boutons.appendChild(b); });
 const vueAdresse = immediat => { if (carte !== adresseTile.g) montrerCarte(adresseTile.g, true); allerA(adresseTile.x, adresseTile.z, 26, immediat); };
@@ -458,7 +491,7 @@ montrerCarte(adresseTile ? adresseTile.g : 0, true);
 
 // Survol et sélection
 const ray = new THREE.Raycaster(), mouse = new THREE.Vector2(), tip = document.getElementById("tip"); let hovered = -1, down = null;
-const lensLine = d => !d ? "" : lens === "industrie" ? `${fmt(d.gwh)} GWh industriels${d.rk ? " · rang " + d.rk : ""}` : lens === "equilibre" ? `Couverture régionale ${d.tc == null ? "n.d." : fmt(d.tc * 100) + " %"}` : d.rn;
+const lensLine = (t, d) => lens === "raccordement" ? `Raccordement ${avis(t.note)}${t.raisons.length ? " : " + t.raisons.join(", ") : ""}` : !d ? "" : `${fmt(d.gwh)} GWh industriels${d.rk ? " · rang " + d.rk : ""} · couverture régionale ${d.tc == null ? "n.d." : fmt(d.tc * 100) + " %"}`;
 function pick(e) { const b = renderer.domElement.getBoundingClientRect(); mouse.set((e.clientX - b.left) / b.width * 2 - 1, -(e.clientY - b.top) / b.height * 2 + 1); ray.setFromCamera(mouse, camera); const h = ray.intersectObject(landMesh)[0]; return h ? h.instanceId : -1; }
 const pickHub = () => { if (!markers.production.visible) return null; const h = ray.intersectObject(markers.production, true)[0]; return h ? h.object.userData.hub : null; };
 renderer.domElement.addEventListener("pointermove", e => { if (e.pointerType !== "mouse") return; const i = pick(e);
@@ -467,13 +500,13 @@ renderer.domElement.addEventListener("pointermove", e => { if (e.pointerType !==
   if (hub) { tip.innerHTML = `<b>${esc(hub.n)}</b><div>${esc(nomFiliere(hub.f))} · ${fmt(hub.mw)} MW en service</div><div>${hub.gwh ? fmt(hub.gwh) + " GWh produits sur 12 mois · " : ""}${hub.ni} installation${hub.ni > 1 ? "s" : ""}</div>`; tip.hidden = false;
     tip.style.left = Math.min(innerWidth - 270, e.clientX + 16) + "px"; tip.style.top = (e.clientY + 18) + "px"; return; }
   if (i < 0) { tip.hidden = true; return; } const t = land[i], d = DEP[t.dep];
-  tip.innerHTML = `<b>${esc(d ? d.n : t.dep)} (${esc(t.dep)})</b><div>${esc(lensLine(d))}</div><div>Altitude moyenne ${fmt(t.alt)} m</div>`; tip.hidden = false;
+  tip.innerHTML = `<b>${esc(d ? d.n : t.dep)} (${esc(t.dep)})</b><div>${esc(lensLine(t, d))}</div><div>Altitude moyenne ${fmt(t.alt)} m</div>`; tip.hidden = false;
   tip.style.left = Math.min(innerWidth - 270, e.clientX + 16) + "px"; tip.style.top = (e.clientY + 18) + "px"; });
 renderer.domElement.addEventListener("pointerleave", () => { tip.hidden = true; hovered = -1; hoverBand.set([]); });
 renderer.domElement.addEventListener("pointerdown", e => { down = [e.clientX, e.clientY]; vol = null; });
 renderer.domElement.addEventListener("pointerup", e => { if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 6 || e.button !== 0) return; const i = pick(e); if (i >= 0) showDep(land[i].dep); });
 document.querySelectorAll(".lens").forEach(b => b.onclick = () => setLens(b.dataset.lens));
-addEventListener("keydown", e => { const k = { "1": "raccordement", "2": "industrie", "3": "production", "4": "equilibre" }[e.key]; if (k) setLens(k); });
+addEventListener("keydown", e => { const k = { "1": "raccordement", "2": "territoire" }[e.key]; if (k) setLens(k); });
 
 // Boucle de rendu
 const v3 = new THREE.Vector3(), tmpC = new THREE.Color();
@@ -490,7 +523,6 @@ function tick(ms) {
   for (const g of followers) { const u = g.userData; g.position.y = curH[u.i] + (u.dy || 0);
     if (u.gem && !REDUCED) { u.gem.rotation.y = t * 1.2 + u.ph; u.gem.position.y = (1.3 + Math.sin(t * 2 + u.ph) * .12) * PS; }
     if (u.rotor && !REDUCED) u.rotor.rotation.z = t * 1.6 + u.ph;
-    if (u.vapeur && !REDUCED) { u.vapeur.scale.copy(u.vapeur.userData.base).multiplyScalar(1 + Math.sin(t * 1.3 + u.ph) * .12); }
     if (u.ring && !REDUCED) { const s = 1 + ((t * .6) % 1) * .35; g.scale.set(s, s, s); g.material.opacity = .85 * (1 - (t * .6) % 1); } }
   if (vol) { const k = Math.min(1, (ms - vol.t0) / vol.d), e = k * k * (3 - 2 * k);
     controls.target.lerpVectors(vol.fromT, vol.toT, e); camera.position.lerpVectors(vol.fromP, vol.toP, e); if (k >= 1) vol = null; }
