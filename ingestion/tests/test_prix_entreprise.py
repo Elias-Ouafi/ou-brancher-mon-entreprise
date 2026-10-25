@@ -201,16 +201,15 @@ def eventails_attendus(
                 realise[t, h] = (prix[t + pas - 1] + prix[t + pas]) / 2
     eventails = {}
     for (t, h), centre in central.items():
+        reference = mean(prix[max(0, t - 1) : t + 1])
         erreurs = [
             realise[u, h] / central[u, h]
             for u in range(n)
             if u + 2 * h <= t and (u, h) in central and (u, h) in realise
         ]
         if len(erreurs) >= nb_erreurs_min:
-            eventails[t, h] = (
-                *(centre * quantile_cont(erreurs, q) for q in (0.1, 0.5, 0.9)),
-                len(erreurs),
-            )
+            bas, milieu, haut = (centre * quantile_cont(erreurs, q) for q in (0.1, 0.5, 0.9))
+            eventails[t, h] = (min(bas, reference), milieu, max(haut, reference), len(erreurs))
     return eventails, realise
 
 
