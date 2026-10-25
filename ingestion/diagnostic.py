@@ -145,6 +145,14 @@ where code_insee_region = $region
 order by heure_locale
 """
 
+_ACCISE_SQL = """
+select tarif_eur_mwh, date_debut
+from gold.accise_electricite
+where categorie = 'pme_haute_puissance' and date_fin is null
+order by date_debut desc
+limit 1
+"""
+
 _PRIX_SQL = """
 select *
 from gold.fct_prix_entreprise_tranche
@@ -336,6 +344,7 @@ class PrixEntreprise:
     prix_3_ans_haut_eur_kwh: float | None
     nb_erreurs_observees: int | None
     nb_periodes_controlees: int
+    est_fourchette_validee: bool
     nb_dans_eventail: int | None
     nb_au_dessus: int | None
     nb_en_dessous: int | None
@@ -353,9 +362,19 @@ class PrixEntreprise:
         return self.conso_mwh is None
 
 
-# Accise sur l'électricité au tarif normal (PME et haute puissance) depuis le 1er février 2026,
-# base légale du calcul d'électro-intensité (BOFiP BOI-RES-EAT-000240)
-ACCISE_NORMALE_EUR_MWH = 26.58
+# Accise au tarif normal (PME et haute puissance) en vigueur, lue dans le seed daté
+# `accise_electricite` : base légale du calcul d'électro-intensité
+@dataclass(frozen=True, slots=True)
+class Accise:
+    tarif_eur_mwh: float
+    date_debut: date
+
+    # L'accise est indexée chaque 1er février : passé cette date, le barème est peut-être périmé
+    def a_reverifier(self, aujourd_hui: date | None = None) -> bool:
+        annee = self.date_debut.year + (self.date_debut >= date(self.date_debut.year, 2, 1))
+        return (aujourd_hui or date.today()) >= date(annee, 2, 1)
+
+
 # Paliers d'électro-intensité ouvrant les taux réduits d'accise (CIBS L312-65 et L312-71)
 PALIERS_ELECTRO_INTENSITE = (0.0675, 0.03375, 0.005)
 
@@ -367,6 +386,7 @@ class PartValeurAjoutee:
     part_facture: float
     # Accise au tarif normal rapportée à la valeur ajoutée : le critère légal
     electro_intensite: float
+    accise: Accise
     # Plus haut palier atteint ; `None` sous 0,5 %
     palier: float | None
 
@@ -460,6 +480,8 @@ class Diagnostic:
     courbe: BilanCourbe | None = None
     # Plans de prévention en vigueur dans la commune ; `None` si l'export GASPAR n'est pas chargé
     plans_prevention: list[PlanPrevention] | None = None
+    # Barème d'accise en vigueur, lu seulement si `--va` est fourni
+    accise: Accise | None = None
 
     @property
     def commune_a_des_sites(self) -> bool:
@@ -470,15 +492,16 @@ class Diagnostic:
     def part_valeur_ajoutee(self) -> PartValeurAjoutee | None:
         p = self.prix
         va = self.va_eur
-        if va is None or p is None or p.conso_mwh is None:
+        if va is None or p is None or p.conso_mwh is None or self.accise is None:
             return None
-        intensite = p.conso_mwh * ACCISE_NORMALE_EUR_MWH / va
+        intensite = p.conso_mwh * self.accise.tarif_eur_mwh / va
         facture = p.facture_eur(p.prix_reference_eur_kwh)
         return PartValeurAjoutee(
             valeur_ajoutee_eur=va,
             facture_eur=facture,
             part_facture=facture / va,
             electro_intensite=intensite,
+            accise=self.accise,
             palier=next((s for s in PALIERS_ELECTRO_INTENSITE if intensite >= s), None),
         )
 
@@ -576,6 +599,7 @@ def lire_diagnostic(
                 ).fetchall()
             )
             chargements = lire_chargements(connection)
+            accise = None if va_eur is None else _une_ligne(connection, _ACCISE_SQL, {})
             plans = (
                 _plans(connection, {territoire.code_insee_commune, commune})
                 if "gaspar_plans" in chargements
@@ -608,6 +632,7 @@ def lire_diagnostic(
         chargements=chargements,
         courbe=bilan,
         plans_prevention=plans,
+        accise=None if accise is None else Accise(**accise),
         **ligne,
     )
 
@@ -738,19 +763,27 @@ def ligne_courbe(b: BilanCourbe) -> str:
 
 # Électro-intensité au sens fiscal : décide d'un taux d'accise réduit, donc de la facture
 def _part_va(va: PartValeurAjoutee) -> str:
+    tarif = _nombre(va.accise.tarif_eur_mwh, 2)
     phrase = (
         f"facture {_pourcentage(va.part_facture)} ; électro-intensité"
-        f" {_pourcentage(va.electro_intensite)} (accise au tarif normal de"
-        f" {_nombre(ACCISE_NORMALE_EUR_MWH, 2)} €/MWh rapportée à la valeur ajoutée)"
+        f" {_pourcentage(va.electro_intensite)} (accise au tarif normal de {tarif} €/MWh"
+        f" depuis le {va.accise.date_debut:%d/%m/%Y}, rapportée à la valeur ajoutée)"
     )
     if va.palier is None:
-        return phrase + ", sous le palier de 0,5 % : pas de taux réduit d'accise à ce titre"
-    palier = _nombre(va.palier * 100, 3).rstrip("0")
-    return phrase + (
-        f", au-dessus du palier de {palier} % : taux réduit d'accise possible"
-        f" (de 0,5 à 12 €/MWh au lieu de {_nombre(ACCISE_NORMALE_EUR_MWH, 2)}) si l'activité"
-        " principale relève de l'industrie, de l'énergie ou de l'eau (sections B à E de la NACE)"
-    )
+        phrase += ", sous le palier de 0,5 % : pas de taux réduit d'accise à ce titre"
+    else:
+        palier = _nombre(va.palier * 100, 3).rstrip("0")
+        phrase += (
+            f", au-dessus du palier de {palier} % : taux réduit d'accise possible"
+            f" (de 0,5 à 12 €/MWh au lieu de {tarif}) si l'activité principale relève de"
+            " l'industrie, de l'énergie ou de l'eau (sections B à E de la NACE)"
+        )
+    if va.accise.a_reverifier():
+        phrase += (
+            ". Barème d'accise peut-être périmé (indexé chaque 1er février) : mettre à jour le"
+            " seed accise_electricite"
+        )
+    return phrase
 
 
 def _part_ca(part: PartChiffreAffaires) -> str:
@@ -1290,10 +1323,11 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
                 f" {_euros_arrondis(p.facture_eur(haut))} par an"
                 f" ({_euros_arrondis(p.facture_eur(centre))} au centre)"
             )
+            statut = "" if p.est_fourchette_validee else ", fourchette indicative"
             texte(
                 s,
-                "Prix moyen des 3 prochaines années, d'après l'historique de la tranche et les"
-                " erreurs passées de la méthode :"
+                f"Prix moyen des 3 prochaines années{statut}, d'après l'historique de la tranche"
+                " et les erreurs passées de la méthode :"
                 f" de {_nombre(bas, 4)} à {_nombre(haut, 4)} €/kWh, {_nombre(centre, 4)} au"
                 f" centre{factures}",
             )
@@ -1560,6 +1594,12 @@ def _controle_sur_le_passe(p: PrixEntreprise) -> str:
         f" sous le scénario bas {p.nb_en_dessous or 0} fois. Ces périodes de 3 ans se"
         " chevauchent : ce ne sont pas des essais indépendants. Leurs écarts font désormais"
         " partie des erreurs qui calibrent la fourchette affichée."
+        + (
+            ""
+            if p.est_fourchette_validee
+            else f" Avec {total} périodes seulement, souvent prises dans une même crise, la"
+            " méthode n'est pas validée : la fourchette est un ordre de grandeur."
+        )
     )
 
 

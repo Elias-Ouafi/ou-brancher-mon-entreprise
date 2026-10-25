@@ -131,7 +131,7 @@ flowchart LR
 - **Gold principal** : `fct_diagnostic_territoire` (une ligne par département),
   `fct_prix_entreprise_tranche`, `fct_carbone_territoire`, `fct_carbone_horaire_zni`,
   `fct_risques_commune`, `fct_plans_prevention_commune`, `fct_sites_production`, `fct_pays_ue`,
-  `fct_mix`. Les seeds datés (tarifs, SDDR, sites clés en main, facteurs ADEME) sont à mettre à jour à chaque
+  `fct_mix`. Les seeds datés (tarifs, accise, SDDR, sites clés en main, facteurs ADEME) sont à mettre à jour à chaque
   nouvelle source ; `limites_methodologiques` porte la limite de chaque indicateur.
 - **Fiabilité** : géocodage BAN sur cinq candidats, adresse refusée si trop approximative ou
   ambiguë ; date des données affichée partout, avec alerte au-delà de 45 jours ; risques en repli
@@ -147,7 +147,7 @@ flowchart LR
 .\.venv\Scripts\python.exe -m ruff check . ; .\.venv\Scripts\python.exe -m pytest
 ```
 
-402 tests sans réseau, dont un `dbt build` complet sur une base synthétique qui reproduit les
+409 tests sans réseau, dont un `dbt build` complet sur une base synthétique qui reproduit les
 pièges des sources, plus les tests de données dbt. La CI GitHub Actions les joue à chaque PR.
 
 ## Sources et licence
