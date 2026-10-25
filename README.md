@@ -84,7 +84,8 @@ Toutes s'écrivent `.\.venv\Scripts\python.exe -m ingestion.cli <commande>`.
 | `carte [--adresse "…"] [--puissance MW] [--reconstruire]` | Carte 3D hors ligne (`data/reports/carte.html`) |
 | `europe --adresse "…" [--conso MWh]` | Hors de France, dans l'UE : prix moyen du pays et carbone de sa production, comparés à la France à tranche égale (moyennes nationales) |
 | `refresh [--months 180]` | Met à jour toutes les sources, puis `dbt build` |
-| `report --month 2026-09` | Rapport mensuel carbone et créneaux Tempo (compte RTE requis) |
+| `tempo --month 2026-09` | Charge le calendrier Tempo du mois depuis l'API RTE (compte RTE requis, hors `refresh`) |
+| `report --month 2026-09` | Rapport mensuel carbone et créneaux Tempo, après `tempo` pour le même mois ; prix Tempo connus depuis le 1er février 2026 |
 
 Les commandes qui répondent à une question (`essentiel`, `diagnose`, `compare`, `carte`, `europe`)
 n'affichent que la réponse, les alertes et le chemin des fichiers écrits ; `--verbose`, avant ou
@@ -123,7 +124,7 @@ flowchart LR
 - **Ingestion idempotente en PySpark** : chaque lot est typé et normalisé par une session Spark
   locale (UTC, changements d'heure, clés complètes), puis écrit via Arrow ; BOM, codes IRIS
   tronqués et secret statistique sont traités en Python. Le bronze garde toutes les révisions en
-  Parquet immuables (`data/bronze/<jeu>/ingest_date=…/part-<run_id>.parquet`), puis un `MERGE`
+  Parquet immuables (`data/bronze/<jeu>/ingest_date=…/part-<run_id>.parquet`, suffixé `-2`, `-3`… plutôt qu'écrasé si le même `run_id` revient le même jour), puis un `MERGE`
   sur clé dans DuckDB (`data/warehouse/eco2mix.duckdb`) : relancer ne duplique rien. Quota d'API
   suivi, bascule sur l'export CSV, nouvelles tentatives exponentielles.
 - **Silver et gold en dbt-duckdb**, reconstruits à chaque run (quelques secondes). Jointures par
@@ -147,7 +148,7 @@ flowchart LR
 .\.venv\Scripts\python.exe -m ruff check . ; .\.venv\Scripts\python.exe -m pytest
 ```
 
-409 tests sans réseau, dont un `dbt build` complet sur une base synthétique qui reproduit les
+410 tests sans réseau, dont un `dbt build` complet sur une base synthétique qui reproduit les
 pièges des sources, plus les tests de données dbt. La CI GitHub Actions les joue à chaque PR.
 
 ## Sources et licence
