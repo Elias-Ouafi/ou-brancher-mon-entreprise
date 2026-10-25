@@ -22,7 +22,7 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 | Entreprises raccordées à Enedis (2025) : volume, industrie et premier secteur NAF de la commune, rang dans le département ; consommation déjà relevée à l'adresse (« Déjà raccordé ici ») | `fct_conso_entreprises_commune`, `fct_conso_entreprises_adresse`, seed `dim_naf2` |
 | Verdict « brancher ici ? » en cinq critères (raccordement, risques, carbone, facture, foncier) | `verdict`, `phrase_verdict` |
 | Carte 3D épurée autour du verdict : vue « Raccorder » par défaut, adresse reliée à la zone RTE utile et au site clé en main ; épinglée par `essentiel` et `diagnose` (seule l'épingle bouge si les données n'ont pas changé) | `carte`, `reporting/carte.py` |
-| Une carte par système électrique (métropole et Corse, chaque DROM), ouverte sur celle de l'adresse ; lentille « Produire » : 95 pôles de production du registre national, en maquettes par filière | `ingestion/hexagones.py`, `fct_sites_production` |
+| Une carte par système électrique (métropole et Corse, chaque DROM), ouverte sur celle de l'adresse ; deux vues : « Raccorder », cases notées du rouge au vert, et « Territoire » (équilibre régional, industrie, production) : 95 pôles de production du registre national, en maquettes par filière (réacteurs et tours, barrage-voûte et retenue, cheminée et cuves), fermées de tous côtés, la plus grosse sur les deux tiers de la case | `ingestion/hexagones.py`, `fct_sites_production` |
 | Risques sans dépendre de l'API Géorisques : export GASPAR chargé par `refresh` | `fct_risques_commune` |
 | Risques « à vérifier » seulement sous un plan de prévention approuvé ou prescrit (13 919 communes au lieu des 31 706 qui ont un risque recensé) | `fct_plans_prevention_commune`, `_critere_risques` |
 | Date de chargement de chaque source dans toutes les sorties ; pied de page des rapports avec la commande pour les refaire | `ligne_chargements`, `pied_de_page` |
@@ -52,7 +52,6 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 | Priorité | Étape | Bloqué par |
 |---|---|---|
 | 8 | Repère de prix au-delà de 150 000 MWh/an (contrats CAPN) ; classement pondéré dans `compare` | décision |
-| 9 | Carte : maquettes 3D plus fidèles des centrales nucléaires, des barrages hydrauliques et des centrales fossiles | — |
 | 10 | Intégrer les sources retenues par l'étude du 25 octobre, dans l'ordre ci-dessous (10.1 faite le 25 octobre) | voir chaque source |
 | 11 | Carte : très grandes zones de fret (grands ports, grands aéroports de fret), sans les petites | source et seuil de taille à fixer |
 | 6 | Extension internationale, en dernier, voir ci-dessous | jeton ENTSO-E (compte gratuit) et contours des zones de prix à sourcer |
@@ -153,6 +152,7 @@ Inondations.
 | 24 oct. | UE-27 : moyennes nationales seulement (Eurostat depuis 2024-S1, deux derniers semestres ; Ember, dernière année, production sans échanges) ; jointure des trois codes pays par le seed `dim_pays_ue` ; hors UE refusé |
 | 24 oct. | Commandes de question : journal masqué (niveau WARNING, message seul), chemins des fichiers écrits sur stderr ; warehouse absent ou gold incomplet → `DonneesAbsentesError` et commande `refresh` à lancer |
 | 24 oct. | Carte : décor (villes, forêts) et lentilles Terrain et Réseau retirés ; prix et compteurs hors de la barre du haut ; la fiche de l'adresse donne le verdict |
+| 25 oct. | Carte : deux vues au lieu de quatre ; « Raccorder » note chaque case de -1 à +1 (zone RTE à moins de 3 cases, site clé en main à moins de 2, poste 400 kV, contraintes RTE au-delà de la médiane, relief, carbone au-dessus de 100 g, équilibre régional), note indicative ; « Territoire » réunit industrie (hauteur), équilibre (couleur, violet → bleu pour ne pas se confondre avec le rouge et le vert de la note) et production (maquettes) |
 | 24 oct. | Carte : une carte par système électrique, placées à 600 unités l'une de l'autre dans la même scène (le brouillard cache les autres) plutôt qu'une page par territoire |
 | 24 oct. | Pôles de production : registre ODRÉ agrégé à la source par commune et filière (installations en service d'au moins 10 MW ; les noms « Confidentiel » interdisent une clé par installation), centre de la commune comme position ; seuil 200 MW sur le continent, 20 MW en Corse et outre-mer ; stockage hors barrages exclu |
 | 24 oct. | Après le MVP, extension par adresse en Europe de l'Ouest dans l'ordre de facilité des données : Pays-Bas, Belgique, Espagne, Autriche, Luxembourg, Suisse, Portugal, Allemagne, Royaume-Uni, Irlande, Italie, puis les micro-États (détail dans « Suite ») |
