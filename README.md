@@ -101,11 +101,14 @@ case de 24 km est notée du rouge (défavorable) au vert (favorable) en passant 
 selon la proximité d'une zone prioritaire RTE et d'un site clé en main France 2030, les postes
 400 kV, les contraintes RTE prévues, le relief, le carbone et l'équilibre régional ; zones RTE
 (anneau et bannière avec l'année de capacité), sites clés en main (losange doré) et adresse reliée
-à la zone RTE utile et au site le plus proche. « Territoire » réunit le reste : couleur selon
-l'équilibre production/consommation de la région, hauteur selon la pression industrielle du
-département, et pôles de production d'au moins 200 MW sur le continent et 20 MW en Corse et
-outre-mer (registre national), en maquettes par filière (réacteurs et tours aéroréfrigérantes,
-barrage-voûte et sa retenue, chaudière et cheminée) qui ne dépassent pas les deux tiers de la case.
+à la zone RTE utile et au site le plus proche. Seule cette vue porte des fausses couleurs.
+« Territoire » montre le paysage réel : mer en bleu, plaines et forêts en vert, garrigue, montagnes
+grises et sommets enneigés, hauteur selon l'altitude IGN. Son encart donne le carbone du réseau
+(pastille « décarbonée » sous 100 g/kWh) et le prix moyen HTVA des entreprises, identique partout,
+de la plus petite à la plus grosse tranche de consommation. Elle porte aussi les pôles de production
+d'au moins 200 MW sur le continent et 20 MW en Corse et outre-mer (registre national), en maquettes
+par filière (réacteurs et tours aéroréfrigérantes, barrage-voûte et sa retenue, chaudière et
+cheminée) qui ne dépassent pas les deux tiers de la case.
 Un clic sur une case affiche la fiche du département ; le survol d'une case donne sa note et ses
 raisons, celui d'un pôle sa puissance et sa production.
 
