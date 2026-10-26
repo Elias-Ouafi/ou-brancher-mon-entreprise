@@ -19,6 +19,7 @@ from ingestion.datasets import (
     NATIONAL_TR,
     RTE_TEMPO,
     SITES_PRODUCTION,
+    ZONAGE_SISMIQUE,
     DatasetSpec,
 )
 from ingestion.extract_edf_sei import telecharger_production
@@ -29,6 +30,7 @@ from ingestion.extract_gaspar import lire_export, lire_plans, telecharger_archiv
 from ingestion.extract_odre import ExtractionWindow, OdreClient
 from ingestion.extract_production import telecharger_centres, telecharger_sites
 from ingestion.extract_rte import DayRange, RteTempoClient
+from ingestion.extract_sismique import telecharger_zonage
 from ingestion.transform import PARIS_TZ, records_to_table, write_parquet
 from ingestion.warehouse import LoadResult, build_loader
 
@@ -429,6 +431,18 @@ def run_gaspar_ingestion(
     contenu = telecharger_archive(settings=settings)
     _charger_fichier(lire_plans(contenu), GASPAR_PLANS, settings, run_id, now)
     return _charger_fichier(lire_export(contenu), GASPAR_RISQUES, settings, run_id, now)
+
+
+# Zonage sismique réglementaire : la seule donnée de risque que l'export GASPAR ne donne pas
+def run_zonage_sismique_ingestion(
+    *,
+    settings: Settings | None = None,
+    run_id: str = "manual",
+    now: datetime | None = None,
+) -> tuple[ExtractionOutcome, LoadResult]:
+    settings = settings or get_settings()
+    lignes = telecharger_zonage(settings=settings)
+    return _charger_fichier(lignes, ZONAGE_SISMIQUE, settings, run_id, now)
 
 
 # Prix et carbone des 27 pays de l'UE : le repère d'une implantation hors de France

@@ -364,6 +364,16 @@ GASPAR_PLANS = DatasetSpec(
     description="Plans de prévention des risques par commune (GASPAR : PPRN, PPRT, PPRM)",
 )
 
+# Zonage sismique réglementaire (WFS Géorisques) : un polygone par commune de 2010, `geometrie`
+# en JSON (polygones, anneaux, [longitude, latitude]) et son emprise pour le filtrer vite
+ZONAGE_SISMIQUE = DatasetSpec(
+    dataset_id="zonage-sismique",
+    keys=(code("gid"),),
+    attributes=(code("zone_sismicite"), label("libelle_zone"), label("geometrie")),
+    measures=measures("lon_min", "lat_min", "lon_max", "lat_max"),
+    description="Zonage sismique réglementaire par commune (Géorisques, décret 2010-1255)",
+)
+
 # Puissance en service par commune et filière, installations d'au moins 10 MW (registre ODRÉ)
 SITES_PRODUCTION = DatasetSpec(
     dataset_id="sites-production",
@@ -463,6 +473,7 @@ BRONZE_SPECS: tuple[DatasetSpec, ...] = (
     EUROSTAT_PRIX_ENTREPRISES,
     GASPAR_RISQUES,
     GASPAR_PLANS,
+    ZONAGE_SISMIQUE,
     SITES_PRODUCTION,
     COMMUNES_CENTRES,
     EDF_SEI_PRODUCTION,

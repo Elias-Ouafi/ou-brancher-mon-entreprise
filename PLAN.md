@@ -25,6 +25,7 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 | Carte 3D épurée autour du verdict : vue « Raccorder » par défaut, adresse reliée à la zone RTE utile et au site clé en main ; épinglée par `essentiel` et `diagnose` (seule l'épingle bouge si les données n'ont pas changé) | `carte`, `reporting/carte.py` |
 | Une carte par système électrique (métropole et Corse, chaque DROM), ouverte sur celle de l'adresse ; deux vues : « Raccorder », cases notées du rouge au blanc puis au vert, et « Territoire », paysage réel (mer bleue, verdure, relief IGN) avec carbone et prix moyen dans l'encart ; dans les deux vues, 95 pôles de production du registre national en maquettes par filière (réacteurs et tours, barrage-voûte et retenue, cheminée et cuves), la plus grosse sur les deux tiers de la case, et les sites clés en main en maquette (dalle, hangar, bureaux, mât au drapeau doré), nommés au survol | `ingestion/hexagones.py`, `fct_sites_production` |
 | Risques sans dépendre de l'API Géorisques : export GASPAR chargé par `refresh` | `fct_risques_commune` |
+| Zone de sismicité réglementaire (1 à 5) à l'adresse, sans l'API : couche WFS de Géorisques chargée par `refresh`, point dans polygone en Python | `ingestion/extract_sismique.py`, `fct_zonage_sismique` |
 | Risques « à vérifier » seulement sous un plan de prévention approuvé ou prescrit (13 919 communes au lieu des 31 706 qui ont un risque recensé) | `fct_plans_prevention_commune`, `_critere_risques` |
 | Date de chargement de chaque source dans toutes les sorties ; pied de page des rapports avec la commande pour les refaire | `ligne_chargements`, `pied_de_page` |
 | Pays de l'UE-27 : prix Eurostat et carbone Ember du pays, face à la France à tranche égale ; pays trouvé par Nominatim | `europe`, `fct_pays_ue` |
@@ -34,8 +35,9 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 
 **À surveiller** :
 - l'API Géorisques coupe toute connexion vers `/api/…` depuis le 24 octobre au moins (la page
-  d'accueil répond) ; le diagnostic passe alors sur l'export GASPAR, à la maille commune, sans le
-  zonage sismique (aucun fichier national officiel à jour) ;
+  d'accueil répond) ; le diagnostic passe alors sur l'export GASPAR, à la maille commune, et sur le
+  zonage sismique du service WFS de Géorisques (`/services`), qui répond ; planseisme.fr ne
+  résout plus (26 octobre) ;
 - les facteurs ADEME de la Corse et de l'outre-mer datent de décembre 2020 : vérifié le 25
   octobre, c'est toujours le dernier millésime valide de la Base Carbone (jeu mis à jour le 3
   juillet 2025) ;
@@ -50,14 +52,14 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 
 ## Suite
 
-Étape 9 (maquettes 3D, carte à deux vues) et sources 10.1 (Enedis par adresse) et 10.2 (grille
-TURPE 7) faites du 25 au 26 octobre. Prochaines étapes, dans l'ordre où les prendre ; chacune
+Étape 9 (maquettes 3D, carte à deux vues) et sources 10.1 (Enedis par adresse), 10.2 (grille
+TURPE 7) et 10.4 (zonage sismique) faites du 25 au 26 octobre. Prochaines étapes, dans l'ordre où les prendre ; chacune
 n'est cochée qu'après ruff, pytest (dont `dbt build`) et un essai réel :
 
 | Ordre | Étape | Pourquoi maintenant | Bloqué par |
 |---|---|---|---|
 | ~~1~~ | **Fait le 26 octobre.** **10.2** Grille TURPE 7 HTA-BT en seed daté, coût d'acheminement selon le domaine de tension dans `essentiel` et `diagnose` | Seule part de la facture qui dépend du raccordement | — |
-| 2 | **10.4** Zonage sismique réglementaire par commune, en seed | Comble le trou laissé par la coupure de l'API Géorisques ; petit volume | recalage sur le code officiel géographique actuel |
+| ~~2~~ | **Fait le 26 octobre.** **10.4** Zonage sismique réglementaire à l'adresse | Comble le trou laissé par la coupure de l'API Géorisques | — |
 | 3 | **10.3** Continuité d'alimentation par département (Agence ORE) | Repère « qualité de fourniture » dans `diagnose` ; client data-fair déjà en place | rien |
 | 4 | **10.5** Profils de charge réels > 36 kVA par secteur (Enedis `conso-sup36-region`) | Remplace les profils du seed dans `fct_cout_horaire_profil` | volume : filtrage à la source par région et secteur à mettre au point |
 | 5 | **8** Repère de prix au-delà de 150 000 MWh/an (contrats CAPN) ; classement pondéré dans `compare` | Les très gros consommateurs sortent aujourd'hui des tranches Eurostat | décision : le classement revient sur celle du 15 octobre (« comparaison sans classement ») |
@@ -83,7 +85,7 @@ nouvelle dépendance.
 | ~~10.1~~ | **Fait le 25 octobre.** Consommation d'électricité annuelle des entreprises par adresse : dernière année seulement (2025, 499 125 lignes, 142 TWh, en 18 s) | Enedis, data-fair `opendata.enedis.fr`, jeu `consommation-annuelle-entreprise-par-adresse` | Industrie et tertiaire réels de la commune et de l'adresse (MWh, code NAF), au lieu des seuls sites raccordés à RTE | Réseau Enedis seulement (ni ELD ni RTE) ; 7 043 lignes sans adresse, comptées à la commune seulement |
 | ~~10.2~~ | **Fait le 26 octobre.** Grille TURPE 7 HTA-BT au 1er août 2026 | CRE, délibération n° 2026-105 du 21 mai 2026 (annexe 2, pages 21 à 27) ; seeds datés `turpe_soutirage` et `turpe_gestion_comptage` | Coût d'acheminement selon le domaine de tension (BT > 36 kVA, HTA courte ou longue utilisation) : 22,6 €/MWh pour 1 MW et 4 000 MWh en HTA | Mise à jour chaque 1er août ; HTB (RTE) non chiffré |
 | 10.3 | Continuité d'alimentation : indicateur réglementaire par département (2009-2024), durée et fréquence moyennes des coupures BT et HTA (nationales) | Agence ORE et Enedis, data-fair `opendata.agenceore.fr` | Repère « qualité de fourniture » dans `diagnose` : part des clients du département hors des seuils réglementaires, comparée à la moyenne nationale | Maille du département ; pas de critère B par commune en open data |
-| 10.4 | Zonage sismique réglementaire par commune | Annexe du décret n° 2010-1255 (articles R563-1 à R563-8 du code de l'environnement) et tableur de planseisme.fr (ministère, BRGM) ; seed par code INSEE | Comble le zonage sismique absent quand l'API Géorisques est coupée | Tableur à recaler sur le code officiel géographique actuel (communes fusionnées) |
+| ~~10.4~~ | **Fait le 26 octobre.** Zonage sismique réglementaire (décret n° 2010-1255, article D563-8-1 du code de l'environnement) | Géorisques, service WFS `https://www.georisques.gouv.fr/services`, couche `risq_zonage_sismique` (36 719 polygones, 158 Mo de géométrie, 85 s) ; bronze `zonage_sismique`, gold `fct_zonage_sismique` | Zone 1 à 5 à l'adresse quand l'API Géorisques est coupée ; vérifié sur Lyon (2), Nice (4), Pointe-à-Pitre (5), Paris (1) | Polygones des communes de 2010 sans code INSEE : situés par l'adresse, pas par le code commune |
 | 10.5 | Agrégats de consommation au pas d'une demi-heure des points de soutirage de plus de 36 kVA, par secteur d'activité et puissance souscrite (maille régionale) | Enedis, data-fair, jeu `conso-sup36-region` | Profils de charge réels par secteur pour `fct_cout_horaire_profil`, au lieu des profils du seed | Volume (34,6 M lignes) : filtrer à la source par région et secteur |
 | 10.6 | Signal Ecowatt (tension du système électrique, J à J+3) | RTE, API Ecowatt v5 (même compte que Tempo) | Jours de tension dans le rapport mensuel, à côté des jours rouges Tempo | Le bac à sable répond ; l'API réelle renvoie 403 tant que l'application n'est pas abonnée à « Ecowatt » sur le portail RTE |
 
@@ -185,6 +187,7 @@ Inondations.
 | 26 oct. | Carte : fausses couleurs réservées à « Raccorder » (rouge → blanc → vert, sans cônes de montagne) ; « Territoire » revient aux couleurs réelles et au relief IGN, l'encart donne carbone et prix moyen par tranche (`fct_prix_entreprise_tranche`) ; frontières régionales en gris sombre plutôt qu'en couleurs |
 | 26 oct. | Carte : sites clés en main en maquette posée sur la case (dalle, hangar, bureaux, mât au drapeau doré) au lieu d'un losange flottant ; centrales en maquettes aussi dans « Raccorder » ; survol d'un site : son nom |
 | 26 oct. | Acheminement : TURPE 7 HTA-BT seulement (HTA à pointe fixe, BT > 36 kVA ; le tarif bleu l'inclut déjà, le HTB relève de RTE) ; une même puissance souscrite dans toutes les classes ; énergie répartie sur la courbe de charge, sinon sur toutes les heures de l'année ; heures creuses 22 h – 6 h, pointe 9 h – 11 h et 18 h – 20 h de décembre à février hors dimanche ; version courte ou longue utilisation au moindre coût ; gestion en contrat unique (Rf inclus), comptage communicant. Montant donné comme part déjà comprise dans le prix moyen Eurostat |
+| 26 oct. | Zonage sismique : couche WFS de Géorisques plutôt qu'un seed (le tableur de planseisme.fr n'est plus en ligne, le fichier wpd reste écarté) ; zone trouvée par l'adresse dans son polygone, ce qui évite le recalage sur le code officiel géographique ; pages triées par `gid` (sans tri, 84 polygones perdus) et nombre de polygones contrôlé contre le total annoncé ; sur une limite, la zone la plus forte ; le critère « risques » du verdict reste réglé par les seuls plans de prévention |
 | 26 oct. | Seeds recréés à chaque `dbt build` (`+full_refresh`) : un seed qui gagne une colonne bloquait le warehouse existant |
 
 ## Écarté
