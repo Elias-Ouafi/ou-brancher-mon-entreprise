@@ -1,6 +1,6 @@
 # Plan du projet
 
-> Mis à jour le 25 octobre 2026. Périmètre : la France (métropole, Corse, outre-mer), en ligne de
+> Mis à jour le 26 octobre 2026. Périmètre : la France (métropole, Corse, outre-mer), en ligne de
 > commande, en local et à la demande.
 
 ## État
@@ -22,7 +22,7 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 | Entreprises raccordées à Enedis (2025) : volume, industrie et premier secteur NAF de la commune, rang dans le département ; consommation déjà relevée à l'adresse (« Déjà raccordé ici ») | `fct_conso_entreprises_commune`, `fct_conso_entreprises_adresse`, seed `dim_naf2` |
 | Verdict « brancher ici ? » en cinq critères (raccordement, risques, carbone, facture, foncier) | `verdict`, `phrase_verdict` |
 | Carte 3D épurée autour du verdict : vue « Raccorder » par défaut, adresse reliée à la zone RTE utile et au site clé en main ; épinglée par `essentiel` et `diagnose` (seule l'épingle bouge si les données n'ont pas changé) | `carte`, `reporting/carte.py` |
-| Une carte par système électrique (métropole et Corse, chaque DROM), ouverte sur celle de l'adresse ; deux vues : « Raccorder », cases notées du rouge au vert, et « Territoire », paysage réel (mer bleue, verdure, montagnes grises) avec carbone et prix moyen dans l'encart : 95 pôles de production du registre national, en maquettes par filière (réacteurs et tours, barrage-voûte et retenue, cheminée et cuves), fermées de tous côtés, la plus grosse sur les deux tiers de la case | `ingestion/hexagones.py`, `fct_sites_production` |
+| Une carte par système électrique (métropole et Corse, chaque DROM), ouverte sur celle de l'adresse ; deux vues : « Raccorder », cases notées du rouge au blanc puis au vert, et « Territoire », paysage réel (mer bleue, verdure, relief IGN) avec carbone et prix moyen dans l'encart ; dans les deux vues, 95 pôles de production du registre national en maquettes par filière (réacteurs et tours, barrage-voûte et retenue, cheminée et cuves), la plus grosse sur les deux tiers de la case, et les sites clés en main en maquette (dalle, hangar, bureaux, mât au drapeau doré), nommés au survol | `ingestion/hexagones.py`, `fct_sites_production` |
 | Risques sans dépendre de l'API Géorisques : export GASPAR chargé par `refresh` | `fct_risques_commune` |
 | Risques « à vérifier » seulement sous un plan de prévention approuvé ou prescrit (13 919 communes au lieu des 31 706 qui ont un risque recensé) | `fct_plans_prevention_commune`, `_critere_risques` |
 | Date de chargement de chaque source dans toutes les sorties ; pied de page des rapports avec la commande pour les refaire | `ligne_chargements`, `pied_de_page` |
@@ -49,12 +49,27 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 
 ## Suite
 
-| Priorité | Étape | Bloqué par |
-|---|---|---|
-| 8 | Repère de prix au-delà de 150 000 MWh/an (contrats CAPN) ; classement pondéré dans `compare` | décision |
-| 10 | Intégrer les sources retenues par l'étude du 25 octobre, dans l'ordre ci-dessous (10.1 faite le 25 octobre) | voir chaque source |
-| 11 | Carte : très grandes zones de fret (grands ports, grands aéroports de fret), sans les petites | source et seuil de taille à fixer |
-| 6 | Extension internationale, en dernier, voir ci-dessous | jeton ENTSO-E (compte gratuit) et contours des zones de prix à sourcer |
+Étape 9 (maquettes 3D, carte à deux vues) et source 10.1 (Enedis par adresse) faites les 25 et
+26 octobre. Prochaines étapes, dans l'ordre où les prendre ; chacune n'est cochée qu'après
+ruff, pytest (dont `dbt build`) et un essai réel :
+
+| Ordre | Étape | Pourquoi maintenant | Bloqué par |
+|---|---|---|---|
+| 1 | **10.2** Grille TURPE 7 HTA-BT en seed daté, coût d'acheminement selon le domaine de tension dans `essentiel` et `diagnose` | Seule part de la facture qui dépend du raccordement ; aucune dépendance | rien (valeurs à relever dans la délibération CRE 2026-105) |
+| 2 | **10.4** Zonage sismique réglementaire par commune, en seed | Comble le trou laissé par la coupure de l'API Géorisques ; petit volume | recalage sur le code officiel géographique actuel |
+| 3 | **10.3** Continuité d'alimentation par département (Agence ORE) | Repère « qualité de fourniture » dans `diagnose` ; client data-fair déjà en place | rien |
+| 4 | **10.5** Profils de charge réels > 36 kVA par secteur (Enedis `conso-sup36-region`) | Remplace les profils du seed dans `fct_cout_horaire_profil` | volume : filtrage à la source par région et secteur à mettre au point |
+| 5 | **8** Repère de prix au-delà de 150 000 MWh/an (contrats CAPN) ; classement pondéré dans `compare` | Les très gros consommateurs sortent aujourd'hui des tranches Eurostat | décision : le classement revient sur celle du 15 octobre (« comparaison sans classement ») |
+| 6 | **11** Carte : très grandes zones de fret (grands ports, grands aéroports de fret) | Complète la vue « Raccorder » pour la logistique | source officielle et seuil de taille à fixer |
+| 7 | **10.6** Signal Ecowatt dans le rapport mensuel | Jours de tension à côté des jours rouges Tempo | abonner l'application à « Ecowatt » sur le portail RTE (action manuelle) |
+| 8 | **6** Extension internationale, voir ci-dessous | En dernier (décision du 25 octobre) | jeton ENTSO-E (compte gratuit) et contours des zones de prix à sourcer |
+
+**Échéances à guetter** (à lancer à la main, aucune planification) :
+- 1er janvier 2027 : refonte de Caparéseau et éventuelle carte des capacités en soutirage de RTE
+  (délibération CRE 2026-173), à intégrer dès publication ;
+- 1er février 2027 : indexation de l'accise, ligne à ajouter au seed `accise_electricite` ;
+- 1er août 2027 : nouvelle grille TURPE, une fois l'étape 10.2 faite ;
+- quand EDF SEI publiera 2025 : `refresh` pour recaler le carbone horaire des îles.
 
 **Sources à intégrer (étude du 25 octobre)**, de la plus utile à « brancher ici ? » à la moins
 utile. Toutes sont publiées par leur producteur officiel, sous licence ouverte, et se lisent avec
@@ -153,8 +168,6 @@ Inondations.
 | 24 oct. | Commandes de question : journal masqué (niveau WARNING, message seul), chemins des fichiers écrits sur stderr ; warehouse absent ou gold incomplet → `DonneesAbsentesError` et commande `refresh` à lancer |
 | 24 oct. | Carte : décor (villes, forêts) et lentilles Terrain et Réseau retirés ; prix et compteurs hors de la barre du haut ; la fiche de l'adresse donne le verdict |
 | 25 oct. | Carte : deux vues au lieu de quatre ; « Raccorder » note chaque case de -1 à +1 (zone RTE à moins de 3 cases, site clé en main à moins de 2, poste 400 kV, contraintes RTE au-delà de la médiane, relief, carbone au-dessus de 100 g, équilibre régional), note indicative ; « Territoire » réunit industrie (hauteur), équilibre (couleur, violet → bleu pour ne pas se confondre avec le rouge et le vert de la note) et production (maquettes) |
-| 26 oct. | Carte : fausses couleurs réservées à « Raccorder » (rouge → blanc → vert, sans cônes de montagne) ; « Territoire » revient aux couleurs réelles et au relief IGN, l'encart donne carbone et prix moyen par tranche (`fct_prix_entreprise_tranche`) ; frontières régionales en gris sombre plutôt qu'en couleurs |
-| 26 oct. | Carte : sites clés en main en maquette posée sur la case (dalle, hangar, bureaux, mât au drapeau doré) au lieu d'un losange flottant ; centrales en maquettes aussi dans « Raccorder » ; survol d'un site : son nom |
 | 24 oct. | Carte : une carte par système électrique, placées à 600 unités l'une de l'autre dans la même scène (le brouillard cache les autres) plutôt qu'une page par territoire |
 | 24 oct. | Pôles de production : registre ODRÉ agrégé à la source par commune et filière (installations en service d'au moins 10 MW ; les noms « Confidentiel » interdisent une clé par installation), centre de la commune comme position ; seuil 200 MW sur le continent, 20 MW en Corse et outre-mer ; stockage hors barrages exclu |
 | 24 oct. | Après le MVP, extension par adresse en Europe de l'Ouest dans l'ordre de facilité des données : Pays-Bas, Belgique, Espagne, Autriche, Luxembourg, Suisse, Portugal, Allemagne, Royaume-Uni, Irlande, Italie, puis les micro-États (détail dans « Suite ») |
@@ -167,6 +180,8 @@ Inondations.
 | 25 oct. | Nouvelles sources : producteur officiel et licence ouverte seulement, méthode publiée ou bibliothèque maintenue et testée ; une copie tierce sert au mieux de repli signalé |
 | 25 oct. | Chaque nouvelle source suit l'architecture médaillon : extraction vers un Parquet bronze immuable puis `MERGE` DuckDB, silver nettoyé et gold en dbt, limite dans `limites_methodologiques` |
 | 25 oct. | Enedis par adresse : pages CSV data-fair de 10 000 lignes (le JSON prenait 9 min pour une année), dernière année publiée seulement ; adresse rapprochée sur « numéro + voie » normalisés, seulement si la BAN trouve le numéro ; une consommation à l'adresse prouve un raccordement, pas une puissance disponible |
+| 26 oct. | Carte : fausses couleurs réservées à « Raccorder » (rouge → blanc → vert, sans cônes de montagne) ; « Territoire » revient aux couleurs réelles et au relief IGN, l'encart donne carbone et prix moyen par tranche (`fct_prix_entreprise_tranche`) ; frontières régionales en gris sombre plutôt qu'en couleurs |
+| 26 oct. | Carte : sites clés en main en maquette posée sur la case (dalle, hangar, bureaux, mât au drapeau doré) au lieu d'un losange flottant ; centrales en maquettes aussi dans « Raccorder » ; survol d'un site : son nom |
 
 ## Écarté
 
