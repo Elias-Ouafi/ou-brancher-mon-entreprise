@@ -179,6 +179,27 @@ sources:
               - accepted_values:
                   arguments:
                     values: [INDUSTRIE, TERTIAIRE, AGRICULTURE, INCONNU]
+      - name: enedis_continuite_alimentation
+        description: >
+          Indicateur réglementaire de continuité d'alimentation (Enedis, data-fair, licence
+          ouverte) : part des clients HTA et BT du département dont les coupures dépassent l'un
+          des seuils de l'arrêté du 24 décembre 2007 (6 coupures longues, 35 coupures brèves ou
+          13 heures cumulées dans l'année). Une ligne par département et par année depuis 2009 ;
+          seuls les départements desservis par Enedis (ni la Corse, ni l'outre-mer).
+        data_tests:
+          - unique_combination:
+              arguments:
+                columns: [code_departement, annee]
+        columns:
+          - name: code_departement
+            data_tests: [not_null]
+          - name: part_mal_alimentes_pct
+            data_tests:
+              - not_null
+              - accepted_range:
+                  arguments:
+                    min_value: 0
+                    max_value: 100
       - name: edf_sei_production
         description: >
           Production horaire par filière en Corse, Guadeloupe, Martinique, Guyane et à La

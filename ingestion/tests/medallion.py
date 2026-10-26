@@ -14,6 +14,7 @@ from ingestion.config import Settings
 from ingestion.datasets import (
     COMMUNES_CENTRES,
     CONSO_IRIS,
+    CONTINUITE_ALIMENTATION,
     CONTRAINTES_OUVRAGES,
     CONTRAINTES_REGIONALES,
     EDF_SEI_PRODUCTION,
@@ -572,6 +573,20 @@ def conso_entreprises() -> list[dict[str, Any]]:
     ]  # fmt: skip
 
 
+# Rhône sous le seuil malgré une mauvaise année, Ain au-dessus, Isère en retard d'une année
+def continuite_alimentation() -> list[dict[str, Any]]:
+    return [
+        {"code_departement": dep, "annee": str(annee), "part_mal_alimentes_pct": pct}
+        for dep, annee, pct in [
+            ("69", 2015, 9.0), ("69", 2020, 1.0), ("69", 2021, 2.0), ("69", 2022, 4.0),
+            ("69", 2023, 1.5), ("69", 2024, 2.5),
+            ("01", 2023, 2.0), ("01", 2024, 4.0),
+            ("13", 2024, 0.5),
+            ("38", 2023, 8.0),
+        ]
+    ]  # fmt: skip
+
+
 def load_bronze(
     database: Path, tmp_path: Path, spec: DatasetSpec, records: list[dict[str, Any]]
 ) -> None:
@@ -628,6 +643,7 @@ def build_warehouse(tmp_path: Path, *, with_tempo: bool = True) -> Path:
     load_bronze(database, tmp_path, SITES_PRODUCTION, sites_production())
     load_bronze(database, tmp_path, COMMUNES_CENTRES, communes_centres())
     load_bronze(database, tmp_path, ENEDIS_CONSO_ENTREPRISES, conso_entreprises())
+    load_bronze(database, tmp_path, CONTINUITE_ALIMENTATION, continuite_alimentation())
     ensure_bronze_tables(settings=Settings(_env_file=None, duckdb_path=database))
     dbt_build(database, tmp_path)
     return database

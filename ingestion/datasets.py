@@ -256,6 +256,15 @@ ENEDIS_CONSO_ENTREPRISES = DatasetSpec(
     description="Consommation annuelle d'électricité des entreprises par adresse (Enedis)",
 )
 
+# Part des clients Enedis du département au-delà des seuils réglementaires de coupure, par année
+CONTINUITE_ALIMENTATION = DatasetSpec(
+    dataset_id="enedis-continuite-alimentation",
+    keys=(code("code_departement"), period("annee")),
+    attributes=(),
+    measures=measures("part_mal_alimentes_pct"),
+    description="Indicateur réglementaire de continuité d'alimentation par département (Enedis)",
+)
+
 # Région excédentaire ou déficitaire, mois par mois
 EQUILIBRE_REGIONAL = DatasetSpec(
     dataset_id="equilibre-regional-mensuel-prod-conso-brute",
@@ -480,6 +489,7 @@ BRONZE_SPECS: tuple[DatasetSpec, ...] = (
     EUROSTAT_PRIX_UE,
     EMBER_INTENSITE_CARBONE,
     ENEDIS_CONSO_ENTREPRISES,
+    CONTINUITE_ALIMENTATION,
     *TERRITORIAL_SPECS,
 )
 
