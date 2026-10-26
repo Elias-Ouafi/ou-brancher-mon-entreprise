@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     # Export GASPAR (risques recensés par commune), servi hors de l'API : repli quand elle se tait
     gaspar_url: str = "https://files.georisques.fr/GASPAR/gaspar.zip"
 
+    # Service WFS de Géorisques (zonage sismique réglementaire), répond quand l'API se tait
+    zonage_sismique_url: str = "https://www.georisques.gouv.fr/services"
+
     # Intensité carbone annuelle des pays européens (Ember, CC BY 4.0)
     ember_url: str = (
         "https://files.ember-energy.org/public-downloads/generation/outputs/"

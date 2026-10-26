@@ -406,6 +406,22 @@ models:
         data_tests: [not_null]
       - name: code_tranche
         data_tests: [not_null]
+  - name: fct_zonage_sismique
+    description: >
+      Zone de sismicité réglementaire (1 à 5) de chaque polygone communal du zonage de 2010,
+      avec son emprise : le diagnostic retient les polygones dont l'emprise contient l'adresse,
+      puis celui qui la contient vraiment. Indépendant du code officiel géographique, donc
+      juste même dans une commune nouvelle née de communes de zones différentes.
+    columns:
+      - name: gid
+        data_tests: [unique, not_null]
+      - name: zone_sismicite
+        data_tests:
+          - not_null
+          - accepted_range:
+              arguments:
+                min_value: 1
+                max_value: 5
   - name: fct_plans_prevention_commune
     description: >
       Plans de prévention des risques (PPRN, PPRT, PPRM) en vigueur dans chaque commune, selon

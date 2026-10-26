@@ -210,6 +210,11 @@ def lire_zonage(payload: dict[str, Any]) -> Risque | None:
     )
 
 
+# La zone de sismicité remplace la mention « Séisme » (13) de GASPAR, moins précise
+def avec_zonage(risques: list[Risque], seisme: Risque) -> list[Risque]:
+    return [seisme, *(r for r in risques if r.code != "gaspar_13")]
+
+
 # Client de l'API Géorisques
 class GeorisquesClient:
     def __init__(
@@ -264,8 +269,7 @@ class GeorisquesClient:
             logger.warning("zonage sismique indisponible : %s", error)
             seisme = None
         if seisme is not None:
-            # La zone de sismicité remplace la mention « Séisme » (13) de GASPAR
-            risques = [seisme, *(r for r in risques if r.code != "gaspar_13")]
+            risques = avec_zonage(risques, seisme)
         return RisquesSite(url=None, risques=risques, maille="commune")
 
     def _json(self, path: str, *, latitude: float, longitude: float) -> dict[str, Any]:

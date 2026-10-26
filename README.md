@@ -138,7 +138,7 @@ flowchart LR
   code INSEE ; énergie = puissance × durée (jours de 23 ou 25 h) ; verdict carbone en cycle de vie.
 - **Gold principal** : `fct_diagnostic_territoire` (une ligne par département),
   `fct_prix_entreprise_tranche`, `fct_carbone_territoire`, `fct_carbone_horaire_zni`,
-  `fct_risques_commune`, `fct_plans_prevention_commune`, `fct_sites_production`, `fct_pays_ue`,
+  `fct_risques_commune`, `fct_plans_prevention_commune`, `fct_zonage_sismique`, `fct_sites_production`, `fct_pays_ue`,
   `fct_mix`, `fct_conso_entreprises_commune` et `fct_conso_entreprises_adresse` (entreprises
   raccordées à Enedis, dernière année publiée). Les seeds datés (tarifs, accise, grille TURPE 7, SDDR, sites clés en main, facteurs ADEME) sont à mettre à jour à chaque
   nouvelle source et recréés à chaque `dbt build` ; `limites_methodologiques` porte la limite de chaque indicateur.
@@ -153,7 +153,11 @@ flowchart LR
   près (clé « numéro + voie » sans accents ni ponctuation, « 13 bis » = « 13 B ») ; date des données affichée partout, avec alerte au-delà de 45 jours ; risques en repli
   local quand l'API Géorisques ne répond pas. Les risques ne sont « à vérifier » que si un plan de
   prévention (PPRN, PPRT, PPRM) approuvé ou prescrit couvre la commune, soit 13 919 communes : un
-  risque seulement recensé, ce qui touche 31 706 communes, est donné pour information.
+  risque seulement recensé, ce qui touche 31 706 communes, est donné pour information. La zone de
+  sismicité réglementaire (1 à 5) vient de la couche WFS de Géorisques, chargée par `refresh` :
+  36 719 polygones des communes de 2010, triés par `gid` pour une pagination stable et comptés
+  contre le total annoncé ; l'adresse est située dans son polygone, ce qui reste juste dans une
+  commune nouvelle.
 - `data/` n'est pas versionné et se recrée par `refresh`. DuckDB n'accepte qu'un writer : fermez
   toute session `duckdb` pendant un chargement.
 
@@ -163,14 +167,14 @@ flowchart LR
 .\.venv\Scripts\python.exe -m ruff check . ; .\.venv\Scripts\python.exe -m pytest
 ```
 
-443 tests sans réseau, dont un `dbt build` complet sur une base synthétique qui reproduit les
+452 tests sans réseau, dont un `dbt build` complet sur une base synthétique qui reproduit les
 pièges des sources, plus les tests de données dbt. La CI GitHub Actions les joue à chaque PR.
 
 ## Sources et licence
 
 [ODRÉ](https://odre.opendatasoft.com) (éCO2mix, RTE) · [Eurostat](https://ec.europa.eu/eurostat) ·
 [Base Carbone de l'ADEME](https://data.ademe.fr/datasets/base-carboner) ·
-[Base Adresse Nationale](https://adresse.data.gouv.fr) · [Géorisques et GASPAR](https://www.georisques.gouv.fr) ·
+[Base Adresse Nationale](https://adresse.data.gouv.fr) · [Géorisques, GASPAR et zonage sismique](https://www.georisques.gouv.fr) ·
 [contours Etalab](https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/) ·
 [altimétrie IGN](https://geoservices.ign.fr/documentation/services/services-geoplateforme/altimetrie) ·
 [Natural Earth](https://www.naturalearthdata.com) ·
