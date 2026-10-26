@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import re
 from dataclasses import asdict, dataclass, field, replace
@@ -12,13 +13,16 @@ import duckdb
 
 from ingestion.config import Settings, get_settings
 from ingestion.courbe import BilanCourbe, Courbe, bilan_courbe
+from ingestion.extract_sismique import contient
 from ingestion.geocode import Territoire, adresse_normalisee, code_commune_parent
 from ingestion.georisques import (
     Exposition,
     GeorisquesError,
     Risque,
     RisquesSite,
+    avec_zonage,
     lire_risques,
+    lire_zonage,
     risques_gaspar,
 )
 from ingestion.turpe import PROFIL_COURBE, Acheminement, lire_acheminement
@@ -237,6 +241,7 @@ SOURCES_CHARGEES: dict[str, str] = {
     "postes_electriques_rte": "postes RTE",
     "gaspar_risques": "risques GASPAR",
     "gaspar_plans": "plans de prévention GASPAR",
+    "zonage_sismique": "zonage sismique",
 }
 # Au-delà, une source n'a pas été rechargée depuis plus d'un cycle mensuel de `refresh`
 AGE_MAX_JOURS = 45
@@ -1631,6 +1636,8 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
         if r.url:
             texte(s, f"Rapport officiel : {r.url}")
         limite(s, "risques_site")
+    if d.risques is not None and any(r.code == "seisme" for r in d.risques.risques):
+        limite(s, "zonage_sismique")
     return resultat
 
 
@@ -1646,25 +1653,59 @@ order by code_insee_commune, num_risque
 """
 
 
-# Export GASPAR chargé par `refresh` ; `None` s'il n'a jamais été chargé
-def _gaspar_local(codes_commune: set[str], settings: Settings | None) -> RisquesSite | None:
+# Plus forte zone d'abord : sur une limite entre deux communes, la plus exigeante s'applique
+_ZONAGE_SQL = """
+select libelle_zone, geometrie
+from gold.fct_zonage_sismique
+where $longitude between lon_min and lon_max and $latitude between lat_min and lat_max
+order by zone_sismicite desc
+"""
+
+
+# Zone de sismicité du point d'après le zonage chargé par `refresh` ; `None` s'il manque
+def _zonage_local(
+    connection: duckdb.DuckDBPyConnection, latitude: float, longitude: float
+) -> Risque | None:
+    try:
+        candidats = connection.execute(
+            _ZONAGE_SQL, {"latitude": latitude, "longitude": longitude}
+        ).fetchall()
+    except duckdb.CatalogException:
+        return None
+    libelle = next(
+        (z for z, geometrie in candidats if contient(json.loads(geometrie), longitude, latitude)),
+        None,
+    )
+    return None if libelle is None else lire_zonage({"data": [{"zone_sismicite": libelle}]})
+
+
+# Export GASPAR et zonage sismique chargés par `refresh` ; `None` si GASPAR n'est pas chargé
+def _gaspar_local(
+    codes_commune: set[str], settings: Settings | None, *, latitude: float, longitude: float
+) -> RisquesSite | None:
     path = (settings or get_settings()).duckdb_path
     if not Path(path).exists():
         return None
     try:
         with duckdb.connect(str(path), read_only=True) as connection:
             lignes = connection.execute(_GASPAR_SQL, [sorted(codes_commune)]).fetchall()
+            seisme = _zonage_local(connection, latitude, longitude)
     except duckdb.CatalogException:
         return None
-    return risques_gaspar(lignes)
+    site = risques_gaspar(lignes)
+    if site is None or seisme is None:
+        return site
+    return replace(site, risques=avec_zonage(site.risques, seisme))
 
 
 # Risques de la commune sans appeler Géorisques : assez pour le verdict rapide de `essentiel`
 def avec_risques_locaux(diagnostic: Diagnostic, *, settings: Settings | None = None) -> Diagnostic:
     if diagnostic.risques is not None:
         return diagnostic
-    codes = {diagnostic.territoire.code_insee_commune, diagnostic.code_insee_commune}
-    return replace(diagnostic, risques=_gaspar_local(codes, settings))
+    t = diagnostic.territoire
+    codes = {t.code_insee_commune, diagnostic.code_insee_commune}
+    risques = _gaspar_local(codes, settings, latitude=t.latitude, longitude=t.longitude)
+    return replace(diagnostic, risques=risques)
 
 
 # Ajoute le rapport Géorisques de l'adresse ; ne fait jamais échouer le diagnostic
@@ -1677,7 +1718,9 @@ def completer_risques(diagnostic: Diagnostic, *, settings: Settings | None = Non
             longitude=t.longitude,
             codes_commune=codes_commune,
             settings=settings,
-            repli=_gaspar_local(codes_commune, settings),
+            repli=_gaspar_local(
+                codes_commune, settings, latitude=t.latitude, longitude=t.longitude
+            ),
         )
     except GeorisquesError as error:
         logger.warning("risques non evalues : %s", error)

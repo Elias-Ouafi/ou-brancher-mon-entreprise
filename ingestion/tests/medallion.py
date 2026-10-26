@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
@@ -28,6 +29,7 @@ from ingestion.datasets import (
     POSTES_RTE,
     RTE_TEMPO,
     SITES_PRODUCTION,
+    ZONAGE_SISMIQUE,
     DatasetSpec,
 )
 from ingestion.pipeline import ensure_bronze_tables
@@ -379,6 +381,34 @@ def gaspar_risques() -> list[dict[str, Any]]:
     ]
 
 
+# Lyon (4,85 ; 45,76) dans un carré en zone 2, dont l'emprise touche aussi un triangle en zone 5 qui
+# ne le contient pas ; Ajaccio (8,7 ; 41,9) dans un carré en zone 4 percé d'un trou en zone 1
+def zonage_sismique() -> list[dict[str, Any]]:
+    carre_lyon = [[[4, 45], [6, 45], [6, 47], [4, 47], [4, 45]]]
+    triangle = [[[4.5, 45.5], [5.5, 46.5], [4.5, 46.5], [4.5, 45.5]]]
+    trou = [[9.0, 42.1], [9.2, 42.1], [9.2, 42.3], [9.0, 42.3], [9.0, 42.1]]
+    carre_corse = [[[8.5, 41.5], [9.5, 41.5], [9.5, 42.5], [8.5, 42.5], [8.5, 41.5]], trou]
+    polygones = [
+        ("1", "2 - FAIBLE", [carre_lyon]),
+        ("2", "5 - FORTE", [triangle]),
+        ("3", "4 - MOYENNE", [carre_corse]),
+        ("4", "1 - TRES FAIBLE", [[trou]]),
+    ]
+    return [
+        {
+            "gid": gid,
+            "zone_sismicite": libelle[0],
+            "libelle_zone": libelle,
+            "geometrie": json.dumps(geometrie),
+            "lon_min": min(x for p in geometrie for a in p for x, _ in a),
+            "lat_min": min(y for p in geometrie for a in p for _, y in a),
+            "lon_max": max(x for p in geometrie for a in p for x, _ in a),
+            "lat_max": max(y for p in geometrie for a in p for _, y in a),
+        }
+        for gid, libelle, geometrie in polygones
+    ]
+
+
 # Lyon : un PPRI approuvé (deux aléas), un PPRT approuvé, un plan caduc, un plan d'un ancien
 # export ; Ajaccio : un plan seulement prescrit ; Paris, Lille et l'outre-mer : aucun plan
 def gaspar_plans() -> list[dict[str, Any]]:
@@ -591,6 +621,7 @@ def build_warehouse(tmp_path: Path, *, with_tempo: bool = True) -> Path:
     load_bronze(database, tmp_path, CONTRAINTES_OUVRAGES, contraintes_ouvrages())
     load_bronze(database, tmp_path, GASPAR_RISQUES, gaspar_risques())
     load_bronze(database, tmp_path, GASPAR_PLANS, gaspar_plans())
+    load_bronze(database, tmp_path, ZONAGE_SISMIQUE, zonage_sismique())
     load_bronze(database, tmp_path, EDF_SEI_PRODUCTION, edf_sei_production())
     load_bronze(database, tmp_path, EUROSTAT_PRIX_UE, prix_ue())
     load_bronze(database, tmp_path, EMBER_INTENSITE_CARBONE, ember_intensites())
