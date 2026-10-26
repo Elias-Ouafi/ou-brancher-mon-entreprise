@@ -486,6 +486,33 @@ models:
                 values: [naturel, technologique]
       - name: millesime
         data_tests: [not_null]
+  - name: fct_poles_fret
+    description: >
+      Grands pôles de fret de la carte. Ports : marchandises hors tare de la dernière année
+      publiée par le SDES, d'au moins 5 Mt sur le continent et 0,5 Mt en Corse et outre-mer.
+      Aéroports : fret et poste de la dernière année complète de la DGAC, d'au moins 20 000 t
+      sur le continent et 3 000 t en Corse et outre-mer. Ports et aéroports au centre de leur
+      commune. Chantiers rail-route de SNCF Réseau à leurs coordonnées, retenus sur au moins
+      2 km de voies de manutention : un repère de capacité, pas un tonnage (aucun publié).
+      Seuils réglables par les variables dbt `fret_seuil_*`.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [mode, nom]
+    columns:
+      - name: mode
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [port, aeroport, rail]
+      - name: code_departement
+        data_tests: [not_null]
+      - name: latitude
+        data_tests: [not_null]
+      - name: longitude
+        data_tests: [not_null]
+
   - name: fct_sites_production
     description: >
       Principaux pôles de production d'électricité : puissance en service d'une filière dans

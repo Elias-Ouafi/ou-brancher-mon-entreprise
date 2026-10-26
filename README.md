@@ -108,9 +108,14 @@ grises et sommets enneigés, hauteur selon l'altitude IGN. Son encart donne le c
 de la plus petite à la plus grosse tranche de consommation. Elle porte aussi les pôles de production
 d'au moins 200 MW sur le continent et 20 MW en Corse et outre-mer (registre national), en maquettes
 par filière (réacteurs et tours aéroréfrigérantes, barrage-voûte et sa retenue, chaudière et
-cheminée) qui ne dépassent pas les deux tiers de la case.
+cheminée) qui ne dépassent pas les deux tiers de la case. Les deux vues portent enfin les grands
+pôles de fret, pour juger la desserte d'une région : ports d'au moins 5 Mt de marchandises par an
+hors tare (0,5 Mt en Corse et outre-mer, SDES), aéroports d'au moins 20 000 t de fret et de poste
+(3 000 t, DGAC), en maquettes de quai à portique et d'aérogare avec avion cargo ; chantiers
+rail-route de SNCF Réseau d'au moins 2 km de voies de manutention, en maquette de voie, wagons et
+portique. Pour le rail, la longueur de voies est un repère de capacité : aucun tonnage n'est publié.
 Un clic sur une case affiche la fiche du département ; le survol d'une case donne sa note et ses
-raisons, celui d'un pôle sa puissance et sa production.
+raisons, celui d'un pôle sa puissance et sa production, celui d'un pôle de fret son tonnage.
 
 **Identifiants** (Tempo seulement) : copiez `identifiants.exemple.txt` en `identifiants.local.txt`.
 Ce fichier est ignoré par git et prime sur `.env`.
@@ -138,7 +143,7 @@ flowchart LR
   code INSEE ; énergie = puissance × durée (jours de 23 ou 25 h) ; verdict carbone en cycle de vie.
 - **Gold principal** : `fct_diagnostic_territoire` (une ligne par département),
   `fct_prix_entreprise_tranche`, `fct_carbone_territoire`, `fct_carbone_horaire_zni`,
-  `fct_risques_commune`, `fct_plans_prevention_commune`, `fct_zonage_sismique`, `fct_sites_production`, `fct_pays_ue`,
+  `fct_risques_commune`, `fct_plans_prevention_commune`, `fct_zonage_sismique`, `fct_sites_production`, `fct_poles_fret`, `fct_pays_ue`,
   `fct_mix`, `fct_conso_entreprises_commune` et `fct_conso_entreprises_adresse` (entreprises
   raccordées à Enedis, dernière année publiée). Les seeds datés (tarifs, accise, grille TURPE 7, SDDR, sites clés en main, facteurs ADEME) sont à mettre à jour à chaque
   nouvelle source et recréés à chaque `dbt build` ; `limites_methodologiques` porte la limite de chaque indicateur.
@@ -185,6 +190,9 @@ pièges des sources, plus les tests de données dbt. La CI GitHub Actions les jo
 [Ember](https://ember-energy.org/data/yearly-electricity-data/) (CC BY 4.0) ·
 [registre national des installations de production](https://odre.opendatasoft.com/explore/dataset/registre-national-installation-production-stockage-electricite-agrege/) ·
 [geo.api.gouv.fr](https://geo.api.gouv.fr) ·
+[trafic maritime du SDES](https://www.data.gouv.fr/datasets/maritime-transport-de-marchandises) ·
+[trafic aérien commercial de la DGAC](https://www.data.gouv.fr/datasets/64808a5811da153f1439914c) ·
+[chantiers de transport combiné de SNCF Réseau](https://www.data.gouv.fr/datasets/chantiers-de-transport-combines) (ODbL) ·
 [Nominatim](https://nominatim.openstreetmap.org), données © contributeurs OpenStreetMap (ODbL) ·
 SDDR 2025 de RTE · barèmes et grille TURPE 7 de la CRE.
 
