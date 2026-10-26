@@ -315,7 +315,7 @@ def build_parser() -> argparse.ArgumentParser:
     compare.add_argument("--sans-risques", action="store_true", help="ne consulte pas Géorisques")
 
     carte = subparsers.add_parser(
-        "carte", help="carte 3D par système électrique : raccordement, industrie, production"
+        "carte", help="carte 3D par système électrique : raccorder et territoire"
     )
     carte.add_argument("--adresse", help="adresse à épingler sur la carte, entre guillemets")
     carte.add_argument(
