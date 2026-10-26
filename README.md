@@ -100,7 +100,7 @@ les boutons en bas à droite passent d'une carte à l'autre. Deux vues (touches 
 case de 24 km est notée du rouge (défavorable) au vert (favorable) en passant par le blanc (neutre),
 selon la proximité d'une zone prioritaire RTE et d'un site clé en main France 2030, les postes
 400 kV, les contraintes RTE prévues, le relief, le carbone et l'équilibre régional ; zones RTE
-(anneau et bannière avec l'année de capacité), sites clés en main (losange doré) et adresse reliée
+(anneau et bannière avec l'année de capacité), sites clés en main (maquette de hangar au drapeau doré), centrales en maquettes et adresse reliée
 à la zone RTE utile et au site le plus proche. Seule cette vue porte des fausses couleurs.
 « Territoire » montre le paysage réel : mer en bleu, plaines et forêts en vert, garrigue, montagnes
 grises et sommets enneigés, hauteur selon l'altitude IGN. Son encart donne le carbone du réseau
