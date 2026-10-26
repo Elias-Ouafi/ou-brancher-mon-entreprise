@@ -80,7 +80,9 @@ button { font: inherit; }
 .legend .ticks { display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; color: var(--parch); }
 .legend p { margin: 6px 0 0; line-height: 1.35; }
 .legend .filieres { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; margin-top: 4px; color: var(--parch); font-variant-numeric: tabular-nums; }
-.legend .filieres i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; border: 1px solid var(--ink); }
+.legend * + h3 { margin-top: 10px; }
+.legend .teintes { display: flex; flex-wrap: wrap; gap: 2px 10px; color: var(--parch); }
+.legend .teintes i, .legend .filieres i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; border: 1px solid var(--ink); }
 .banner.prod { border-color: var(--gold-dim); font-size: 11.5px; padding: 1px 8px; }
 .lensbar { display: flex; gap: 8px; }
 .lens { width: 58px; display: flex; flex-direction: column; align-items: center; gap: 4px; background: none; border: 0; cursor: pointer; color: var(--parch-dim); font: 500 11.5px var(--f-body); }
@@ -142,7 +144,7 @@ button { font: inherit; }
   <div class="legend frame" id="legend"></div>
   <div class="lensbar" role="toolbar" aria-label="Lentilles">
     <button class="lens" data-lens="raccordement" aria-pressed="true"><span class="disc"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" fill="#e3b341"/></svg></span>Raccorder</button>
-    <button class="lens" data-lens="territoire" aria-pressed="false"><span class="disc"><svg viewBox="0 0 24 24"><path d="M6 21c1.5-4 1.5-8 0-12h7c-1.5 4-1.5 8 0 12H6Z" fill="#e9dcb8"/><path d="M15 21V11h2v10h-2Zm3 0V8h2v13h-2Z" fill="#8b877c"/><circle cx="9.5" cy="5" r="2.6" fill="#f1f3f4" opacity=".8"/></svg></span>Territoire</button>
+    <button class="lens" data-lens="territoire" aria-pressed="false"><span class="disc"><svg viewBox="0 0 24 24"><path d="M2 20 9 7l4 7 2-3 7 9H2Z" fill="#8b877c"/><path d="m9 7 2 3.6-2-1-2 1L9 7Z" fill="#f1f3f4"/><path d="M18 20v-3" stroke="#6b4f2a" stroke-width="1.6"/><path d="m18 8-3.5 6h2l-2 3h7l-2-3h2L18 8Z" fill="#5f8f3e"/></svg></span>Territoire</button>
   </div>
 </div>
 <div class="tip frame" id="tip" hidden></div>
@@ -191,12 +193,12 @@ for (const t of land) {
   if (MEDITERRANEE.has(t.dep)) base = "#b0a35f";
   if (code) base = code === "973" ? "#2f6f3a" : "#4f8f45";
   let c = col(base);
-  if (t.alt > 300) c.lerp(col("#8c7f4e"), Math.min(1, (t.alt - 300) / 600));
-  if (t.alt > 1300) c.lerp(col("#8f8c82"), Math.min(.8, (t.alt - 1300) / 800));
+  // Collines boisées en vert sombre, roche grise en haute montagne
+  if (t.alt > 300) c.lerp(col("#41632f"), Math.min(1, (t.alt - 300) / 600));
+  if (t.alt > 1100) c.lerp(col("#8f8c82"), Math.min(.85, (t.alt - 1100) / 700));
   c.offsetHSL(0, 0, (hash(t.c, t.r) - .5) * .06); t.biome = c;
   t.baseH = hauteur(t.alt);
 }
-const MAXG = Math.max(...DATA.departements.map(d => d.gwh || 0));
 
 // Scène
 const host = document.getElementById("scene");
@@ -215,7 +217,7 @@ scene.add(new THREE.HemisphereLight(col("#d7e6ff"), col("#4a3b2a"), .7));
 const sun = new THREE.DirectionalLight(col("#ffe4bd"), 1.05); sun.position.set(-45, 90, 35); sun.target.position.set(-45, 0, 0); scene.add(sun.target);
 sun.castShadow = true; Object.assign(sun.shadow.camera, { left: -130, right: 130, top: 90, bottom: -90, near: 10, far: 260 });
 sun.shadow.mapSize.set(4096, 4096); sun.shadow.bias = -.0008; scene.add(sun);
-const seabed = new THREE.Mesh(new THREE.PlaneGeometry(900, 900), new THREE.MeshStandardMaterial({ color: col("#163b52"), roughness: .9 }));
+const seabed = new THREE.Mesh(new THREE.PlaneGeometry(900, 900), new THREE.MeshStandardMaterial({ color: col("#16406e"), roughness: .9 }));
 seabed.rotation.x = -Math.PI / 2; seabed.position.y = -.05; seabed.receiveShadow = true; scene.add(seabed);
 // Soleil et fond marin suivent la carte affichée
 const soleil = (x, z) => { sun.position.set(x - 45, 90, z + 35); sun.target.position.set(x, 0, z); seabed.position.x = x; seabed.position.z = z; };
@@ -234,7 +236,7 @@ land.forEach((_, i) => writeTile(i));
 const waterMesh = new THREE.InstancedMesh(hexGeo, new THREE.MeshStandardMaterial({ roughness: .35, metalness: .1, flatShading: true }), water.length);
 waterMesh.receiveShadow = true; scene.add(waterMesh);
 water.forEach((t, i) => { const d = t.dist, h = d <= 1 ? .26 : d <= 3 ? .18 : .1; dummy.position.set(t.x, 0, t.z); dummy.scale.set(1, h, 1); dummy.updateMatrix(); waterMesh.setMatrixAt(i, dummy.matrix);
-  const c = col(d <= 1 ? "#4aa3a2" : d <= 3 ? "#2d7f93" : "#1f5c75"); c.offsetHSL(0, 0, (hash(t.r, t.c) - .5) * .03); waterMesh.setColorAt(i, c); });
+  const c = col(d <= 1 ? "#4f9fd6" : d <= 3 ? "#2f78b8" : "#1d5690"); c.offsetHSL(0, 0, (hash(t.r, t.c) - .5) * .03); waterMesh.setColorAt(i, c); });
 
 // Pays voisins en brouillard parchemin, comme les terres inexplorées
 const fogMesh = new THREE.InstancedMesh(hexGeo, new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true }), Math.max(fog.length, 1));
@@ -274,7 +276,7 @@ const regionBand = new Band(1, .025), depBand = new Band(.28, .02), selBand = ne
 const rE = [], dE = [];
 for (const t of land) for (let k = 0; k < 6; k++) { const n = nb(t, k);
   if (!n || !n.land) rE.push({ i: t.i, k, w: .12 * PS, c: col("#e3d3a0") });
-  else if (n.reg !== t.reg) rE.push({ i: t.i, k, w: .3 * PS, c: col(REGION_COLORS[t.reg] || "#ffffff") });
+  else if (n.reg !== t.reg) rE.push({ i: t.i, k, w: .3 * PS, c: col("#26323b") });
   else if (n.dep !== t.dep) dE.push({ i: t.i, k, w: .06 * PS, c: col("#ffffff") }); }
 regionBand.set(rE); depBand.set(dE);
 const ringOf = (list, w, c) => { const set = new Set(list.map(t => t.i)), out = []; for (const t of list) for (let k = 0; k < 6; k++) { const n = nb(t, k); if (!n || !n.land || !set.has(n.i)) out.push({ i: t.i, k, w, c }); } return out; };
@@ -394,10 +396,9 @@ if (adresseTile) addLabel(esc(DATA.adresse.libelle), "banner adresse", { g: adre
 
 // Lentilles
 const ramp = (stops, s) => { s = Math.max(0, Math.min(1, s)); const n = stops.length - 1, k = Math.min(n - 1, Math.floor(s * n)); return col(stops[k]).lerp(col(stops[k + 1]), s * n - k); };
-const EQ = ["#6b3fa0", "#a98bc4", "#e9dcb8", "#78b3c9", "#2f7fb3"], NOTE = ["#c0392b", "#e8a59a", "#f2f2ee", "#9fd19a", "#2e8b3e"];
-const indS = d => d && d.rk ? 1 - (d.rk - 1) / Math.max(1, d.nc - 1) : 0;
-const eqS = d => d && d.tc ? Math.max(-1, Math.min(1, Math.log2(d.tc) / 2)) * .5 + .5 : .5;
-const annee = (DATA.departements.find(d => d.an) || {}).an || "";
+// Seule la vue de décision porte des fausses couleurs : rouge défavorable, blanc neutre, vert favorable
+const NOTE = ["#c0392b", "#e8a59a", "#f2f2ee", "#9fd19a", "#2e8b3e"];
+const TEINTES = [["#2f78b8", "mer"], ["#5f8f3e", "plaines et forêts"], ["#b0a35f", "garrigue"], ["#41632f", "forêts et collines"], ["#8f8c82", "montagne"], ["#f1f3f4", "neige"]];
 // Note de chaque case, de -1 (défavorable) à +1 (favorable) : zone RTE prioritaire et site clé en main proches,
 // postes 400 kV, contraintes RTE prévues au-delà de la médiane (4 par département), carbone, équilibre régional et relief
 const enCases = (a, b) => Math.hypot(a.x - b.x, a.z - b.z) / HW;
@@ -413,12 +414,20 @@ for (const t of land) { const d = DEP[t.dep] || {}, r = [];
   t.raisons = r; }
 const avis = n => n > .15 ? "favorable" : n < -.15 ? "défavorable" : "neutre";
 const LENS = {
-  raccordement: { tile: t => [ramp(NOTE, (t.note + 1) / 2), t.baseH], show: ["mountains", "sites", "zones", "liens"],
+  raccordement: { tile: t => [ramp(NOTE, (t.note + 1) / 2), t.baseH], show: ["sites", "zones", "liens"],
     legend: `<h3>Où se brancher</h3><div class="bar" style="background:linear-gradient(90deg,${NOTE.join(",")})"></div><div class="ticks"><span>défavorable</span><span>neutre</span><span>favorable</span></div><p>Vert : zone de raccordement prioritaire RTE ou site clé en main à proximité, poste 400 kV dans le département. Rouge : contraintes RTE prévues, relief, électricité carbonée, région importatrice. Indicatif : seule une étude Enedis ou RTE fait foi.</p><p>Anneau bleu et bannière : zone prioritaire RTE (SDDR 2025). Losange doré : site clé en main France 2030. Épingle rouge : votre adresse, reliée à la zone RTE utile et au site le plus proche.</p>` },
-  // Industrie, production et équilibre réunis : couleur, hauteur et maquettes ne se recouvrent pas
-  territoire: { tile: t => { const d = DEP[t.dep]; return [ramp(EQ, eqS(d)), .45 + t.alt / 4000 + Math.pow(indS(d), 1.7) * 5]; }, show: ["production"],
-    legend: () => `<h3>Territoire</h3><div class="bar" style="background:linear-gradient(90deg,${EQ.join(",")})"></div><div class="ticks"><span>×0,25</span><span>×1</span><span>×4</span></div><p>Couleur : production divisée par consommation de la région sur 12 mois ; sous ×1, la région importe. Hauteur : rang du département selon la consommation électrique de ses sites industriels (ODRÉ, ${annee}), le rang 1 consommant ${fmt(MAXG)} GWh.</p>${legendeProduction()}` },
+  // Paysage réel : couleurs naturelles et relief IGN, sans note ; l'électricité du territoire passe par l'encart
+  territoire: { tile: t => [t.biome, t.baseH], show: ["mountains", "production"],
+    legend: () => `<h3>Territoire</h3><div class="teintes">${TEINTES.map(([c, n]) => `<span><i style="background:${c}"></i>${n}</span>`).join("")}</div><p>Couleurs naturelles, hauteur selon l'altitude moyenne (IGN).</p>${legendeElectricite()}${legendeProduction()}` },
 };
+// Carbone et prix moyen de la carte affichée : le prix est le même partout, seule la consommation le fait varier
+const PRIX = DATA.prix || [];
+const fourchettePrix = () => PRIX.length ? `${fmt(Math.min(...PRIX.map(p => p.e)), 2)} à ${fmt(Math.max(...PRIX.map(p => p.e)), 2)} €/kWh` : "n.d.";
+const pillCo2 = v => v == null ? "" : v <= 100 ? '<span class="pill good">décarbonée</span>' : '<span class="pill bad">carbonée</span>';
+function legendeElectricite() { const co2 = land.filter(t => t.g === carte).map(t => (DEP[t.dep] || {}).co2).filter(v => v != null);
+  const lo = co2.length ? Math.min(...co2) : null, hi = co2.length ? Math.max(...co2) : null;
+  const carbone = lo == null ? "n.d." : `${fmt(lo)}${hi > lo ? " à " + fmt(hi) : ""} g/kWh${pillCo2(lo > 100 || hi <= 100 ? hi : null)}`;
+  return `<h3>Électricité</h3><div class="filieres"><span>Carbone du réseau</span><span>${carbone}</span><span>Prix moyen HTVA</span><span>${fourchettePrix()}</span></div><p>Carbone en cycle de vie, par région. Prix Eurostat des entreprises${PRIX.length ? " jusqu'à " + esc(PRIX[0].s) : ""}, identique partout (péréquation) : de ${PRIX.length ? fmt(PRIX[0].e, 2) : "n.d."} €/kWh sous 20 MWh par an à ${PRIX.length ? fmt(PRIX[PRIX.length - 1].e, 2) : "n.d."} au-delà de 150 000.</p>`; }
 function legendeProduction() { const ps = prodObjs.filter(o => o.t.g === carte).map(o => o.p), tot = {};
   for (const p of ps) tot[p.f] = (tot[p.f] || 0) + p.mw;
   const lignes = Object.entries(tot).sort((a, b) => b[1] - a[1]).map(([f, mw]) => `<span><i style="background:${FILIERES[f] || "#7fe3ff"}"></i>${esc(nomFiliere(f))}</span><span>${fmt(mw)} MW</span>`).join("");
@@ -437,6 +446,7 @@ const ICON = {
   factory: '<svg viewBox="0 0 24 24"><path d="M3 21V11l5 3v-3l5 3v-3l5 3V4h3v17H3Z" fill="#e3892b"/></svg>',
   pylon: '<svg viewBox="0 0 24 24"><path d="M12 2 7 22h2.2l1-4h3.6l1 4H17L12 2Zm-1.2 13 1.2-5 1.2 5h-2.4ZM5 7h14M6.5 11h11" stroke="#c9d1d6" stroke-width="1.7" fill="none"/></svg>',
   scale: '<svg viewBox="0 0 24 24"><path d="M12 3v17M6 20h12M4 7h16M4 7l-2.5 6h5L4 7Zm16 0-2.5 6h5L20 7Z" stroke="#58c4e6" stroke-width="1.7" fill="none"/></svg>',
+  euro: '<svg viewBox="0 0 24 24"><path d="M17.5 6.5A7 7 0 1 0 17.5 17.5M4 10.5h9M4 13.5h9" stroke="#d6b26a" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>',
   leaf: '<svg viewBox="0 0 24 24"><path d="M4 20C4 10 10 4 20 4c0 10-6 16-16 16Z" fill="#6fbf73"/></svg>',
 };
 const PILL = { ok: ["good", "ok"], attention: ["warn", "à vérifier"], inconnu: ["neutre", "inconnu"], info: ["neutre", "info"] };
@@ -454,14 +464,14 @@ function showDep(code) { const d = DEP[code]; if (!d) return;
   const ts = depTiles[code] || [];
   selBand.set(ringOf(ts, .26 * PS, col("#f6d27a")));
   const eqPill = d.tc == null ? "" : d.tc >= 1 ? '<span class="pill good">excédent</span>' : '<span class="pill bad">importe</span>';
-  const co2Pill = d.co2 == null ? "" : d.co2 <= 100 ? '<span class="pill good">décarbonée</span>' : '<span class="pill bad">carbonée</span>';
   cityEl.style.setProperty("--rc", REGION_COLORS[d.r] || "#d6b26a");
   cityEl.innerHTML = `<header><h2>${esc(d.n)}</h2><div class="sub">${esc(d.c)} · ${esc(d.rn)}</div><button class="close" aria-label="Fermer la fiche">×</button></header>
   <div class="yields">
     <div class="y">${ICON.factory}<span class="k">Conso. industrielle ${d.an || ""}</span><span class="v">${fmt(d.gwh)} GWh <small>${d.rk ? "rang " + d.rk + "/" + d.nc : ""}</small></span></div>
     <div class="y">${ICON.pylon}<span class="k">Postes RTE</span><span class="v">${fmt(d.p)} <small>dont ${fmt(d.p3)} en 400 kV${d.pp ? ", " + d.pp + " en projet" : ""}</small></span></div>
     <div class="y">${ICON.scale}<span class="k">Couverture régionale</span><span class="v">${d.tc == null ? "n.d." : fmt(d.tc * 100) + " %"}${eqPill}</span></div>
-    <div class="y">${ICON.leaf}<span class="k">Carbone du réseau</span><span class="v">${fmt(d.co2, 1)} <small>g/kWh</small>${co2Pill}</span></div>
+    <div class="y">${ICON.leaf}<span class="k">Carbone du réseau</span><span class="v">${fmt(d.co2, 1)} <small>g/kWh</small>${pillCo2(d.co2)}</span></div>
+    <div class="y">${ICON.euro}<span class="k">Prix moyen HTVA</span><span class="v">${fourchettePrix()} <small>selon la conso.</small></span></div>
   </div>${LIMITE}`;
   cityEl.querySelector(".close").onclick = VERDICT ? showVerdict : ficheVide; }
 
@@ -491,7 +501,7 @@ montrerCarte(adresseTile ? adresseTile.g : 0, true);
 
 // Survol et sélection
 const ray = new THREE.Raycaster(), mouse = new THREE.Vector2(), tip = document.getElementById("tip"); let hovered = -1, down = null;
-const lensLine = (t, d) => lens === "raccordement" ? `Raccordement ${avis(t.note)}${t.raisons.length ? " : " + t.raisons.join(", ") : ""}` : !d ? "" : `${fmt(d.gwh)} GWh industriels${d.rk ? " · rang " + d.rk : ""} · couverture régionale ${d.tc == null ? "n.d." : fmt(d.tc * 100) + " %"}`;
+const lensLine = (t, d) => lens === "raccordement" ? `Raccordement ${avis(t.note)}${t.raisons.length ? " : " + t.raisons.join(", ") : ""}` : !d ? "" : `Électricité ${d.co2 == null ? "n.d." : (d.co2 <= 100 ? "décarbonée" : "carbonée") + " (" + fmt(d.co2) + " g/kWh)"} · couverture régionale ${d.tc == null ? "n.d." : fmt(d.tc * 100) + " %"} · ${fmt(d.gwh)} GWh industriels`;
 function pick(e) { const b = renderer.domElement.getBoundingClientRect(); mouse.set((e.clientX - b.left) / b.width * 2 - 1, -(e.clientY - b.top) / b.height * 2 + 1); ray.setFromCamera(mouse, camera); const h = ray.intersectObject(landMesh)[0]; return h ? h.instanceId : -1; }
 const pickHub = () => { if (!markers.production.visible) return null; const h = ray.intersectObject(markers.production, true)[0]; return h ? h.object.userData.hub : null; };
 renderer.domElement.addEventListener("pointermove", e => { if (e.pointerType !== "mouse") return; const i = pick(e);

@@ -82,6 +82,11 @@ select commune as n, code_departement as c, filiere as f, puissance_mw as mw,
     energie_gwh as gwh, nb_installations as ni, latitude as la, longitude as lo
 from gold.fct_sites_production order by puissance_mw desc
 """
+_PRIX_SQL = """
+select code_tranche as t, conso_min_mwh as mn, conso_max_mwh as mx,
+    round(prix_reference_eur_kwh, 4) as e, dernier_semestre as s
+from gold.fct_prix_entreprise_tranche order by conso_min_mwh
+"""
 
 
 def _lignes(connection: duckdb.DuckDBPyConnection, sql: str) -> list[dict[str, Any]]:
@@ -101,6 +106,7 @@ def lire_donnees_gold(database: Path) -> dict[str, Any]:
                 ("departements", _DEPARTEMENTS_SQL),
                 ("sites", _SITES_SQL),
                 ("zones", _ZONES_SQL),
+                ("prix", _PRIX_SQL),
             )
         }
         # Absent d'un warehouse antérieur aux pôles de production : la carte s'en passe
@@ -193,6 +199,7 @@ def construire_donnees(
             }
             for p in gold.get("production", [])
         ],
+        "prix": gold.get("prix", []),
         "donnees": gold.get("donnees"),
         "adresse": construire_adresse(grilles, territoire, verdict_adresse),
     }
