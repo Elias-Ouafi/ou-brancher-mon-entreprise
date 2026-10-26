@@ -7,8 +7,8 @@
 -- « NOISY-LE-SEC » → « Noisy-le-Sec » : DuckDB n'a pas initcap, et les articles restent en minuscules
 {% macro casse_titre(colonne) -%}
     {%- set titre -%}
-    array_to_string(list_transform(string_split(lower({{ colonne }}), ' '), mot ->
-        array_to_string(list_transform(string_split(mot, '-'), m -> upper(m[1]) || m[2:]), '-')
+    array_to_string(list_transform(string_split(lower({{ colonne }}), ' '), lambda mot:
+        array_to_string(list_transform(string_split(mot, '-'), lambda m: upper(m[1]) || m[2:]), '-')
     ), ' ')
     {%- endset -%}
     {%- set ns = namespace(sql=titre) -%}
