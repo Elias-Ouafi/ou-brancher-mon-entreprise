@@ -16,6 +16,7 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 | Prix par tranche Eurostat, scénarios à 3 ans calibrés sur les erreurs passées | `fct_prix_entreprise_tranche` |
 | Carbone par système électrique, seuil de 100 gCO₂e/kWh | `fct_carbone_territoire` |
 | Carbone heure par heure en Corse et outre-mer (production EDF SEI, profil calé sur l'ADEME) | `fct_carbone_horaire_zni` |
+| Part acheminement de la facture (TURPE 7 HTA-BT au 1er août 2026) selon le domaine de tension, la puissance et la consommation, sur la courbe de charge si elle est fournie | `ingestion/turpe.py`, seeds `turpe_soutirage`, `turpe_gestion_comptage` |
 | Part de la facture dans le chiffre d'affaires (`--ca`) et électro-intensité fiscale dans la valeur ajoutée (`--va`) | `essentiel`, `diagnose` |
 | Courbe de charge Enedis (`--courbe`) : consommation, pointe, heures creuses, coût et carbone réels | `ingestion/courbe.py` |
 | Diagnostic complet : industrie, réseau, zone RTE, site clé en main, risques | `diagnose`, `compare` |
@@ -49,13 +50,13 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 
 ## Suite
 
-Étape 9 (maquettes 3D, carte à deux vues) et source 10.1 (Enedis par adresse) faites les 25 et
-26 octobre. Prochaines étapes, dans l'ordre où les prendre ; chacune n'est cochée qu'après
-ruff, pytest (dont `dbt build`) et un essai réel :
+Étape 9 (maquettes 3D, carte à deux vues) et sources 10.1 (Enedis par adresse) et 10.2 (grille
+TURPE 7) faites du 25 au 26 octobre. Prochaines étapes, dans l'ordre où les prendre ; chacune
+n'est cochée qu'après ruff, pytest (dont `dbt build`) et un essai réel :
 
 | Ordre | Étape | Pourquoi maintenant | Bloqué par |
 |---|---|---|---|
-| 1 | **10.2** Grille TURPE 7 HTA-BT en seed daté, coût d'acheminement selon le domaine de tension dans `essentiel` et `diagnose` | Seule part de la facture qui dépend du raccordement ; aucune dépendance | rien (valeurs à relever dans la délibération CRE 2026-105) |
+| ~~1~~ | **Fait le 26 octobre.** **10.2** Grille TURPE 7 HTA-BT en seed daté, coût d'acheminement selon le domaine de tension dans `essentiel` et `diagnose` | Seule part de la facture qui dépend du raccordement | — |
 | 2 | **10.4** Zonage sismique réglementaire par commune, en seed | Comble le trou laissé par la coupure de l'API Géorisques ; petit volume | recalage sur le code officiel géographique actuel |
 | 3 | **10.3** Continuité d'alimentation par département (Agence ORE) | Repère « qualité de fourniture » dans `diagnose` ; client data-fair déjà en place | rien |
 | 4 | **10.5** Profils de charge réels > 36 kVA par secteur (Enedis `conso-sup36-region`) | Remplace les profils du seed dans `fct_cout_horaire_profil` | volume : filtrage à la source par région et secteur à mettre au point |
@@ -68,7 +69,8 @@ ruff, pytest (dont `dbt build`) et un essai réel :
 - 1er janvier 2027 : refonte de Caparéseau et éventuelle carte des capacités en soutirage de RTE
   (délibération CRE 2026-173), à intégrer dès publication ;
 - 1er février 2027 : indexation de l'accise, ligne à ajouter au seed `accise_electricite` ;
-- 1er août 2027 : nouvelle grille TURPE, une fois l'étape 10.2 faite ;
+- 1er août 2027 : nouvelle grille TURPE 7 HTA-BT, à reporter dans les seeds `turpe_soutirage`
+  et `turpe_gestion_comptage` (les sorties le signalent une fois la date passée) ;
 - quand EDF SEI publiera 2025 : `refresh` pour recaler le carbone horaire des îles.
 
 **Sources à intégrer (étude du 25 octobre)**, de la plus utile à « brancher ici ? » à la moins
@@ -79,7 +81,7 @@ nouvelle dépendance.
 | Rang | Source | Producteur, accès | Ce qu'elle apporte | Limite ou blocage |
 |---|---|---|---|---|
 | ~~10.1~~ | **Fait le 25 octobre.** Consommation d'électricité annuelle des entreprises par adresse : dernière année seulement (2025, 499 125 lignes, 142 TWh, en 18 s) | Enedis, data-fair `opendata.enedis.fr`, jeu `consommation-annuelle-entreprise-par-adresse` | Industrie et tertiaire réels de la commune et de l'adresse (MWh, code NAF), au lieu des seuls sites raccordés à RTE | Réseau Enedis seulement (ni ELD ni RTE) ; 7 043 lignes sans adresse, comptées à la commune seulement |
-| 10.2 | Grille TURPE 7 HTA-BT au 1er août 2026 | CRE, délibération n° 2026-105 du 21 mai 2026 (annexes) ; seed daté comme `tarifs_hphc` | Coût d'acheminement selon le domaine de tension (BT > 36 kVA, HTA courte ou longue utilisation) : la seule part de la facture qui dépend du raccordement, donc de la puissance | Valeurs à relever dans le PDF ; mise à jour chaque 1er août |
+| ~~10.2~~ | **Fait le 26 octobre.** Grille TURPE 7 HTA-BT au 1er août 2026 | CRE, délibération n° 2026-105 du 21 mai 2026 (annexe 2, pages 21 à 27) ; seeds datés `turpe_soutirage` et `turpe_gestion_comptage` | Coût d'acheminement selon le domaine de tension (BT > 36 kVA, HTA courte ou longue utilisation) : 22,6 €/MWh pour 1 MW et 4 000 MWh en HTA | Mise à jour chaque 1er août ; HTB (RTE) non chiffré |
 | 10.3 | Continuité d'alimentation : indicateur réglementaire par département (2009-2024), durée et fréquence moyennes des coupures BT et HTA (nationales) | Agence ORE et Enedis, data-fair `opendata.agenceore.fr` | Repère « qualité de fourniture » dans `diagnose` : part des clients du département hors des seuils réglementaires, comparée à la moyenne nationale | Maille du département ; pas de critère B par commune en open data |
 | 10.4 | Zonage sismique réglementaire par commune | Annexe du décret n° 2010-1255 (articles R563-1 à R563-8 du code de l'environnement) et tableur de planseisme.fr (ministère, BRGM) ; seed par code INSEE | Comble le zonage sismique absent quand l'API Géorisques est coupée | Tableur à recaler sur le code officiel géographique actuel (communes fusionnées) |
 | 10.5 | Agrégats de consommation au pas d'une demi-heure des points de soutirage de plus de 36 kVA, par secteur d'activité et puissance souscrite (maille régionale) | Enedis, data-fair, jeu `conso-sup36-region` | Profils de charge réels par secteur pour `fct_cout_horaire_profil`, au lieu des profils du seed | Volume (34,6 M lignes) : filtrer à la source par région et secteur |
@@ -182,6 +184,8 @@ Inondations.
 | 25 oct. | Enedis par adresse : pages CSV data-fair de 10 000 lignes (le JSON prenait 9 min pour une année), dernière année publiée seulement ; adresse rapprochée sur « numéro + voie » normalisés, seulement si la BAN trouve le numéro ; une consommation à l'adresse prouve un raccordement, pas une puissance disponible |
 | 26 oct. | Carte : fausses couleurs réservées à « Raccorder » (rouge → blanc → vert, sans cônes de montagne) ; « Territoire » revient aux couleurs réelles et au relief IGN, l'encart donne carbone et prix moyen par tranche (`fct_prix_entreprise_tranche`) ; frontières régionales en gris sombre plutôt qu'en couleurs |
 | 26 oct. | Carte : sites clés en main en maquette posée sur la case (dalle, hangar, bureaux, mât au drapeau doré) au lieu d'un losange flottant ; centrales en maquettes aussi dans « Raccorder » ; survol d'un site : son nom |
+| 26 oct. | Acheminement : TURPE 7 HTA-BT seulement (HTA à pointe fixe, BT > 36 kVA ; le tarif bleu l'inclut déjà, le HTB relève de RTE) ; une même puissance souscrite dans toutes les classes ; énergie répartie sur la courbe de charge, sinon sur toutes les heures de l'année ; heures creuses 22 h – 6 h, pointe 9 h – 11 h et 18 h – 20 h de décembre à février hors dimanche ; version courte ou longue utilisation au moindre coût ; gestion en contrat unique (Rf inclus), comptage communicant. Montant donné comme part déjà comprise dans le prix moyen Eurostat |
+| 26 oct. | Seeds recréés à chaque `dbt build` (`+full_refresh`) : un seed qui gagne une colonne bloquait le warehouse existant |
 
 ## Écarté
 

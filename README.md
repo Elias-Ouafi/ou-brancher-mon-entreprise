@@ -78,7 +78,7 @@ Toutes s'écrivent `.\.venv\Scripts\python.exe -m ingestion.cli <commande>`.
 
 | Commande | Effet |
 |---|---|
-| `essentiel --adresse "…" [--puissance MW] [--conso MWh] [--courbe CSV] [--ca €] [--va €] [--format json]` | Réponse courte : prix, carbone et verdict « brancher ici ? » ; `--courbe` lit l'export Enedis, `--ca` donne la part de la facture dans le chiffre d'affaires, `--va` l'électro-intensité fiscale (taux réduit d'accise dès 0,5 % de la valeur ajoutée) |
+| `essentiel --adresse "…" [--puissance MW] [--conso MWh] [--courbe CSV] [--ca €] [--va €] [--format json]` | Réponse courte : prix, carbone et verdict « brancher ici ? » ; avec `--puissance` et `--conso` au-delà de 36 kVA, la part acheminement (TURPE 7) de la facture ; `--courbe` lit l'export Enedis, `--ca` donne la part de la facture dans le chiffre d'affaires, `--va` l'électro-intensité fiscale (taux réduit d'accise dès 0,5 % de la valeur ajoutée) |
 | `diagnose --adresse "…" [--puissance MW] [--conso MWh] [--courbe CSV] [--ca €] [--va €] [--format pdf\|md\|json]` | Diagnostic complet : industrie locale, réseau, raccordement, prix, carbone, risques |
 | `compare --adresse "A" --adresse "B" …` | 2 à 6 adresses côte à côte, sans classement ; `texte`, `md`, `csv`, `json` |
 | `carte [--adresse "…"] [--puissance MW] [--reconstruire]` | Carte 3D hors ligne (`data/reports/carte.html`) |
@@ -140,8 +140,14 @@ flowchart LR
   `fct_prix_entreprise_tranche`, `fct_carbone_territoire`, `fct_carbone_horaire_zni`,
   `fct_risques_commune`, `fct_plans_prevention_commune`, `fct_sites_production`, `fct_pays_ue`,
   `fct_mix`, `fct_conso_entreprises_commune` et `fct_conso_entreprises_adresse` (entreprises
-  raccordées à Enedis, dernière année publiée). Les seeds datés (tarifs, accise, SDDR, sites clés en main, facteurs ADEME) sont à mettre à jour à chaque
-  nouvelle source ; `limites_methodologiques` porte la limite de chaque indicateur.
+  raccordées à Enedis, dernière année publiée). Les seeds datés (tarifs, accise, grille TURPE 7, SDDR, sites clés en main, facteurs ADEME) sont à mettre à jour à chaque
+  nouvelle source et recréés à chaque `dbt build` ; `limites_methodologiques` porte la limite de chaque indicateur.
+- **Acheminement** : la grille TURPE 7 HTA-BT (seeds `turpe_soutirage` et
+  `turpe_gestion_comptage`, délibération CRE 2026-105) chiffre la part réseau de la facture selon
+  le domaine de tension : puissance souscrite, énergie répartie par classe temporelle (pointe,
+  heures pleines et creuses, saison haute ou basse) sur la courbe de charge ou, à défaut, sur
+  toutes les heures de l'année, version courte ou longue utilisation retenue au moindre coût
+  (`ingestion/turpe.py`).
 - **Fiabilité** : géocodage BAN sur cinq candidats, adresse refusée si trop approximative ou
   ambiguë ; consommation Enedis cherchée à l'adresse seulement quand la BAN la trouve au numéro
   près (clé « numéro + voie » sans accents ni ponctuation, « 13 bis » = « 13 B ») ; date des données affichée partout, avec alerte au-delà de 45 jours ; risques en repli
@@ -157,7 +163,7 @@ flowchart LR
 .\.venv\Scripts\python.exe -m ruff check . ; .\.venv\Scripts\python.exe -m pytest
 ```
 
-423 tests sans réseau, dont un `dbt build` complet sur une base synthétique qui reproduit les
+443 tests sans réseau, dont un `dbt build` complet sur une base synthétique qui reproduit les
 pièges des sources, plus les tests de données dbt. La CI GitHub Actions les joue à chaque PR.
 
 ## Sources et licence
@@ -175,7 +181,7 @@ pièges des sources, plus les tests de données dbt. La CI GitHub Actions les jo
 [registre national des installations de production](https://odre.opendatasoft.com/explore/dataset/registre-national-installation-production-stockage-electricite-agrege/) ·
 [geo.api.gouv.fr](https://geo.api.gouv.fr) ·
 [Nominatim](https://nominatim.openstreetmap.org), données © contributeurs OpenStreetMap (ODbL) ·
-SDDR 2025 de RTE · barèmes de la CRE.
+SDDR 2025 de RTE · barèmes et grille TURPE 7 de la CRE.
 
 Code sous [licence MIT](LICENSE) ; les données restent sous la licence de leurs producteurs.
 [three.js](https://threejs.org) r128, embarqué dans `reporting/vendor/`, est sous licence MIT.
