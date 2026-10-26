@@ -21,6 +21,7 @@ from ingestion.pipeline import (
     run_ingestion,
     run_prix_entreprises_ingestion,
     run_production_ingestion,
+    run_zonage_sismique_ingestion,
 )
 
 logger = logging.getLogger(__name__)
@@ -92,6 +93,10 @@ def run_refresh(
             lambda: run_prix_entreprises_ingestion(settings=settings, run_id=run_id),
         ),
         ("risques-gaspar", lambda: run_gaspar_ingestion(settings=settings, run_id=run_id)),
+        (
+            "zonage-sismique",
+            lambda: run_zonage_sismique_ingestion(settings=settings, run_id=run_id),
+        ),
         ("carbone-iles", lambda: run_edf_sei_ingestion(settings=settings, run_id=run_id)),
         ("production", lambda: run_production_ingestion(settings=settings, run_id=run_id)),
         ("europe", lambda: run_europe_ingestion(settings=settings, run_id=run_id)),

@@ -217,6 +217,24 @@ sources:
                     values: [PPRN, PPRT, PPRM]
           - name: millesime
             data_tests: [not_null]
+      - name: zonage_sismique
+        description: >
+          Zonage sismique réglementaire (décret n° 2010-1255, article D563-8-1 du code de
+          l'environnement), couche WFS `risq_zonage_sismique` de Géorisques : un polygone par
+          commune de 2010, sans code INSEE. `zone_sismicite` va de 1 (très faible) à 5 (forte) ;
+          `geometrie` est le JSON des polygones en [longitude, latitude] (WGS 84), arrondis à
+          cinq décimales ; `lon_min` à `lat_max` donnent leur emprise.
+        columns:
+          - name: gid
+            data_tests: [unique, not_null]
+          - name: zone_sismicite
+            data_tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ['1', '2', '3', '4', '5']
+          - name: geometrie
+            data_tests: [not_null]
       - name: gaspar_risques
         description: >
           Risques majeurs recensés par commune, d'après les dossiers départementaux des
