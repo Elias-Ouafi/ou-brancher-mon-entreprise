@@ -21,6 +21,7 @@ from ingestion.georisques import (
     lire_risques,
     risques_gaspar,
 )
+from ingestion.turpe import PROFIL_COURBE, Acheminement, lire_acheminement
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,7 @@ where territoire.code_departement = $departement
 """
 
 _SEUIL_SQL = """
-select domaine_tension, gestionnaire, commentaire
+select domaine_tension, gestionnaire, commentaire, domaine_turpe
 from gold.seuils_raccordement
 where $puissance >= puissance_min_mw
   and (puissance_max_mw is null or $puissance < puissance_max_mw)
@@ -47,6 +48,9 @@ where $puissance >= puissance_min_mw
 
 
 PROFIL_DEFAUT = "bureau_36kva"
+
+# Domaines chiffrés par la grille TURPE HTA-BT ; le tarif bleu inclut déjà l'acheminement
+DOMAINES_TURPE = {"bt_sup36": "BT > 36 kVA", "hta": "HTA"}
 
 _COUT_SQL = """
 select
@@ -290,6 +294,8 @@ class Seuil:
     domaine_tension: str
     gestionnaire: str
     commentaire: str
+    # Grille TURPE du domaine : `bt_inf36`, `bt_sup36`, `hta` ou `htb`
+    domaine_turpe: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -543,6 +549,8 @@ class Diagnostic:
     # Entreprises raccordées à Enedis (dernière année publiée), dans la commune et à l'adresse
     entreprises_commune: EntreprisesCommune | None = None
     entreprises_adresse: EntreprisesAdresse | None = None
+    # Part acheminement (TURPE HTA-BT), avec `--puissance` et `--conso` au-delà de 36 kVA
+    acheminement: Acheminement | None = None
 
     @property
     def commune_a_des_sites(self) -> bool:
@@ -611,6 +619,17 @@ def lire_diagnostic(
                 connection, _DIAGNOSTIC_SQL, {"commune": commune, "departement": departement}
             )
             seuil = _seuil(connection, puissance_mw) if puissance_mw is not None else None
+            acheminement = (
+                lire_acheminement(
+                    connection,
+                    seuil.domaine_turpe,
+                    puissance_kva=seuil.puissance_mw * 1000,
+                    conso_mwh=conso_mwh,
+                    points=None if courbe is None else courbe.points,
+                )
+                if seuil is not None and seuil.domaine_turpe in DOMAINES_TURPE and conso_mwh
+                else None
+            )
             prix = (
                 _prix(connection, conso_mwh) if conso_mwh is not None else _prix_defaut(connection)
             )
@@ -713,6 +732,7 @@ def lire_diagnostic(
         entreprises_adresse=None
         if entreprises_adresse is None
         else EntreprisesAdresse(**entreprises_adresse),
+        acheminement=acheminement,
         **ligne,
     )
 
@@ -798,6 +818,8 @@ def essentiel(diagnostic: Diagnostic) -> Section:
     d = diagnostic
     section = Section("L'essentiel : prix et carbone à cette adresse", [])
     section.elements.append(("texte", f"Prix moyen : {_prix_court(d)}"))
+    if d.acheminement is not None:
+        section.elements.append(("texte", f"Acheminement : {ligne_acheminement(d.acheminement)}"))
     if d.carbone is None:
         carbone = "non disponible (lancer dbt build)"
     else:
@@ -876,6 +898,23 @@ def ligne_courbe(b: BilanCourbe) -> str:
         phrase += (
             f" ; cette consommation émet {_nombre(abs(ecart) * 100)} % {sens} que le réseau aux"
             f" mêmes heures ({b.source_carbone})"
+        )
+    return phrase
+
+
+# Coût du réseau de distribution selon la puissance souscrite : ce que change le raccordement
+def ligne_acheminement(a: Acheminement) -> str:
+    source = "votre courbe de charge" if a.profil == PROFIL_COURBE else "puissance constante"
+    phrase = (
+        f"environ {_euros_arrondis(a.total_eur)} HTVA par an, soit"
+        f" {_nombre(a.prix_eur_mwh, 1)} €/MWh, déjà compris dans le prix moyen (TURPE 7"
+        f" {DOMAINES_TURPE[a.domaine_turpe]}, {a.utilisation} utilisation, la moins chère ici ;"
+        f" {_nombre(a.puissance_kva)} kVA souscrits, {source})"
+    )
+    if a.a_reverifier():
+        phrase += (
+            ". Grille TURPE peut-être périmée (nouvelle chaque 1er août) : mettre à jour les"
+            " seeds turpe_soutirage et turpe_gestion_comptage"
         )
     return phrase
 
@@ -1100,6 +1139,8 @@ def _critere_facture(d: Diagnostic) -> Critere:
             "Facture", "info", prix, "Préciser --conso (MWh par an) pour la facture annuelle."
         )
     detail = f"{prix}, identique partout en France."
+    if (a := d.acheminement) is not None:
+        detail += f" Dont acheminement {_nombre(a.prix_eur_mwh, 1)} €/MWh (TURPE 7)."
     if (part := d.part_chiffre_affaires) is not None:
         detail += f" {_pourcentage(part.part)} du chiffre d'affaires."
     if (va := d.part_valeur_ajoutee) is not None and va.palier is not None:
@@ -1171,6 +1212,7 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
             "dernier_semestre": p.dernier_semestre,
             "source": "Eurostat nrg_pc_205",
         },
+        "acheminement": None if d.acheminement is None else asdict(d.acheminement),
         "part_chiffre_affaires": None
         if d.part_chiffre_affaires is None
         else asdict(d.part_chiffre_affaires),
@@ -1209,10 +1251,12 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
                 "prix_entreprise",
                 "carbone_territoire",
                 "part_chiffre_affaires",
+                "acheminement_turpe",
                 "part_valeur_ajoutee",
                 "entreprises_enedis",
             )
             if code in d.limites
+            and (code != "acheminement_turpe" or d.acheminement is not None)
             and (code != "part_chiffre_affaires" or d.part_chiffre_affaires is not None)
             and (code != "part_valeur_ajoutee" or d.part_valeur_ajoutee is not None)
             and (code != "entreprises_enedis" or d.entreprises_adresse is not None)
@@ -1340,6 +1384,19 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
             f" {d.seuil.gestionnaire} : {d.seuil.commentaire}",
         )
         limite(s, "seuil_raccordement")
+        if (a := d.acheminement) is not None:
+            texte(
+                s,
+                f"Acheminement, détail : {_euros_arrondis(a.puissance_eur)} pour la puissance"
+                f" souscrite, {_euros_arrondis(a.energie_eur)} pour l'énergie,"
+                f" {_euros_arrondis(a.gestion_comptage_eur)} de gestion et comptage par an",
+            )
+        elif d.seuil.domaine_turpe == "htb":
+            texte(s, "Acheminement : grille TURPE HTB de RTE, non chiffrée ici.")
+        elif d.seuil.domaine_turpe in DOMAINES_TURPE:
+            texte(s, "Acheminement : préciser --conso (MWh par an) pour le chiffrer.")
+        if d.seuil.domaine_turpe != "bt_inf36":
+            limite(s, "acheminement_turpe")
     else:
         texte(s, "Préciser --puissance (en MW) pour connaître le domaine de tension.")
     if not d.nb_postes_rte:
