@@ -189,6 +189,9 @@ def test_donnees_de_la_carte(settings_carte: Settings, grilles: list) -> None:
     # Pôles de production du gold, rattachés à une case de leur département
     nucleaire = next(p for p in donnees["production"] if p["f"] == "Nucléaire")
     assert nucleaire["mw"] == 3600 and nucleaire["case"][0] == 0
+    # Pôles de fret du gold : port, aéroport et chantier rail-route, chacun sur une case
+    assert {p["m"] for p in donnees["fret"]} == {"port", "aeroport", "rail"}
+    assert all(p["case"] for p in donnees["fret"])
     # Prix moyen par tranche pour l'encart de la vue Territoire, de la plus petite à la plus grosse
     assert donnees["prix"] and donnees["prix"][0]["mn"] == 0 and donnees["prix"][0]["e"] > 0
     assert donnees["adresse"]["departement"] == territoire().code_departement

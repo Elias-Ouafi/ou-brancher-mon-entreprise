@@ -361,8 +361,8 @@ const socleGeo = new THREE.CylinderGeometry(.5, .5, .035, 6); socleGeo.translate
 const autre = (g, f) => g.add(piece(cone, mat(FILIERES[f] || "#7fe3ff"), 0, 0, 0, .9, 1, .9));
 const D_MAX = 2 / 3 * HW * .97;
 const MAX_MW = {}, nCase = {}; for (const p of DATA.production) { const t = caseDe(p.case); if (!t) continue; MAX_MW[t.g] = Math.max(MAX_MW[t.g] || 0, p.mw); if (t.land) nCase[t.i] = (nCase[t.i] || 0) + 1; }
-for (const s of DATA.sites) { const t = caseDe(s.case); if (t && t.land) nCase[t.i] = (nCase[t.i] || 0) + 1; }
-// Pôles et sites clés en main d'une case se partagent les deux tiers, côte à côte sur un cercle
+for (const s of [...DATA.sites, ...(DATA.fret || [])]) { const t = caseDe(s.case); if (t && t.land) nCase[t.i] = (nCase[t.i] || 0) + 1; }
+// Pôles, pôles de fret et sites clés en main d'une case se partagent les deux tiers, côte à côte sur un cercle
 const parCase = {}, prodObjs = [];
 const place = t => { const n = nCase[t.i], k = parCase[t.i] = (parCase[t.i] || 0) + 1, sin = Math.sin(Math.PI / n);
   const d = n > 1 ? D_MAX / (1 + 1 / sin) : D_MAX, rayon = n > 1 ? d / (2 * sin) : 0, angle = k * 2 * Math.PI / n + hash(t.c, t.r) * 6;
@@ -374,6 +374,44 @@ for (const p of DATA.production) { const t = caseDe(p.case); if (!t || !t.land) 
   g.position.set(x, 0, z); g.rotation.y = hash(t.c, t.r) * .8 - .4;
   g.userData = { ...g.userData, i: t.i, hub: p, ph: hash(t.r, t.c) * 6 }; g.traverse(o => o.userData.hub = p);
   markers.production.add(g); followers.push(g); prodObjs.push({ p, t }); }
+
+// Pôles de fret en maquettes : port (quai, portique, conteneurs), aéroport (piste, tour, avion), chantier rail-route (voie, wagons, portique)
+const FRET = { port: "#3f8fd2", aeroport: "#8fa9c4", rail: "#9b7fd1" };
+const NOM_FRET = { port: "Port maritime", aeroport: "Aéroport", rail: "Chantier rail-route SNCF Réseau" };
+markers.fret = new THREE.Group(); scene.add(markers.fret);
+const CONTENEURS = ["#c0392b", "#2f78b8", "#e3b341", "#3d8b4f", "#d9822b"].map(c => mat(c));
+const pile = (g, x, z, n, k0) => { for (let k = 0; k < n; k++) g.add(piece(boite, CONTENEURS[(k0 + k) % CONTENEURS.length], x, .04 + (k % 2) * .07, z + Math.floor(k / 2) * .09, .22, .07, .08)); };
+const MAQUETTES_FRET = {
+  port: g => { const quai = mat("#a9a59a"), acier = mat(FRET.port), eau = mat("#1f6f9e", { roughness: .2, metalness: .1 });
+    g.add(piece(boite, eau, 0, .035, .3, .8, .01, .22), piece(boite, quai, 0, .035, -.08, .8, .03, .55));
+    pile(g, -.2, -.25, 6, 0); pile(g, .12, -.25, 4, 2);
+    // Portique à conteneurs : pieds sur le quai, flèche au-dessus de l'eau
+    g.add(piece(boite, acier, -.05, .065, .12, .03, .5, .03), piece(boite, acier, .15, .065, .12, .03, .5, .03), piece(boite, acier, .05, .55, .2, .26, .04, .5)); },
+  aeroport: g => { const piste = mat("#4a4d52"), blanc = mat("#f1f3f4"), vitre = mat("#7fc6e8", { metalness: .3 });
+    g.add(piece(boite, piste, 0, .035, .1, .9, .01, .16), piece(boite, blanc, 0, .046, .1, .7, .002, .015));
+    g.add(piece(cyl, blanc, -.3, .035, -.22, .07, .45, .07), piece(boite, vitre, -.3, .48, -.22, .14, .08, .14), piece(boite, mat("#6f6c66"), -.3, .56, -.22, .16, .02, .16));
+    // Avion cargo : fuselage couché, ailes, dérive
+    const avion = new THREE.Group(); avion.position.set(.12, .12, -.12); avion.rotation.y = -.5;
+    const fuselage = piece(cyl, blanc, -.22, 0, 0, .08, .45, .08); fuselage.rotation.z = -Math.PI / 2;
+    avion.add(fuselage, piece(boite, blanc, 0, -.01, 0, .1, .02, .5), piece(boite, blanc, -.2, 0, 0, .06, .14, .02), piece(boite, mat(FRET.port), -.2, .1, 0, .06, .05, .021));
+    g.add(avion); },
+  rail: g => { const ballast = mat("#8a8174"), rail = mat("#5b5f66"), wagon = mat("#6f6c66"), acier = mat(FRET.rail);
+    g.add(piece(boite, ballast, 0, .035, .05, .85, .02, .3));
+    for (const z of [-.01, .11]) g.add(piece(boite, rail, 0, .055, z, .85, .015, .015));
+    for (const x of [-.22, .2]) { g.add(piece(boite, wagon, x, .07, .05, .36, .03, .14)); pile(g, x, .05, 2, x > 0 ? 1 : 3); }
+    // Portique de transbordement enjambant la voie
+    g.add(piece(boite, acier, 0, .04, -.12, .03, .42, .03), piece(boite, acier, 0, .04, .22, .03, .42, .03), piece(boite, acier, 0, .44, .05, .05, .04, .38)); },
+};
+const valeurFret = p => p.m === "rail" ? p.ml : p.v, MAX_FRET = {};
+for (const p of DATA.fret || []) { const t = caseDe(p.case); if (!t) continue; const k = t.g + p.m; MAX_FRET[k] = Math.max(MAX_FRET[k] || 0, valeurFret(p) || 0); }
+// Taille selon le tonnage (la longueur de voies pour le rail), comparée aux pôles du même mode sur la carte
+const fretObjs = [];
+for (const p of DATA.fret || []) { const t = caseDe(p.case); if (!t || !t.land) continue;
+  const { d, x, z } = place(t), g = new THREE.Group(), s = d * (.45 + .55 * Math.sqrt((valeurFret(p) || 0) / (MAX_FRET[t.g + p.m] || 1)));
+  MAQUETTES_FRET[p.m](g); g.scale.set(s, s, s);
+  const socle = piece(socleGeo, mat(FRET[p.m], { emissive: col(FRET[p.m]), emissiveIntensity: .25 }), 0, 0, 0); socle.castShadow = false; g.add(socle);
+  g.position.set(x, 0, z); g.rotation.y = hash(t.r, t.c) * .8 - .4;
+  g.userData = { i: t.i }; g.traverse(o => o.userData.fret = p); markers.fret.add(g); followers.push(g); fretObjs.push({ p, t }); }
 
 // Site clé en main en maquette posée sur sa case : dalle viabilisée, hangar, bureaux, mât au drapeau doré
 const SITE = { dalle: mat("#cdc6b0"), murs: mat("#b9c2c8"), toit: mat("#5f6b73"), bureaux: mat("#e9e4d6"), mat: mat("#d8d4cb"), or: mat("#f1c75b", { emissive: col("#7a5410"), emissiveIntensity: .6 }) };
@@ -420,11 +458,11 @@ for (const t of land) { const d = DEP[t.dep] || {}, r = [];
   t.raisons = r; }
 const avis = n => n > .15 ? "favorable" : n < -.15 ? "défavorable" : "neutre";
 const LENS = {
-  raccordement: { tile: t => [ramp(NOTE, (t.note + 1) / 2), t.baseH], show: ["sites", "zones", "liens", "production"],
-    legend: `<h3>Où se brancher</h3><div class="bar" style="background:linear-gradient(90deg,${NOTE.join(",")})"></div><div class="ticks"><span>défavorable</span><span>neutre</span><span>favorable</span></div><p>Vert : zone de raccordement prioritaire RTE ou site clé en main à proximité, poste 400 kV dans le département. Rouge : contraintes RTE prévues, relief, électricité carbonée, région importatrice. Indicatif : seule une étude Enedis ou RTE fait foi.</p><p>Anneau bleu et bannière : zone prioritaire RTE (SDDR 2025). Hangar au drapeau doré : site clé en main France 2030. Maquettes : centrales d'au moins 200 MW (20 MW en Corse et outre-mer). Épingle rouge : votre adresse, reliée à la zone RTE utile et au site le plus proche.</p>` },
+  raccordement: { tile: t => [ramp(NOTE, (t.note + 1) / 2), t.baseH], show: ["sites", "zones", "liens", "production", "fret"],
+    legend: `<h3>Où se brancher</h3><div class="bar" style="background:linear-gradient(90deg,${NOTE.join(",")})"></div><div class="ticks"><span>défavorable</span><span>neutre</span><span>favorable</span></div><p>Vert : zone de raccordement prioritaire RTE ou site clé en main à proximité, poste 400 kV dans le département. Rouge : contraintes RTE prévues, relief, électricité carbonée, région importatrice. Indicatif : seule une étude Enedis ou RTE fait foi.</p><p>Anneau bleu et bannière : zone prioritaire RTE (SDDR 2025). Hangar au drapeau doré : site clé en main France 2030. Maquettes : centrales d'au moins 200 MW (20 MW en Corse et outre-mer) ; ports (socle bleu), aéroports (socle gris-bleu) et chantiers rail-route (socle violet) au-delà d'un seuil de fret, détaillés dans la vue Territoire. Épingle rouge : votre adresse, reliée à la zone RTE utile et au site le plus proche.</p>` },
   // Paysage réel : couleurs naturelles et relief IGN, sans note ; l'électricité du territoire passe par l'encart
-  territoire: { tile: t => [t.biome, t.baseH], show: ["mountains", "production"],
-    legend: () => `<h3>Territoire</h3><div class="teintes">${TEINTES.map(([c, n]) => `<span><i style="background:${c}"></i>${n}</span>`).join("")}</div><p>Couleurs naturelles, hauteur selon l'altitude moyenne (IGN).</p>${legendeElectricite()}${legendeProduction()}` },
+  territoire: { tile: t => [t.biome, t.baseH], show: ["mountains", "production", "fret"],
+    legend: () => `<h3>Territoire</h3><div class="teintes">${TEINTES.map(([c, n]) => `<span><i style="background:${c}"></i>${n}</span>`).join("")}</div><p>Couleurs naturelles, hauteur selon l'altitude moyenne (IGN).</p>${legendeElectricite()}${legendeProduction()}${legendeFret()}` },
 };
 // Carbone et prix moyen de la carte affichée : le prix est le même partout, seule la consommation le fait varier
 const PRIX = DATA.prix || [];
@@ -439,6 +477,11 @@ function legendeProduction() { const ps = prodObjs.filter(o => o.t.g === carte).
   const lignes = Object.entries(tot).sort((a, b) => b[1] - a[1]).map(([f, mw]) => `<span><i style="background:${FILIERES[f] || "#7fe3ff"}"></i>${esc(nomFiliere(f))}</span><span>${fmt(mw)} MW</span>`).join("");
   const seuil = GR[carte].code ? 20 : 200;
   return `<h3>Production</h3>${lignes ? `<div class="filieres">${lignes}</div>` : "<p>Aucun pôle au-dessus du seuil sur cette carte.</p>"}<p>Puissance en service par commune et filière, installations d'au moins 10 MW (registre national, ODRÉ) ; pôles d'au moins ${seuil} MW${GR[carte].code ? "" : " (20 MW en Corse)"}. Taille selon la puissance, le plus gros pôle couvrant les deux tiers de sa case ; un réacteur nucléaire figuré par 1 200 MW environ ; position au centre de la commune.</p>`; }
+// Pôles de fret de la carte affichée, mode par mode, et les seuils qui les retiennent
+function legendeFret() { const ps = fretObjs.filter(o => o.t.g === carte).map(o => o.p), zni = !!GR[carte].code;
+  const lignes = Object.keys(FRET).map(m => [m, ps.filter(p => p.m === m)]).filter(([, l]) => l.length)
+    .map(([m, l]) => `<span><i style="background:${FRET[m]}"></i>${esc(NOM_FRET[m])}</span><span>${l.length}</span>`).join("");
+  return `<h3>Fret</h3>${lignes ? `<div class="filieres">${lignes}</div>` : "<p>Aucun pôle de fret au-dessus du seuil sur cette carte.</p>"}<p>Ports d'au moins ${zni ? "0,5" : "5"} Mt de marchandises par an hors tare (SDES${zni ? "" : " ; 0,5 Mt en Corse"}), aéroports d'au moins ${zni ? "3 000" : "20 000"} t de fret et de poste (DGAC${zni ? "" : " ; 3 000 t en Corse"}), dernière année publiée. Chantiers rail-route de SNCF Réseau (liste de 2022) d'au moins 2 km de voies de manutention : repère de capacité, aucun tonnage n'étant publié. HAROPA (Le Havre, Rouen, Paris) est publié d'un bloc et placé au Havre ; ports et aéroports au centre de leur commune.</p>`; }
 let lens = "raccordement", animating = true;
 function setLens(name) { lens = name; const L = LENS[name];
   land.forEach((t, i) => { const [c, h] = L.tile(t); c.toArray(tgtC, i * 3); tgtH[i] = h; if (REDUCED) { curH[i] = h; c.toArray(curC, i * 3); } });
@@ -510,10 +553,17 @@ const ray = new THREE.Raycaster(), mouse = new THREE.Vector2(), tip = document.g
 const lensLine = (t, d) => lens === "raccordement" ? `Raccordement ${avis(t.note)}${t.raisons.length ? " : " + t.raisons.join(", ") : ""}` : !d ? "" : `Électricité ${d.co2 == null ? "n.d." : (d.co2 <= 100 ? "décarbonée" : "carbonée") + " (" + fmt(d.co2) + " g/kWh)"} · couverture régionale ${d.tc == null ? "n.d." : fmt(d.tc * 100) + " %"} · ${fmt(d.gwh)} GWh industriels`;
 function pick(e) { const b = renderer.domElement.getBoundingClientRect(); mouse.set((e.clientX - b.left) / b.width * 2 - 1, -(e.clientY - b.top) / b.height * 2 + 1); ray.setFromCamera(mouse, camera); const h = ray.intersectObject(landMesh)[0]; return h ? h.instanceId : -1; }
 const pickHub = () => { if (!markers.production.visible) return null; const h = ray.intersectObject(markers.production, true)[0]; return h ? h.object.userData.hub : null; };
+const pickFret = () => { if (!markers.fret.visible) return null; const h = ray.intersectObject(markers.fret, true)[0]; return h ? h.object.userData.fret : null; };
+// Volume d'un pôle de fret : tonnage de l'année pour un port ou un aéroport, voies de manutention pour un chantier
+const detailFret = p => p.m === "port" ? `${fmt(p.v / 1e6, 1)} Mt de marchandises en ${p.a}${p.evp ? " · " + fmt(p.evp) + " EVP" : ""}`
+  : p.m === "aeroport" ? `${fmt(p.v)} t de fret et de poste en ${p.a}${p.vc ? " · " + fmt(p.vc) + " vols cargo" : ""}`
+  : `${fmt(p.ml / 1000, 1)} km de voies de manutention${p.eng ? " · " + esc(p.eng) : ""}</div><div>Capacité, pas un tonnage : aucun n'est publié`;
 const pickSite = () => { if (!markers.sites.visible) return null; const h = ray.intersectObject(markers.sites, true)[0]; return h ? h.object.userData.site : null; };
 renderer.domElement.addEventListener("pointermove", e => { if (e.pointerType !== "mouse") return; const i = pick(e);
   if (i !== hovered) { hovered = i; hoverBand.set(i < 0 ? [] : ringOf([land[i]], .16 * PS, col("#ffffff"))); renderer.domElement.style.cursor = i < 0 ? "" : "pointer"; }
-  const hub = pickHub(), site = !hub && pickSite();
+  const hub = pickHub(), fret = !hub && pickFret(), site = !hub && !fret && pickSite();
+  if (fret) { tip.innerHTML = `<b>${esc(fret.n)}</b><div>${esc(NOM_FRET[fret.m])}</div><div>${detailFret(fret)}</div>`; tip.hidden = false;
+    tip.style.left = Math.min(innerWidth - 270, e.clientX + 16) + "px"; tip.style.top = (e.clientY + 18) + "px"; return; }
   if (site) { tip.innerHTML = `<b>${esc(site.n)}</b><div>Site clé en main France 2030</div>`; tip.hidden = false;
     tip.style.left = Math.min(innerWidth - 270, e.clientX + 16) + "px"; tip.style.top = (e.clientY + 18) + "px"; return; }
   if (hub) { tip.innerHTML = `<b>${esc(hub.n)}</b><div>${esc(nomFiliere(hub.f))} · ${fmt(hub.mw)} MW en service</div><div>${hub.gwh ? fmt(hub.gwh) + " GWh produits sur 12 mois · " : ""}${hub.ni} installation${hub.ni > 1 ? "s" : ""}</div>`; tip.hidden = false;
