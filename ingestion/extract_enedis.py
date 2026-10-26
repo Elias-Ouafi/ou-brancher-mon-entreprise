@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import io
 import logging
+import re
 from typing import Any
 
 import httpx
@@ -28,6 +29,10 @@ CHAMPS = (
 )
 # Plus grande page servie par data-fair
 TAILLE_PAGE = 10_000
+
+JEU_CONTINUITE = "indicateur-continuite-dalimentation"
+# Une colonne par année publiée (« aaa2024 ») : une de plus à chaque publication
+_COLONNE_ANNEE = re.compile(r"^aaa(\d{4})$")
 
 
 class EnedisError(ExtractionError):
@@ -100,4 +105,58 @@ def telecharger_conso_entreprises(
         if client is None:
             http.close()
     logger.info("enedis entreprises annee=%s lignes=%d pages=%d", annee, len(lignes), pages)
+    return lignes
+
+
+# Colonnes des années publiées, lues dans le schéma du jeu plutôt que figées dans le code
+def colonnes_annees(schema: list[dict[str, Any]]) -> list[str]:
+    colonnes = sorted(c["key"] for c in schema if _COLONNE_ANNEE.match(str(c.get("key"))))
+    if not colonnes:
+        raise EnedisError("continuite d'alimentation Enedis : aucune colonne d'annee")
+    return colonnes
+
+
+# Part des clients mal alimentés par département, une ligne par année (cellules vides écartées)
+def lire_continuite(contenu: bytes, colonnes: list[str]) -> list[dict[str, Any]]:
+    lecteur = csv.reader(io.StringIO(contenu.decode("utf-8-sig")))
+    entete = next(lecteur, None)
+    if entete is None or len(entete) != len(colonnes) + 1:
+        raise EnedisError("continuite d'alimentation Enedis : en-tete inattendu")
+    lignes = []
+    for departement, *valeurs in lecteur:
+        for colonne, valeur in zip(colonnes, valeurs, strict=True):
+            if valeur.strip():
+                lignes.append(
+                    {
+                        "code_departement": departement.strip(),
+                        "annee": _COLONNE_ANNEE.match(colonne).group(1),  # type: ignore[union-attr]
+                        "part_mal_alimentes_pct": float(valeur),
+                    }
+                )
+    return lignes
+
+
+# Indicateur réglementaire de continuité d'alimentation : la qualité de fourniture du département
+def telecharger_continuite(
+    *, settings: Settings | None = None, client: httpx.Client | None = None
+) -> list[dict[str, Any]]:
+    settings = settings or get_settings()
+    http = client or _client(settings)
+    try:
+        schema = _retrying(settings)(lambda: _verifier(http.get(JEU_CONTINUITE))).json()["schema"]
+        colonnes = colonnes_annees(schema)
+        params = {
+            "format": "csv",
+            "size": 1_000,
+            "sort": "_i",
+            "select": ",".join(["ndeg_departement", *colonnes]),
+        }
+        reponse = _retrying(settings)(
+            lambda: _verifier(http.get(f"{JEU_CONTINUITE}/lines", params=params))
+        )
+    finally:
+        if client is None:
+            http.close()
+    lignes = lire_continuite(reponse.content, colonnes)
+    logger.info("enedis continuite lignes=%d annees=%d", len(lignes), len(colonnes))
     return lignes

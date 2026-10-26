@@ -217,6 +217,20 @@ order by etat, coalesce(date_approbation, date_prescription) desc nulls last, li
 """
 
 
+# Qualité de fourniture du département, publiée par Enedis sur son seul territoire
+_CONTINUITE_SQL = """
+select
+    derniere_annee,
+    part_mal_alimentes_pct,
+    moyenne_5_ans_pct,
+    annees_au_dela_seuil_5_ans,
+    mediane_nationale_pct,
+    depasse_seuil
+from gold.fct_continuite_departement
+where code_departement = $departement
+"""
+
+
 class DiagnosticIndisponibleError(RuntimeError):
     pass
 
@@ -242,6 +256,7 @@ SOURCES_CHARGEES: dict[str, str] = {
     "gaspar_risques": "risques GASPAR",
     "gaspar_plans": "plans de prévention GASPAR",
     "zonage_sismique": "zonage sismique",
+    "enedis_continuite_alimentation": "continuité Enedis",
 }
 # Au-delà, une source n'a pas été rechargée depuis plus d'un cycle mensuel de `refresh`
 AGE_MAX_JOURS = 45
@@ -470,6 +485,19 @@ class PartChiffreAffaires:
     part_haut: float | None
 
 
+# Part des clients du département au-delà des seuils de coupure : la fiabilité du réseau local
+@dataclass(frozen=True, slots=True)
+class Continuite:
+    derniere_annee: int
+    part_mal_alimentes_pct: float
+    moyenne_5_ans_pct: float | None
+    annees_au_dela_seuil_5_ans: int
+    # Médiane des départements publiés la même année
+    mediane_nationale_pct: float | None
+    # Plus de 3 % de clients mal alimentés : le département sort de la norme réglementaire
+    depasse_seuil: bool
+
+
 # Plan de prévention en vigueur dans la commune : son règlement s'impose aux constructions
 @dataclass(frozen=True, slots=True)
 class PlanPrevention:
@@ -556,6 +584,8 @@ class Diagnostic:
     entreprises_adresse: EntreprisesAdresse | None = None
     # Part acheminement (TURPE HTA-BT), avec `--puissance` et `--conso` au-delà de 36 kVA
     acheminement: Acheminement | None = None
+    # Qualité de fourniture du département ; `None` hors Enedis ou si la source n'est pas chargée
+    continuite: Continuite | None = None
 
     @property
     def commune_a_des_sites(self) -> bool:
@@ -703,6 +733,11 @@ def lire_diagnostic(
                 if "gaspar_plans" in chargements
                 else None
             )
+            continuite = (
+                _une_ligne(connection, _CONTINUITE_SQL, {"departement": departement})
+                if "enedis_continuite_alimentation" in chargements
+                else None
+            )
     except duckdb.CatalogException as error:
         raise DonneesAbsentesError(
             f"couche gold incomplete : {str(error).splitlines()[0]}"
@@ -738,6 +773,7 @@ def lire_diagnostic(
         if entreprises_adresse is None
         else EntreprisesAdresse(**entreprises_adresse),
         acheminement=acheminement,
+        continuite=None if continuite is None else Continuite(**continuite),
         **ligne,
     )
 
@@ -925,6 +961,29 @@ def ligne_acheminement(a: Acheminement) -> str:
 
 
 # Électro-intensité au sens fiscal : décide d'un taux d'accise réduit, donc de la facture
+# Coupures du département face au seuil réglementaire et aux autres départements
+def ligne_continuite(c: Continuite) -> str:
+    def pct(valeur: float) -> str:
+        return f"{_nombre(valeur, 1)} %"
+
+    ligne = (
+        f"Qualité de fourniture (Enedis, {c.derniere_annee}) : {pct(c.part_mal_alimentes_pct)}"
+        " des clients du département au-delà des seuils de coupure"
+    )
+    if c.mediane_nationale_pct is not None:
+        ligne += f" (médiane des départements : {pct(c.mediane_nationale_pct)})"
+    ligne += (
+        ", au-dessus du seuil réglementaire de 3 %"
+        if c.depasse_seuil
+        else ", sous le seuil réglementaire de 3 %"
+    )
+    if c.moyenne_5_ans_pct is not None:
+        ligne += f" ; {pct(c.moyenne_5_ans_pct)} en moyenne sur cinq ans"
+        if c.annees_au_dela_seuil_5_ans:
+            ligne += f", seuil dépassé {c.annees_au_dela_seuil_5_ans} année(s) sur cinq"
+    return ligne + "."
+
+
 def _part_va(va: PartValeurAjoutee) -> str:
     tarif = _nombre(va.accise.tarif_eur_mwh, 2)
     phrase = (
@@ -1404,6 +1463,15 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
             limite(s, "acheminement_turpe")
     else:
         texte(s, "Préciser --puissance (en MW) pour connaître le domaine de tension.")
+    if (c := d.continuite) is not None:
+        texte(s, ligne_continuite(c))
+        limite(s, "continuite_alimentation")
+    elif "enedis_continuite_alimentation" in d.chargements:
+        texte(
+            s,
+            "Qualité de fourniture : non publiée pour ce département (réseau de distribution"
+            " hors Enedis).",
+        )
     if not d.nb_postes_rte:
         texte(
             s,

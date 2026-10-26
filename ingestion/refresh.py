@@ -14,6 +14,7 @@ from ingestion.datasets import NATIONAL_CONS_DEF, NATIONAL_TR, TERRITORIAL_SPECS
 from ingestion.extract_geo import run_geo_ingestion
 from ingestion.pipeline import (
     run_consolidation,
+    run_continuite_ingestion,
     run_edf_sei_ingestion,
     run_enedis_entreprises_ingestion,
     run_europe_ingestion,
@@ -103,6 +104,10 @@ def run_refresh(
         (
             "entreprises-enedis",
             lambda: run_enedis_entreprises_ingestion(settings=settings, run_id=run_id),
+        ),
+        (
+            "continuite-enedis",
+            lambda: run_continuite_ingestion(settings=settings, run_id=run_id),
         ),
         ("dbt-build", lambda: dbt_build(settings)),
     ]

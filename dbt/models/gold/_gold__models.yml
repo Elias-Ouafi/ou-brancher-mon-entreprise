@@ -422,6 +422,19 @@ models:
               arguments:
                 min_value: 1
                 max_value: 5
+  - name: fct_continuite_departement
+    description: >
+      Qualité de fourniture par département desservi par Enedis : part des clients au-delà des
+      seuils réglementaires de coupure la dernière année publiée, moyenne des cinq dernières
+      années, médiane des départements la même année. Un département est hors norme quand plus
+      de 3 % de ses clients sont mal alimentés (arrêté du 24 décembre 2007, article 3).
+    columns:
+      - name: code_departement
+        data_tests: [unique, not_null]
+      - name: part_mal_alimentes_pct
+        data_tests: [not_null]
+      - name: depasse_seuil
+        data_tests: [not_null]
   - name: fct_plans_prevention_commune
     description: >
       Plans de prévention des risques (PPRN, PPRT, PPRM) en vigueur dans chaque commune, selon
