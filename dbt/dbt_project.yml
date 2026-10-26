@@ -29,3 +29,5 @@ models:
 seeds:
   eco2mix:
     +schema: gold
+    # Recréés à chaque run : un seed qui gagne une colonne ne bloque pas le warehouse existant
+    +full_refresh: true
