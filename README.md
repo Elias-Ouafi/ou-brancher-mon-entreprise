@@ -79,7 +79,7 @@ Toutes s'écrivent `.\.venv\Scripts\python.exe -m ingestion.cli <commande>`.
 | Commande | Effet |
 |---|---|
 | `essentiel --adresse "…" [--puissance MW] [--conso MWh] [--courbe CSV] [--ca €] [--va €] [--format json]` | Réponse courte : prix, carbone et verdict « brancher ici ? » ; avec `--puissance` et `--conso` au-delà de 36 kVA, la part acheminement (TURPE 7) de la facture ; `--courbe` lit l'export Enedis, `--ca` donne la part de la facture dans le chiffre d'affaires, `--va` l'électro-intensité fiscale (taux réduit d'accise dès 0,5 % de la valeur ajoutée) |
-| `diagnose --adresse "…" [--puissance MW] [--conso MWh] [--courbe CSV] [--ca €] [--va €] [--format pdf\|md\|json]` | Diagnostic complet : industrie locale, réseau, raccordement, prix, carbone, risques |
+| `diagnose --adresse "…" [--puissance MW] [--conso MWh] [--courbe CSV] [--ca €] [--va €] [--format pdf\|md\|json]` | Diagnostic complet : industrie locale, réseau, raccordement (dont la qualité de fourniture du département), prix, carbone, risques |
 | `compare --adresse "A" --adresse "B" …` | 2 à 6 adresses côte à côte, sans classement ; `texte`, `md`, `csv`, `json` |
 | `carte [--adresse "…"] [--puissance MW] [--reconstruire]` | Carte 3D hors ligne (`data/reports/carte.html`) |
 | `europe --adresse "…" [--conso MWh]` | Hors de France, dans l'UE : prix moyen du pays et carbone de sa production, comparés à la France à tranche égale (moyennes nationales) |
@@ -167,7 +167,7 @@ flowchart LR
 .\.venv\Scripts\python.exe -m ruff check . ; .\.venv\Scripts\python.exe -m pytest
 ```
 
-452 tests sans réseau, dont un `dbt build` complet sur une base synthétique qui reproduit les
+459 tests sans réseau, dont un `dbt build` complet sur une base synthétique qui reproduit les
 pièges des sources, plus les tests de données dbt. La CI GitHub Actions les joue à chaque PR.
 
 ## Sources et licence
@@ -180,6 +180,7 @@ pièges des sources, plus les tests de données dbt. La CI GitHub Actions les jo
 [Natural Earth](https://www.naturalearthdata.com) ·
 [sites clés en main France 2030](https://www.data.gouv.fr/datasets/les-sites-cles-en-main-france-2030) ·
 [consommation des entreprises par adresse d'Enedis](https://opendata.enedis.fr/datasets/consommation-annuelle-entreprise-par-adresse) ·
+[continuité d'alimentation d'Enedis](https://opendata.enedis.fr/datasets/indicateur-continuite-dalimentation) ·
 [EDF SEI](https://opendata.edf.fr/datasets/courbe-de-charge-de-la-production-delectricite-par-filiere) ·
 [Ember](https://ember-energy.org/data/yearly-electricity-data/) (CC BY 4.0) ·
 [registre national des installations de production](https://odre.opendatasoft.com/explore/dataset/registre-national-installation-production-stockage-electricite-agrege/) ·

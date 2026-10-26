@@ -9,6 +9,7 @@ from ingestion.config import Settings, get_settings
 from ingestion.datasets import (
     BRONZE_SPECS,
     COMMUNES_CENTRES,
+    CONTINUITE_ALIMENTATION,
     EDF_SEI_PRODUCTION,
     EMBER_INTENSITE_CARBONE,
     ENEDIS_CONSO_ENTREPRISES,
@@ -24,7 +25,7 @@ from ingestion.datasets import (
 )
 from ingestion.extract_edf_sei import telecharger_production
 from ingestion.extract_ember import telecharger_intensites
-from ingestion.extract_enedis import telecharger_conso_entreprises
+from ingestion.extract_enedis import telecharger_conso_entreprises, telecharger_continuite
 from ingestion.extract_eurostat import EurostatClient
 from ingestion.extract_gaspar import lire_export, lire_plans, telecharger_archive
 from ingestion.extract_odre import ExtractionWindow, OdreClient
@@ -501,6 +502,18 @@ def run_enedis_entreprises_ingestion(
     settings = settings or get_settings()
     lignes = telecharger_conso_entreprises(annee=annee, settings=settings)
     return _charger_fichier(lignes, ENEDIS_CONSO_ENTREPRISES, settings, run_id, now)
+
+
+# Part des clients mal alimentés par département : la fiabilité du réseau de distribution local
+def run_continuite_ingestion(
+    *,
+    settings: Settings | None = None,
+    run_id: str = "manual",
+    now: datetime | None = None,
+) -> tuple[ExtractionOutcome, LoadResult]:
+    settings = settings or get_settings()
+    lignes = telecharger_continuite(settings=settings)
+    return _charger_fichier(lignes, CONTINUITE_ALIMENTATION, settings, run_id, now)
 
 
 # Relit les derniers mois consolidés, qui corrigent les données temps réel

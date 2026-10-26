@@ -367,7 +367,7 @@ def test_every_figure_comes_with_its_limit(medallion_db: Path, warehouse: Any) -
     limites = [
         limite for (limite,) in _rows(warehouse, "SELECT limite FROM gold.limites_methodologiques")
     ]
-    assert len(limites) == 19
+    assert len(limites) == 20
     for limite in limites:
         assert limite in texte
 
