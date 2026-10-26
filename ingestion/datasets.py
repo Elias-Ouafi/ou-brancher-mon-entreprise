@@ -405,6 +405,34 @@ COMMUNES_CENTRES = DatasetSpec(
     description="Centre géographique de chaque commune (geo.api.gouv.fr)",
 )
 
+# Marchandises par port maritime et par année (SDES), entrées et sorties : hors tare, et avec
+# la tare des camions et conteneurs
+PORTS_FRET = DatasetSpec(
+    dataset_id="ports-fret",
+    keys=(code("locode"), period("annee")),
+    attributes=(label("port"), code("statut")),
+    measures=measures("marchandises_t", "tonnage_total_t", "conteneurs_evp"),
+    description="Marchandises entrées et sorties par port maritime et par année (SDES)",
+)
+
+# Fret et poste embarqués et débarqués par aéroport et par année (DGAC, série APT)
+AEROPORTS_FRET = DatasetSpec(
+    dataset_id="aeroports-fret",
+    keys=(code("code_oaci"), period("annee")),
+    attributes=(label("aeroport"), code("zone")),
+    measures=measures("fret_t", "vols_cargo", "nb_mois"),
+    description="Fret et poste par aéroport et par année (DGAC)",
+)
+
+# Chantiers de transport combiné rail-route (SNCF Réseau) : aucun tonnage publié
+CHANTIERS_RAIL_ROUTE = DatasetSpec(
+    dataset_id="chantiers-rail-route",
+    keys=(code("chantier"),),
+    attributes=(label("ville"), code("code_postal"), label("manutention")),
+    measures=measures("longueur_m", "latitude", "longitude"),
+    description="Chantiers de transport combiné rail-route du réseau ferré national (SNCF Réseau)",
+)
+
 EDF_SEI_PRODUCTION = DatasetSpec(
     dataset_id="edf-sei-production",
     keys=(code("territoire"), instant("date_heure")),
@@ -485,6 +513,9 @@ BRONZE_SPECS: tuple[DatasetSpec, ...] = (
     ZONAGE_SISMIQUE,
     SITES_PRODUCTION,
     COMMUNES_CENTRES,
+    PORTS_FRET,
+    AEROPORTS_FRET,
+    CHANTIERS_RAIL_ROUTE,
     EDF_SEI_PRODUCTION,
     EUROSTAT_PRIX_UE,
     EMBER_INTENSITE_CARBONE,

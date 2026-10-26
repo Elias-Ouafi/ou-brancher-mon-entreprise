@@ -285,6 +285,36 @@ sources:
         columns:
           - name: filiere
             data_tests: [not_null]
+      - name: ports_fret
+        description: >
+          Marchandises entrées et sorties par port maritime et par année depuis 2000 (SDES,
+          « Maritime : transport de marchandises », licence ouverte), entrées et sorties
+          additionnées. `marchandises_t` exclut la tare des camions, remorques et conteneurs
+          vides que `tonnage_total_t` compte ; `conteneurs_evp` en équivalents vingt pieds.
+          HAROPA (Le Havre, Rouen, Paris) est publié d'un seul bloc.
+        data_tests:
+          - unique_combination:
+              arguments:
+                columns: [locode, annee]
+      - name: aeroports_fret
+        description: >
+          Fret et poste embarqués et débarqués (tonnes) et mouvements tout-cargo, par aéroport
+          et par année, sommes des mois de la série APT de la DGAC (licence ouverte 2.0).
+          `nb_mois` dit si l'année est complète. Les lignes ZZMT et ZZOM regroupent les
+          aéroports sous une unité de trafic par mois.
+        data_tests:
+          - unique_combination:
+              arguments:
+                columns: [code_oaci, annee]
+      - name: chantiers_rail_route
+        description: >
+          Chantiers de transport combiné rail-route du réseau ferré national (SNCF Réseau,
+          ODbL, jeu figé au 23 mars 2022) : coordonnées, longueur de voies apte à la
+          manutention de toutes les cours du chantier (mètres) et engins. Aucun tonnage n'est
+          publié ; les chantiers privés et portuaires n'y figurent pas.
+        columns:
+          - name: chantier
+            data_tests: [not_null, unique]
       - name: communes_centres
         description: >
           Centre géographique de chaque commune (geo.api.gouv.fr, Etalab) : sert à poser les

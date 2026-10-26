@@ -24,6 +24,7 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 | Verdict « brancher ici ? » en cinq critères (raccordement, risques, carbone, facture, foncier) | `verdict`, `phrase_verdict` |
 | Carte 3D épurée autour du verdict : vue « Raccorder » par défaut, adresse reliée à la zone RTE utile et au site clé en main ; épinglée par `essentiel` et `diagnose` (seule l'épingle bouge si les données n'ont pas changé) | `carte`, `reporting/carte.py` |
 | Une carte par système électrique (métropole et Corse, chaque DROM), ouverte sur celle de l'adresse ; deux vues : « Raccorder », cases notées du rouge au blanc puis au vert, et « Territoire », paysage réel (mer bleue, verdure, relief IGN) avec carbone et prix moyen dans l'encart ; dans les deux vues, 95 pôles de production du registre national en maquettes par filière (réacteurs et tours, barrage-voûte et retenue, cheminée et cuves), la plus grosse sur les deux tiers de la case, et les sites clés en main en maquette (dalle, hangar, bureaux, mât au drapeau doré), nommés au survol | `ingestion/hexagones.py`, `fct_sites_production` |
+| Grands pôles de fret dans les deux vues de la carte, en maquettes (port à portique, aéroport et avion cargo, chantier rail-route) : ports d'au moins 5 Mt de marchandises hors tare (0,5 Mt en Corse et outre-mer), aéroports d'au moins 20 000 t de fret (3 000 t), chantiers SNCF Réseau d'au moins 2 km de voies ; 34 pôles en 2025 | `ingestion/extract_fret.py`, `fct_poles_fret`, seeds `dim_ports_fret` et `dim_aeroports_fret` |
 | Risques sans dépendre de l'API Géorisques : export GASPAR chargé par `refresh` | `fct_risques_commune` |
 | Zone de sismicité réglementaire (1 à 5) à l'adresse, sans l'API : couche WFS de Géorisques chargée par `refresh`, point dans polygone en Python | `ingestion/extract_sismique.py`, `fct_zonage_sismique` |
 | Qualité de fourniture du département dans `diagnose` : part des clients Enedis au-delà des seuils réglementaires de coupure (dernière année, moyenne sur cinq ans, médiane des départements, seuil de 3 %) ; « non publiée » hors Enedis | `fct_continuite_departement`, `ligne_continuite` |
@@ -54,7 +55,8 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 ## Suite
 
 Étape 9 (maquettes 3D, carte à deux vues) et sources 10.1 (Enedis par adresse), 10.2 (grille
-TURPE 7), 10.4 (zonage sismique) et 10.3 (continuité d'alimentation) faites du 25 au 26 octobre. Prochaines étapes, dans l'ordre où les prendre ; chacune
+TURPE 7), 10.4 (zonage sismique), 10.3 (continuité d'alimentation) et 11 (pôles de fret) faites du
+25 au 26 octobre. Prochaines étapes, dans l'ordre où les prendre ; chacune
 n'est cochée qu'après ruff, pytest (dont `dbt build`) et un essai réel :
 
 | Ordre | Étape | Pourquoi maintenant | Bloqué par |
@@ -64,7 +66,7 @@ n'est cochée qu'après ruff, pytest (dont `dbt build`) et un essai réel :
 | ~~3~~ | **Fait le 26 octobre.** **10.3** Continuité d'alimentation par département (Enedis, repris par l'Agence ORE) | Repère « qualité de fourniture » dans `diagnose` ; client data-fair déjà en place | — |
 | 4 | **10.5** Profils de charge réels > 36 kVA par secteur (Enedis `conso-sup36-region`) | Remplace les profils du seed dans `fct_cout_horaire_profil` | volume : filtrage à la source par région et secteur à mettre au point |
 | 5 | **8** Repère de prix au-delà de 150 000 MWh/an (contrats CAPN) ; classement pondéré dans `compare` | Les très gros consommateurs sortent aujourd'hui des tranches Eurostat | décision : le classement revient sur celle du 15 octobre (« comparaison sans classement ») |
-| 6 | **11** Carte : très grandes zones de fret (grands ports, grands aéroports de fret) | Complète la vue « Raccorder » pour la logistique | source officielle et seuil de taille à fixer |
+| ~~6~~ | **Fait le 26 octobre.** **11** Carte : grands pôles de fret (ports, aéroports, chantiers rail-route) en maquettes, au-delà d'un seuil | Dit si la région est bien placée pour recevoir des matières premières et expédier des produits | — |
 | 7 | **10.6** Signal Ecowatt dans le rapport mensuel | Jours de tension à côté des jours rouges Tempo | abonner l'application à « Ecowatt » sur le portail RTE (action manuelle) |
 | 8 | **6** Extension internationale, voir ci-dessous | En dernier (décision du 25 octobre) | jeton ENTSO-E (compte gratuit) et contours des zones de prix à sourcer |
 
@@ -89,6 +91,24 @@ nouvelle dépendance.
 | ~~10.4~~ | **Fait le 26 octobre.** Zonage sismique réglementaire (décret n° 2010-1255, article D563-8-1 du code de l'environnement) | Géorisques, service WFS `https://www.georisques.gouv.fr/services`, couche `risq_zonage_sismique` (36 719 polygones, 158 Mo de géométrie, 85 s) ; bronze `zonage_sismique`, gold `fct_zonage_sismique` | Zone 1 à 5 à l'adresse quand l'API Géorisques est coupée ; vérifié sur Lyon (2), Nice (4), Pointe-à-Pitre (5), Paris (1) | Polygones des communes de 2010 sans code INSEE : situés par l'adresse, pas par le code commune |
 | 10.5 | Agrégats de consommation au pas d'une demi-heure des points de soutirage de plus de 36 kVA, par secteur d'activité et puissance souscrite (maille régionale) | Enedis, data-fair, jeu `conso-sup36-region` | Profils de charge réels par secteur pour `fct_cout_horaire_profil`, au lieu des profils du seed | Volume (34,6 M lignes) : filtrer à la source par région et secteur |
 | 10.6 | Signal Ecowatt (tension du système électrique, J à J+3) | RTE, API Ecowatt v5 (même compte que Tempo) | Jours de tension dans le rapport mensuel, à côté des jours rouges Tempo | Le bac à sable répond ; l'API réelle renvoie 403 tant que l'application n'est pas abonnée à « Ecowatt » sur le portail RTE |
+
+**Pôles de fret, étape 11 (étude du 26 octobre, faite le même jour)**. Fichiers téléchargés et
+lus ; tonnages 2025. Retenu à l'implémentation : marchandises hors tare pour les ports (Sète, 4,9 Mt
+hors tare, passe sous le seuil ; Calais tombe de 39,1 à 14,8 Mt).
+
+| Mode | Source | Ce qu'elle donne | Seuil proposé et pôles retenus | Limite |
+|---|---|---|---|---|
+| Ports maritimes | SDES, data.gouv.fr « Maritime : transport de marchandises » (DiDo, CSV de 1 540 lignes, licence ouverte, mis à jour le 29 juillet 2026) | Tonnage entré et sorti par port et par année depuis 2000, par type de fret (vracs liquides et solides, conteneurs en EVP, roulier) ; 42 ports, code LOCODE | 5 Mt sur le continent : HAROPA (84,4), Marseille (74,0), Dunkerque (48,0), Calais (39,1, roulier vers le Royaume-Uni), Nantes-Saint-Nazaire (26,2), La Rochelle (8,8), Bordeaux (6,1), Sète (6,0) ; 0,5 Mt en Corse et outre-mer : Port Réunion (6,1), Pointe-à-Pitre (3,4), Fort-de-France (3,3), Bastia (2,9), Ajaccio (1,4), Cayenne (0,96) | Pas de coordonnées : seed LOCODE → commune, centre de la commune comme pour les centrales ; HAROPA publié d'un bloc (Le Havre, Rouen, Paris), placé au Havre ; Mayotte absente |
+| Aéroports | DGAC, data.gouv.fr « Trafic aérien commercial mensuel français », série APT (zip de 860 Ko, licence ouverte 2.0, 1990-2025) | Fret et poste embarqués et débarqués (tonnes) et vols tout-cargo, par aéroport et par mois, code OACI | 20 000 t sur le continent : Paris-CDG (1 891 666), Orly (70 953), Marseille (61 883), Bâle-Mulhouse (54 606), Lyon (52 523), Toulouse (45 001), Saint-Nazaire-Montoir (24 251, Airbus) ; 3 000 t en Corse et outre-mer : La Réunion (37 992), Guadeloupe (15 950), Martinique (14 290), Bastia (8 723), Ajaccio (6 793), Mayotte (4 285), Cayenne (3 472) | Pas de coordonnées : seed OACI → commune ; Tahiti et Nouméa hors des cartes |
+| Chantiers rail-route | SNCF Réseau, data.gouv.fr « Chantiers de transport combinés » (CSV, ODbL, figé au 23 mars 2022) | 18 chantiers du réseau ferré national avec adresse, latitude, longitude, longueur de voies de manutention et engins (portiques, grues) | Aucun seuil de tonnage possible : longueur de voies en repère de taille (Valenton 7,4 km, Bordeaux Hourcade 4,5 km, Perpignan 3,8 km…) | Aucun volume publié, ni par chantier ni par gare ; chantiers privés et portuaires absents (Dourges, Lyon Édouard-Herriot) ; licence ODbL, à citer |
+| Ports fluviaux | SDES « Fluvial : transport de marchandises » (VNF) | Tonnage par région et département d'origine et de destination | Écarté | Pas de maille port |
+
+Intégration, sur le modèle des pôles de production : extraction des trois fichiers vers le bronze
+(`ports_fret`, `aeroports_fret`, `chantiers_rail_route`, étape `fret` de `refresh`), seeds
+`dim_ports_fret` et `dim_aeroports_fret` (commune de chaque port et aéroport, contrôlés par le test
+`assert_poles_fret_localises`), gold `fct_poles_fret`, seuils en variables dbt `fret_seuil_*` ;
+dans `reporting/carte.html`, trois maquettes dans les deux vues, taille selon le tonnage (la
+longueur de voies pour le rail), nom et tonnage au survol, encart « Fret » dans « Territoire ».
 
 Pour l'étape 6, la bibliothèque `entsoe-py` (EnergieID, MIT, publiée sur PyPI, maintenue en
 2026) est le client ENTSO-E de référence, plutôt qu'un client maison.
@@ -190,6 +210,7 @@ Inondations.
 | 26 oct. | Acheminement : TURPE 7 HTA-BT seulement (HTA à pointe fixe, BT > 36 kVA ; le tarif bleu l'inclut déjà, le HTB relève de RTE) ; une même puissance souscrite dans toutes les classes ; énergie répartie sur la courbe de charge, sinon sur toutes les heures de l'année ; heures creuses 22 h – 6 h, pointe 9 h – 11 h et 18 h – 20 h de décembre à février hors dimanche ; version courte ou longue utilisation au moindre coût ; gestion en contrat unique (Rf inclus), comptage communicant. Montant donné comme part déjà comprise dans le prix moyen Eurostat |
 | 26 oct. | Zonage sismique : couche WFS de Géorisques plutôt qu'un seed (le tableur de planseisme.fr n'est plus en ligne, le fichier wpd reste écarté) ; zone trouvée par l'adresse dans son polygone, ce qui évite le recalage sur le code officiel géographique ; pages triées par `gid` (sans tri, 84 polygones perdus) et nombre de polygones contrôlé contre le total annoncé ; sur une limite, la zone la plus forte ; le critère « risques » du verdict reste réglé par les seuls plans de prévention |
 | 26 oct. | Continuité d'alimentation : jeu d'Enedis, producteur, plutôt que la copie de l'Agence ORE ; colonnes d'années lues dans le schéma du jeu (une de plus par publication) ; comparaison au seuil de 3 % de l'arrêté du 24 décembre 2007 (article 3) et à la médiane des départements publiés la même année ; repère dans la section « Raccordement » de `diagnose`, sans entrer dans le verdict (moyenne départementale, pas la ligne du site) |
+| 26 oct. | Pôles de fret : ports sur les marchandises hors tare de la dernière année publiée (SDES), seuil 5 Mt sur le continent et 0,5 Mt en Corse et outre-mer ; aéroports sur le fret et la poste de la dernière année complète (DGAC), 20 000 t et 3 000 t ; chantiers rail-route de SNCF Réseau sur au moins 2 km de voies de manutention, dit repère de capacité (aucun tonnage publié) ; HAROPA placé au Havre ; ports et aéroports au centre de leur commune ; ports fluviaux écartés (pas de maille port). Carte seulement, sans ligne dans `limites_methodologiques` (réservées aux chiffres de `diagnose`) |
 | 26 oct. | Seeds recréés à chaque `dbt build` (`+full_refresh`) : un seed qui gagne une colonne bloquait le warehouse existant |
 
 ## Écarté
