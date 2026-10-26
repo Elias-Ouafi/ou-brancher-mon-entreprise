@@ -12,6 +12,8 @@ from typing import Any
 
 from ingestion.config import Settings
 from ingestion.datasets import (
+    AEROPORTS_FRET,
+    CHANTIERS_RAIL_ROUTE,
     COMMUNES_CENTRES,
     CONSO_IRIS,
     CONTINUITE_ALIMENTATION,
@@ -27,6 +29,7 @@ from ingestion.datasets import (
     GASPAR_RISQUES,
     NATIONAL_CONS_DEF,
     NATIONAL_TR,
+    PORTS_FRET,
     POSTES_RTE,
     RTE_TEMPO,
     SITES_PRODUCTION,
@@ -542,8 +545,60 @@ def communes_centres() -> list[dict[str, Any]]:
             ("01001", "L'Abergement-Clémenciat", "01", 4.9306, 46.1517),
             ("2A004", "Ajaccio", "2A", 8.7369, 41.9267),
             ("97501", "Miquelon-Langlade", "975", -56.38, 47.1),
+            ("76351", "Le Havre", "76", 0.1077, 49.4938),
+            ("34301", "Sète", "34", 3.6969, 43.4028),
+            ("69299", "Colombier-Saugnieu", "69", 5.1036, 45.7175),
+            ("44020", "Bouguenais", "44", -1.6232, 47.1777),
         ]
     ]
+
+
+# Ports : HAROPA retenu sur sa dernière année, Sète sous 5 Mt écarté, Ajaccio retenu dès 0,5 Mt
+def ports_fret() -> list[dict[str, Any]]:
+    return [
+        {
+            "locode": locode, "annee": annee, "port": port, "statut": "GPM",
+            "marchandises_t": mt * 1e6, "tonnage_total_t": mt * 1.1e6, "conteneurs_evp": evp,
+        }
+        for locode, annee, port, mt, evp in [
+            ("FR001", "2024", "HAROPA", 90.0, 3e6),
+            ("FR001", "2025", "HAROPA", 78.0, 3.2e6),
+            ("FRSET", "2025", "SETE", 4.9, 0.0),
+            ("FRAJA", "2025", "AJACCIO", 0.6, 0.0),
+        ]
+    ]  # fmt: skip
+
+
+# Aéroports : 2026 incomplète ignorée ; Nantes sous 20 000 t écarté, Ajaccio retenu dès 3 000 t
+def aeroports_fret() -> list[dict[str, Any]]:
+    return [
+        {
+            "code_oaci": oaci, "annee": annee, "aeroport": nom, "zone": zone,
+            "fret_t": tonnes, "vols_cargo": 100.0, "nb_mois": mois,
+        }
+        for oaci, annee, nom, zone, tonnes, mois in [
+            ("LFLL", "2025", "LYON-ST-EXUPERY", "MT", 52_523.0, 12.0),
+            ("LFLL", "2026", "LYON-ST-EXUPERY", "MT", 90_000.0, 3.0),
+            ("LFKJ", "2025", "AJACCIO-NAPOLEON-BONAPARTE", "MT", 6_793.0, 12.0),
+            ("LFRS", "2025", "NANTES-ATLANTIQUE", "MT", 11_009.0, 12.0),
+            ("ZZMT", "2025", "AUTRES APT (MT)", "MT", 40.0, 12.0),
+        ]
+    ]  # fmt: skip
+
+
+# Chantiers rail-route : retenus dès 2 km de voies, Cognac écarté
+def chantiers_rail_route() -> list[dict[str, Any]]:
+    return [
+        {
+            "chantier": nom, "ville": ville, "code_postal": cp, "manutention": engins,
+            "longueur_m": metres, "latitude": lat, "longitude": lon,
+        }
+        for nom, ville, cp, engins, metres, lat, lon in [
+            ("LYON VENISSIEUX", "VENISSIEUX", "69200", "Grue(s)", 2630.0, 45.697, 4.903),
+            ("NOISY-LE-SEC", "NOISY-LE-SEC", "93130", "1 Portique", 3595.0, 48.89, 2.46),
+            ("COGNAC", "COGNAC", "16100", "1 Portique", 440.0, 45.69, -0.33),
+        ]
+    ]  # fmt: skip
 
 
 # Lyon : deux lignes à la même adresse (casse différente) et une ligne sans adresse ;
@@ -642,6 +697,9 @@ def build_warehouse(tmp_path: Path, *, with_tempo: bool = True) -> Path:
     load_bronze(database, tmp_path, EMBER_INTENSITE_CARBONE, ember_intensites())
     load_bronze(database, tmp_path, SITES_PRODUCTION, sites_production())
     load_bronze(database, tmp_path, COMMUNES_CENTRES, communes_centres())
+    load_bronze(database, tmp_path, PORTS_FRET, ports_fret())
+    load_bronze(database, tmp_path, AEROPORTS_FRET, aeroports_fret())
+    load_bronze(database, tmp_path, CHANTIERS_RAIL_ROUTE, chantiers_rail_route())
     load_bronze(database, tmp_path, ENEDIS_CONSO_ENTREPRISES, conso_entreprises())
     load_bronze(database, tmp_path, CONTINUITE_ALIMENTATION, continuite_alimentation())
     ensure_bronze_tables(settings=Settings(_env_file=None, duckdb_path=database))

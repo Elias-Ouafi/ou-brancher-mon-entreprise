@@ -76,6 +76,23 @@ class Settings(BaseSettings):
     # Centre de chaque commune (geo.api.gouv.fr, Etalab), sans clé : place les pôles de production
     geo_communes_url: str = "https://geo.api.gouv.fr/communes"
 
+    # Marchandises par port maritime et par année (SDES, catalogue DiDo, licence ouverte)
+    ports_fret_url: str = (
+        "https://data.statistiques.developpement-durable.gouv.fr/dido/api/v1/datafiles/"
+        "89c4e831-27ae-4fe7-8ff7-d6c82fa4a841/csv"
+    )
+
+    # Fret par aéroport (DGAC, série APT, licence ouverte) : fiche data.gouv.fr de l'archive
+    aeroports_fret_dataset_url: str = (
+        "https://www.data.gouv.fr/api/1/datasets/64808a5811da153f1439914c/"
+    )
+
+    # Chantiers de transport combiné rail-route (SNCF Réseau, ODbL)
+    chantiers_rail_route_url: str = (
+        "https://ressources.data.sncf.com/api/explore/v2.1/catalog/datasets/"
+        "chantiers-de-transport-combines/exports/csv?use_labels=true"
+    )
+
     # Service d'altimétrie de la Géoplateforme (IGN, RGE ALTI), sans clé
     altimetrie_base_url: str = "https://data.geopf.fr/altimetrie"
 

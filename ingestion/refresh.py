@@ -18,6 +18,7 @@ from ingestion.pipeline import (
     run_edf_sei_ingestion,
     run_enedis_entreprises_ingestion,
     run_europe_ingestion,
+    run_fret_ingestion,
     run_gaspar_ingestion,
     run_ingestion,
     run_prix_entreprises_ingestion,
@@ -100,6 +101,7 @@ def run_refresh(
         ),
         ("carbone-iles", lambda: run_edf_sei_ingestion(settings=settings, run_id=run_id)),
         ("production", lambda: run_production_ingestion(settings=settings, run_id=run_id)),
+        ("fret", lambda: run_fret_ingestion(settings=settings, run_id=run_id)),
         ("europe", lambda: run_europe_ingestion(settings=settings, run_id=run_id)),
         (
             "entreprises-enedis",

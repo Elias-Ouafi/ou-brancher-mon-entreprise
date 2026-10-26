@@ -7,7 +7,9 @@ from pathlib import Path
 
 from ingestion.config import Settings, get_settings
 from ingestion.datasets import (
+    AEROPORTS_FRET,
     BRONZE_SPECS,
+    CHANTIERS_RAIL_ROUTE,
     COMMUNES_CENTRES,
     CONTINUITE_ALIMENTATION,
     EDF_SEI_PRODUCTION,
@@ -18,6 +20,7 @@ from ingestion.datasets import (
     GASPAR_PLANS,
     GASPAR_RISQUES,
     NATIONAL_TR,
+    PORTS_FRET,
     RTE_TEMPO,
     SITES_PRODUCTION,
     ZONAGE_SISMIQUE,
@@ -27,6 +30,7 @@ from ingestion.extract_edf_sei import telecharger_production
 from ingestion.extract_ember import telecharger_intensites
 from ingestion.extract_enedis import telecharger_conso_entreprises, telecharger_continuite
 from ingestion.extract_eurostat import EurostatClient
+from ingestion.extract_fret import telecharger_aeroports, telecharger_chantiers, telecharger_ports
 from ingestion.extract_gaspar import lire_export, lire_plans, telecharger_archive
 from ingestion.extract_odre import ExtractionWindow, OdreClient
 from ingestion.extract_production import telecharger_centres, telecharger_sites
@@ -476,6 +480,23 @@ def run_production_ingestion(
     )
     return _charger_fichier(
         telecharger_sites(settings=settings), SITES_PRODUCTION, settings, run_id, now
+    )
+
+
+# Grands pôles de fret : ports (SDES), aéroports (DGAC) et chantiers rail-route (SNCF Réseau)
+def run_fret_ingestion(
+    *,
+    settings: Settings | None = None,
+    run_id: str = "manual",
+    now: datetime | None = None,
+) -> tuple[ExtractionOutcome, LoadResult]:
+    settings = settings or get_settings()
+    _charger_fichier(telecharger_ports(settings=settings), PORTS_FRET, settings, run_id, now)
+    _charger_fichier(
+        telecharger_aeroports(settings=settings), AEROPORTS_FRET, settings, run_id, now
+    )
+    return _charger_fichier(
+        telecharger_chantiers(settings=settings), CHANTIERS_RAIL_ROUTE, settings, run_id, now
     )
 
 

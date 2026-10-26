@@ -398,6 +398,35 @@ seeds:
                 min_value: -5.5
                 max_value: 10
 
+  - name: dim_ports_fret
+    description: >
+      Commune de chaque port maritime du SDES (code LOCODE), là où la carte le pose : celle des
+      principaux quais (Saint-Nazaire pour Nantes Saint-Nazaire, Rémire-Montjoly pour le port
+      de Dégrad des Cannes à Cayenne) ; HAROPA, publié d'un bloc, au Havre. Ports d'au moins
+      0,3 Mt de marchandises en 2025 ; le test `assert_poles_fret_localises` signale un port
+      qui franchirait le seuil sans commune.
+    config:
+      column_types:
+        code_insee_commune: varchar
+    columns:
+      - name: locode
+        data_tests: [unique, not_null]
+      - name: code_insee_commune
+        data_tests: [not_null]
+
+  - name: dim_aeroports_fret
+    description: >
+      Commune d'implantation de chaque aéroport de la DGAC (code OACI) qui a traité au moins
+      1 000 t de fret et de poste en 2025.
+    config:
+      column_types:
+        code_insee_commune: varchar
+    columns:
+      - name: code_oaci
+        data_tests: [unique, not_null]
+      - name: code_insee_commune
+        data_tests: [not_null]
+
   - name: sites_cles_en_main
     description: >
       Sites industriels « clés en main » de France 2030 : foncier labellisé par l'État pour

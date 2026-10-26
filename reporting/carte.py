@@ -82,6 +82,12 @@ select commune as n, code_departement as c, filiere as f, puissance_mw as mw,
     energie_gwh as gwh, nb_installations as ni, latitude as la, longitude as lo
 from gold.fct_sites_production order by puissance_mw desc
 """
+_FRET_SQL = """
+select mode as m, nom as n, code_departement as c, annee as a, volume_t as v,
+    conteneurs_evp as evp, vols_cargo as vc, longueur_voies_m as ml, manutention as eng,
+    latitude as la, longitude as lo
+from gold.fct_poles_fret order by mode, volume_t desc nulls last, longueur_voies_m desc
+"""
 _PRIX_SQL = """
 select code_tranche as t, conso_min_mwh as mn, conso_max_mwh as mx,
     round(prix_reference_eur_kwh, 4) as e, dernier_semestre as s
@@ -114,6 +120,11 @@ def lire_donnees_gold(database: Path) -> dict[str, Any]:
             gold["production"] = _lignes(connection, _PRODUCTION_SQL)
         except duckdb.CatalogException:
             gold["production"] = []
+        # De même pour les pôles de fret, ajoutés après les pôles de production
+        try:
+            gold["fret"] = _lignes(connection, _FRET_SQL)
+        except duckdb.CatalogException:
+            gold["fret"] = []
         gold["donnees"] = ligne_chargements(lire_chargements(connection))
         return gold
 
@@ -198,6 +209,13 @@ def construire_donnees(
                 "case": _reperer(grilles, p["lo"], p["la"], p["c"]),
             }
             for p in gold.get("production", [])
+        ],
+        "fret": [
+            {
+                **{cle: p[cle] for cle in ("m", "n", "c", "a", "v", "evp", "vc", "ml", "eng")},
+                "case": _reperer(grilles, p["lo"], p["la"], p["c"]),
+            }
+            for p in gold.get("fret", [])
         ],
         "prix": gold.get("prix", []),
         "donnees": gold.get("donnees"),
