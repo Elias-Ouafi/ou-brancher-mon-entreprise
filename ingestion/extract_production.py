@@ -54,7 +54,6 @@ def _json(settings: Settings, client: httpx.Client | None, url: str, params: dic
         raise ProductionError(f"{url} : reponse illisible ({error})") from error
 
 
-# Puissance en service par commune et filière (registre national, installations d'au moins 10 MW)
 def telecharger_sites(
     *, settings: Settings | None = None, client: httpx.Client | None = None
 ) -> list[dict[str, Any]]:
@@ -87,7 +86,6 @@ def telecharger_sites(
     ]
 
 
-# Centre de chaque commune (geo.api.gouv.fr) : là où la carte pose un pôle de production
 def telecharger_centres(
     *, settings: Settings | None = None, client: httpx.Client | None = None
 ) -> list[dict[str, Any]]:

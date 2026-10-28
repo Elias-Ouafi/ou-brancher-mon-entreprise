@@ -1,4 +1,3 @@
--- Postes électriques RTE (postes de transformation et points de piquage)
 with source as (
     select
         *,

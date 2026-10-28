@@ -1,4 +1,3 @@
--- Mix électrique au pas de mesure (30 min en consolidé, 15 min en temps réel)
 with familles as (
     select
         date_heure,

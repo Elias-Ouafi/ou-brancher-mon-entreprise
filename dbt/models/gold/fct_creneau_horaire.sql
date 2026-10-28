@@ -1,4 +1,3 @@
--- Une ligne par heure : intensité carbone, couleur Tempo, période tarifaire et prix
 with mesures as (
     select
         date_trunc('hour', date_heure) as heure_utc,

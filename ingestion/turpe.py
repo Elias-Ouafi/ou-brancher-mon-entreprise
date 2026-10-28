@@ -95,7 +95,6 @@ def _cout(
     return puissance, energie
 
 
-# Part acheminement de la facture au TURPE en vigueur : la seule qui dépend du raccordement
 def lire_acheminement(
     connection: duckdb.DuckDBPyConnection,
     domaine_turpe: str,

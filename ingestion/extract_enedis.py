@@ -48,7 +48,6 @@ def _client(settings: Settings) -> httpx.Client:
     )
 
 
-# Dernière année publiée : la photographie la plus récente des entreprises raccordées
 def derniere_annee(http: httpx.Client, settings: Settings) -> str:
     reponse = _retrying(settings)(
         lambda: _verifier(http.get(f"{JEU_ENTREPRISES}/values_agg", params={"field": "annee"}))
@@ -70,7 +69,6 @@ def lire_page(contenu: bytes) -> list[dict[str, Any]]:
     return [dict(zip(CHAMPS, (v or None for v in ligne), strict=True)) for ligne in lecteur]
 
 
-# Consommation annuelle de chaque adresse d'entreprise raccordée à Enedis, pour une année
 def telecharger_conso_entreprises(
     *,
     annee: str | None = None,
@@ -136,7 +134,6 @@ def lire_continuite(contenu: bytes, colonnes: list[str]) -> list[dict[str, Any]]
     return lignes
 
 
-# Indicateur réglementaire de continuité d'alimentation : la qualité de fourniture du département
 def telecharger_continuite(
     *, settings: Settings | None = None, client: httpx.Client | None = None
 ) -> list[dict[str, Any]]:

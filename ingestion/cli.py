@@ -51,7 +51,6 @@ QUESTIONS = frozenset({"essentiel", "diagnose", "compare", "carte", "europe", "g
 COMMANDE_REFRESH = "python -m ingestion.cli refresh --months 180"
 
 
-# Premier lancement ou refresh interrompu : dire quoi lancer plutôt qu'afficher l'erreur brute
 def _donnees_absentes(error: DonneesAbsentesError) -> int:
     logger.error(
         "Aucune donnée utilisable (%s). Lancez d'abord, une seule fois (une minute et demie"
@@ -90,64 +89,50 @@ def _parse_month(value: str) -> date:
         raise argparse.ArgumentTypeError(f"mois invalide : {value!r} (AAAA-MM)") from None
 
 
-def _parse_puissance(value: str) -> float:
-    try:
-        puissance = float(value.replace(",", "."))
-    except ValueError:
-        raise argparse.ArgumentTypeError(f"puissance invalide : {value!r} (MW)") from None
-    if puissance < 0:
-        raise argparse.ArgumentTypeError("la puissance doit être positive")
-    return puissance
+# Nombre saisi à la française (« 1 500,5 ») ; `strict` refuse zéro
+def _positif(nom: str, unite: str, *, strict: bool = True):
+    def lire(value: str) -> float:
+        try:
+            nombre = float(value.replace(",", ".").replace(" ", ""))
+        except ValueError:
+            raise argparse.ArgumentTypeError(f"{nom} invalide : {value!r} ({unite})") from None
+        if nombre < 0 or (strict and nombre == 0):
+            raise argparse.ArgumentTypeError(f"{nom} : nombre positif attendu ({unite})")
+        return nombre
+
+    return lire
 
 
-def _parse_conso(value: str) -> float:
-    try:
-        conso = float(value.replace(",", ".").replace(" ", ""))
-    except ValueError:
-        raise argparse.ArgumentTypeError(f"consommation invalide : {value!r} (MWh/an)") from None
-    if conso <= 0:
-        raise argparse.ArgumentTypeError("la consommation doit être strictement positive")
-    return conso
+_parse_puissance = _positif("puissance", "MW", strict=False)
+_parse_conso = _positif("consommation", "MWh/an")
+_parse_euros = _positif("montant", "€")
 
 
-def _parse_ca(value: str) -> float:
-    try:
-        ca = float(value.replace(",", ".").replace(" ", ""))
-    except ValueError:
-        raise argparse.ArgumentTypeError(f"chiffre d'affaires invalide : {value!r} (€)") from None
-    if ca <= 0:
-        raise argparse.ArgumentTypeError("le chiffre d'affaires doit être strictement positif")
-    return ca
-
-
-def _parse_surface(value: str) -> float:
-    try:
-        surface = float(value.replace(",", ".").replace(" ", ""))
-    except ValueError:
-        raise argparse.ArgumentTypeError(f"surface invalide : {value!r} (m²)") from None
-    if surface <= 0:
-        raise argparse.ArgumentTypeError("la surface doit être strictement positive")
-    return surface
-
-
-def _add_surface_option(parser: argparse.ArgumentParser) -> None:
+def _add_projet_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
-        "--surface",
-        type=_parse_surface,
-        help="surface des locaux cherchés en m² : coût d'achat d'après les ventes DVF",
+        "--puissance", type=_parse_puissance, help="puissance du projet en MW : qui raccorde"
     )
-
-
-def _add_ca_option(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
-        "--ca",
-        type=_parse_ca,
-        help="chiffre d'affaires annuel en euros (avec --conso) : part de la facture",
+        "--conso",
+        type=_parse_conso,
+        help="consommation annuelle en MWh (défaut : tranche des petites entreprises)",
+    )
+    parser.add_argument(
+        "--ca", type=_parse_euros, help="chiffre d'affaires annuel en euros : part de la facture"
     )
     parser.add_argument(
         "--va",
-        type=_parse_ca,
-        help="valeur ajoutée annuelle en euros (avec --conso) : électro-intensité fiscale",
+        type=_parse_euros,
+        help="valeur ajoutée annuelle en euros : électro-intensité fiscale",
+    )
+    parser.add_argument(
+        "--surface",
+        type=_positif("surface", "m²"),
+        help="surface des locaux cherchés en m² : coût d'achat d'après les ventes DVF",
+    )
+    parser.add_argument(
+        "--courbe",
+        help="export CSV de la courbe de charge Enedis : vraie consommation, pointe et carbone",
     )
 
 
@@ -157,15 +142,47 @@ def _add_carte_option(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="ne place pas l'adresse sur la carte (data/reports/carte.html)",
     )
-    parser.add_argument(
-        "--courbe",
-        help="export CSV de la courbe de charge Enedis : vraie consommation, pointe et carbone",
+
+
+def _lire_courbe(chemin: str | None) -> Courbe | None:
+    return None if chemin is None else lire_courbe(Path(chemin).read_bytes())
+
+
+def _diagnostiquer(adresse: str, args: argparse.Namespace, settings: Settings) -> Diagnostic:
+    return lire_diagnostic(
+        geocode(adresse, settings=settings),
+        puissance_mw=args.puissance,
+        conso_mwh=args.conso,
+        ca_eur=args.ca,
+        va_eur=args.va,
+        surface_m2=args.surface,
+        courbe=_lire_courbe(args.courbe),
+        settings=settings,
     )
 
 
-# Courbe de charge réelle du site, lue avant le diagnostic qu'elle alimente
-def _lire_courbe(chemin: str | None) -> Courbe | None:
-    return None if chemin is None else lire_courbe(Path(chemin).read_bytes())
+def _echec(error: Exception) -> int:
+    match error:
+        case DonneesAbsentesError():
+            return _donnees_absentes(error)
+        case AdresseIntrouvableError():
+            logger.error(
+                "adresse introuvable : %s. Preciser le numero, la rue et la commune"
+                " (adresse en France uniquement).",
+                error,
+            )
+        case AdresseAmbigueError():
+            logger.error("adresse ambigue : %s. Preciser le code postal ou la commune.", error)
+        case GeocodingError():
+            logger.error("geocodage impossible : %s", error)
+        case DiagnosticIndisponibleError():
+            logger.error("donnees indisponibles : %s", error)
+        case _:
+            logger.error("courbe de charge illisible : %s", error)
+    return 1
+
+
+ECHECS_PREVUS = (GeocodingError, DiagnosticIndisponibleError, CourbeError, OSError)
 
 
 # La carte montre le verdict de l'adresse ; son échec ne fait pas échouer la commande
@@ -195,7 +212,6 @@ def _placer_sur_carte(diagnostic: Diagnostic, settings: Settings) -> None:
     _signaler(f"Carte : {path}")
 
 
-# Ligne de commande à recopier pour refaire un rapport, citée dans son pied de page
 def _commande(argv: list[str] | None) -> str:
     arguments = sys.argv[1:] if argv is None else argv
     cites = [f'"{a}"' if not a or " " in a else a for a in arguments]
@@ -206,7 +222,6 @@ def _add_dataset_option(parser: argparse.ArgumentParser, default: str) -> None:
     parser.add_argument("--dataset", choices=sorted(SPECS), default=default, help="dataset ODRÉ")
 
 
-# Toutes les commandes et leurs options : la porte d'entrée unique de l'outil
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="eco2mix",
@@ -262,16 +277,7 @@ def build_parser() -> argparse.ArgumentParser:
         "essentiel", help="prix moyen de l'électricité et verdict carbone d'une adresse"
     )
     essentiel.add_argument("--adresse", required=True, help="adresse, entre guillemets")
-    essentiel.add_argument(
-        "--puissance", type=_parse_puissance, help="puissance du projet en MW : qui raccorde"
-    )
-    essentiel.add_argument(
-        "--conso",
-        type=_parse_conso,
-        help="consommation annuelle en MWh (défaut : tranche des petites entreprises)",
-    )
-    _add_ca_option(essentiel)
-    _add_surface_option(essentiel)
+    _add_projet_options(essentiel)
     essentiel.add_argument(
         "--format", choices=["texte", "json"], default="texte", help="texte ou json"
     )
@@ -281,16 +287,7 @@ def build_parser() -> argparse.ArgumentParser:
         "diagnose", help="diagnostic d'implantation électrique d'une adresse"
     )
     diagnose.add_argument("--adresse", required=True, help="adresse à diagnostiquer")
-    diagnose.add_argument(
-        "--puissance", type=_parse_puissance, help="puissance du projet en MW (ex. 0.5, 12)"
-    )
-    diagnose.add_argument(
-        "--conso",
-        type=_parse_conso,
-        help="consommation annuelle en MWh (ex. 350) : prix de la tranche Eurostat",
-    )
-    _add_ca_option(diagnose)
-    _add_surface_option(diagnose)
+    _add_projet_options(diagnose)
     diagnose.add_argument(
         "--format",
         choices=["texte", "md", "pdf", "json"],
@@ -319,12 +316,7 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
         help="adresse à comparer (répéter l'option : 2 à 6 adresses)",
     )
-    compare.add_argument(
-        "--puissance", type=_parse_puissance, help="puissance du projet en MW (ex. 0.5, 12)"
-    )
-    compare.add_argument(
-        "--conso", type=_parse_conso, help="consommation annuelle en MWh : prix de la tranche"
-    )
+    _add_projet_options(compare)
     compare.add_argument(
         "--format",
         choices=["texte", "md", "csv", "json"],
@@ -399,7 +391,6 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-# Lance la commande demandée ; code de sortie 1 quand la réponse n'a pas pu être donnée
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -409,9 +400,10 @@ def main(argv: list[str] | None = None) -> int:
                 f"--{option} demande --conso ou --courbe : le calcul part de la consommation"
                 " annuelle"
             )
-    # Messages accentués : stderr redirigé sous Windows serait en cp1252, comme stdout
-    if hasattr(sys.stderr, "reconfigure"):
-        sys.stderr.reconfigure(encoding="utf-8")
+    # Sortie redirigée sous Windows : cp1252 ne connaît ni « → » ni « ≤ »
+    for flux in (sys.stdout, sys.stderr):
+        if hasattr(flux, "reconfigure"):
+            flux.reconfigure(encoding="utf-8")
     if args.verbose:
         logging.basicConfig(
             level=logging.DEBUG, format="%(asctime)s %(levelname)-8s %(name)s %(message)s"
@@ -471,8 +463,7 @@ def main(argv: list[str] | None = None) -> int:
             try:
                 territoire = geocode(args.adresse, settings=settings)
             except GeocodingError as error:
-                logger.error("geocodage impossible : %s", error)
-                return 1
+                return _echec(error)
             lignes = [
                 f"adresse           : {territoire.adresse}",
                 f"commune           : {territoire.commune} ({territoire.code_insee_commune})",
@@ -485,41 +476,10 @@ def main(argv: list[str] | None = None) -> int:
             print("\n".join(lignes))
         case "essentiel":
             try:
-                territoire = geocode(args.adresse, settings=settings)
-                diagnostic = lire_diagnostic(
-                    territoire,
-                    puissance_mw=args.puissance,
-                    conso_mwh=args.conso,
-                    ca_eur=args.ca,
-                    va_eur=args.va,
-                    surface_m2=args.surface,
-                    courbe=_lire_courbe(args.courbe),
-                    settings=settings,
-                )
-            except AdresseIntrouvableError as error:
-                logger.error(
-                    "adresse introuvable : %s. Preciser le numero, la rue et la commune"
-                    " (adresse en France uniquement).",
-                    error,
-                )
-                return 1
-            except AdresseAmbigueError as error:
-                logger.error("adresse ambigue : %s. Preciser le code postal ou la commune.", error)
-                return 1
-            except GeocodingError as error:
-                logger.error("geocodage impossible : %s", error)
-                return 1
-            except DonneesAbsentesError as error:
-                return _donnees_absentes(error)
-            except DiagnosticIndisponibleError as error:
-                logger.error("donnees indisponibles : %s", error)
-                return 1
-            except (CourbeError, OSError) as error:
-                logger.error("courbe de charge illisible : %s", error)
-                return 1
+                diagnostic = _diagnostiquer(args.adresse, args, settings)
+            except ECHECS_PREVUS as error:
+                return _echec(error)
             diagnostic = avec_risques_locaux(diagnostic, settings=settings)
-            if hasattr(sys.stdout, "reconfigure"):
-                sys.stdout.reconfigure(encoding="utf-8")
             if args.format == "json":
                 print(
                     json.dumps(
@@ -532,27 +492,11 @@ def main(argv: list[str] | None = None) -> int:
                 _placer_sur_carte(diagnostic, settings)
         case "diagnose":
             try:
-                territoire = geocode(args.adresse, settings=settings)
-                diagnostic = lire_diagnostic(
-                    territoire,
-                    puissance_mw=args.puissance,
-                    conso_mwh=args.conso,
-                    ca_eur=args.ca,
-                    va_eur=args.va,
-                    surface_m2=args.surface,
-                    courbe=_lire_courbe(args.courbe),
-                    settings=settings,
-                )
-            except DonneesAbsentesError as error:
-                return _donnees_absentes(error)
-            except (GeocodingError, DiagnosticIndisponibleError, CourbeError, OSError) as error:
-                logger.error("diagnostic impossible : %s", error)
-                return 1
+                diagnostic = _diagnostiquer(args.adresse, args, settings)
+            except ECHECS_PREVUS as error:
+                return _echec(error)
             if not args.sans_risques:
                 diagnostic = completer_risques(diagnostic, settings=settings)
-            # Sortie redirigée sous Windows : cp1252 ne connaît ni « → » ni « ≤ »
-            if hasattr(sys.stdout, "reconfigure"):
-                sys.stdout.reconfigure(encoding="utf-8")
             if args.format == "texte":
                 print(formater_diagnostic(diagnostic))
             elif args.format == "json" and not args.output:
@@ -588,17 +532,10 @@ def main(argv: list[str] | None = None) -> int:
             diagnostics = []
             for adresse in args.adresse:
                 try:
-                    diagnostic = lire_diagnostic(
-                        geocode(adresse, settings=settings),
-                        puissance_mw=args.puissance,
-                        conso_mwh=args.conso,
-                        settings=settings,
-                    )
-                except DonneesAbsentesError as error:
-                    return _donnees_absentes(error)
-                except (GeocodingError, DiagnosticIndisponibleError) as error:
-                    logger.error("comparaison impossible pour %r : %s", adresse, error)
-                    return 1
+                    diagnostic = _diagnostiquer(adresse, args, settings)
+                except ECHECS_PREVUS as error:
+                    logger.error("comparaison impossible pour %r", adresse)
+                    return _echec(error)
                 if not args.sans_risques:
                     diagnostic = completer_risques(diagnostic, settings=settings)
                 diagnostics.append(diagnostic)
@@ -617,8 +554,6 @@ def main(argv: list[str] | None = None) -> int:
                 chemin.write_text(sortie, encoding=encodage)
                 _signaler(f"Comparaison : {chemin}")
             else:
-                if hasattr(sys.stdout, "reconfigure"):
-                    sys.stdout.reconfigure(encoding="utf-8")
                 print(sortie)
         case "carte":
             # Import paresseux : la carte n'est utile qu'à cette commande
@@ -642,11 +577,8 @@ def main(argv: list[str] | None = None) -> int:
                     verdict_adresse=verdict_adresse,
                     output=Path(args.output) if args.output else None,
                 )
-            except DonneesAbsentesError as error:
-                return _donnees_absentes(error)
-            except (GeocodingError, DiagnosticIndisponibleError) as error:
-                logger.error("carte impossible : %s", error)
-                return 1
+            except ECHECS_PREVUS as error:
+                return _echec(error)
             _signaler(f"Carte : {path}")
             if not args.sans_ouvrir:
                 webbrowser.open(path.resolve().as_uri())
@@ -661,13 +593,8 @@ def main(argv: list[str] | None = None) -> int:
             except AdresseIntrouvableError as error:
                 logger.error("adresse introuvable : %s. Preciser la ville et le pays.", error)
                 return 1
-            except GeocodingError as error:
-                logger.error("europe impossible : %s", error)
-                return 1
-            except DonneesAbsentesError as error:
-                return _donnees_absentes(error)
-            if hasattr(sys.stdout, "reconfigure"):
-                sys.stdout.reconfigure(encoding="utf-8")
+            except ECHECS_PREVUS as error:
+                return _echec(error)
             print(formater_europe(localisation, pays, france))
         case "tempo":
             if args.month:

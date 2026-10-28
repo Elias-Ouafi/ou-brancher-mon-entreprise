@@ -269,7 +269,6 @@ def _methodologie(rapport: RapportMensuel) -> list[str]:
     ]
 
 
-# Bilan mensuel en Markdown
 def rendre(rapport: RapportMensuel, chemin: Path, *, graphiques: bool = True) -> Path:
     chemin.parent.mkdir(parents=True, exist_ok=True)
     figures = _Graphiques(chemin, rapport, graphiques)

@@ -25,7 +25,6 @@ def _barres(ax: plt.Axes, libelles: list[str], valeurs: list[float], ici: list[b
     ax.grid(axis="y", visible=False)
 
 
-# Taux de couverture de chaque région, 100 % = production égale à la consommation
 def couverture_regions(diagnostic: Diagnostic, comparaisons: Comparaisons) -> bytes | None:
     if not comparaisons.regions:
         return None
@@ -79,7 +78,6 @@ def pression_departements(diagnostic: Diagnostic, comparaisons: Comparaisons) ->
     return _png(fig)
 
 
-# Puissance appelée heure par heure, jour ouvré et week-end, part décalable en évidence
 def profil_journalier(diagnostic: Diagnostic, comparaisons: Comparaisons) -> bytes | None:
     if not comparaisons.profil or diagnostic.cout is None:
         return None
@@ -119,7 +117,6 @@ def profil_journalier(diagnostic: Diagnostic, comparaisons: Comparaisons) -> byt
     return _png(fig)
 
 
-# Historique du prix de la tranche de l'adresse : situe le prix actuel
 def prix_tranche(diagnostic: Diagnostic, comparaisons: Comparaisons) -> bytes | None:
     prix = diagnostic.prix
     if prix is None or not comparaisons.historique_prix:

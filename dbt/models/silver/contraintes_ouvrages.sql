@@ -1,4 +1,3 @@
--- Contraintes résiduelles prospectives (horizon 3 à 5 ans) sur le réseau de transport
 select
     source.ouvrage,
     source.nom_de_l_ouvrage,

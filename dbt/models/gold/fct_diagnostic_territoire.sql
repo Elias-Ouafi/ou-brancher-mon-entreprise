@@ -1,4 +1,3 @@
--- Diagnostic de contexte d'implantation : une ligne par département
 select
     pression.code_departement,
     pression.departement,

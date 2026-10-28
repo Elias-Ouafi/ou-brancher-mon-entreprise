@@ -1,4 +1,3 @@
--- Temps réel nettoyé : une ligne par quart d'heure effectivement mesuré
 select
     date_heure,
     {{ qualite_depuis_nature('nature') }} as qualite,
