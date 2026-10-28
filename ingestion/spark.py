@@ -14,6 +14,8 @@ def session() -> SparkSession:
     spark = (
         SparkSession.builder.master("local[2]")
         .appName("ou-brancher-mon-entreprise")
+        # 1 Go par défaut ne suffit pas aux ~400 000 ventes DVF passées par le pilote
+        .config("spark.driver.memory", "3g")
         .config("spark.sql.session.timeZone", "UTC")
         .config("spark.ui.enabled", "false")
         .config("spark.ui.showConsoleProgress", "false")
