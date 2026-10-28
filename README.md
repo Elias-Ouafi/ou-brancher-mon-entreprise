@@ -143,7 +143,7 @@ flowchart LR
   code INSEE ; énergie = puissance × durée (jours de 23 ou 25 h) ; verdict carbone en cycle de vie.
 - **Gold principal** : `fct_diagnostic_territoire` (une ligne par département),
   `fct_prix_entreprise_tranche`, `fct_carbone_territoire`, `fct_carbone_horaire_zni`,
-  `fct_risques_commune`, `fct_plans_prevention_commune`, `fct_zonage_sismique`, `fct_sites_production`, `fct_poles_fret`, `fct_pays_ue`,
+  `fct_risques_commune`, `fct_plans_prevention_commune`, `fct_zonage_sismique`, `fct_prix_locaux`, `fct_sites_production`, `fct_poles_fret`, `fct_pays_ue`,
   `fct_mix`, `fct_conso_entreprises_commune` et `fct_conso_entreprises_adresse` (entreprises
   raccordées à Enedis, dernière année publiée). Les seeds datés (tarifs, accise, grille TURPE 7, SDDR, sites clés en main, facteurs ADEME) sont à mettre à jour à chaque
   nouvelle source et recréés à chaque `dbt build` ; `limites_methodologiques` porte la limite de chaque indicateur.
@@ -163,6 +163,7 @@ flowchart LR
   36 719 polygones des communes de 2010, triés par `gid` pour une pagination stable et comptés
   contre le total annoncé ; l'adresse est située dans son polygone, ce qui reste juste dans une
   commune nouvelle.
+- **Prix des locaux** : les ventes de locaux d'activité des cinq dernières années publiées (DVF, un fichier de ~100 Mo par année, lu en flux) donnent la médiane au m² par commune, le département en repli sous 5 ventes ; DVF ne sépare pas les bureaux des commerces et entrepôts, ne contient aucun loyer et ignore l'Alsace, la Moselle et Mayotte.
 - `data/` n'est pas versionné et se recrée par `refresh`. DuckDB n'accepte qu'un writer : fermez
   toute session `duckdb` pendant un chargement.
 
@@ -193,6 +194,7 @@ pièges des sources, plus les tests de données dbt. La CI GitHub Actions les jo
 [trafic maritime du SDES](https://www.data.gouv.fr/datasets/maritime-transport-de-marchandises) ·
 [trafic aérien commercial de la DGAC](https://www.data.gouv.fr/datasets/64808a5811da153f1439914c) ·
 [chantiers de transport combiné de SNCF Réseau](https://www.data.gouv.fr/datasets/chantiers-de-transport-combines) (ODbL) ·
+[ventes immobilières DVF](https://www.data.gouv.fr/en/datasets/dvf) (DGFiP, Licence Ouverte 2.0) ·
 [Nominatim](https://nominatim.openstreetmap.org), données © contributeurs OpenStreetMap (ODbL) ·
 SDDR 2025 de RTE · barèmes et grille TURPE 7 de la CRE.
 
