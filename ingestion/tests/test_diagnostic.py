@@ -19,6 +19,7 @@ from ingestion.diagnostic import (
     PlanPrevention,
     code_commune_parent,
     code_departement,
+    diagnostic_en_dict,
     formater_diagnostic,
     formater_essentiel,
     lire_diagnostic,
@@ -370,6 +371,18 @@ def test_every_figure_comes_with_its_limit(medallion_db: Path, warehouse: Any) -
     assert len(limites) == 21
     for limite in limites:
         assert limite in texte
+
+
+def test_full_diagnosis_ends_with_the_five_criteria(medallion_db: Path) -> None:
+    diagnostic = lire_diagnostic(territoire("69123"), puissance_mw=50, database=medallion_db)
+
+    texte = formater_diagnostic(diagnostic)
+    _, criteres = texte.split("8. Brancher ici ? Les cinq critères")
+    attendus = ("Raccordement (à vérifier)", "Risques", "Carbone (favorable)", "Facture", "Foncier")
+    for nom in attendus:
+        assert nom in criteres
+    assert "Brancher ici ? À vérifier avant de s'engager : raccordement" in texte
+    assert diagnostic_en_dict(diagnostic)["verdict"]["criteres"][0]["nom"] == "Raccordement"
 
 
 def test_non_interconnected_zones_are_flagged(medallion_db: Path) -> None:

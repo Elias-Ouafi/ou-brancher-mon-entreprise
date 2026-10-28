@@ -1,5 +1,3 @@
--- Prix et carbone moyens de chaque pays de l'UE, par tranche de consommation : le repère d'une
--- implantation hors de France, sur les mêmes définitions que pour la France
 with prix as (
     select
         pays as code_eurostat,

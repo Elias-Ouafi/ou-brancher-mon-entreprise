@@ -101,7 +101,6 @@ def _lignes(connection: duckdb.DuckDBPyConnection, sql: str) -> list[dict[str, A
     return [dict(zip(colonnes, ligne, strict=True)) for ligne in relation.fetchall()]
 
 
-# Indicateurs gold affichés sur la carte, lus en une connexion
 def lire_donnees_gold(database: Path) -> dict[str, Any]:
     if not Path(database).exists():
         raise DonneesAbsentesError(f"warehouse introuvable : {database}")
@@ -139,7 +138,6 @@ def _reperer(
     return [indice, case.c, case.r] if case else None
 
 
-# Données embarquées dans la page : cases, relief, indicateurs et adresse
 def construire_donnees(
     grilles: list[Grille],
     altitudes: dict[tuple[float, float], float | None],
@@ -223,7 +221,6 @@ def construire_donnees(
     }
 
 
-# Verdict « brancher ici ? » de l'adresse, avec la zone RTE et le site à relier sur la carte
 def verdict_carte(diagnostic: Diagnostic) -> dict[str, Any]:
     criteres = verdict(diagnostic)
     zone = diagnostic.zone_rte
@@ -236,7 +233,6 @@ def verdict_carte(diagnostic: Diagnostic) -> dict[str, Any]:
     }
 
 
-# Épingle de l'adresse et son verdict, rattachées à leur case
 def construire_adresse(
     grilles: list[Grille],
     territoire: Territoire | None,
@@ -259,7 +255,6 @@ def _json(valeur: Any) -> str:
     return json.dumps(valeur, ensure_ascii=False, default=str).replace("</", "<\\/")
 
 
-# Page autonome : gabarit, données et scripts three.js intégrés (fonctionne hors ligne)
 def rendre_html(donnees: dict[str, Any]) -> str:
     donnees = dict(donnees)
     adresse = donnees.pop("adresse", None)
@@ -304,7 +299,6 @@ def _chemin(settings: Settings, output: Path | None) -> Path:
     return output or Path(settings.reports_dir) / "carte.html"
 
 
-# Écrit la carte complète, page HTML autonome qui s'ouvre sans réseau
 def generer_carte(
     *,
     settings: Settings | None = None,

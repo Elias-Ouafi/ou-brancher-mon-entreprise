@@ -126,7 +126,6 @@ def _expected_slots(start: datetime, end: datetime) -> int:
     return int((end - start) / timedelta(minutes=SLOT_MINUTES))
 
 
-# Extraction d'un jeu ODRÉ vers un Parquet bronze, sans le charger
 def extract_to_parquet(
     *,
     settings: Settings | None = None,
@@ -181,7 +180,6 @@ def tempo_days_for_month(month: date) -> DayRange:
     return DayRange(days.start - timedelta(days=1), days.end)
 
 
-# Extraction du calendrier Tempo vers un Parquet bronze
 def extract_tempo_to_parquet(
     days: DayRange,
     *,
@@ -243,7 +241,6 @@ def load_to_warehouse(
         loader.close()
 
 
-# Retard de la donnée la plus récente : alerte avant de répondre sur du périmé
 def check_freshness(
     *,
     settings: Settings | None = None,
@@ -293,7 +290,6 @@ def check_freshness(
     return report
 
 
-# Dernier mois révolu complet ou non : pas de bilan mensuel sur un mois troué
 def check_month_coverage(
     *,
     settings: Settings | None = None,
@@ -342,7 +338,6 @@ def _target_month(latest: datetime, reference: datetime) -> tuple[int, int]:
     return year, month
 
 
-# Extraction puis chargement d'un jeu ODRÉ
 def run_ingestion(
     *,
     settings: Settings | None = None,
@@ -359,7 +354,6 @@ def run_ingestion(
     return outcome, result
 
 
-# Extraction puis chargement du calendrier Tempo
 def run_tempo_ingestion(
     days: DayRange,
     *,
@@ -373,7 +367,6 @@ def run_tempo_ingestion(
     return outcome, result
 
 
-# Prix Eurostat de la France par tranche : la base du prix moyen et des scénarios
 def run_prix_entreprises_ingestion(
     *,
     settings: Settings | None = None,
@@ -427,7 +420,6 @@ def _charger_fichier(
     return outcome, load_to_warehouse(path, settings=settings, spec=spec)
 
 
-# Plans de prévention et risques recensés par commune, d'une seule archive GASPAR
 def run_gaspar_ingestion(
     *,
     settings: Settings | None = None,
@@ -440,7 +432,6 @@ def run_gaspar_ingestion(
     return _charger_fichier(lire_export(contenu), GASPAR_RISQUES, settings, run_id, now)
 
 
-# Zonage sismique réglementaire : la seule donnée de risque que l'export GASPAR ne donne pas
 def run_zonage_sismique_ingestion(
     *,
     settings: Settings | None = None,
@@ -452,7 +443,6 @@ def run_zonage_sismique_ingestion(
     return _charger_fichier(lignes, ZONAGE_SISMIQUE, settings, run_id, now)
 
 
-# Prix et carbone des 27 pays de l'UE : le repère d'une implantation hors de France
 def run_europe_ingestion(
     *,
     settings: Settings | None = None,
@@ -469,7 +459,6 @@ def run_europe_ingestion(
     ]
 
 
-# Pôles de production (registre ODRÉ) et centres des communes qui les placent sur la carte
 def run_production_ingestion(
     *,
     settings: Settings | None = None,
@@ -485,7 +474,6 @@ def run_production_ingestion(
     )
 
 
-# Grands pôles de fret : ports (SDES), aéroports (DGAC) et chantiers rail-route (SNCF Réseau)
 def run_fret_ingestion(
     *,
     settings: Settings | None = None,
@@ -502,7 +490,6 @@ def run_fret_ingestion(
     )
 
 
-# Prix de vente des locaux d'activité : le coût d'une antenne ou de bureaux selon la commune
 def run_locaux_ingestion(
     *,
     settings: Settings | None = None,
@@ -514,7 +501,6 @@ def run_locaux_ingestion(
     return _charger_fichier(lignes, VENTES_LOCAUX, settings, run_id, now)
 
 
-# Production horaire des îles : dit à quelles heures l'électricité y est la moins carbonée
 def run_edf_sei_ingestion(
     *,
     settings: Settings | None = None,
@@ -526,7 +512,6 @@ def run_edf_sei_ingestion(
     return _charger_fichier(lignes, EDF_SEI_PRODUCTION, settings, run_id, now)
 
 
-# Entreprises raccordées à Enedis, adresse par adresse, sur la dernière année publiée
 def run_enedis_entreprises_ingestion(
     *,
     settings: Settings | None = None,
@@ -539,7 +524,6 @@ def run_enedis_entreprises_ingestion(
     return _charger_fichier(lignes, ENEDIS_CONSO_ENTREPRISES, settings, run_id, now)
 
 
-# Part des clients mal alimentés par département : la fiabilité du réseau de distribution local
 def run_continuite_ingestion(
     *,
     settings: Settings | None = None,
@@ -551,7 +535,6 @@ def run_continuite_ingestion(
     return _charger_fichier(lignes, CONTINUITE_ALIMENTATION, settings, run_id, now)
 
 
-# Relit les derniers mois consolidés, qui corrigent les données temps réel
 def run_consolidation(
     *,
     settings: Settings | None = None,

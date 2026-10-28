@@ -118,7 +118,6 @@ def _par_heure(courbe: Courbe) -> dict[datetime, float]:
     return heures
 
 
-# Coût, heures creuses et carbone de la consommation réelle, comparés au réseau aux mêmes heures
 def bilan_courbe(
     courbe: Courbe,
     connection: duckdb.DuckDBPyConnection,

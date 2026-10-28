@@ -1,4 +1,3 @@
--- Calibration de la méthode des scénarios, par tranche
 with periodes as (
     select
         tranche,

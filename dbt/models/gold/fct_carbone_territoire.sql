@@ -1,4 +1,3 @@
--- Intensité carbone de l'électricité et verdict « décarboné », une ligne par région
 {%- set seuil = var('seuil_decarbone_g_co2e_kwh', 100) %}
 
 with dernier_jour as (

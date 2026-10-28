@@ -1,5 +1,3 @@
--- Intensité carbone heure par heure en Corse et outre-mer, sur la dernière année complète :
--- dit à une entreprise à quelles heures son électricité est la moins carbonée.
 -- Profil de la part thermique (fioul, gaz, charbon) calé sur le facteur ADEME annuel de l'île :
 -- la moyenne pondérée des 24 heures redonne exactement ce facteur.
 with iles as (

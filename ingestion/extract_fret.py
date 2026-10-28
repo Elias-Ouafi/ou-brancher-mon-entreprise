@@ -53,7 +53,6 @@ def _lecteur(texte: str, colonnes: set[str], source: str) -> csv.DictReader:
     return lecteur
 
 
-# Marchandises par port et par année (SDES), entrées et sorties additionnées
 def lire_ports(contenu: bytes) -> list[dict[str, Any]]:
     cumul: dict[tuple[str, str], dict[str, Any]] = {}
     for ligne in _lecteur(contenu.decode("utf-8-sig"), _COLONNES_PORTS, "ports SDES"):
@@ -76,7 +75,6 @@ def lire_ports(contenu: bytes) -> list[dict[str, Any]]:
     return list(cumul.values())
 
 
-# Fret et poste par aéroport et par année (DGAC, série APT), douze mois additionnés
 def lire_aeroports(contenu: bytes) -> list[dict[str, Any]]:
     try:
         archive = zipfile.ZipFile(io.BytesIO(contenu))
@@ -111,7 +109,6 @@ def lire_aeroports(contenu: bytes) -> list[dict[str, Any]]:
     return list(cumul.values())
 
 
-# Chantiers rail-route de SNCF Réseau : voies de manutention de toutes les cours d'un chantier
 def lire_chantiers(contenu: bytes) -> list[dict[str, Any]]:
     cumul: dict[str, dict[str, Any]] = {}
     lecteur = _lecteur(contenu.decode("utf-8-sig"), _COLONNES_CHANTIERS, "chantiers SNCF")
@@ -138,7 +135,6 @@ def lire_chantiers(contenu: bytes) -> list[dict[str, Any]]:
     return list(cumul.values())
 
 
-# Ports du SDES : quels ports reçoivent et expédient vraiment des marchandises
 def telecharger_ports(
     *, settings: Settings | None = None, client: httpx.Client | None = None
 ) -> list[dict[str, Any]]:
@@ -167,7 +163,6 @@ def telecharger_aeroports(
     return lignes
 
 
-# Chantiers rail-route : où charger un conteneur sur un train
 def telecharger_chantiers(
     *, settings: Settings | None = None, client: httpx.Client | None = None
 ) -> list[dict[str, Any]]:

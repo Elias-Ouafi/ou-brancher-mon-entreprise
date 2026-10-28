@@ -10,13 +10,16 @@ from dataclasses import dataclass
 from ingestion.diagnostic import (
     Diagnostic,
     _distance,
+    _euros_arrondis,
     _gwh,
     _liste_risques,
     _nombre,
     _nombre_court,
     diagnostic_en_dict,
     ligne_chargements,
+    phrase_verdict,
     sections,
+    verdict,
 )
 from ingestion.georisques import Exposition
 
@@ -129,13 +132,28 @@ def _carbone(d: Diagnostic) -> str:
     )
 
 
+def _locaux(d: Diagnostic) -> str:
+    p = d.prix_locaux
+    if p is None:
+        return "non disponible"
+    lieu = "" if p.niveau == "commune" else " (département)"
+    ligne = f"{_nombre(p.prix_m2_median)} €/m²{lieu}, {_nombre(p.nb_ventes)} ventes"
+    if d.surface_m2:
+        cout = _euros_arrondis(p.prix_m2_median * d.surface_m2)
+        ligne += f" ; {cout} pour {_nombre(d.surface_m2)} m²"
+    return ligne
+
+
+def _brancher_ici(d: Diagnostic) -> str:
+    return phrase_verdict(verdict(d))
+
+
 def _non_evalues(d: Diagnostic) -> str:
     if d.risques is None or d.risques.maille == "commune":
         return "—"
     return _liste_risques(d.risques.selon(Exposition.INCONNU)) or "aucun"
 
 
-# Un indicateur par ligne, une adresse par colonne : la matière de toutes les sorties
 def lignes(diagnostics: list[Diagnostic]) -> list[Ligne]:
 
     def ligne(
@@ -154,6 +172,7 @@ def lignes(diagnostics: list[Diagnostic]) -> list[Ligne]:
         ligne("Zone prioritaire RTE", _zone, "zones_raccordement_rte"),
         ligne("Site clé en main (France 2030)", _site, "sites_cles_en_main"),
         ligne("Électricité décarbonée", _carbone, "carbone_territoire"),
+        ligne("Locaux d'activité (vente DVF)", _locaux, "prix_locaux"),
     ]
     if any(d.risques is not None or d.risques_erreur is not None for d in diagnostics):
         resultat += [
@@ -161,10 +180,10 @@ def lignes(diagnostics: list[Diagnostic]) -> list[Ligne]:
             ligne("Risques technologiques", lambda d: _risques(d, "technologique"), "risques_site"),
             ligne("Non évalués à l'adresse", _non_evalues, "risques_site"),
         ]
+    resultat.append(ligne("Brancher ici ?", _brancher_ici))
     return resultat
 
 
-# Ce qui ne change pas d'une adresse à l'autre, dit une fois sous le tableau
 def communs(diagnostics: list[Diagnostic]) -> list[str]:
     reference = next((d for d in diagnostics if not d.est_zni), diagnostics[0])
     blocs = sections(reference)
@@ -193,7 +212,6 @@ def communs(diagnostics: list[Diagnostic]) -> list[str]:
     return resultat
 
 
-# Limites des indicateurs affichés, pour ne pas surinterpréter un écart entre adresses
 def limites(diagnostics: list[Diagnostic], tableau: list[Ligne]) -> list[tuple[str, str]]:
     references = diagnostics[0].limites
     codes: list[str] = []
@@ -208,7 +226,6 @@ def limites(diagnostics: list[Diagnostic], tableau: list[Ligne]) -> list[tuple[s
 LARGEUR_INDICATEUR = 26
 
 
-# Tableau lisible au terminal, colonnes ajustées à la largeur
 def formater_comparaison(diagnostics: list[Diagnostic], *, largeur: int = 120) -> str:
     tableau = lignes(diagnostics)
     n = len(diagnostics)
@@ -243,7 +260,6 @@ def _cellule_md(texte: str) -> str:
     return texte.replace("|", "\\|")
 
 
-# Tableau à coller dans une note ou un dossier d'investissement
 def comparaison_en_markdown(diagnostics: list[Diagnostic]) -> str:
     tableau = lignes(diagnostics)
     entete = ["Indicateur", *(d.territoire.adresse for d in diagnostics)]
@@ -267,7 +283,6 @@ def comparaison_en_markdown(diagnostics: list[Diagnostic]) -> str:
     return "\n".join(texte) + "\n"
 
 
-# Tableau à ouvrir dans un tableur (séparateur point-virgule, comme Excel en français)
 def comparaison_en_csv(diagnostics: list[Diagnostic]) -> str:
     sortie = io.StringIO()
     ecrivain = csv.writer(sortie, delimiter=";", lineterminator="\n")
@@ -278,7 +293,6 @@ def comparaison_en_csv(diagnostics: list[Diagnostic]) -> str:
     return sortie.getvalue()
 
 
-# Tableau pour un autre programme
 def comparaison_en_json(diagnostics: list[Diagnostic]) -> str:
     tableau = lignes(diagnostics)
     contenu = {

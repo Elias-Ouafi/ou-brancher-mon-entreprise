@@ -1,4 +1,3 @@
--- Scénarios d'évolution du prix d'une tranche à 1, 2 et 3 ans
 select
     tranche,
     horizon_annees,

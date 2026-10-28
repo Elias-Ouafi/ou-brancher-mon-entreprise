@@ -1,4 +1,3 @@
--- Bilan mensuel d'un profil type : consommation, coût, carbone
 with horaire as (
     select * from {{ ref('fct_cout_horaire_profil') }}
 ),

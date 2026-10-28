@@ -1,4 +1,3 @@
--- Tissu économique raccordé à Enedis par commune : volume, part de l'industrie et premier secteur
 with derniere as (
     select max(annee) as annee from {{ ref('conso_entreprises_adresse') }}
 ),

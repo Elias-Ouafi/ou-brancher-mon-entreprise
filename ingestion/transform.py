@@ -82,7 +82,6 @@ def _table_brute(records: Sequence[dict[str, Any]], spec: DatasetSpec) -> pa.Tab
     return pa.table(colonnes)
 
 
-# Enregistrements typés et normalisés en UTC, avec la date d'ingestion
 def records_to_table(
     records: Sequence[dict[str, Any]],
     *,
@@ -149,7 +148,6 @@ def normalize_datetimes(raw_values: Iterable[str]) -> list[datetime]:
     return [v.replace(tzinfo=UTC) for v in df.toArrow().column("t").to_pylist()]
 
 
-# Une date publiée, normalisée en UTC
 def to_utc(raw: str) -> datetime:
     return normalize_datetimes([raw])[0]
 

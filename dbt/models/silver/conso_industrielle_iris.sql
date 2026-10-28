@@ -1,4 +1,3 @@
--- Consommation électrique annuelle des sites raccordés au transport, par IRIS
 with source as (
     select
         cast(annee as integer) as annee,

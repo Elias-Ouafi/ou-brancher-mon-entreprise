@@ -98,7 +98,6 @@ where iso2 = $iso2
 CONSO_DEFAUT_MWH = 10.0
 
 
-# Prix et carbone moyens d'un pays de l'UE, et de la France pour comparer, à tranche égale
 def lire_pays(
     code_pays: str,
     *,
@@ -147,7 +146,6 @@ def _ecart(valeur: float | None, reference: float | None) -> str:
     return f" ({'+' if ecart >= 0 else '-'}{abs(ecart):.0f} % par rapport à la France)"
 
 
-# Réponse courte pour une adresse européenne : prix et carbone du pays, face à la France
 def formater_europe(localisation: Localisation, pays: Pays, france: Pays | None) -> str:
     lignes = [localisation.libelle, f"Pays : {pays.pays} ({pays.code_eurostat})", ""]
     prix = f"Prix moyen : {_prix(pays)} pour la tranche {pays.code_tranche}"

@@ -1,4 +1,3 @@
--- Équilibre mensuel production / consommation brute par région, en MWh
 select
     cast(strptime(mois || '-01', '%Y-%m-%d') as date) as mois,
     code_insee_region,

@@ -11,7 +11,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 IDENTIFIANTS_LOCAUX = Path(__file__).resolve().parents[1] / "identifiants.local.txt"
 
 
-# Réglages de l'outil, surchargeables par variables ECO2MIX_* ou identifiants.local.txt
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="ECO2MIX_",
