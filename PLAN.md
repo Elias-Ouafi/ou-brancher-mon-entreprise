@@ -62,6 +62,7 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
   classe les créneaux sur le seul carbone ;
 - l'accise au tarif normal (26,58 €/MWh) vit dans le seed daté `accise_electricite` : à compléter
   à chaque indexation du 1er février, que `--va` signale une fois la date passée ;
+- DVF 2026 n'est pas encore publié (dernière vente chargée : décembre 2025) : relancer `refresh` après chaque actualisation d'avril et d'octobre ;
 - EDF SEI publie jusqu'à fin 2024 seulement (2021-2024 « estimé »), sans Mayotte ; le jeu a
   quitté `opendata-corse-outremer.edf.fr` pour `opendata.edf.fr` (API data-fair).
 
@@ -76,7 +77,7 @@ ni `--courbe`, ni `--ca`, ni `--va` ; le profil « bureau 36 kVA » du seed conv
 
 Étape 9 (maquettes 3D, carte à deux vues) et sources 10.1 (Enedis par adresse), 10.2 (grille
 TURPE 7), 10.4 (zonage sismique), 10.3 (continuité d'alimentation) et 11 (pôles de fret) faites du
-25 au 26 octobre. Prochaines étapes, dans l'ordre où les prendre ; chacune
+25 au 26 octobre ; étape 12 (prix de vente des locaux, PR 47) faite le 28 octobre. Prochaines étapes, dans l'ordre où les prendre ; chacune
 n'est cochée qu'après ruff, pytest (dont `dbt build`) et un essai réel :
 
 | Ordre | Étape | Pourquoi maintenant | Bloqué par |
@@ -85,6 +86,10 @@ n'est cochée qu'après ruff, pytest (dont `dbt build`) et un essai réel :
 | ~~2~~ | **Fait le 26 octobre.** **10.4** Zonage sismique réglementaire à l'adresse | Comble le trou laissé par la coupure de l'API Géorisques | — |
 | ~~3~~ | **Fait le 26 octobre.** **10.3** Continuité d'alimentation par département (Enedis, repris par l'Agence ORE) | Repère « qualité de fourniture » dans `diagnose` ; client data-fair déjà en place | — |
 | ~~0~~ | **Fait le 28 octobre (prix de vente).** **12** Prix des locaux : prix de vente au m² des locaux d'activité par commune (DVF, 5 ans), coût d'achat pour une surface donnée (`--surface`) dans `essentiel` et `diagnose` (section 7) ; **reste** le coût annuel et mensuel (loyer estimé) et la colonne de `compare`, voir « Prix des locaux » ci-dessous | Premier critère de ce persona après les transports | décision : la méthode du loyer estimé (hypothèse de rendement, sans source officielle) |
+| 13 | **Accessibilité** : temps de trajet voiture vers autoroute, gare et aéroport par le calcul d'itinéraire de la Géoplateforme (`bdtopo-osrm`, 5 requêtes/s) ; isochrone 30 et 45 min | Critère n° 1 du persona (transports : 82 % des dirigeants) | pas de profil poids lourd dans la Géoplateforme ; paramètres de l'isochrone à lire |
+| 14 | **Zonage d'urbanisme** à l'adresse (API Carto, module Géoportail de l'Urbanisme) | Évite de recommander un terrain où l'activité est interdite | couverture variable selon les communes ; règlement écrit à lire par un humain |
+| 15 | **Risques complémentaires** (argiles, cavités, inondation à l'adresse) et **ICPE / sols pollués** voisins (Géorisques) | Complète les plans de prévention déjà chargés | endpoints exacts à relire (documentation en erreur le 28 octobre) ; ICPE sans le régime de déclaration |
+| 16 | **Bâtiment** : emprise, hauteur, usage (BD TOPO, BDNB) ; **productible solaire** (PVGIS) ; obligation de solarisation des parkings (loi APER) | Surface et énergie du site | licence de la BDNB pour un usage commercial à confirmer |
 | 4 | **10.5** Profils de charge réels > 36 kVA par secteur (Enedis `conso-sup36-region`) | Remplace les profils du seed dans `fct_cout_horaire_profil` | volume : filtrage à la source par région et secteur à mettre au point |
 | 5 | **8** Repère de prix au-delà de 150 000 MWh/an (contrats CAPN) ; classement pondéré dans `compare` | Les très gros consommateurs sortent aujourd'hui des tranches Eurostat | décision : le classement revient sur celle du 15 octobre (« comparaison sans classement ») |
 | ~~6~~ | **Fait le 26 octobre.** **11** Carte : grands pôles de fret (ports, aéroports, chantiers rail-route) en maquettes, au-delà d'un seuil | Dit si la région est bien placée pour recevoir des matières premières et expédier des produits | — |
@@ -112,6 +117,8 @@ nouvelle dépendance.
 | ~~10.4~~ | **Fait le 26 octobre.** Zonage sismique réglementaire (décret n° 2010-1255, article D563-8-1 du code de l'environnement) | Géorisques, service WFS `https://www.georisques.gouv.fr/services`, couche `risq_zonage_sismique` (36 719 polygones, 158 Mo de géométrie, 85 s) ; bronze `zonage_sismique`, gold `fct_zonage_sismique` | Zone 1 à 5 à l'adresse quand l'API Géorisques est coupée ; vérifié sur Lyon (2), Nice (4), Pointe-à-Pitre (5), Paris (1) | Polygones des communes de 2010 sans code INSEE : situés par l'adresse, pas par le code commune |
 | 10.5 | Agrégats de consommation au pas d'une demi-heure des points de soutirage de plus de 36 kVA, par secteur d'activité et puissance souscrite (maille régionale) | Enedis, data-fair, jeu `conso-sup36-region` | Profils de charge réels par secteur pour `fct_cout_horaire_profil`, au lieu des profils du seed | Volume (34,6 M lignes) : filtrer à la source par région et secteur |
 | 10.6 | Signal Ecowatt (tension du système électrique, J à J+3) | RTE, API Ecowatt v5 (même compte que Tempo) | Jours de tension dans le rapport mensuel, à côté des jours rouges Tempo | Le bac à sable répond ; l'API réelle renvoie 403 tant que l'application n'est pas abonnée à « Ecowatt » sur le portail RTE |
+
+**Étude du 28 octobre : données géographiques (étapes 13 à 16 et suites)**. L'étude complète (sources, licences, imagerie, modèle d'indicateurs, moteur de classement) est restée hors du dépôt (documentation limitée à ce plan et au README) ; ne restent ici que ses conclusions. Trois manques sans source ouverte : les loyers et les annonces de locaux, la capacité d'accueil en soutirage, les parcelles et propriétaires (fichiers fonciers du Cerema, réservés aux ayants droit sous convention). Version 2 : photovoltaïque existant (OpenPVMapper, CC-BY, ~75 % de précision), bassin d'emploi (isochrone et flux domicile-travail INSEE), friches et zones d'activité (Cartofriches), détection de changement sur l'ortho. Version 3 : projections climatiques (DRIAS, Explore2), extension européenne. Imagerie : 100 % ouverte au lancement (BD ORTHO 20 cm, LiDAR HD) ; l'imagerie commerciale (Pléiades Neo, 22 à 33 $/km² chez un revendeur) n'est justifiée que pour un site précis. Points non vérifiés avant de coder : licences de la BDNB, du LiDAR HD, de DRIAS et de l'OCS GE ; endpoints Géorisques ; conditions d'usage de PVGIS ; couverture du GPU ; stress hydrique (BNPE, Hub'Eau) ; date de la carte RGA 2026.
 
 **Pôles de fret, étape 11 (étude du 26 octobre, faite le même jour)**. Fichiers téléchargés et
 lus ; tonnages 2025. Retenu à l'implémentation : marchandises hors tare pour les ports (Sète, 4,9 Mt
