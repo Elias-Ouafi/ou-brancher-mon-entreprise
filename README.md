@@ -5,11 +5,12 @@ ici ? »** : qui raccorde et à quelle échéance, les risques de la commune, le
 facture et le terrain prêt le plus proche. Données publiques uniquement, chaque chiffre avec sa
 source et sa limite. Ligne de commande, en local. État et suite du projet : [PLAN.md](PLAN.md).
 
-![Carte 3D : verdict « Brancher ici ? » pour une adresse de Chilly-Mazarin, zone prioritaire RTE et site clé en main reliés à l'adresse](docs/exemples/carte_chilly.png)
+![Carte 3D : verdict « Brancher ici ? » pour un bureau à Lyon, avec le raccordement, les plans de prévention, le carbone et la facture](docs/exemples/carte_lyon.png)
 
-*La carte générée pour « 3 allée des Peupliers, 91380 Chilly-Mazarin », projet de 50 MW : le
-raccordement relève de RTE et une zone prioritaire est à 11 km (arc bleu), un site clé en main à
-5 km (arc doré). Diagnostic complet de Lyon : [en PDF](docs/exemples/implantation_lyon.pdf).*
+*La carte générée pour « 20 rue de la République, 69002 Lyon », des bureaux de 100 kVA et 80 MWh par
+an : raccordement courant au réseau de distribution, carbone sous le seuil de 100 g, facture
+d'environ 16 000 € HTVA par an ; seuls les deux plans de prévention de la commune (risque
+industriel, inondation) restent à vérifier. Diagnostic complet de Lyon : [en PDF](docs/exemples/implantation_lyon.pdf).*
 
 ## Trois faits à connaître
 
