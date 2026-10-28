@@ -5,12 +5,16 @@ ici ? »** : qui raccorde et à quelle échéance, les risques de la commune, le
 facture et le terrain prêt le plus proche. Données publiques uniquement, chaque chiffre avec sa
 source et sa limite. Ligne de commande, en local. État et suite du projet : [PLAN.md](PLAN.md).
 
-![Carte 3D : verdict « Brancher ici ? » pour un bureau à Lyon, avec le raccordement, les plans de prévention, le carbone et la facture](docs/exemples/carte_lyon.png)
+![Carte 3D, vue Raccorder : cases notées du rouge au vert, verdict « Brancher ici ? » pour un bureau à Lyon](docs/exemples/carte_lyon_decision.png)
+
+![Carte 3D, vue Territoire : relief et couleurs réelles, carbone et prix moyen dans l'encart](docs/exemples/carte_lyon_reel.png)
 
 *La carte générée pour « 20 rue de la République, 69002 Lyon », des bureaux de 100 kVA et 80 MWh par
-an : raccordement courant au réseau de distribution, carbone sous le seuil de 100 g, facture
+an. En haut, la vue « Raccorder » (touche 1) : les cases sont notées du rouge au vert et la fiche donne
+le verdict : raccordement courant au réseau de distribution, carbone sous le seuil de 100 g, facture
 d'environ 16 000 € HTVA par an ; seuls les deux plans de prévention de la commune (risque
-industriel, inondation) restent à vérifier. Diagnostic complet de Lyon : [en PDF](docs/exemples/implantation_lyon.pdf).*
+industriel, inondation) restent à vérifier. En bas, la vue « Territoire » (touche 2) : paysage réel,
+carbone et prix moyen par région, production et fret. Diagnostic complet de Lyon : [en PDF](docs/exemples/implantation_lyon.pdf).*
 
 ## Trois faits à connaître
 
