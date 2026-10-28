@@ -5,16 +5,36 @@
 
 ## Persona
 
-L'entreprise qui **ouvre une antenne ou déménage ses bureaux** (choix du 16 octobre, recherche du 28
-octobre). Quelques dizaines de postes, des dizaines de MWh par an (tranches IA et IB), un
-raccordement simple et un prix d'électricité identique partout : ce qui départage deux villes est
-le **coût des locaux**, l'accessibilité, le vivier de talents, puis le carbone du réseau et les
-risques du site. Les baromètres d'implantation (ADI, EY, Xerfi, 2022-2025, échantillons de
-quelques centaines de dirigeants) citent, dans l'ordre : transports (82 %), coût par collaborateur
-(45 %), qualité environnementale (36 %), RH (51 % en priorité 1 ou 2), flexibilité des baux (60 %).
-Le décret tertiaire ne vise que 1 000 m² et plus ; la CSRD (Omnibus I, en vigueur le 18 mars 2026)
-ne vise plus que plus de 1 000 salariés et 450 M€ : le carbone par adresse répond surtout à une
-demande de banque ou de client, au format volontaire VSME.
+**Pivot du 28 octobre** : le porteur d'un **projet de 1 à 50 MW** qui cherche où s'implanter :
+data center, hub de bornes de recharge (véhicules légers et poids lourds), site industriel, site
+logistique (entrepôt froid, quai électrifié). C'est le modèle de Yottar, cité par le porteur du
+projet (aucune source publique sur Yottar trouvée le 28 octobre). Le persona précédent, l'entreprise
+qui déménage ses bureaux, est abandonné : pour quelques dizaines de MWh, le prix de l'électricité
+est identique partout et ne départage pas les villes ; l'outil n'avait rien de décisif à lui dire.
+
+Pour un projet de 1 à 50 MW, l'électricité **est** le critère d'implantation :
+- **puissance disponible et délai** : de 0,25 à 20 MW, Enedis en HTA (départ dédié au-delà de
+  quelques MW) ; de 20 à 40 MW, zone grise Enedis ou RTE selon la saturation du poste source ; au-delà
+  de 40 MW, RTE en HTB, 2 à 7 ans de délai (seed `seuils_raccordement`). C'est ce qui départage deux
+  sites, et ce que l'open data ne publie pas : d'où les zones prioritaires RTE, les contraintes
+  prévues et la carte des capacités en soutirage attendue de RTE (1er janvier 2027) ;
+- **foncier viabilisé et constructible** : sites clés en main France 2030, zonage d'urbanisme,
+  friches et zones d'activité, prix des terrains et locaux d'activité ;
+- **coût de l'électricité** : identique d'une ville à l'autre à tranche égale (péréquation), mais
+  décisif pour la rentabilité ; 1 MW constant fait environ 8 800 MWh par an (tranche ID), 50 MW
+  environ 440 000 MWh (au-delà de la tranche IG d'Eurostat, sans repère public aujourd'hui) ; la
+  part acheminement dépend du domaine de tension, donc du site ; l'accise réduite (électro-intensifs,
+  data centers) change la facture ;
+- **carbone** : bas partout sur le continent ; décisif en Corse et outre-mer et pour les data
+  centers qui vendent une électricité bas-carbone à leurs clients ;
+- **risques et contraintes du site** : plans de prévention, sismicité, ICPE voisines, eau (le
+  refroidissement des data centers), accès poids lourds et fret pour la logistique et l'industrie.
+
+Contexte : RTE dit recevoir des demandes de 100 à 200 MW pour des data centers, et 4,5 GW avaient
+déjà une offre de raccordement acceptée en septembre 2024 ; data centers, bornes de recharge et
+industrie se disputent la même capacité, concentrée en Île-de-France, à Marseille et dans les
+Hauts-de-France. Le projet de plus de 50 MW reste servi (HTB, `diagnose` au complet) mais ne dicte
+pas l'ordre des étapes.
 
 ## État
 
@@ -68,34 +88,38 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 
 ## Suite
 
-**MVP élargi au persona (28 octobre)** : l'étape 12 (prix des locaux) vient avant les autres ; le MVP
-du 16 octobre (prix moyen d'électricité et verdict carbone) reste atteint, il s'y ajoute le coût des
-locaux, premier critère de ce persona qu'il manque. Les écarts relevés le 28 octobre sont comblés le
-même jour (consolidation) : le verdict « Brancher ici ? » termine `diagnose` (section 8, critère par
-critère) et `compare` (une ligne par adresse, avec le prix des locaux) ; `compare` prend les mêmes
-options que `diagnose`. Le profil « bureau 36 kVA » du seed convient à ce persona (l'étape 10.5 ne
-concerne que les gros sites).
+**Pivot vers les projets de 1 à 50 MW (28 octobre)** : le MVP du 16 octobre (prix moyen et verdict
+carbone) reste atteint ; ce qui manque à ce persona est d'abord ce qui dit **si la puissance est
+là, quand, et à quel coût**. Le prix de vente des locaux d'activité (étape 12, DVF) reste affiché
+pour information (il couvre entrepôts et locaux industriels) mais n'est plus prioritaire ; le
+loyer reste écarté. Le verdict « Brancher ici ? » en cinq critères garde sa forme ; son critère
+« raccordement » devient le premier. Exemple de référence pour les essais réels : 12 MW et
+70 000 MWh par an à Chilly-Mazarin (HTA, tranche IF, environ 5,3 M€ HTVA par an dont 1,4 M€
+d'acheminement, vérifié le 28 octobre).
 
-Étape 9 (maquettes 3D, carte à deux vues) et sources 10.1 (Enedis par adresse), 10.2 (grille
-TURPE 7), 10.4 (zonage sismique), 10.3 (continuité d'alimentation) et 11 (pôles de fret) faites du
-25 au 26 octobre ; étape 12 (prix de vente des locaux, PR 47) faite le 28 octobre. Prochaines étapes, dans l'ordre où les prendre ; chacune
-n'est cochée qu'après ruff, pytest (dont `dbt build`) et un essai réel :
+Déjà fait : étape 9 (maquettes 3D, carte à deux vues), sources 10.1 (Enedis par adresse), 10.2
+(grille TURPE 7 HTA-BT), 10.3 (continuité d'alimentation), 10.4 (zonage sismique) et 11 (pôles de
+fret) du 25 au 26 octobre ; étape 12 (prix de vente des locaux, PR 47) le 28 octobre. Prochaines
+étapes, dans l'ordre où les prendre ; chacune n'est cochée qu'après ruff, pytest (dont `dbt build`)
+et un essai réel sur un projet de 1 à 50 MW :
 
-| Ordre | Étape | Pourquoi maintenant | Bloqué par |
+| Ordre | Étape | Pourquoi pour ce persona | Bloqué par |
 |---|---|---|---|
-| ~~1~~ | **Fait le 26 octobre.** **10.2** Grille TURPE 7 HTA-BT en seed daté, coût d'acheminement selon le domaine de tension dans `essentiel` et `diagnose` | Seule part de la facture qui dépend du raccordement | — |
-| ~~2~~ | **Fait le 26 octobre.** **10.4** Zonage sismique réglementaire à l'adresse | Comble le trou laissé par la coupure de l'API Géorisques | — |
-| ~~3~~ | **Fait le 26 octobre.** **10.3** Continuité d'alimentation par département (Enedis, repris par l'Agence ORE) | Repère « qualité de fourniture » dans `diagnose` ; client data-fair déjà en place | — |
-| ~~0~~ | **Fait le 28 octobre (prix de vente).** **12** Prix des locaux : prix de vente au m² des locaux d'activité par commune (DVF, 5 ans), coût d'achat pour une surface donnée (`--surface`) dans `essentiel`, `diagnose` (section 7) et `compare` ; pas de loyer tant qu'aucune source officielle n'existe (décision du 28 octobre), voir « Prix des locaux » ci-dessous | Premier critère de ce persona après les transports | — |
-| 13 | **Accessibilité** : temps de trajet voiture vers autoroute, gare et aéroport par le calcul d'itinéraire de la Géoplateforme (`bdtopo-osrm`, 5 requêtes/s) ; isochrone 30 et 45 min | Critère n° 1 du persona (transports : 82 % des dirigeants) | pas de profil poids lourd dans la Géoplateforme ; paramètres de l'isochrone à lire |
-| 14 | **Zonage d'urbanisme** à l'adresse (API Carto, module Géoportail de l'Urbanisme) | Évite de recommander un terrain où l'activité est interdite | couverture variable selon les communes ; règlement écrit à lire par un humain |
-| 15 | **Risques complémentaires** (argiles, cavités, inondation à l'adresse) et **ICPE / sols pollués** voisins (Géorisques) | Complète les plans de prévention déjà chargés | endpoints exacts à relire (documentation en erreur le 28 octobre) ; ICPE sans le régime de déclaration |
-| 16 | **Bâtiment** : emprise, hauteur, usage (BD TOPO, BDNB) ; **productible solaire** (PVGIS) ; obligation de solarisation des parkings (loi APER) | Surface et énergie du site | licence de la BDNB pour un usage commercial à confirmer |
-| 4 | **10.5** Profils de charge réels > 36 kVA par secteur (Enedis `conso-sup36-region`) | Remplace les profils du seed dans `fct_cout_horaire_profil` | volume : filtrage à la source par région et secteur à mettre au point |
-| 5 | **8** Repère de prix au-delà de 150 000 MWh/an (contrats CAPN) ; classement pondéré dans `compare` | Les très gros consommateurs sortent aujourd'hui des tranches Eurostat | décision : le classement revient sur celle du 15 octobre (« comparaison sans classement ») |
-| ~~6~~ | **Fait le 26 octobre.** **11** Carte : grands pôles de fret (ports, aéroports, chantiers rail-route) en maquettes, au-delà d'un seuil | Dit si la région est bien placée pour recevoir des matières premières et expédier des produits | — |
-| 7 | **10.6** Signal Ecowatt dans le rapport mensuel | Jours de tension à côté des jours rouges Tempo | application créée et identifiants enregistrés le 28 octobre (`ECO2MIX_ECOWATT_CLIENT_ID` et `_SECRET`, `identifiants.local.txt`) ; l'accès réel (abonnement, plus de 403) reste à vérifier |
-| 8 | **6** Extension internationale, voir ci-dessous | En dernier (décision du 25 octobre) | jeton ENTSO-E (compte gratuit) et contours des zones de prix à sourcer |
+| 1 | **17** Grille **TURPE 7 HTB** (RTE) en seed daté, à côté de la grille HTA-BT | Au-delà de 20 MW la part acheminement n'est pas chiffrée aujourd'hui ; c'est elle qui varie selon le site (HTA ou HTB) | délibération CRE du TURPE 7 HTB à relire (hausse moyenne de 3,34 % au 1er août 2026) |
+| 2 | **8** Repère de prix au-delà de 150 000 MWh/an, après la fin de l'ARENH (contrats d'allocation de production nucléaire, prix de marché à terme) | Un projet de 20 MW constant dépasse la dernière tranche Eurostat (IG, sans borne) | source officielle et ouverte d'un prix à terme à trouver ; le « classement pondéré dans `compare` » est retiré (décision du 15 octobre maintenue) |
+| 3 | **18** Accise selon l'activité : taux réduits des électro-intensifs (déjà `--va`), des centres de stockage de données et des autres catégories du CIBS ; option `--activite` (`data-center`, `irve`, `industrie`, `logistique`) | Change la facture d'un data center de plusieurs centaines de milliers d'euros par an ; donne le profil de charge par défaut | articles du CIBS et conditions (seuils de consommation, efficacité) à relire avant de coder |
+| 4 | **10.5** Profils de charge réels > 36 kVA par secteur (Enedis `conso-sup36-region`) | Remplace les profils du seed : la part acheminement et le carbone horaire dépendent de la forme de la courbe | volume : filtrage à la source par région et secteur à mettre au point |
+| 5 | **19** Capacité d'accueil en soutirage : intégrer la carte des capacités de RTE et le nouveau Caparéseau dès publication ; chercher ce qu'Enedis publie en HTA (consommation, pas seulement production) | Première question du persona, sans réponse publique aujourd'hui | publication RTE attendue au 1er janvier 2027 (délibération CRE 2026-173) ; capacité Enedis réservée au portail client à ce jour |
+| 6 | **14** Zonage d'urbanisme à l'adresse (API Carto, Géoportail de l'Urbanisme) et **friches et zones d'activité** (Cartofriches) | Un terrain où l'activité industrielle ou l'entrepôt est interdit ne vaut rien, même raccordable | couverture variable selon les communes ; licence de Cartofriches à lire |
+| 7 | **15** Risques complémentaires (argiles, cavités, inondation à l'adresse) et **ICPE, Seveso, sols pollués** voisins (Géorisques) | Un site industriel ou logistique peut être soumis à autorisation ; voisinage Seveso | endpoints à relire (documentation en erreur le 28 octobre) |
+| 8 | **20** Eau : prélèvements et tension sur la ressource (BNPE, Hub'Eau, arrêtés sécheresse) | Refroidissement des data centers ; procédés industriels | licences et maille à vérifier |
+| 9 | **13** Accès routier : temps vers l'échangeur autoroutier, le port, l'aéroport et le chantier rail-route les plus proches (Géoplateforme, `bdtopo-osrm`) | Logistique et industrie : desserte poids lourds ; complète les pôles de fret | pas de profil poids lourd dans la Géoplateforme |
+| 10 | **16** Bâtiment et solaire : emprise (BD TOPO), productible solaire (PVGIS), solarisation des parkings et toitures (loi APER) | Autoconsommation d'un entrepôt ou d'un hub de recharge | licence de la BDNB ; conditions d'usage de PVGIS |
+| 11 | **10.6** Signal Ecowatt dans le rapport mensuel | Jours de tension : effacement et flexibilité d'un data center ou d'un hub de recharge | identifiants enregistrés le 28 octobre ; accès réel (plus de 403) à vérifier |
+| 12 | **6** Extension internationale, voir ci-dessous | En dernier (décision du 25 octobre) | jeton ENTSO-E et contours des zones de prix |
+
+Les bornes de recharge ont leurs propres règles de raccordement (prise en charge d'une part du coût
+par le tarif, dite réfaction) : à étudier avec l'étape 18, sans rien afficher avant d'avoir le texte.
 
 **Échéances à guetter** (à lancer à la main, aucune planification) :
 - 1er janvier 2027 : refonte de Caparéseau et éventuelle carte des capacités en soutirage de RTE
@@ -194,13 +218,135 @@ Inondations.
 | 11 | Italie | Données Terna ouvertes ; risques ISPRA (IdroGEO) | Seulement ~5 % des numéros ANNCSU géolocalisés ; sept zones de prix ; Econnextion donne les demandes, pas la capacité |
 | — | Monaco, Liechtenstein, Andorre | Monaco et le Liechtenstein suivent les réseaux français et suisse | Ni adresses ouvertes ni prix fiables (Eurostat ne donne que des zéros sur une tranche du Liechtenstein) : à traiter avec le pays voisin, en dernier |
 
+## Refonte de la carte et direction artistique (étude du 28 octobre, à valider)
+
+Proposition, rien n'est codé ni décidé. Elle garde les décisions en vigueur : ligne de commande,
+local, page HTML autonome qui s'ouvre hors ligne (pas de site web, pas de CDN), données publiques
+sourcées, « non disponible » plutôt qu'un chiffre inventé.
+
+**Constat.** three.js est déjà au cœur de la carte (`reporting/carte.html`, grille hexagonale,
+maquettes, deux vues) mais en **r128 (2021)** ; la version courante est la **r186** (septembre
+2026). Depuis environ la r160, three.js ne publie plus de fichier unique à charger par `<script>` :
+`three.module.js` et `three.webgpu.js` importent `three.core.js`, ce qui casse l'embarquement actuel
+(`SCRIPTS` dans `reporting/carte.py`). Les nouveautés utiles : `WebGPURenderer` (repli WebGL 2
+automatique), shaders en JavaScript (TSL), `BatchedMesh` pour des milliers de maquettes en un appel
+de dessin. La vue par défaut « Raccorder » (zones RTE, sites clés en main, postes 400 kV) parle
+déjà au persona des projets de 1 à 50 MW (pivot du 28 octobre) ; il lui manque de montrer ce que
+la puissance demandée change : domaine de tension, gestionnaire, délai.
+
+### Direction artistique : « le relevé »
+
+Ce que l'outil promeut : une décision d'implantation d'un projet de 1 à 50 MW fondée sur des faits
+publics, vérifiables, avec leurs limites, et une électricité bas-carbone ; le lecteur est un
+développeur de data center, un opérateur de recharge, un industriel ou un logisticien, souvent
+ingénieur, qui présente le site à un comité d'investissement. La direction qui en découle est celle d'une
+**carte d'état-major moderne** : relief ombré à la manière des cartes IGN et suisses (Imhof), encre
+et papier, chiffres en avant, chaque couche signée de sa source comme un cartouche. Ni jeu vidéo,
+ni tableau de bord néon : la sobriété est le message (le carbone, la péréquation, la capacité non
+publique se disent calmement). Références étudiées : le relief des cartes de Swissgrid et le
+« Landscape of Power Flows » de Nadieh Bremer pour Swissgrid (données réseau traitées en paysage),
+les cartes en relief de la presse de données.
+
+| Élément | Proposition | Pourquoi |
+|---|---|---|
+| Nom | « Où brancher mon entreprise » partout ; « Brancher ici ? » réservé au verdict | La carte s'appelle aujourd'hui « Atlas électrique », sa légende « Où se brancher » : trois noms pour un outil |
+| Fond | Papier clair (`#F4F1EA`), encre bleu nuit (`#14202B`) ; mer en bleu gris désaturé ; relief en ombrage gris chaud, pas de cônes | Même identité que le PDF (fond clair) ; lisible imprimé et en capture pour un comité de direction |
+| Accent | Un seul : vert « décarboné » (`#2E7D5B`) pour ce qui est favorable et sourcé ; orange brûlé (`#C2571A`) pour « à vérifier » | Le vert porte le message bas-carbone ; l'or et le parchemin actuels évoquent un jeu de stratégie |
+| Note des cases | Échelle divergente orange brûlé → blanc → bleu-vert, contrôlée pour le daltonisme (deutéranopie, protanopie) | Le rouge → vert actuel est illisible pour environ 8 % des hommes |
+| Typographie | **Spectral** (Production Type, Paris ; SIL OFL) pour les titres, **Inter** (OFL, chiffres tabulaires) pour le texte et les nombres ; embarquées en base64 dans la page et enregistrées dans reportlab pour le PDF | Trajan Pro n'est installé presque nulle part (rendu différent d'un poste à l'autre) ; Helvetica du PDF n'a pas « ₂ » ni « ≥ », d'où la table de remplacement de `reporting/implantation_pdf.py` |
+| Maquettes | Gardées (centrales, fret, sites) mais en « maquette d'architecte » : blanc cassé mat, une seule couleur de filière en touche, ombres douces | Elles restent la signature de la carte ; moins de couleurs, plus de lisibilité |
+| Mouvement | Une arrivée de caméra (France → adresse, 1,5 s), transitions entre vues ; tout coupé sous `prefers-reduced-motion` | L'effet « avant-gardiste » vient de la mise en scène, pas de l'accumulation d'effets |
+| Interdits | Ni Marianne, ni bloc-marque, ni police Marianne du système de design de l'État | Réservés à l'État (charte de la marque État, loi de 1918 sur les sceaux) : l'outil n'est pas un service public |
+
+Source unique des couleurs et polices : un module `reporting/charte.py` (constantes), injecté dans
+`carte.html` en variables CSS et lu par `pdf.py`, `charts.py` et `implantation_charts.py`, au lieu
+des trois jeux de couleurs actuels (navy et or de la carte, gris et bleu du PDF, palette Tempo).
+
+### three.js : ce qui sert le persona
+
+Chaque effet doit répondre à une question du persona ; sinon il n'entre pas.
+
+| Fonction | Rendu three.js | Question servie | Données |
+|---|---|---|---|
+| « Raccorder » selon la puissance | Autour de l'épingle, un anneau par domaine de tension (HTA, zone grise, HTB) teinté selon `--puissance` ; zones RTE en colonnes de lumière dont la hauteur dit l'année de capacité ; contraintes RTE en voile sur les cases | Qui raccorde mes 12 MW, et quand ? | existant (`seuils_raccordement`, SDDR, contraintes) |
+| Capacité en soutirage (étape 19) | Cases teintées par capacité restante dès que RTE la publie ; d'ici là, rien d'inventé | La puissance est-elle là ? | RTE, 1er janvier 2027 |
+| `compare` sur la carte | Plusieurs épingles numérotées ; caméra qui passe d'un site à l'autre ; fiches côte à côte, **sans classement** (décision du 15 octobre) | Le persona présélectionne 2 à 6 sites | existant |
+| Foncier et contraintes (étapes 14, 15) | Sites clés en main, friches et zones d'activité en maquettes ; ICPE et Seveso en marqueurs discrets | Le terrain est-il prêt et constructible ? | étapes 14 et 15 |
+| Desserte (étape 13) | Temps vers l'échangeur, le port, l'aéroport, le rail-route, tracés en arcs depuis l'épingle | Logistique et industrie | étape 13 |
+| Relief continu | Un maillage de terrain par système électrique tiré de l'altimétrie IGN déjà chargée, ombrage calculé dans le shader, hexagones projetés dessus en filet | Remplace les cônes de montagne ; donne la lecture « carte d'état-major » | existant (`ingestion/hexagones.py`) |
+| Carbone heure par heure (Corse, outre-mer) | Curseur de 24 h : lumière du soleil et couleur du réseau suivent `fct_carbone_horaire_zni` | Seul cas où l'heure de consommation change le carbone | existant |
+| Export d'image | Bouton « Image » : PNG haute définition de la vue, avec cartouche (adresse, date, sources) | La carte finit dans un support de comité | — |
+| Sans WebGL | La fiche « Brancher ici ? » et les critères s'affichent quand même, carte remplacée par un message | Aujourd'hui un poste sans WebGL n'a qu'un message d'erreur | — |
+
+Hors de propos : globe terrestre, particules, néons, post-traitements lourds (bloom, profondeur de
+champ), WebXR. `WebGPURenderer` n'est retenu que si le `WebGLRenderer` de la r186 ne tient pas
+60 images/s sur un portable de bureau ; TSL seulement pour l'ombrage du relief.
+
+### Embarquer three.js r186 hors ligne
+
+La page doit rester un fichier unique, ouvert en `file://` par `essentiel` et `diagnose`. Les
+modules ES ne se chargent pas en `file://` par une URL relative, et une carte d'import vers des
+URL `data:` n'est confirmée par aucune source : à prouver par un prototype avant tout.
+
+1. **Prototype (une demi-journée)** : `three.core.js`, `three.module.js` et `OrbitControls.js`
+   (r186, licence MIT) dans `reporting/vendor/`, insérés en texte par `carte.py` ; un amorçage de
+   quelques lignes crée une URL `blob:` par module, réécrit les imports relatifs vers ces URL, puis
+   `import()`. Critère : Chrome, Edge et Firefox à jour, en `file://`, sans serveur ni réseau.
+2. Repli si le prototype échoue : un paquet unique déjà assemblé (IIFE) versionné dans
+   `reporting/vendor/`, avec la commande qui l'a produit dans le README ; l'outil d'assemblage
+   (Node) ne sert qu'à la mise à jour de three.js, jamais à l'exécution.
+3. Dernier recours : rester en r128 et appliquer seulement la direction artistique.
+
+La version est figée dans le nom du fichier vendu (`three-r186.core.js`) ; un test vérifie que la
+page générée ne contient aucune URL `http`.
+
+### Lots, dans l'ordre
+
+Chaque lot n'est coché qu'après ruff, pytest (dont `dbt build`), un essai réel de `carte` sur
+Lyon, Ajaccio et Saint-Denis de La Réunion, et une capture mise à jour dans `docs/exemples/`.
+
+| Lot | Contenu | Validation |
+|---|---|---|
+| 0 | **Cohérence** (liste ci-dessous) : nom, exemples du README, captures, ordre des étapes | relecture README et PLAN, `essentiel` sur les exemples |
+| A | `reporting/charte.py` ; polices embarquées ; PDF et graphiques sur la charte ; carte sur la charte en r128 | rendu identique sur deux postes ; PDF sans caractère remplacé |
+| B | Prototype puis passage à three.js r186 (`WebGLRenderer`, `BatchedMesh` pour les maquettes) | carte sans requête réseau ; 60 images/s sur la métropole |
+| C | « Raccorder » selon la puissance : anneaux des domaines de tension, zones RTE en colonnes datées | 1, 12, 30 et 50 MW à Chilly-Mazarin et Dunkerque : gestionnaire conforme à `seuils_raccordement` |
+| D | `compare` épinglé sur la carte ; export d'image ; fiche sans WebGL | `compare` à 3 sites |
+| E | Relief continu et ombrage ; curseur horaire des îles | Ajaccio : 522 g vers 13 h, 681 g vers 5 h |
+| F | Couches des étapes 13, 14, 15 et 19 au fil de leur arrivée | une adresse contrôlée à la main par couche |
+
+### Écarts de cohérence relevés le 28 octobre (lot 0)
+
+- **Exemple du README** : `--puissance 50 --conso 350` décrivait 50 MW pour 350 MWh par an, soit
+  moins de 0,1 % d'utilisation ; remplacé le 28 octobre par 12 MW et 70 000 MWh (sortie réelle).
+- **Captures et PDF de Lyon** (`docs/exemples/`) : faits pour des bureaux de 100 kVA ; à refaire
+  pour un projet de 1 à 50 MW, avec la légende du README.
+- **Courbe d'exemple** `courbe_bureau_septembre.csv` : une courbe de bureau ; `--courbe` ne chiffre
+  le coût qu'à 36 kW au plus. Fournir une courbe d'exemple HTA et étendre le coût au-delà (étape 10.5).
+- **Profil par défaut** : sans `--conso`, la tranche IA (décision du 16 octobre) ; pour ce persona,
+  déduire la consommation de `--puissance` et du profil d'activité (étape 18).
+- **Trois noms** : « Atlas électrique » (titre et bandeau de la carte), « Où se brancher » (légende),
+  « Où brancher mon entreprise » (projet).
+- **Deux identités visuelles** : carte bleu nuit, or et Trajan ; PDF et graphiques gris, bleu et
+  Helvetica.
+- **Bandeau d'aide** de la carte (« Glisser pour se déplacer… ») illisible sur les cases claires
+  (capture de Lyon).
+- Corrigés le 28 octobre avec le pivot : ordre du tableau « Suite » (il se lisait 0, 13, 14… 4, 5),
+  classement pondéré de l'étape 8 retiré (contraire à la décision du 15 octobre).
+- Vérifié sans écart : 473 tests collectés, comme annoncé dans le README.
+
+**À décider avant le lot A** : fond clair (proposé) ou sombre actuel ; Spectral et Inter ou une
+autre paire sous licence OFL ; échelle de note daltonien-compatible à la place du rouge → vert
+(décision du 26 octobre à remplacer).
+
 ## Ce que les études ont établi (9 et 15 octobre)
 
 - **Les besoins des entreprises**, dans l'ordre : de la puissance disponible à une date connue
   (premier critère des gros projets ; zones RTE P1 dès fin 2028, P2 dès 2029) ; du foncier
   viabilisé ; une électricité bas-carbone ; un prix prévisible, qui ne décide que pour les
   électro-intensifs et les data centers ; la connaissance des risques du site.
-- **Persona (recherche du 28 octobre)** : pour des bureaux, le raccordement est rarement un sujet
+- **Persona des bureaux (recherche du 28 octobre, abandonné le même jour pour les projets de 1 à
+  50 MW)** : pour des bureaux, le raccordement est rarement un sujet
   (un local existant équipé d'un Linky s'ouvre en un jour ouvré environ ; un local neuf coûte de
   426 € à 10 000 € d'extension, sources commerciales à confirmer) ; le tarif bleu exige moins de
   10 salariés, 2 M€ de chiffre d'affaires et 36 kVA au plus (fiche CRE d'EDF, juillet 2026). Aucune
@@ -269,8 +415,8 @@ Inondations.
 | 26 oct. | Continuité d'alimentation : jeu d'Enedis, producteur, plutôt que la copie de l'Agence ORE ; colonnes d'années lues dans le schéma du jeu (une de plus par publication) ; comparaison au seuil de 3 % de l'arrêté du 24 décembre 2007 (article 3) et à la médiane des départements publiés la même année ; repère dans la section « Raccordement » de `diagnose`, sans entrer dans le verdict (moyenne départementale, pas la ligne du site) |
 | 26 oct. | Pôles de fret : ports sur les marchandises hors tare de la dernière année publiée (SDES), seuil 5 Mt sur le continent et 0,5 Mt en Corse et outre-mer ; aéroports sur le fret et la poste de la dernière année complète (DGAC), 20 000 t et 3 000 t ; chantiers rail-route de SNCF Réseau sur au moins 2 km de voies de manutention, dit repère de capacité (aucun tonnage publié) ; HAROPA placé au Havre ; ports et aéroports au centre de leur commune ; ports fluviaux écartés (pas de maille port). Carte seulement, sans ligne dans `limites_methodologiques` (réservées aux chiffres de `diagnose`) |
 | 26 oct. | Seeds recréés à chaque `dbt build` (`+full_refresh`) : un seed qui gagne une colonne bloquait le warehouse existant |
-| 28 oct. | Persona : l'entreprise qui ouvre une antenne ou déménage ses bureaux (choix du 16 octobre, besoins étudiés le 28) ; les gros sites industriels restent servis mais ne dictent plus l'ordre des étapes |
-| 28 oct. | MVP élargi au coût des locaux (étape 12) : prix de vente au m² des locaux d'activité par commune (DVF), coût d'achat pour `--surface` ; **pas de loyer** (option A retenue : aucun loyer de bureaux officiel et ouvert, une estimation par rendement serait une hypothèse sans source) ; « non disponible » sans ventes, jamais de chiffre inventé |
+| 28 oct. | **Pivot du persona** : les projets de **1 à 50 MW** (data centers, bornes de recharge, industrie, sites logistiques), modèle de Yottar ; le persona des bureaux est abandonné (le prix de l'électricité, identique partout, ne départage pas leurs villes). L'ordre des étapes suit désormais : puissance et délai, coût complet (TURPE HTB, au-delà de 150 GWh, accise selon l'activité), foncier constructible, risques et eau, desserte. Les projets de plus de 50 MW restent servis |
+| 28 oct. | Prix de vente des locaux d'activité (étape 12, DVF) gardé en information, plus prioritaire ; **pas de loyer** (aucune source officielle et ouverte) ; « non disponible » sans ventes, jamais de chiffre inventé |
 | 28 oct. | DVF : ventes de locaux d'activité d'un seul bien (ni logement, ni plusieurs dispositions), surfaces de 15 à 5 000 m² et prix de 100 à 15 000 €/m² (variables dbt `locaux_*`) ; médiane sur les cinq dernières années de ventes, fiable à partir de 5 ventes (`locaux_min_ventes`), sinon le département ; arrondissements de Paris, Lyon et Marseille ramenés à la commune ; fichiers annuels lus en flux (~100 Mo chacun), le pilote Spark passe à 3 Go (400 000 lignes saturaient 1 Go) ; Bourg-en-Bresse 1 179 €/m², Lyon 3 298, Paris 7 760 |
 | 28 oct. | Commentaires réservés à la logique du code (règle, piège d'une source, raison d'un choix) : plus d'en-tête d'utilité au-dessus de chaque fonction ni de chaque modèle dbt ; code le plus simple possible, en Python, PySpark et dbt |
 | 28 oct. | Consolidation : `essentiel`, `diagnose` et `compare` partagent les mêmes options de projet (`--puissance`, `--conso`, `--ca`, `--va`, `--surface`, `--courbe`) et les mêmes messages d'erreur ; essai de bout en bout après `refresh` complet |
