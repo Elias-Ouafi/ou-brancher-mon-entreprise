@@ -47,7 +47,6 @@ def _env_sans_secrets() -> dict[str, str]:
     return {cle: valeur for cle, valeur in os.environ.items() if not cle.startswith("ECO2MIX_RTE_")}
 
 
-# Reconstruit silver et gold avec leurs tests de données
 def dbt_build(settings: Settings) -> None:
     dbt = shutil.which("dbt", path=str(Path(sys.executable).parent)) or shutil.which("dbt")
     if dbt is None:

@@ -1,4 +1,3 @@
--- Contraintes prospectives du réseau de transport rattachées à un département
 with postes_contraintes as (
     select ouvrage, poste_1, poste_2, poste_3, unnest([poste_1, poste_2, poste_3]) as code_poste
     from {{ ref('contraintes_ouvrages') }}

@@ -1,4 +1,3 @@
--- Prix semestriel de l'électricité des entreprises
 with source as (
     select * from {{ source('bronze', 'eurostat_nrg_pc_205') }}
 ),

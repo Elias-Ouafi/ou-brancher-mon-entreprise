@@ -1,4 +1,3 @@
--- Prix de l'électricité d'une entreprise selon sa tranche de consommation annuelle
 with prix as (
     select
         *,

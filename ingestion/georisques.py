@@ -52,7 +52,6 @@ class GeorisquesError(ExtractionError):
     pass
 
 
-# Exposition d'une adresse à un risque, telle que Géorisques la qualifie
 class Exposition(StrEnum):
     # Risque existant (ou « concerné ») à l'adresse
     EXPOSE = "expose"
@@ -85,7 +84,6 @@ def exposition(statut: str | None) -> Exposition:
     return Exposition.INCONNU
 
 
-# Niveau d'un risque (« faible », « fort ») tiré du libellé Géorisques
 def niveau(statut: str | None) -> str | None:
     if statut and " - " in statut:
         return statut.split(" - ", 1)[1].strip().lower()
@@ -131,7 +129,6 @@ class RisquesSite:
         ]
 
 
-# Rapport Géorisques à l'adresse : la source la plus précise sur les risques
 def lire_rapport(payload: dict[str, Any]) -> RisquesSite:
     risques = []
     for bloc, famille in FAMILLES.items():
@@ -165,7 +162,6 @@ INTENSITES_SISMIQUES = {
 }
 
 
-# Risques de la commune (GASPAR) quand le rapport à l'adresse manque
 def lire_gaspar(payload: dict[str, Any], codes_commune: set[str]) -> list[Risque]:
     communes = payload.get("data")
     if not isinstance(communes, list) or not communes:
@@ -192,7 +188,6 @@ def lire_gaspar(payload: dict[str, Any], codes_commune: set[str]) -> list[Risque
     return risques
 
 
-# Zone de sismicité de la commune (`zonage_sismique`) : « 2 - FAIBLE »
 def lire_zonage(payload: dict[str, Any]) -> Risque | None:
     zones = payload.get("data")
     if not isinstance(zones, list) or not zones:
@@ -215,7 +210,6 @@ def avec_zonage(risques: list[Risque], seisme: Risque) -> list[Risque]:
     return [seisme, *(r for r in risques if r.code != "gaspar_13")]
 
 
-# Client de l'API Géorisques
 class GeorisquesClient:
     def __init__(
         self,
@@ -256,7 +250,6 @@ class GeorisquesClient:
     def rapport(self, *, latitude: float, longitude: float) -> RisquesSite:
         return lire_rapport(self._json(RAPPORT_PATH, latitude=latitude, longitude=longitude))
 
-    # Repli : risques recensés dans la commune du point, et sa zone de sismicité
     def rapport_commune(
         self, *, latitude: float, longitude: float, codes_commune: set[str]
     ) -> RisquesSite:
@@ -291,7 +284,6 @@ class GeorisquesClient:
         return payload
 
 
-# Risques recensés dans la commune d'après l'export GASPAR chargé par `refresh`
 def risques_gaspar(lignes: list[tuple[str, str, str, date]]) -> RisquesSite | None:
     if not lignes:
         return None

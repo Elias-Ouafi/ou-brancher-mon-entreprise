@@ -246,7 +246,6 @@ class DiagnosticIndisponibleError(RuntimeError):
     pass
 
 
-# Warehouse absent ou couche gold incomplète : seul un `refresh` y remédie
 class DonneesAbsentesError(DiagnosticIndisponibleError):
     pass
 
@@ -276,7 +275,6 @@ AGE_MAX_JOURS = 45
 ECART_TOLERE_JOURS = 7
 
 
-# Dernier chargement de chaque source présente dans le bronze, en heure de Paris
 def lire_chargements(connection: duckdb.DuckDBPyConnection) -> dict[str, date]:
     presentes = {
         nom
@@ -296,7 +294,6 @@ def lire_chargements(connection: duckdb.DuckDBPyConnection) -> dict[str, date]:
     return chargements
 
 
-# Date des données sous chaque réponse, avec une alerte si une source a pris du retard
 def ligne_chargements(chargements: dict[str, date], *, aujourd_hui: date | None = None) -> str:
     if not chargements:
         return "Date des données inconnue (warehouse sans source chargée)."
@@ -370,7 +367,6 @@ class ZoneRte:
     distance_km: float
 
 
-# Entreprises raccordées à Enedis dans la commune : le tissu économique déjà branché
 @dataclass(frozen=True, slots=True)
 class EntreprisesCommune:
     annee: int
@@ -385,7 +381,6 @@ class EntreprisesCommune:
     nb_communes_departement: int
 
 
-# Consommation déjà relevée à l'adresse demandée : un raccordement existe sans doute
 @dataclass(frozen=True, slots=True)
 class EntreprisesAdresse:
     annee: int
@@ -458,8 +453,6 @@ class PrixEntreprise:
         return self.conso_mwh is None
 
 
-# Accise au tarif normal (PME et haute puissance) en vigueur, lue dans le seed daté
-# `accise_electricite` : base légale du calcul d'électro-intensité
 @dataclass(frozen=True, slots=True)
 class Accise:
     tarif_eur_mwh: float
@@ -497,7 +490,6 @@ class PartChiffreAffaires:
     part_haut: float | None
 
 
-# Prix de vente des locaux d'activité autour de l'adresse : ce que coûte d'y installer des bureaux
 @dataclass(frozen=True, slots=True)
 class PrixLocaux:
     # `commune`, ou `departement` quand la commune compte trop peu de ventes
@@ -509,7 +501,6 @@ class PrixLocaux:
     derniere_vente: date
 
 
-# Part des clients du département au-delà des seuils de coupure : la fiabilité du réseau local
 @dataclass(frozen=True, slots=True)
 class Continuite:
     derniere_annee: int
@@ -522,7 +513,6 @@ class Continuite:
     depasse_seuil: bool
 
 
-# Plan de prévention en vigueur dans la commune : son règlement s'impose aux constructions
 @dataclass(frozen=True, slots=True)
 class PlanPrevention:
     code_procedure: str
@@ -618,7 +608,6 @@ class Diagnostic:
     def commune_a_des_sites(self) -> bool:
         return bool(self.nb_sites_commune)
 
-    # Poids de l'électricité dans la valeur ajoutée : ouvre ou non les taux réduits d'accise
     @property
     def part_valeur_ajoutee(self) -> PartValeurAjoutee | None:
         p = self.prix
@@ -653,7 +642,6 @@ class Diagnostic:
         )
 
 
-# Rassemble tout ce que le warehouse sait d'une adresse : la base de chaque réponse
 def lire_diagnostic(
     territoire: Territoire,
     *,
@@ -815,7 +803,6 @@ def lire_diagnostic(
     )
 
 
-# Plans de la commune (et de son arrondissement), une fois chacun
 def _plans(connection: duckdb.DuckDBPyConnection, codes: set[str]) -> list[PlanPrevention]:
     resultat = connection.execute(_PLANS_SQL, {"codes": sorted(codes)})
     colonnes = [d[0] for d in resultat.description]
@@ -870,7 +857,6 @@ class Section:
     elements: list[tuple[str, str]]
 
 
-# Commune, département, région et zone : situe l'adresse avant tout chiffre
 def entete(diagnostic: Diagnostic) -> list[str]:
     d = diagnostic
     t = d.territoire
@@ -891,7 +877,6 @@ A_SAVOIR = (
 )
 
 
-# Les deux réponses attendues d'abord : prix moyen et verdict carbone
 def essentiel(diagnostic: Diagnostic) -> Section:
     d = diagnostic
     section = Section("L'essentiel : prix et carbone à cette adresse", [])
@@ -923,6 +908,7 @@ def essentiel(diagnostic: Diagnostic) -> Section:
         ligne = ligne_locaux(locaux, d.surface_m2, d.territoire.commune)
         section.elements.append(("texte", f"Locaux d'activité : {ligne}"))
     section.elements.append(("texte", f"À savoir : {A_SAVOIR}"))
+    section.elements.append(("texte", f"Brancher ici ? {phrase_verdict(verdict(d))}"))
     return section
 
 
@@ -934,7 +920,6 @@ _GRANDS_SECTEURS = {
 }
 
 
-# Ce qu'Enedis relève déjà à l'adresse : un raccordement existe, sa puissance reste inconnue
 def ligne_entreprises_adresse(e: EntreprisesAdresse) -> str:
     secteur = _GRANDS_SECTEURS.get(e.grand_secteur, e.grand_secteur.lower())
     activite = f", {e.libelle_naf2}" if e.libelle_naf2 else ""
@@ -944,7 +929,6 @@ def ligne_entreprises_adresse(e: EntreprisesAdresse) -> str:
     )
 
 
-# Tissu économique déjà branché sur la distribution dans la commune, et le poids de son industrie
 def ligne_entreprises_commune(e: EntreprisesCommune) -> str:
     phrase = (
         f"{e.nb_sites} site(s), {_gwh(e.consommation_gwh)}/an en {e.annee}, dont industrie"
@@ -963,7 +947,6 @@ def ligne_entreprises_commune(e: EntreprisesCommune) -> str:
     return phrase
 
 
-# La consommation réelle du site : volume, pointe, heures creuses, coût et carbone
 def ligne_courbe(b: BilanCourbe) -> str:
     phrase = (
         f"du {b.debut:%d/%m/%Y} au {b.fin:%d/%m/%Y}, {_nombre(b.conso_annuelle_mwh, 1)} MWh"
@@ -983,7 +966,6 @@ def ligne_courbe(b: BilanCourbe) -> str:
     return phrase
 
 
-# Coût du réseau de distribution selon la puissance souscrite : ce que change le raccordement
 def ligne_acheminement(a: Acheminement) -> str:
     source = "votre courbe de charge" if a.profil == PROFIL_COURBE else "puissance constante"
     phrase = (
@@ -1000,7 +982,6 @@ def ligne_acheminement(a: Acheminement) -> str:
     return phrase
 
 
-# Prix de vente au m² des locaux d'activité, et coût d'achat pour la surface cherchée
 def ligne_locaux(p: PrixLocaux, surface_m2: float | None, commune: str) -> str:
     lieu = commune if p.niveau == "commune" else "le département (peu de ventes dans la commune)"
     ligne = (
@@ -1019,8 +1000,6 @@ def ligne_locaux(p: PrixLocaux, surface_m2: float | None, commune: str) -> str:
     return ligne
 
 
-# Électro-intensité au sens fiscal : décide d'un taux d'accise réduit, donc de la facture
-# Coupures du département face au seuil réglementaire et aux autres départements
 def ligne_continuite(c: Continuite) -> str:
     def pct(valeur: float) -> str:
         return f"{_nombre(valeur, 1)} %"
@@ -1107,11 +1086,9 @@ def _prix_court(d: Diagnostic) -> str:
     )
 
 
-# Réponse courte au terminal, terminée par le verdict « brancher ici ? »
 def formater_essentiel(diagnostic: Diagnostic) -> str:
     lignes = [diagnostic.territoire.adresse, *entete(diagnostic), ""]
     lignes += [contenu for _, contenu in essentiel(diagnostic).elements]
-    lignes.append(f"Brancher ici ? {phrase_verdict(verdict(diagnostic))}")
     return "\n".join(lignes)
 
 
@@ -1128,7 +1105,14 @@ class Critere:
     detail: str
 
 
-# Les cinq questions d'un chef d'entreprise avant de signer un bail ou un terrain
+ETATS_CRITERE = {
+    "ok": "favorable",
+    "attention": "à vérifier",
+    "inconnu": "non évalué",
+    "info": "pour information",
+}
+
+
 def verdict(diagnostic: Diagnostic) -> list[Critere]:
     return [
         _critere_raccordement(diagnostic),
@@ -1139,7 +1123,6 @@ def verdict(diagnostic: Diagnostic) -> list[Critere]:
     ]
 
 
-# Qui raccorde (Enedis ou RTE) et, pour RTE, si une zone prioritaire promet de la capacité
 def _critere_raccordement(d: Diagnostic) -> Critere:
     if d.seuil is None:
         return Critere(
@@ -1201,7 +1184,6 @@ def _critere_risques(d: Diagnostic) -> Critere:
     )
 
 
-# Ce que l'on sait des risques sans plan de prévention : à l'adresse, sinon dans la commune
 def _risques_recenses(r: RisquesSite | None) -> str:
     if r is None:
         return "Risques recensés non consultés : à vérifier sur georisques.gouv.fr."
@@ -1232,7 +1214,6 @@ def _plan_court(p: PlanPrevention) -> str:
     return f"{p.libelle_plan} ({familles}{etat})"
 
 
-# Électricité du réseau sous le seuil de la taxonomie européenne, ou non
 def _critere_carbone(d: Diagnostic) -> Critere:
     c = d.carbone
     if c is None:
@@ -1251,7 +1232,6 @@ def _critere_carbone(d: Diagnostic) -> Critere:
     )
 
 
-# Ordre de grandeur de la facture, identique partout en France (péréquation)
 def _critere_facture(d: Diagnostic) -> Critere:
     p = d.prix
     if p is None:
@@ -1279,7 +1259,6 @@ def _critere_facture(d: Diagnostic) -> Critere:
     )
 
 
-# Terrain déjà viabilisé et pré-autorisé le plus proche (sites clés en main France 2030)
 def _critere_foncier(d: Diagnostic) -> Critere:
     site = d.site_cle_en_main
     if site is None:
@@ -1292,7 +1271,6 @@ def _critere_foncier(d: Diagnostic) -> Critere:
     )
 
 
-# Phrase de synthèse : ce qu'il reste à vérifier avant de s'engager
 def phrase_verdict(criteres: list[Critere]) -> str:
     a_verifier = [c.nom.lower() for c in criteres if c.etat == "attention"]
     inconnus = [c.nom.lower() for c in criteres if c.etat == "inconnu"]
@@ -1305,7 +1283,6 @@ def phrase_verdict(criteres: list[Critere]) -> str:
     return phrase + "."
 
 
-# Réponse courte pour un autre programme (`--format json`)
 def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
     d = diagnostic
     t = d.territoire
@@ -1373,26 +1350,20 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
         },
         "limites": {
             code: d.limites[code]
-            for code in (
-                "prix_entreprise",
-                "carbone_territoire",
-                "part_chiffre_affaires",
-                "acheminement_turpe",
-                "part_valeur_ajoutee",
-                "entreprises_enedis",
-                "prix_locaux",
+            for code, present in (
+                ("prix_entreprise", True),
+                ("carbone_territoire", True),
+                ("part_chiffre_affaires", d.part_chiffre_affaires is not None),
+                ("acheminement_turpe", d.acheminement is not None),
+                ("part_valeur_ajoutee", d.part_valeur_ajoutee is not None),
+                ("entreprises_enedis", d.entreprises_adresse is not None),
+                ("prix_locaux", d.prix_locaux is not None),
             )
-            if code in d.limites
-            and (code != "acheminement_turpe" or d.acheminement is not None)
-            and (code != "part_chiffre_affaires" or d.part_chiffre_affaires is not None)
-            and (code != "part_valeur_ajoutee" or d.part_valeur_ajoutee is not None)
-            and (code != "entreprises_enedis" or d.entreprises_adresse is not None)
-            and (code != "prix_locaux" or d.prix_locaux is not None)
+            if present and code in d.limites
         },
     }
 
 
-# Diagnostic complet, section par section, chaque chiffre suivi de sa limite
 def sections(diagnostic: Diagnostic) -> list[Section]:
     d = diagnostic
     resultat: list[Section] = []
@@ -1778,6 +1749,11 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
         texte(s, "Aucune vente de local d'activité recensée dans la commune ni son département.")
     else:
         texte(s, "Non chargé : lancer refresh pour récupérer les ventes DVF.")
+    s = bloc("8. Brancher ici ? Les cinq critères")
+    criteres = verdict(d)
+    for c in criteres:
+        texte(s, f"{c.nom} ({ETATS_CRITERE[c.etat]}) : {c.valeur}. {c.detail}")
+    texte(s, phrase_verdict(criteres))
     return resultat
 
 
@@ -1838,7 +1814,6 @@ def _gaspar_local(
     return replace(site, risques=avec_zonage(site.risques, seisme))
 
 
-# Risques de la commune sans appeler Géorisques : assez pour le verdict rapide de `essentiel`
 def avec_risques_locaux(diagnostic: Diagnostic, *, settings: Settings | None = None) -> Diagnostic:
     if diagnostic.risques is not None:
         return diagnostic
@@ -1868,7 +1843,6 @@ def completer_risques(diagnostic: Diagnostic, *, settings: Settings | None = Non
     return replace(diagnostic, risques=risques)
 
 
-# Diagnostic complet au terminal
 def formater_diagnostic(diagnostic: Diagnostic) -> str:
     lignes = [f"DIAGNOSTIC D'IMPLANTATION — {diagnostic.territoire.adresse}"]
     lignes += entete(diagnostic)
@@ -1881,7 +1855,6 @@ def formater_diagnostic(diagnostic: Diagnostic) -> str:
     return "\n".join(lignes)
 
 
-# Diagnostic complet pour un autre programme, dates en ISO
 def diagnostic_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
 
     def convertir(valeur: Any) -> Any:
@@ -1899,6 +1872,11 @@ def diagnostic_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
     contenu["part_chiffre_affaires"] = None if part is None else asdict(part)
     va = diagnostic.part_valeur_ajoutee
     contenu["part_valeur_ajoutee"] = None if va is None else asdict(va)
+    criteres = verdict(diagnostic)
+    contenu["verdict"] = {
+        "phrase": phrase_verdict(criteres),
+        "criteres": [asdict(c) for c in criteres],
+    }
     return convertir(contenu)
 
 
@@ -1908,7 +1886,6 @@ _MOIS = [
 ]  # fmt: skip
 
 
-# Hors continent, l'heure de consommation change le carbone : à quelle heure décaler l'activité
 def heures_carbone(c: Carbone) -> str | None:
     if not c.profil_horaire:
         return None

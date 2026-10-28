@@ -98,14 +98,12 @@ def telecharger_geojson(
     return path
 
 
-# Dernier contour téléchargé, pour construire la carte sans réseau
 def dernier_geojson(jeu: str, settings: Settings | None = None) -> Path | None:
     settings = settings or get_settings()
     fichiers = sorted((Path(settings.bronze_dir) / jeu).glob("ingest_date=*/*.geojson*"))
     return fichiers[-1] if fichiers else None
 
 
-# Client de l'altimétrie IGN : le relief de la carte
 class AltimetrieClient:
     def __init__(self, settings: Settings | None = None, *, client: httpx.Client | None = None):
         self.settings = settings or get_settings()
@@ -163,7 +161,6 @@ def lire_altitudes(settings: Settings | None = None) -> dict[tuple[float, float]
     return altitudes
 
 
-# Complète le cache des altitudes : seuls les points absents du bronze sont demandés
 def completer_altitudes(
     points: Iterable[tuple[float, float]],
     *,
@@ -202,7 +199,6 @@ def completer_altitudes(
     return altitudes
 
 
-# Contours, terres et relief de la carte, en une étape du refresh
 def run_geo_ingestion(*, settings: Settings | None = None, run_id: str = "manual") -> int:
     settings = settings or get_settings()
     contours = telecharger_geojson(CONTOURS_JEU, settings.contours_url, settings=settings)

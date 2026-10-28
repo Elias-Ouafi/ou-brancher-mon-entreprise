@@ -55,7 +55,6 @@ def _lire_csv(archive: zipfile.ZipFile, nom: str, colonnes: set[str]) -> csv.Dic
     return lecteur
 
 
-# Risques par commune lus dans l'archive GASPAR : les risques sans dépendre de l'API
 def lire_export(contenu: bytes) -> list[dict[str, Any]]:
     with _ouvrir(contenu) as archive:
         fichiers = [(m, n) for n in archive.namelist() if (m := _FICHIER_RISQUES.search(n))]
@@ -76,8 +75,6 @@ def lire_export(contenu: bytes) -> list[dict[str, Any]]:
         ]
 
 
-# Plans de prévention par commune : ce qui contraint vraiment une construction, à la différence
-# des risques simplement recensés ; dernier fichier de chaque type (PPRN, PPRT, PPRM)
 def lire_plans(contenu: bytes) -> list[dict[str, Any]]:
     with _ouvrir(contenu) as archive:
         derniers: dict[str, tuple[str, str]] = {}
@@ -111,7 +108,6 @@ def lire_plans(contenu: bytes) -> list[dict[str, Any]]:
         return list(plans.values())
 
 
-# Archive GASPAR complète, relue à chaque refresh : risques recensés et plans de prévention
 def telecharger_archive(
     *, settings: Settings | None = None, client: httpx.Client | None = None
 ) -> bytes:

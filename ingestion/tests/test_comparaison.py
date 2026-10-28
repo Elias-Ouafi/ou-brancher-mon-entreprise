@@ -71,7 +71,12 @@ def test_rows_depend_on_the_address_only(medallion_db: Path) -> None:
         "Zone prioritaire RTE",
         "Site clé en main (France 2030)",
         "Électricité décarbonée",
+        "Locaux d'activité (vente DVF)",
+        "Brancher ici ?",
     ]
+    lyon, corse = _valeurs(tableau, "Brancher ici ?")
+    assert lyon.startswith("Rien de bloquant") or lyon.startswith("À vérifier")
+    assert "carbone" in corse
     assert _valeurs(tableau, "Contraintes RTE (3-5 ans)") == [
         "3, dont 2 plus de 75 fois par an",
         "réseau hors RTE",
@@ -241,8 +246,18 @@ def test_compare_command_writes_a_spreadsheet(
 
     assert code == 0
     assert sortie.read_bytes().startswith(b"\xef\xbb\xbf")
+    assert "Brancher ici ?" in sortie.read_text(encoding="utf-8-sig")
     entete = sortie.read_text(encoding="utf-8-sig").splitlines()[0]
     assert entete == "indicateur;10 Rue A 69003 Lyon;1 Cours B 20000 Ajaccio;limite"
+
+
+def test_compare_takes_the_same_project_options_as_diagnose() -> None:
+    args = cli.build_parser().parse_args(
+        ["compare", "--adresse", "A", "--adresse", "B", "--conso", "350", "--ca", "2 000 000",
+         "--va", "800000", "--surface", "400", "--courbe", "courbe.csv"]
+    )  # fmt: skip
+    assert (args.conso, args.ca, args.va, args.surface) == (350, 2_000_000, 800_000, 400)
+    assert args.courbe == "courbe.csv"
 
 
 @pytest.mark.parametrize("nb", [1, 7])

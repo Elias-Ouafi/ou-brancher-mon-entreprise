@@ -1,4 +1,3 @@
--- Entreprises déjà raccordées à une adresse, dernière année publiée : signe d'un raccordement existant
 with derniere as (
     select max(annee) as annee from {{ ref('conso_entreprises_adresse') }}
 ),
