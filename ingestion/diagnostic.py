@@ -231,6 +231,17 @@ where code_departement = $departement
 """
 
 
+# Prix de la commune si elle compte assez de ventes, sinon du département
+_LOCAUX_SQL = """
+select niveau, nb_ventes, prix_m2_median, prix_m2_q1, prix_m2_q3, derniere_vente
+from gold.fct_prix_locaux
+where (niveau = 'commune' and code_zone = $commune and fiable)
+    or (niveau = 'departement' and code_zone = $departement)
+order by niveau = 'commune' desc
+limit 1
+"""
+
+
 class DiagnosticIndisponibleError(RuntimeError):
     pass
 
@@ -257,6 +268,7 @@ SOURCES_CHARGEES: dict[str, str] = {
     "gaspar_plans": "plans de prévention GASPAR",
     "zonage_sismique": "zonage sismique",
     "enedis_continuite_alimentation": "continuité Enedis",
+    "ventes_locaux": "ventes de locaux DVF",
 }
 # Au-delà, une source n'a pas été rechargée depuis plus d'un cycle mensuel de `refresh`
 AGE_MAX_JOURS = 45
@@ -485,6 +497,18 @@ class PartChiffreAffaires:
     part_haut: float | None
 
 
+# Prix de vente des locaux d'activité autour de l'adresse : ce que coûte d'y installer des bureaux
+@dataclass(frozen=True, slots=True)
+class PrixLocaux:
+    # `commune`, ou `departement` quand la commune compte trop peu de ventes
+    niveau: str
+    nb_ventes: int
+    prix_m2_median: float
+    prix_m2_q1: float
+    prix_m2_q3: float
+    derniere_vente: date
+
+
 # Part des clients du département au-delà des seuils de coupure : la fiabilité du réseau local
 @dataclass(frozen=True, slots=True)
 class Continuite:
@@ -586,6 +610,9 @@ class Diagnostic:
     acheminement: Acheminement | None = None
     # Qualité de fourniture du département ; `None` hors Enedis ou si la source n'est pas chargée
     continuite: Continuite | None = None
+    # Prix de vente des locaux d'activité (DVF) et surface cherchée avec `--surface`
+    prix_locaux: PrixLocaux | None = None
+    surface_m2: float | None = None
 
     @property
     def commune_a_des_sites(self) -> bool:
@@ -634,6 +661,7 @@ def lire_diagnostic(
     conso_mwh: float | None = None,
     ca_eur: float | None = None,
     va_eur: float | None = None,
+    surface_m2: float | None = None,
     courbe: Courbe | None = None,
     settings: Settings | None = None,
     database: Path | None = None,
@@ -738,6 +766,13 @@ def lire_diagnostic(
                 if "enedis_continuite_alimentation" in chargements
                 else None
             )
+            prix_locaux = (
+                _une_ligne(
+                    connection, _LOCAUX_SQL, {"commune": commune, "departement": departement}
+                )
+                if "ventes_locaux" in chargements
+                else None
+            )
     except duckdb.CatalogException as error:
         raise DonneesAbsentesError(
             f"couche gold incomplete : {str(error).splitlines()[0]}"
@@ -774,6 +809,8 @@ def lire_diagnostic(
         else EntreprisesAdresse(**entreprises_adresse),
         acheminement=acheminement,
         continuite=None if continuite is None else Continuite(**continuite),
+        prix_locaux=None if prix_locaux is None else PrixLocaux(**prix_locaux),
+        surface_m2=surface_m2,
         **ligne,
     )
 
@@ -882,6 +919,9 @@ def essentiel(diagnostic: Diagnostic) -> Section:
         section.elements.append(("texte", f"Part de la valeur ajoutée : {_part_va(va)}"))
     if d.courbe is not None:
         section.elements.append(("texte", f"Votre courbe de charge : {ligne_courbe(d.courbe)}"))
+    if (locaux := d.prix_locaux) is not None:
+        ligne = ligne_locaux(locaux, d.surface_m2, d.territoire.commune)
+        section.elements.append(("texte", f"Locaux d'activité : {ligne}"))
     section.elements.append(("texte", f"À savoir : {A_SAVOIR}"))
     return section
 
@@ -958,6 +998,25 @@ def ligne_acheminement(a: Acheminement) -> str:
             " seeds turpe_soutirage et turpe_gestion_comptage"
         )
     return phrase
+
+
+# Prix de vente au m² des locaux d'activité, et coût d'achat pour la surface cherchée
+def ligne_locaux(p: PrixLocaux, surface_m2: float | None, commune: str) -> str:
+    lieu = commune if p.niveau == "commune" else "le département (peu de ventes dans la commune)"
+    ligne = (
+        f"{_nombre(p.prix_m2_median)} €/m² à la vente"
+        f"{' à ' if p.niveau == 'commune' else ' dans '}{lieu}"
+        f" (médiane de {_nombre(p.nb_ventes)} ventes, quartiles {_nombre(p.prix_m2_q1)} à"
+        f" {_nombre(p.prix_m2_q3)} ; dernière vente en {p.derniere_vente:%m/%Y} ; DVF)"
+    )
+    if surface_m2:
+        bas, haut = p.prix_m2_q1 * surface_m2, p.prix_m2_q3 * surface_m2
+        ligne += (
+            f". Pour {_nombre(surface_m2)} m² : environ"
+            f" {_euros_arrondis(p.prix_m2_median * surface_m2)} à l'achat"
+            f" (de {_euros_arrondis(bas)} à {_euros_arrondis(haut)})"
+        )
+    return ligne
 
 
 # Électro-intensité au sens fiscal : décide d'un taux d'accise réduit, donc de la facture
@@ -1302,6 +1361,9 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
         if d.entreprises_adresse is None
         else asdict(d.entreprises_adresse),
         "courbe": None if d.courbe is None else asdict(d.courbe),
+        "locaux": None
+        if d.prix_locaux is None
+        else {**asdict(d.prix_locaux), "surface_m2": d.surface_m2, "source": "DVF (DGFiP)"},
         "plans_prevention": None
         if d.plans_prevention is None
         else [asdict(p) for p in d.plans_prevention],
@@ -1318,12 +1380,14 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
                 "acheminement_turpe",
                 "part_valeur_ajoutee",
                 "entreprises_enedis",
+                "prix_locaux",
             )
             if code in d.limites
             and (code != "acheminement_turpe" or d.acheminement is not None)
             and (code != "part_chiffre_affaires" or d.part_chiffre_affaires is not None)
             and (code != "part_valeur_ajoutee" or d.part_valeur_ajoutee is not None)
             and (code != "entreprises_enedis" or d.entreprises_adresse is not None)
+            and (code != "prix_locaux" or d.prix_locaux is not None)
         },
     }
 
@@ -1706,6 +1770,14 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
         limite(s, "risques_site")
     if d.risques is not None and any(r.code == "seisme" for r in d.risques.risques):
         limite(s, "zonage_sismique")
+    s = bloc("7. Prix des locaux d'activité (ventes DVF)")
+    if d.prix_locaux is not None:
+        texte(s, ligne_locaux(d.prix_locaux, d.surface_m2, d.territoire.commune))
+        limite(s, "prix_locaux")
+    elif "ventes_locaux" in d.chargements:
+        texte(s, "Aucune vente de local d'activité recensée dans la commune ni son département.")
+    else:
+        texte(s, "Non chargé : lancer refresh pour récupérer les ventes DVF.")
     return resultat
 
 
