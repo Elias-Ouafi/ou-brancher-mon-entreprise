@@ -120,6 +120,24 @@ def _parse_ca(value: str) -> float:
     return ca
 
 
+def _parse_surface(value: str) -> float:
+    try:
+        surface = float(value.replace(",", ".").replace(" ", ""))
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"surface invalide : {value!r} (m²)") from None
+    if surface <= 0:
+        raise argparse.ArgumentTypeError("la surface doit être strictement positive")
+    return surface
+
+
+def _add_surface_option(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--surface",
+        type=_parse_surface,
+        help="surface des locaux cherchés en m² : coût d'achat d'après les ventes DVF",
+    )
+
+
 def _add_ca_option(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--ca",
@@ -253,6 +271,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="consommation annuelle en MWh (défaut : tranche des petites entreprises)",
     )
     _add_ca_option(essentiel)
+    _add_surface_option(essentiel)
     essentiel.add_argument(
         "--format", choices=["texte", "json"], default="texte", help="texte ou json"
     )
@@ -271,6 +290,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="consommation annuelle en MWh (ex. 350) : prix de la tranche Eurostat",
     )
     _add_ca_option(diagnose)
+    _add_surface_option(diagnose)
     diagnose.add_argument(
         "--format",
         choices=["texte", "md", "pdf", "json"],
@@ -472,6 +492,7 @@ def main(argv: list[str] | None = None) -> int:
                     conso_mwh=args.conso,
                     ca_eur=args.ca,
                     va_eur=args.va,
+                    surface_m2=args.surface,
                     courbe=_lire_courbe(args.courbe),
                     settings=settings,
                 )
@@ -518,6 +539,7 @@ def main(argv: list[str] | None = None) -> int:
                     conso_mwh=args.conso,
                     ca_eur=args.ca,
                     va_eur=args.va,
+                    surface_m2=args.surface,
                     courbe=_lire_courbe(args.courbe),
                     settings=settings,
                 )

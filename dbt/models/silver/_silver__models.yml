@@ -3,6 +3,15 @@ version: 2
 # Couche silver : données nettoyées, typées et conformes, sans règle métier.
 # Une ligne = une mesure réelle ; la qualité et le pas de temps sont explicites.
 models:
+  - name: ventes_locaux
+    description: >
+      Ventes de locaux d'activité seuls, avec prix au m² ; les arrondissements de Paris, Lyon et
+      Marseille sont ramenés à leur commune.
+    columns:
+      - name: id_mutation
+        data_tests: [unique, not_null]
+      - name: prix_m2
+        data_tests: [not_null]
   - name: national_tr
     description: Temps réel nettoyé (lignes « à blanc » écartées), pas de 15 min.
     columns:

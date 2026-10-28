@@ -7,3 +7,7 @@
 # application abonnée à « Tempo Like Supply Contract ».
 ECO2MIX_RTE_CLIENT_ID=
 ECO2MIX_RTE_CLIENT_SECRET=
+
+# API RTE (signal Ecowatt) : application Ecowatt, distincte de celle de Tempo.
+ECO2MIX_ECOWATT_CLIENT_ID=
+ECO2MIX_ECOWATT_CLIENT_SECRET=

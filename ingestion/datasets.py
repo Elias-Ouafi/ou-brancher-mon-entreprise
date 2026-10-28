@@ -433,6 +433,28 @@ CHANTIERS_RAIL_ROUTE = DatasetSpec(
     description="Chantiers de transport combiné rail-route du réseau ferré national (SNCF Réseau)",
 )
 
+# Ventes de locaux industriels, commerciaux ou assimilés (DVF), une ligne par mutation
+VENTES_LOCAUX = DatasetSpec(
+    dataset_id="ventes-locaux",
+    keys=(code("id_mutation"),),
+    attributes=(
+        period("date_mutation"),
+        label("nature_mutation"),
+        code("code_commune"),
+        code("code_departement"),
+    ),
+    measures=measures(
+        "valeur_fonciere",
+        "surface_bati_m2",
+        "nb_locaux_activite",
+        "nb_locaux_habitation",
+        "nb_dispositions",
+        "latitude",
+        "longitude",
+    ),
+    description="Ventes de locaux d'activité par mutation (DVF, DGFiP)",
+)
+
 EDF_SEI_PRODUCTION = DatasetSpec(
     dataset_id="edf-sei-production",
     keys=(code("territoire"), instant("date_heure")),
@@ -521,6 +543,7 @@ BRONZE_SPECS: tuple[DatasetSpec, ...] = (
     EMBER_INTENSITE_CARBONE,
     ENEDIS_CONSO_ENTREPRISES,
     CONTINUITE_ALIMENTATION,
+    VENTES_LOCAUX,
     *TERRITORIAL_SPECS,
 )
 

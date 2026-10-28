@@ -422,6 +422,26 @@ models:
               arguments:
                 min_value: 1
                 max_value: 5
+  - name: fct_prix_locaux
+    description: >
+      Prix de vente au m² des locaux d'activité (DVF) sur les cinq dernières années de ventes :
+      médiane et quartiles par commune et par département. `fiable` dit si la zone compte assez
+      de ventes (variable `locaux_min_ventes`) ; sinon l'appelant se replie sur le département.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [niveau, code_zone]
+    columns:
+      - name: niveau
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [commune, departement]
+      - name: prix_m2_median
+        data_tests: [not_null]
+      - name: nb_ventes
+        data_tests: [not_null]
   - name: fct_continuite_departement
     description: >
       Qualité de fourniture par département desservi par Enedis : part des clients au-delà des
