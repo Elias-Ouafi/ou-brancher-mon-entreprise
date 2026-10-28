@@ -1,4 +1,3 @@
--- Contrôle de la méthode des scénarios sur le passé
 select
     tranche,
     rang_origine,

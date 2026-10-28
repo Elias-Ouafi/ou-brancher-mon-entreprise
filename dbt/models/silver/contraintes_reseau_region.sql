@@ -1,4 +1,3 @@
--- Contraintes d'évacuation du réseau de transport par région (vision RTE)
 select
     region.code_insee_region,
     source.region as libelle_publie,

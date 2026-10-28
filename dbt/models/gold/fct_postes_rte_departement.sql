@@ -1,4 +1,3 @@
--- Postes électriques RTE par département et par domaine de tension
 select
     departement.code_departement,
     count(postes.code_poste) filter (where postes.est_en_exploitation) as nb_postes,

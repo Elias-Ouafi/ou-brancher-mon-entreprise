@@ -1,4 +1,3 @@
--- Tension du réseau régional : une ligne par région du référentiel
 with mensuel as (
     select * from {{ ref('equilibre_regional_mensuel') }}
 ),

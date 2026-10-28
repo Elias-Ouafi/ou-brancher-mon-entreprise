@@ -53,7 +53,6 @@ def _lignes_csv(blocs: Iterable[bytes]) -> Iterator[dict[str, str]]:
     yield from lecteur
 
 
-# Découpe un flux de morceaux de texte en lignes sans tout charger en mémoire
 def _en_lignes(morceaux: Iterable[str]) -> Iterator[str]:
     reste = ""
     for morceau in morceaux:
@@ -127,7 +126,6 @@ def _telecharger_annee(
     return _retrying(settings)(lire)
 
 
-# Prix de vente des locaux d'activité sur les dernières années publiées (DVF, DGFiP)
 def telecharger_ventes_locaux(
     *,
     settings: Settings | None = None,

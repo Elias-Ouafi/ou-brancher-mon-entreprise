@@ -139,7 +139,6 @@ def _paris(value: datetime) -> datetime:
     return value.replace(tzinfo=PARIS_TZ) if value.tzinfo is None else value.astimezone(PARIS_TZ)
 
 
-# Données d'un bilan mensuel lues dans le warehouse
 def collect(
     connection: duckdb.DuckDBPyConnection,
     mois: date,

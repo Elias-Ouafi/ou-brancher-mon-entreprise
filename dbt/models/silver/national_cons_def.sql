@@ -1,4 +1,3 @@
--- Consolidé/définitif nettoyé : une ligne par demi-heure mesurée
 select
     date_heure,
     {{ qualite_depuis_nature('nature') }} as qualite,

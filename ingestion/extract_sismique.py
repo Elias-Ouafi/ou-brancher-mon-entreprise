@@ -40,7 +40,6 @@ def _polygones(geometrie: dict[str, Any]) -> list[list[list[list[float]]]]:
     ]
 
 
-# Une page WFS en lignes du bronze : zone, libellé, polygones et leur emprise
 def lire_page(payload: dict[str, Any]) -> list[dict[str, Any]]:
     lignes = []
     for feature in payload.get("features") or []:
@@ -65,7 +64,6 @@ def lire_page(payload: dict[str, Any]) -> list[dict[str, Any]]:
     return lignes
 
 
-# Toute la couche, page par page : la zone réglementaire de chaque point du territoire
 def telecharger_zonage(
     *, settings: Settings | None = None, client: httpx.Client | None = None
 ) -> list[dict[str, Any]]:

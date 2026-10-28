@@ -1,4 +1,3 @@
--- Consommation annuelle des entreprises raccordées à Enedis, par adresse et secteur
 select
     cast(source.annee as integer) as annee,
     source.code_commune as code_insee_commune,

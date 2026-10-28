@@ -29,8 +29,6 @@ class EmberError(ExtractionError):
     pass
 
 
-# Intensité carbone annuelle de chaque pays de l'UE, en cycle de vie comme le facteur ADEME :
-# compare une implantation à l'étranger avec la France sur la même base
 def lire_csv(contenu: bytes) -> list[dict[str, Any]]:
     lecteur = csv.DictReader(io.StringIO(contenu.decode("utf-8-sig")))
     if manquantes := _COLONNES - set(lecteur.fieldnames or ()):
@@ -51,7 +49,6 @@ def lire_csv(contenu: bytes) -> list[dict[str, Any]]:
     ]
 
 
-# Fichier européen d'Ember (CC BY 4.0), moins d'un mégaoctet : relu à chaque refresh
 def telecharger_intensites(
     *, settings: Settings | None = None, client: httpx.Client | None = None
 ) -> list[dict[str, Any]]:

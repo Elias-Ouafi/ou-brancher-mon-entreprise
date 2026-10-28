@@ -46,7 +46,6 @@ class RetryableStatusError(ExtractionError):
         self.status_code = status_code
 
 
-# Compteur d'appels HTTP, pour suivre la consommation du quota mensuel
 class ApiCallCounter:
     REMAINING_HEADER = "X-RateLimit-dataset-Remaining"
     LIMIT_HEADER = "X-RateLimit-dataset-Limit"
@@ -119,7 +118,6 @@ class ExtractionWindow:
         return f"[{self.start.isoformat()} -> {self.end.isoformat()})"
 
 
-# Client de l'API ODRÉ (éCO2mix et jeux RTE), avec reprise sur erreur
 class OdreClient:
     def __init__(
         self,

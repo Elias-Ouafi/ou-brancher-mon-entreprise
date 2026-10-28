@@ -34,7 +34,7 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 | Courbe de charge Enedis (`--courbe`) : consommation, pointe, heures creuses, coût et carbone réels | `ingestion/courbe.py` |
 | Diagnostic complet : industrie, réseau, zone RTE, site clé en main, risques | `diagnose`, `compare` |
 | Entreprises raccordées à Enedis (2025) : volume, industrie et premier secteur NAF de la commune, rang dans le département ; consommation déjà relevée à l'adresse (« Déjà raccordé ici ») | `fct_conso_entreprises_commune`, `fct_conso_entreprises_adresse`, seed `dim_naf2` |
-| Verdict « brancher ici ? » en cinq critères (raccordement, risques, carbone, facture, foncier) | `verdict`, `phrase_verdict` |
+| Verdict « brancher ici ? » en cinq critères (raccordement, risques, carbone, facture, foncier), dans `essentiel`, `diagnose`, `compare` et sur la carte | `verdict`, `phrase_verdict` |
 | Carte 3D épurée autour du verdict : vue « Raccorder » par défaut, adresse reliée à la zone RTE utile et au site clé en main ; épinglée par `essentiel` et `diagnose` (seule l'épingle bouge si les données n'ont pas changé) | `carte`, `reporting/carte.py` |
 | Une carte par système électrique (métropole et Corse, chaque DROM), ouverte sur celle de l'adresse ; deux vues : « Raccorder », cases notées du rouge au blanc puis au vert, et « Territoire », paysage réel (mer bleue, verdure, relief IGN) avec carbone et prix moyen dans l'encart ; dans les deux vues, 95 pôles de production du registre national en maquettes par filière (réacteurs et tours, barrage-voûte et retenue, cheminée et cuves), la plus grosse sur les deux tiers de la case, et les sites clés en main en maquette (dalle, hangar, bureaux, mât au drapeau doré), nommés au survol | `ingestion/hexagones.py`, `fct_sites_production` |
 | Grands pôles de fret dans les deux vues de la carte, en maquettes (port à portique, aéroport et avion cargo, chantier rail-route) : ports d'au moins 5 Mt de marchandises hors tare (0,5 Mt en Corse et outre-mer), aéroports d'au moins 20 000 t de fret (3 000 t), chantiers SNCF Réseau d'au moins 2 km de voies ; 34 pôles en 2025 | `ingestion/extract_fret.py`, `fct_poles_fret`, seeds `dim_ports_fret` et `dim_aeroports_fret` |
@@ -70,10 +70,11 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 
 **MVP élargi au persona (28 octobre)** : l'étape 12 (prix des locaux) vient avant les autres ; le MVP
 du 16 octobre (prix moyen d'électricité et verdict carbone) reste atteint, il s'y ajoute le coût des
-locaux, premier critère de ce persona qu'il manque. Les écarts relevés le 28 octobre, à traiter avec
-elle : le verdict « Brancher ici ? » est absent de `diagnose` et de `compare` ; `compare` n'accepte
-ni `--courbe`, ni `--ca`, ni `--va` ; le profil « bureau 36 kVA » du seed convient à ce persona
-(l'étape 10.5 ne concerne que les gros sites).
+locaux, premier critère de ce persona qu'il manque. Les écarts relevés le 28 octobre sont comblés le
+même jour (consolidation) : le verdict « Brancher ici ? » termine `diagnose` (section 8, critère par
+critère) et `compare` (une ligne par adresse, avec le prix des locaux) ; `compare` prend les mêmes
+options que `diagnose`. Le profil « bureau 36 kVA » du seed convient à ce persona (l'étape 10.5 ne
+concerne que les gros sites).
 
 Étape 9 (maquettes 3D, carte à deux vues) et sources 10.1 (Enedis par adresse), 10.2 (grille
 TURPE 7), 10.4 (zonage sismique), 10.3 (continuité d'alimentation) et 11 (pôles de fret) faites du
@@ -85,7 +86,7 @@ n'est cochée qu'après ruff, pytest (dont `dbt build`) et un essai réel :
 | ~~1~~ | **Fait le 26 octobre.** **10.2** Grille TURPE 7 HTA-BT en seed daté, coût d'acheminement selon le domaine de tension dans `essentiel` et `diagnose` | Seule part de la facture qui dépend du raccordement | — |
 | ~~2~~ | **Fait le 26 octobre.** **10.4** Zonage sismique réglementaire à l'adresse | Comble le trou laissé par la coupure de l'API Géorisques | — |
 | ~~3~~ | **Fait le 26 octobre.** **10.3** Continuité d'alimentation par département (Enedis, repris par l'Agence ORE) | Repère « qualité de fourniture » dans `diagnose` ; client data-fair déjà en place | — |
-| ~~0~~ | **Fait le 28 octobre (prix de vente).** **12** Prix des locaux : prix de vente au m² des locaux d'activité par commune (DVF, 5 ans), coût d'achat pour une surface donnée (`--surface`) dans `essentiel` et `diagnose` (section 7) ; **reste** la colonne de `compare` ; pas de loyer tant qu'aucune source officielle n'existe (décision du 28 octobre), voir « Prix des locaux » ci-dessous | Premier critère de ce persona après les transports | — |
+| ~~0~~ | **Fait le 28 octobre (prix de vente).** **12** Prix des locaux : prix de vente au m² des locaux d'activité par commune (DVF, 5 ans), coût d'achat pour une surface donnée (`--surface`) dans `essentiel`, `diagnose` (section 7) et `compare` ; pas de loyer tant qu'aucune source officielle n'existe (décision du 28 octobre), voir « Prix des locaux » ci-dessous | Premier critère de ce persona après les transports | — |
 | 13 | **Accessibilité** : temps de trajet voiture vers autoroute, gare et aéroport par le calcul d'itinéraire de la Géoplateforme (`bdtopo-osrm`, 5 requêtes/s) ; isochrone 30 et 45 min | Critère n° 1 du persona (transports : 82 % des dirigeants) | pas de profil poids lourd dans la Géoplateforme ; paramètres de l'isochrone à lire |
 | 14 | **Zonage d'urbanisme** à l'adresse (API Carto, module Géoportail de l'Urbanisme) | Évite de recommander un terrain où l'activité est interdite | couverture variable selon les communes ; règlement écrit à lire par un humain |
 | 15 | **Risques complémentaires** (argiles, cavités, inondation à l'adresse) et **ICPE / sols pollués** voisins (Géorisques) | Complète les plans de prévention déjà chargés | endpoints exacts à relire (documentation en erreur le 28 octobre) ; ICPE sans le régime de déclaration |
@@ -241,7 +242,6 @@ Inondations.
 | 24 oct. | Risques : rapport Géorisques à l'adresse d'abord, puis export GASPAR local (maille commune), puis API commune |
 | 24 oct. | Critère risques : « attention » seulement si un plan de prévention (PPRN, PPRT, PPRM) approuvé, anticipé, prescrit ou prorogé couvre la commune (export GASPAR, plans caducs écartés) ; sinon « info » avec les risques recensés ; « inconnu » si les plans ne sont pas chargés |
 | 24 oct. | Chaque sortie donne la date de chargement de ses sources ; au-delà de 45 jours, elle demande un `refresh` |
-| 24 oct. | Commentaires : une ligne par fonction sur son but et son intérêt métier ; code simple, Python d'abord |
 | 24 oct. | Une étape n'est validée qu'après un test complet : ruff, pytest (dont `dbt build`), essai réel |
 | 24 oct. | `--va` : électro-intensité = consommation × accise au tarif normal (26,58 €/MWh au 1er février 2026) ÷ valeur ajoutée, paliers 0,5 %, 3,375 % et 6,75 % (CIBS L312-65, L312-71) ; montant du taux réduit non chiffré |
 | 24 oct. | `--courbe` : export Enedis lu en Python à la demande, jamais stocké ; horodate = fin du pas ; tient lieu de `--conso` et `--puissance` s'ils manquent ; coût au barème HP/HC en vigueur, seulement jusqu'à 36 kW |
@@ -272,6 +272,8 @@ Inondations.
 | 28 oct. | Persona : l'entreprise qui ouvre une antenne ou déménage ses bureaux (choix du 16 octobre, besoins étudiés le 28) ; les gros sites industriels restent servis mais ne dictent plus l'ordre des étapes |
 | 28 oct. | MVP élargi au coût des locaux (étape 12) : prix de vente au m² des locaux d'activité par commune (DVF), coût d'achat pour `--surface` ; **pas de loyer** (option A retenue : aucun loyer de bureaux officiel et ouvert, une estimation par rendement serait une hypothèse sans source) ; « non disponible » sans ventes, jamais de chiffre inventé |
 | 28 oct. | DVF : ventes de locaux d'activité d'un seul bien (ni logement, ni plusieurs dispositions), surfaces de 15 à 5 000 m² et prix de 100 à 15 000 €/m² (variables dbt `locaux_*`) ; médiane sur les cinq dernières années de ventes, fiable à partir de 5 ventes (`locaux_min_ventes`), sinon le département ; arrondissements de Paris, Lyon et Marseille ramenés à la commune ; fichiers annuels lus en flux (~100 Mo chacun), le pilote Spark passe à 3 Go (400 000 lignes saturaient 1 Go) ; Bourg-en-Bresse 1 179 €/m², Lyon 3 298, Paris 7 760 |
+| 28 oct. | Commentaires réservés à la logique du code (règle, piège d'une source, raison d'un choix) : plus d'en-tête d'utilité au-dessus de chaque fonction ni de chaque modèle dbt ; code le plus simple possible, en Python, PySpark et dbt |
+| 28 oct. | Consolidation : `essentiel`, `diagnose` et `compare` partagent les mêmes options de projet (`--puissance`, `--conso`, `--ca`, `--va`, `--surface`, `--courbe`) et les mêmes messages d'erreur ; essai de bout en bout après `refresh` complet |
 | 28 oct. | Identifiants de l'application Ecowatt dans `identifiants.local.txt` (ignoré par git), sous `ECO2MIX_ECOWATT_*`, distincts de ceux de Tempo ; le secret a transité par la conversation : à régénérer si elle est partagée |
 
 ## Écarté

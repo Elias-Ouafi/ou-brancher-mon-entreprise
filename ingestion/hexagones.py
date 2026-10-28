@@ -132,7 +132,6 @@ def _anneaux(geometrie: dict) -> tuple[Anneau, ...]:
     )
 
 
-# Départements lus dans les contours Etalab
 def lire_contours(path: Path) -> list[Departement]:
     return [
         Departement(
@@ -145,7 +144,6 @@ def lire_contours(path: Path) -> list[Departement]:
     ]
 
 
-# Côtes du monde (Natural Earth) : la carte ne pose pas de case en mer
 def lire_terres(path: Path) -> list[Anneau]:
     return [anneau for feature in _lire_geojson(path) for anneau in _anneaux(feature["geometry"])]
 
@@ -300,7 +298,6 @@ def _grille(
     return grille
 
 
-# Une carte par système électrique : métropole et Corse, puis chaque département d'outre-mer
 def construire_grilles(
     departements: list[Departement],
     *,
@@ -353,7 +350,6 @@ def construire_grilles(
     return grilles
 
 
-# Échantillons terrestres de toutes les grilles, arrondis au mètre près
 def points_terrestres(grilles: list[Grille]) -> list[tuple[float, float]]:
     return sorted(
         {

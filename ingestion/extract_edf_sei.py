@@ -40,7 +40,6 @@ def _nombre(valeur: str | None) -> float | None:
     return float(valeur) if valeur not in (None, "") else None
 
 
-# Production horaire par filière des îles : base du carbone heure par heure hors continent
 def lire_csv(contenu: bytes) -> list[dict[str, Any]]:
     lecteur = csv.DictReader(io.StringIO(contenu.decode("utf-8-sig")), delimiter=";")
     if manquantes := _COLONNES - set(lecteur.fieldnames or ()):
@@ -57,7 +56,6 @@ def lire_csv(contenu: bytes) -> list[dict[str, Any]]:
     ]
 
 
-# Téléchargement du fichier complet (25 Mo, 2019 à aujourd'hui) : relancé à chaque refresh
 def telecharger_production(
     *, settings: Settings | None = None, client: httpx.Client | None = None
 ) -> list[dict[str, Any]]:

@@ -1,4 +1,3 @@
--- Coût et carbone d'un profil de consommation type, heure par heure
 with creneaux as (
     select
         heure_utc,
