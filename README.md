@@ -5,12 +5,17 @@ ici ? »** : qui raccorde et à quelle échéance, les risques de la commune, le
 facture et le terrain prêt le plus proche. Données publiques uniquement, chaque chiffre avec sa
 source et sa limite. Ligne de commande, en local. État et suite du projet : [PLAN.md](PLAN.md).
 
+**Pour qui** : les projets de **1 à 50 MW** (data centers, hubs de bornes de recharge, sites
+industriels et logistiques), pour qui la puissance disponible, son délai et le coût de l'électricité
+décident du site. Pour des bureaux, le prix de l'électricité est le même partout et ne départage pas
+les villes : l'outil n'y apporte rien de décisif.
+
 ![Carte 3D, vue Raccorder : cases notées du rouge au vert, verdict « Brancher ici ? » pour un bureau à Lyon](docs/exemples/carte_lyon_decision.png)
 
 ![Carte 3D, vue Territoire : relief et couleurs réelles, carbone et prix moyen dans l'encart](docs/exemples/carte_lyon_reel.png)
 
 *La carte générée pour « 20 rue de la République, 69002 Lyon », des bureaux de 100 kVA et 80 MWh par
-an. En haut, la vue « Raccorder » (touche 1) : les cases sont notées du rouge au vert et la fiche donne
+an (capture antérieure au recentrage sur les projets de 1 à 50 MW, à refaire). En haut, la vue « Raccorder » (touche 1) : les cases sont notées du rouge au vert et la fiche donne
 le verdict : raccordement courant au réseau de distribution, carbone sous le seuil de 100 g, facture
 d'environ 16 000 € HTVA par an ; seuls les deux plans de prévention de la commune (risque
 industriel, inondation) restent à vérifier. En bas, la vue « Territoire » (touche 2) : paysage réel,
@@ -50,19 +55,24 @@ après un `refresh` interrompu, rappelle la commande à lancer.
 annuelle en MWh si vous les connaissez :
 
 ```powershell
-.\.venv\Scripts\python.exe -m ingestion.cli essentiel --adresse "3 allée des peupliers 91380 Chilly-Mazarin" --puissance 50 --conso 350
+.\.venv\Scripts\python.exe -m ingestion.cli essentiel --adresse "3 allée des peupliers 91380 Chilly-Mazarin" --puissance 12 --conso 70000
 ```
 
 ```
 3 Allée des Peupliers 91380 Chilly-Mazarin
 Commune Chilly-Mazarin (91161) · Essonne (91) · Île-de-France (11)
-Données chargées du 23/10/2026 au 24/10/2026.
+Données chargées le 28/10/2026.
 
-Prix moyen : 0,1997 €/kWh HTVA, soit environ 69 900 € par an pour 350 MWh (tranche IB ; Eurostat, S2 2025 – S1 2026)
+Prix moyen : 0,0754 €/kWh HTVA, soit environ 5 280 000 € par an pour 70 000 MWh (tranche IF ; Eurostat, S2 2025 – S1 2026)
+Acheminement : environ 1 370 000 € HTVA par an, soit 19,6 €/MWh, déjà compris dans le prix moyen (TURPE 7 HTA, longue utilisation, la moins chère ici ; 12 000 kVA souscrits, puissance constante)
 Électricité décarbonée : oui (France continentale), 51,9 gCO₂e/kWh en cycle de vie, sous le seuil de 100 gCO₂e/kWh
+Locaux d'activité : 1 641 €/m² à la vente à Chilly-Mazarin (médiane de 48 ventes, quartiles 898 à 2 597 ; dernière vente en 12/2025 ; DVF)
 À savoir : Le prix ne dépend pas de l'adresse mais de la consommation (péréquation, Corse et outre-mer compris). […]
-Brancher ici ? À vérifier avant de s'engager : raccordement, risques.
+Brancher ici ? À vérifier avant de s'engager : risques.
 ```
+
+Un projet de 12 MW (un petit data center, un hub de recharge poids lourds) se raccorde en HTA chez
+Enedis ; au-delà de 20 MW, RTE devient probable et les délais s'allongent.
 
 Avec l'export de votre **courbe de charge** (CSV téléchargé depuis votre espace client
 Enedis), l'outil prend votre vraie consommation : volume annuel, pointe de puissance (donc qui
