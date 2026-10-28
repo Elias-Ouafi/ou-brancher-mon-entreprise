@@ -179,6 +179,21 @@ sources:
               - accepted_values:
                   arguments:
                     values: [INDUSTRIE, TERTIAIRE, AGRICULTURE, INCONNU]
+      - name: ventes_locaux
+        description: >
+          Ventes de locaux industriels, commerciaux ou assimilés (DVF géolocalisé, DGFiP et
+          Etalab, Licence Ouverte 2.0), cinq dernières années publiées, une ligne par mutation.
+          Surfaces du bâti additionnées ; `nb_locaux_habitation` compte les maisons et
+          appartements vendus dans le même acte. Alsace, Moselle et Mayotte absentes de DVF.
+        data_tests:
+          - unique_combination:
+              arguments:
+                columns: [id_mutation]
+        columns:
+          - name: id_mutation
+            data_tests: [not_null]
+          - name: valeur_fonciere
+            data_tests: [not_null]
       - name: enedis_continuite_alimentation
         description: >
           Indicateur réglementaire de continuité d'alimentation (Enedis, data-fair, licence

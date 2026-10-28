@@ -1,7 +1,20 @@
 # Plan du projet
 
-> Mis à jour le 26 octobre 2026. Périmètre : la France (métropole, Corse, outre-mer), en ligne de
+> Mis à jour le 28 octobre 2026. Périmètre : la France (métropole, Corse, outre-mer), en ligne de
 > commande, en local et à la demande.
+
+## Persona
+
+L'entreprise qui **ouvre une antenne ou déménage ses bureaux** (choix du 16 octobre, recherche du 28
+octobre). Quelques dizaines de postes, des dizaines de MWh par an (tranches IA et IB), un
+raccordement simple et un prix d'électricité identique partout : ce qui départage deux villes est
+le **coût des locaux**, l'accessibilité, le vivier de talents, puis le carbone du réseau et les
+risques du site. Les baromètres d'implantation (ADI, EY, Xerfi, 2022-2025, échantillons de
+quelques centaines de dirigeants) citent, dans l'ordre : transports (82 %), coût par collaborateur
+(45 %), qualité environnementale (36 %), RH (51 % en priorité 1 ou 2), flexibilité des baux (60 %).
+Le décret tertiaire ne vise que 1 000 m² et plus ; la CSRD (Omnibus I, en vigueur le 18 mars 2026)
+ne vise plus que plus de 1 000 salariés et 450 M€ : le carbone par adresse répond surtout à une
+demande de banque ou de client, au format volontaire VSME.
 
 ## État
 
@@ -30,16 +43,16 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 | Qualité de fourniture du département dans `diagnose` : part des clients Enedis au-delà des seuils réglementaires de coupure (dernière année, moyenne sur cinq ans, médiane des départements, seuil de 3 %) ; « non publiée » hors Enedis | `fct_continuite_departement`, `ligne_continuite` |
 | Risques « à vérifier » seulement sous un plan de prévention approuvé ou prescrit (13 919 communes au lieu des 31 706 qui ont un risque recensé) | `fct_plans_prevention_commune`, `_critere_risques` |
 | Date de chargement de chaque source dans toutes les sorties ; pied de page des rapports avec la commande pour les refaire | `ligne_chargements`, `pied_de_page` |
+| Prix de vente des locaux d'activité : médiane et quartiles au m² par commune (repli sur le département sous 5 ventes), cinq dernières années de ventes DVF (393 099 ventes de 2021 à 2025 chargées, 219 564 retenues) ; coût d'achat avec `--surface` | `ingestion/extract_dvf.py`, `ventes_locaux`, `fct_prix_locaux`, `ligne_locaux` |
 | Pays de l'UE-27 : prix Eurostat et carbone Ember du pays, face à la France à tranche égale ; pays trouvé par Nominatim | `europe`, `fct_pays_ue` |
 | Mise à jour de toutes les sources, puis `dbt build` | `refresh` |
 | Rapport mensuel carbone et créneaux Tempo, sur le calendrier réel de l'API RTE (vérifié le 25 octobre sur septembre 2026 et janvier 2026) | `tempo`, `report` |
 | Sortie réduite à la réponse (journal sous `--verbose`) ; avant tout chargement, la commande `refresh` à lancer | `ingestion/cli.py` |
 
 **À surveiller** :
-- l'API Géorisques coupe toute connexion vers `/api/…` depuis le 24 octobre au moins (la page
-  d'accueil répond) ; le diagnostic passe alors sur l'export GASPAR, à la maille commune, et sur le
-  zonage sismique du service WFS de Géorisques (`/services`), qui répond ; planseisme.fr ne
-  résout plus (26 octobre) ;
+- l'API Géorisques était coupée depuis le 24 octobre ; elle répond de nouveau le 28 octobre
+  (`/api/v1/resultats_rapport_risque`, HTTP 200, 5,9 s). Le repli sur l'export GASPAR (maille
+  commune) et sur le zonage sismique WFS reste en place ; planseisme.fr ne résout plus ;
 - les facteurs ADEME de la Corse et de l'outre-mer datent de décembre 2020 : vérifié le 25
   octobre, c'est toujours le dernier millésime valide de la Base Carbone (jeu mis à jour le 3
   juillet 2025) ;
@@ -54,6 +67,13 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 
 ## Suite
 
+**MVP élargi au persona (28 octobre)** : l'étape 12 (prix des locaux) vient avant les autres ; le MVP
+du 16 octobre (prix moyen d'électricité et verdict carbone) reste atteint, il s'y ajoute le coût des
+locaux, premier critère de ce persona qu'il manque. Les écarts relevés le 28 octobre, à traiter avec
+elle : le verdict « Brancher ici ? » est absent de `diagnose` et de `compare` ; `compare` n'accepte
+ni `--courbe`, ni `--ca`, ni `--va` ; le profil « bureau 36 kVA » du seed convient à ce persona
+(l'étape 10.5 ne concerne que les gros sites).
+
 Étape 9 (maquettes 3D, carte à deux vues) et sources 10.1 (Enedis par adresse), 10.2 (grille
 TURPE 7), 10.4 (zonage sismique), 10.3 (continuité d'alimentation) et 11 (pôles de fret) faites du
 25 au 26 octobre. Prochaines étapes, dans l'ordre où les prendre ; chacune
@@ -64,10 +84,11 @@ n'est cochée qu'après ruff, pytest (dont `dbt build`) et un essai réel :
 | ~~1~~ | **Fait le 26 octobre.** **10.2** Grille TURPE 7 HTA-BT en seed daté, coût d'acheminement selon le domaine de tension dans `essentiel` et `diagnose` | Seule part de la facture qui dépend du raccordement | — |
 | ~~2~~ | **Fait le 26 octobre.** **10.4** Zonage sismique réglementaire à l'adresse | Comble le trou laissé par la coupure de l'API Géorisques | — |
 | ~~3~~ | **Fait le 26 octobre.** **10.3** Continuité d'alimentation par département (Enedis, repris par l'Agence ORE) | Repère « qualité de fourniture » dans `diagnose` ; client data-fair déjà en place | — |
+| ~~0~~ | **Fait le 28 octobre (prix de vente).** **12** Prix des locaux : prix de vente au m² des locaux d'activité par commune (DVF, 5 ans), coût d'achat pour une surface donnée (`--surface`) dans `essentiel` et `diagnose` (section 7) ; **reste** le coût annuel et mensuel (loyer estimé) et la colonne de `compare`, voir « Prix des locaux » ci-dessous | Premier critère de ce persona après les transports | décision : la méthode du loyer estimé (hypothèse de rendement, sans source officielle) |
 | 4 | **10.5** Profils de charge réels > 36 kVA par secteur (Enedis `conso-sup36-region`) | Remplace les profils du seed dans `fct_cout_horaire_profil` | volume : filtrage à la source par région et secteur à mettre au point |
 | 5 | **8** Repère de prix au-delà de 150 000 MWh/an (contrats CAPN) ; classement pondéré dans `compare` | Les très gros consommateurs sortent aujourd'hui des tranches Eurostat | décision : le classement revient sur celle du 15 octobre (« comparaison sans classement ») |
 | ~~6~~ | **Fait le 26 octobre.** **11** Carte : grands pôles de fret (ports, aéroports, chantiers rail-route) en maquettes, au-delà d'un seuil | Dit si la région est bien placée pour recevoir des matières premières et expédier des produits | — |
-| 7 | **10.6** Signal Ecowatt dans le rapport mensuel | Jours de tension à côté des jours rouges Tempo | abonner l'application à « Ecowatt » sur le portail RTE (action manuelle) |
+| 7 | **10.6** Signal Ecowatt dans le rapport mensuel | Jours de tension à côté des jours rouges Tempo | application créée et identifiants enregistrés le 28 octobre (`ECO2MIX_ECOWATT_CLIENT_ID` et `_SECRET`, `identifiants.local.txt`) ; l'accès réel (abonnement, plus de 403) reste à vérifier |
 | 8 | **6** Extension internationale, voir ci-dessous | En dernier (décision du 25 octobre) | jeton ENTSO-E (compte gratuit) et contours des zones de prix à sourcer |
 
 **Échéances à guetter** (à lancer à la main, aucune planification) :
@@ -110,6 +131,29 @@ Intégration, sur le modèle des pôles de production : extraction des trois fic
 dans `reporting/carte.html`, trois maquettes dans les deux vues, taille selon le tonnage (la
 longueur de voies pour le rail), nom et tonnage au survol, encart « Fret » dans « Territoire ».
 
+**Prix des locaux, étape 12 (étude du 28 octobre, avant implémentation)**. Il n'existe pas de jeu
+officiel et ouvert des loyers de bureaux par commune : la carte des loyers du ministère et de
+l'ANIL (data.gouv.fr, loyers d'annonce par commune, en €/m² par mois charges comprises) ne couvre
+que le logement ; les loyers tertiaires (Cushman & Wakefield, Geolocaux, Ayming) sont des études
+privées, payantes ou partielles. La seule source officielle des prix de l'immobilier d'activité est
+la base **DVF** (demandes de valeurs foncières, DGFiP, Licence Ouverte 2.0 sur data.gouv.fr,
+actualisée en avril et en octobre) : ventes sur cinq ans, avec le type de local (« local industriel,
+commercial ou assimilé ») et la surface bâtie.
+
+| Donnée | Source | Ce qu'elle permet | Limite |
+|---|---|---|---|
+| Prix de vente au m² des locaux d'activité | DVF, locaux « industriel, commercial ou assimilé », médiane par commune sur les ventes des cinq dernières années, avec le nombre de ventes | Coût d'achat d'un local de `--surface` m² ; comparaison entre villes | Pas de bureaux isolés (le type de local mêle bureaux, commerces et entrepôts) ; Alsace, Moselle et Mayotte absentes ; communes à peu de ventes : repli sur le département, signalé |
+| Loyer annuel et mensuel | Estimé : prix de vente × rendement brut (hypothèse en seed daté), ou loyer observé si une source officielle apparaît | Ordre de grandeur du coût annuel et mensuel pour la surface | **Estimation, pas un loyer observé** ; l'hypothèse de rendement n'a pas de source officielle trouvée ; dire « estimé » partout |
+
+Rien n'est affiché pour une commune sans ventes : « non disponible », jamais un chiffre inventé.
+À vérifier avant de coder : champs exacts du fichier DVF (type de local, surface réelle du bâti,
+mutations à plusieurs lots), millésime le plus récent, et volume (plusieurs millions de lignes :
+filtrer au bronze sur les locaux d'activité, comme pour `conso-sup36-region`).
+Intégration prévue : extraction vers un Parquet bronze immuable (`dvf_locaux`, étape `locaux` de
+`refresh`), silver nettoyé (mutations mono-local, valeurs aberrantes écartées), gold
+`fct_prix_locaux_commune` (médiane, quartiles, nombre de ventes), ligne « Locaux » dans
+`essentiel`, `diagnose` et `compare` (colonne par ville), limite dans `limites_methodologiques`.
+
 Pour l'étape 6, la bibliothèque `entsoe-py` (EnergieID, MIT, publiée sur PyPI, maintenue en
 2026) est le client ENTSO-E de référence, plutôt qu'un client maison.
 
@@ -148,6 +192,12 @@ Inondations.
   (premier critère des gros projets ; zones RTE P1 dès fin 2028, P2 dès 2029) ; du foncier
   viabilisé ; une électricité bas-carbone ; un prix prévisible, qui ne décide que pour les
   électro-intensifs et les data centers ; la connaissance des risques du site.
+- **Persona (recherche du 28 octobre)** : pour des bureaux, le raccordement est rarement un sujet
+  (un local existant équipé d'un Linky s'ouvre en un jour ouvré environ ; un local neuf coûte de
+  426 € à 10 000 € d'extension, sources commerciales à confirmer) ; le tarif bleu exige moins de
+  10 salariés, 2 M€ de chiffre d'affaires et 36 kVA au plus (fiche CRE d'EDF, juillet 2026). Aucune
+  source ouverte trouvée sur les loyers de bureaux, ni sur la consommation d'une PME de bureaux
+  (seul repère : 119 kWh/m²/an pour des bureaux neufs d'Île-de-France, DRIEAT).
 - **En France, ni le prix ni le carbone ne dépendent de l'adresse** : d'où un diagnostic de
   contexte par adresse plutôt qu'un « prix à l'adresse ».
 - **Limites de l'open data** : capacité de raccordement non publiée ; postes RTE sans
@@ -212,6 +262,10 @@ Inondations.
 | 26 oct. | Continuité d'alimentation : jeu d'Enedis, producteur, plutôt que la copie de l'Agence ORE ; colonnes d'années lues dans le schéma du jeu (une de plus par publication) ; comparaison au seuil de 3 % de l'arrêté du 24 décembre 2007 (article 3) et à la médiane des départements publiés la même année ; repère dans la section « Raccordement » de `diagnose`, sans entrer dans le verdict (moyenne départementale, pas la ligne du site) |
 | 26 oct. | Pôles de fret : ports sur les marchandises hors tare de la dernière année publiée (SDES), seuil 5 Mt sur le continent et 0,5 Mt en Corse et outre-mer ; aéroports sur le fret et la poste de la dernière année complète (DGAC), 20 000 t et 3 000 t ; chantiers rail-route de SNCF Réseau sur au moins 2 km de voies de manutention, dit repère de capacité (aucun tonnage publié) ; HAROPA placé au Havre ; ports et aéroports au centre de leur commune ; ports fluviaux écartés (pas de maille port). Carte seulement, sans ligne dans `limites_methodologiques` (réservées aux chiffres de `diagnose`) |
 | 26 oct. | Seeds recréés à chaque `dbt build` (`+full_refresh`) : un seed qui gagne une colonne bloquait le warehouse existant |
+| 28 oct. | Persona : l'entreprise qui ouvre une antenne ou déménage ses bureaux (choix du 16 octobre, besoins étudiés le 28) ; les gros sites industriels restent servis mais ne dictent plus l'ordre des étapes |
+| 28 oct. | MVP élargi au coût des locaux (étape 12) : prix de vente au m² des locaux d'activité par commune (DVF), coût annuel et mensuel pour `--surface` ; le loyer est une estimation dite telle (aucun loyer de bureaux officiel et ouvert), « non disponible » sans ventes, jamais de chiffre inventé |
+| 28 oct. | DVF : ventes de locaux d'activité d'un seul bien (ni logement, ni plusieurs dispositions), surfaces de 15 à 5 000 m² et prix de 100 à 15 000 €/m² (variables dbt `locaux_*`) ; médiane sur les cinq dernières années de ventes, fiable à partir de 5 ventes (`locaux_min_ventes`), sinon le département ; arrondissements de Paris, Lyon et Marseille ramenés à la commune ; fichiers annuels lus en flux (~100 Mo chacun), le pilote Spark passe à 3 Go (400 000 lignes saturaient 1 Go) ; Bourg-en-Bresse 1 179 €/m², Lyon 3 298, Paris 7 760 |
+| 28 oct. | Identifiants de l'application Ecowatt dans `identifiants.local.txt` (ignoré par git), sous `ECO2MIX_ECOWATT_*`, distincts de ceux de Tempo ; le secret a transité par la conversation : à régénérer si elle est partagée |
 
 ## Écarté
 

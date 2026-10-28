@@ -93,6 +93,10 @@ class Settings(BaseSettings):
         "chantiers-de-transport-combines/exports/csv?use_labels=true"
     )
 
+    # Ventes immobilières par année (DVF géolocalisé, DGFiP et Etalab, Licence Ouverte 2.0)
+    dvf_url: str = "https://files.data.gouv.fr/geo-dvf/latest/csv/{annee}/full.csv.gz"
+    dvf_nb_annees: int = 5
+
     # Service d'altimétrie de la Géoplateforme (IGN, RGE ALTI), sans clé
     altimetrie_base_url: str = "https://data.geopf.fr/altimetrie"
 

@@ -33,6 +33,7 @@ from ingestion.datasets import (
     POSTES_RTE,
     RTE_TEMPO,
     SITES_PRODUCTION,
+    VENTES_LOCAUX,
     ZONAGE_SISMIQUE,
     DatasetSpec,
 )
@@ -642,6 +643,42 @@ def continuite_alimentation() -> list[dict[str, Any]]:
     ]  # fmt: skip
 
 
+# Ventes de locaux : Lyon fiable (arrondissement ramené à la commune), Bourg à deux ventes
+# seulement ; écartés : logement dans l'acte, deux dispositions, prix aberrant, vente de plus
+# de cinq ans
+def ventes_locaux() -> list[dict[str, Any]]:
+    def vente(idm, date, commune, dep, valeur, surface, hab=0.0, disp=1.0):
+        return {
+            "id_mutation": idm,
+            "date_mutation": date,
+            "nature_mutation": "Vente",
+            "code_commune": commune,
+            "code_departement": dep,
+            "valeur_fonciere": valeur,
+            "surface_bati_m2": surface,
+            "nb_locaux_activite": 1.0,
+            "nb_locaux_habitation": hab,
+            "nb_dispositions": disp,
+            "latitude": 45.75,
+            "longitude": 4.85,
+        }
+
+    return [
+        vente("L1", "2025-03-01", "69383", "69", 200_000.0, 100.0),
+        vente("L2", "2025-04-01", "69123", "69", 250_000.0, 100.0),
+        vente("L3", "2025-05-01", "69123", "69", 300_000.0, 100.0),
+        vente("L4", "2025-06-01", "69123", "69", 350_000.0, 100.0),
+        vente("L5", "2025-07-01", "69123", "69", 400_000.0, 100.0),
+        vente("L6", "2024-01-01", "69123", "69", 450_000.0, 100.0),
+        vente("L7", "2025-08-01", "69123", "69", 900_000.0, 100.0, hab=1.0),
+        vente("L8", "2025-08-02", "69123", "69", 900_000.0, 100.0, disp=2.0),
+        vente("L9", "2025-08-03", "69123", "69", 90_000_000.0, 100.0),
+        vente("L10", "2018-01-01", "69123", "69", 50_000.0, 100.0),
+        vente("B1", "2025-02-01", "01053", "01", 120_000.0, 80.0),
+        vente("B2", "2025-09-01", "01053", "01", 160_000.0, 80.0),
+    ]
+
+
 def load_bronze(
     database: Path, tmp_path: Path, spec: DatasetSpec, records: list[dict[str, Any]]
 ) -> None:
@@ -702,6 +739,7 @@ def build_warehouse(tmp_path: Path, *, with_tempo: bool = True) -> Path:
     load_bronze(database, tmp_path, CHANTIERS_RAIL_ROUTE, chantiers_rail_route())
     load_bronze(database, tmp_path, ENEDIS_CONSO_ENTREPRISES, conso_entreprises())
     load_bronze(database, tmp_path, CONTINUITE_ALIMENTATION, continuite_alimentation())
+    load_bronze(database, tmp_path, VENTES_LOCAUX, ventes_locaux())
     ensure_bronze_tables(settings=Settings(_env_file=None, duckdb_path=database))
     dbt_build(database, tmp_path)
     return database

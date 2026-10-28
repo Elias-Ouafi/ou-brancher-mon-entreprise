@@ -23,9 +23,11 @@ from ingestion.datasets import (
     PORTS_FRET,
     RTE_TEMPO,
     SITES_PRODUCTION,
+    VENTES_LOCAUX,
     ZONAGE_SISMIQUE,
     DatasetSpec,
 )
+from ingestion.extract_dvf import telecharger_ventes_locaux
 from ingestion.extract_edf_sei import telecharger_production
 from ingestion.extract_ember import telecharger_intensites
 from ingestion.extract_enedis import telecharger_conso_entreprises, telecharger_continuite
@@ -498,6 +500,18 @@ def run_fret_ingestion(
     return _charger_fichier(
         telecharger_chantiers(settings=settings), CHANTIERS_RAIL_ROUTE, settings, run_id, now
     )
+
+
+# Prix de vente des locaux d'activité : le coût d'une antenne ou de bureaux selon la commune
+def run_locaux_ingestion(
+    *,
+    settings: Settings | None = None,
+    run_id: str = "manual",
+    now: datetime | None = None,
+) -> tuple[ExtractionOutcome, LoadResult]:
+    settings = settings or get_settings()
+    lignes = telecharger_ventes_locaux(settings=settings)
+    return _charger_fichier(lignes, VENTES_LOCAUX, settings, run_id, now)
 
 
 # Production horaire des îles : dit à quelles heures l'électricité y est la moins carbonée
