@@ -140,7 +140,7 @@ def _add_projet_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--activite",
         choices=sorted(ACTIVITES),
-        help="activité du projet : profil de charge et régimes d'accise (taux non chiffrés)",
+        help="activité du projet : profil de charge, régime et tarif réduit d'accise",
     )
     parser.add_argument(
         "--courbe",

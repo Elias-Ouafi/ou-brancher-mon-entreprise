@@ -74,7 +74,7 @@ class Activite:
     libelle: str
     # Journée type mesurée par Enedis (`profils_charge_reels`) ; `None` : puissance constante
     profil_charge: str | None
-    # Régimes d'accise de l'attestation officielle 2040-TIC-ATT-E, sans taux (sources divergentes)
+    # Régimes d'accise de l'attestation officielle 2040-TIC-ATT-E ; les taux sont dans le seed
     accise: str
 
 
@@ -83,8 +83,9 @@ ACTIVITES: dict[str, Activite] = {
         "data center",
         None,
         "centres de stockage de données (E16, CIBS L312-64 et L312-70) : tarif réduit sur la"
-        " fraction au-delà de 1 GWh par an, sous conditions cumulatives attestées au"
-        " fournisseur",
+        " fraction au-delà de 1 GWh par an, sous huit conditions cumulatives attestées au"
+        " fournisseur, dont l'électro-sensibilité (2,25 % de la valeur ajoutée : voir --va),"
+        " la valorisation de la chaleur fatale et la limitation de l'eau de refroidissement",
     ),
     "irve": Activite(
         "bornes de recharge",
@@ -98,8 +99,8 @@ ACTIVITES: dict[str, Activite] = {
         "industrie_sup250kva",
         "activité industrielle (CIBS L312-65 et L312-71) : grande consommatrice (E23) dès 0,5 %"
         " d'électro-intensité, électro-sensible (E24) dès 2,25 %, électro-intensive (E25) dès"
-        " 6,75 %, ou exposée à la concurrence internationale (E30, L312-72) dès 0,5 % : voir"
-        " --va",
+        " 6,75 %, ou exposée à la concurrence internationale (E30, L312-72, secteurs fixés par"
+        " arrêté) : palier et taux selon --va",
     ),
     "logistique": Activite(
         "logistique",
@@ -268,6 +269,12 @@ from gold.accise_electricite
 where categorie = 'pme_haute_puissance' and date_fin is null
 order by date_debut desc
 limit 1
+"""
+
+_ACCISE_REDUITS_SQL = """
+select categorie, tarif_eur_mwh
+from gold.accise_electricite
+where categorie != 'pme_haute_puissance' and date_fin is null
 """
 
 _PRIX_SQL = """
@@ -563,6 +570,8 @@ class PrixEntreprise:
 class Accise:
     tarif_eur_mwh: float
     date_debut: date
+    # Tarifs réduits en vigueur par catégorie du seed (`centre_stockage_donnees`…)
+    reduits: dict[str, float] = field(default_factory=dict)
 
     # L'accise est indexée chaque 1er février : passé cette date, le barème est peut-être périmé
     def a_reverifier(self, aujourd_hui: date | None = None) -> bool:
@@ -570,8 +579,23 @@ class Accise:
         return (aujourd_hui or date.today()) >= date(annee, 2, 1)
 
 
-# Paliers d'électro-intensité ouvrant les taux réduits d'accise (CIBS L312-65 et L312-71)
-PALIERS_ELECTRO_INTENSITE = (0.0675, 0.03375, 0.005)
+# Paliers d'électro-intensité ouvrant les taux réduits d'accise depuis le 1er janvier 2026
+# (CIBS L312-65 et L312-71, loi de finances 2026), du plus haut au plus bas
+PALIERS_ELECTRO_INTENSITE = (0.0675, 0.0225, 0.005)
+CATEGORIES_PALIER = {
+    0.0675: "electro_intensive",
+    0.0225: "electro_sensible",
+    0.005: "grande_consommatrice",
+}
+LIBELLES_ACCISE = {
+    "electro_intensive": "activité électro-intensive",
+    "electro_sensible": "activité électro-sensible",
+    "grande_consommatrice": "activité grande consommatrice",
+    "centre_stockage_donnees": "centre de stockage de données",
+}
+# Les centres de stockage de données paient le tarif normal sur le premier GWh (CIBS L312-70)
+FRANCHISE_CENTRE_DONNEES_MWH = 1000
+SEUIL_ELECTRO_SENSIBLE = 0.0225
 
 
 @dataclass(frozen=True, slots=True)
@@ -584,6 +608,20 @@ class PartValeurAjoutee:
     accise: Accise
     # Plus haut palier atteint ; `None` sous 0,5 %
     palier: float | None
+
+
+@dataclass(frozen=True, slots=True)
+class AcciseReduite:
+    categorie: str
+    tarif_eur_mwh: float
+    # Consommation au tarif réduit (pour un data center, au-delà du premier GWh)
+    mwh_reduits: float
+    accise_normale_eur: float
+    accise_reduite_eur: float
+
+    @property
+    def economie_eur(self) -> float:
+        return self.accise_normale_eur - self.accise_reduite_eur
 
 
 @dataclass(frozen=True, slots=True)
@@ -710,7 +748,7 @@ class Diagnostic:
     courbe: BilanCourbe | None = None
     # Plans de prévention en vigueur dans la commune ; `None` si l'export GASPAR n'est pas chargé
     plans_prevention: list[PlanPrevention] | None = None
-    # Barème d'accise en vigueur, lu seulement si `--va` est fourni
+    # Barème d'accise en vigueur, lu seulement avec `--va` ou `--activite`
     accise: Accise | None = None
     # Entreprises raccordées à Enedis (dernière année publiée), dans la commune et à l'adresse
     entreprises_commune: EntreprisesCommune | None = None
@@ -770,6 +808,33 @@ class Diagnostic:
             electro_intensite=intensite,
             accise=self.accise,
             palier=next((s for s in PALIERS_ELECTRO_INTENSITE if intensite >= s), None),
+        )
+
+    @property
+    def accise_reduite(self) -> AcciseReduite | None:
+        p, a, va = self.prix, self.accise, self.part_valeur_ajoutee
+        if a is None or p is None or p.conso_mwh is None:
+            return None
+        if self.activite == "data-center":
+            # Une électro-intensité connue sous 2,25 % ferme le tarif (condition 8 de L312-70)
+            if va is not None and va.electro_intensite < SEUIL_ELECTRO_SENSIBLE:
+                return None
+            categorie = "centre_stockage_donnees"
+            mwh_reduits = max(p.conso_mwh - FRANCHISE_CENTRE_DONNEES_MWH, 0.0)
+        elif self.activite in (None, "industrie") and va is not None and va.palier is not None:
+            categorie, mwh_reduits = CATEGORIES_PALIER[va.palier], p.conso_mwh
+        else:
+            return None
+        if categorie not in a.reduits or mwh_reduits <= 0:
+            return None
+        tarif = a.reduits[categorie]
+        normale = p.conso_mwh * a.tarif_eur_mwh
+        return AcciseReduite(
+            categorie=categorie,
+            tarif_eur_mwh=tarif,
+            mwh_reduits=mwh_reduits,
+            accise_normale_eur=normale,
+            accise_reduite_eur=normale - mwh_reduits * (a.tarif_eur_mwh - tarif),
         )
 
     @property
@@ -890,7 +955,13 @@ def lire_diagnostic(
                 ).fetchall()
             )
             chargements = lire_chargements(connection)
-            accise = None if va_eur is None else _une_ligne(connection, _ACCISE_SQL, {})
+            accise = (
+                None
+                if va_eur is None and activite is None
+                else _une_ligne(connection, _ACCISE_SQL, {})
+            )
+            if accise is not None:
+                accise["reduits"] = dict(connection.execute(_ACCISE_REDUITS_SQL).fetchall())
             entreprises_commune = _une_ligne(
                 connection, _ENTREPRISES_COMMUNE_SQL, {"commune": commune}
             )
@@ -1088,6 +1159,8 @@ def essentiel(diagnostic: Diagnostic) -> Section:
         section.elements.append(("texte", f"Part de la valeur ajoutée : {_part_va(va)}"))
     if d.activite is not None:
         section.elements.append(("texte", f"Activité : {ligne_activite(d.activite)}"))
+    if (accise := ligne_accise(d)) is not None:
+        section.elements.append(("texte", f"Accise : {accise}"))
     if d.courbe is not None:
         section.elements.append(("texte", f"Votre courbe de charge : {ligne_courbe(d.courbe)}"))
     if (locaux := d.prix_locaux) is not None:
@@ -1178,7 +1251,45 @@ def ligne_activite(code: str) -> str:
         if a.profil_charge
         else "puissance constante, faute de courbe publiée"
     )
-    return f"{a.libelle}, profil de charge : {charge}. Accise : {a.accise}. Taux non chiffrés."
+    return f"{a.libelle}, profil de charge : {charge}. Régime d'accise : {a.accise}."
+
+
+def ligne_accise(d: Diagnostic) -> str | None:
+    if d.accise is None or d.prix is None or d.prix.conso_mwh is None:
+        return None
+    normal = _nombre(d.accise.tarif_eur_mwh, 2)
+    if (r := d.accise_reduite) is None:
+        va = d.part_valeur_ajoutee
+        if d.activite == "data-center" and va is not None:
+            return (
+                f"électro-intensité de {_pourcentage(va.electro_intensite)}, sous les 2,25 %"
+                " exigés des centres de stockage de données : tarif normal de"
+                f" {normal} €/MWh"
+            )
+        if d.activite == "data-center":
+            return (
+                "consommation sous 1 GWh par an : tarif normal de"
+                f" {normal} €/MWh, le tarif réduit ne vise que la fraction au-delà"
+            )
+        return None
+    tarif = _nombre(r.tarif_eur_mwh, 2 if r.tarif_eur_mwh % 1 else 0)
+    assiette = (
+        f" sur {_nombre(r.mwh_reduits)} MWh (au-delà du premier GWh)"
+        if r.categorie == "centre_stockage_donnees"
+        else ""
+    )
+    condition = (
+        "si les huit conditions de L312-70 sont remplies"
+        if r.categorie == "centre_stockage_donnees"
+        else "si l'activité principale relève de l'industrie, de l'énergie ou de l'eau"
+        " (sections B à E de la NACE)"
+    )
+    return (
+        f"environ {_euros_arrondis(r.accise_reduite_eur)} par an au tarif réduit de"
+        f" {tarif} €/MWh ({LIBELLES_ACCISE[r.categorie]}){assiette}, au lieu de"
+        f" {_euros_arrondis(r.accise_normale_eur)} au tarif normal de {normal} €/MWh, soit"
+        f" {_euros_arrondis(r.economie_eur)} de moins, {condition}, sur attestation au fournisseur"
+    )
 
 
 def ligne_locaux(p: PrixLocaux, surface_m2: float | None, commune: str) -> str:
@@ -1232,9 +1343,12 @@ def _part_va(va: PartValeurAjoutee) -> str:
         phrase += ", sous le palier de 0,5 % : pas de taux réduit d'accise à ce titre"
     else:
         palier = _nombre(va.palier * 100, 3).rstrip("0")
+        categorie = CATEGORIES_PALIER[va.palier]
+        reduit = va.accise.reduits.get(categorie)
+        montant = "" if reduit is None else f", {_nombre(reduit, 2)} €/MWh au lieu de {tarif}"
         phrase += (
             f", au-dessus du palier de {palier} % : taux réduit d'accise possible"
-            f" (de 0,5 à 12 €/MWh au lieu de {tarif}) si l'activité principale relève de"
+            f" ({LIBELLES_ACCISE[categorie]}{montant}) si l'activité principale relève de"
             " l'industrie, de l'énergie ou de l'eau (sections B à E de la NACE)"
         )
     if va.accise.a_reverifier():
@@ -1445,10 +1559,10 @@ def _critere_facture(d: Diagnostic) -> Critere:
         detail += f" Dont acheminement {_nombre(a.prix_eur_mwh, 1)} €/MWh (TURPE 7)."
     if (part := d.part_chiffre_affaires) is not None:
         detail += f" {_pourcentage(part.part)} du chiffre d'affaires."
-    if (va := d.part_valeur_ajoutee) is not None and va.palier is not None:
+    if (r := d.accise_reduite) is not None:
         detail += (
-            f" Électro-intensité {_pourcentage(va.electro_intensite)} : taux réduit d'accise"
-            " possible pour une activité industrielle."
+            f" Accise réduite possible ({LIBELLES_ACCISE[r.categorie]}) : environ"
+            f" {_euros_arrondis(r.economie_eur)} de moins par an, sous conditions."
         )
     return Critere(
         "Facture",
@@ -1654,6 +1768,9 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
         "activite": None
         if d.activite is None
         else {"code": d.activite, **asdict(ACTIVITES[d.activite])},
+        "accise_reduite": None
+        if (r := d.accise_reduite) is None
+        else {**asdict(r), "economie_eur": r.economie_eur},
         "carbone": None
         if c is None
         else {
@@ -2025,6 +2142,9 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
             limite(s, "part_valeur_ajoutee")
         if d.activite is not None:
             texte(s, f"Activité : {ligne_activite(d.activite)}")
+        if (accise := ligne_accise(d)) is not None:
+            texte(s, f"Accise : {accise}")
+        if d.activite is not None:
             limite(s, "accise_activite")
 
     s = bloc("5. Carbone du réseau et coût horaire d'un profil type")
@@ -2362,6 +2482,8 @@ def diagnostic_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
     contenu["part_chiffre_affaires"] = None if part is None else asdict(part)
     va = diagnostic.part_valeur_ajoutee
     contenu["part_valeur_ajoutee"] = None if va is None else asdict(va)
+    r = diagnostic.accise_reduite
+    contenu["accise_reduite"] = None if r is None else {**asdict(r), "economie_eur": r.economie_eur}
     criteres = verdict(diagnostic)
     contenu["verdict"] = {
         "phrase": phrase_verdict(criteres),

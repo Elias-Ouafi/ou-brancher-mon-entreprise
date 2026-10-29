@@ -1,3 +1,8 @@
 date_debut,date_fin,categorie,tarif_eur_mwh,source
 2026-02-01,2026-08-01,pme_haute_puissance,26.58,BOFiP BOI-RES-EAT-000240 (loi de finances pour 2026)
 2026-08-01,,pme_haute_puissance,26.35,Formulaire 2040-TIC-SD 2026 (DGFiP) : tarif de 26.35 €/MWh à compter du 01/08/2026
+2026-01-01,,grande_consommatrice,5.5,CIBS L312-65 et L312-71 (loi n° 2026-103) ; formulaire 2040-TIC-SD 2026 (DGFiP)
+2026-01-01,,electro_sensible,3.0,CIBS L312-65 et L312-71 (loi n° 2026-103) ; formulaire 2040-TIC-SD 2026 (DGFiP)
+2026-01-01,,electro_intensive,0.5,CIBS L312-65 et L312-71 (loi n° 2026-103) ; formulaire 2040-TIC-SD 2026 (DGFiP)
+2026-01-01,,concurrence_internationale,0.5,CIBS L312-65 et L312-72 (loi n° 2026-103) ; formulaire 2040-TIC-SD 2026 (DGFiP)
+2026-01-01,,centre_stockage_donnees,10.0,CIBS L312-64 et L312-70 (loi n° 2026-103) ; formulaire 2040-TIC-SD 2026 (DGFiP)
