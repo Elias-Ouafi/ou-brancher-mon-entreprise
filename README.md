@@ -10,12 +10,19 @@ industriels et logistiques), pour qui la puissance disponible, son délai et le 
 décident du site. Pour des bureaux, le prix de l'électricité est le même partout et ne départage pas
 les villes : l'outil n'y apporte rien de décisif.
 
+**Ce que l'outil ne dit pas** (aucune source publique) : la capacité réellement disponible au poste
+(seule une étude Enedis ou RTE fait foi ; RTE annonce une carte des capacités en soutirage pour le
+1er janvier 2027), le montant des taux réduits d'accise (régimes affichés, taux non chiffrés), le
+loyer des locaux, la consommation d'un projet déduite de sa seule puissance. Il dit « non
+disponible » plutôt que de deviner.
+
 ![Carte 3D, vue Raccorder : cases notées du rouge au vert, verdict « Brancher ici ? » pour un bureau à Lyon](docs/exemples/carte_lyon_decision.png)
 
 ![Carte 3D, vue Territoire : relief et couleurs réelles, carbone et prix moyen dans l'encart](docs/exemples/carte_lyon_reel.png)
 
 *La carte générée pour « 20 rue de la République, 69002 Lyon », des bureaux de 100 kVA et 80 MWh par
-an (capture antérieure au recentrage sur les projets de 1 à 50 MW, à refaire). En haut, la vue « Raccorder » (touche 1) : les cases sont notées du rouge au vert et la fiche donne
+an (capture antérieure au recentrage sur les projets de 1 à 50 MW, à refaire : étape A2 du
+[plan](PLAN.md)). En haut, la vue « Raccorder » (touche 1) : les cases sont notées du rouge au vert et la fiche donne
 le verdict : raccordement courant au réseau de distribution, carbone sous le seuil de 100 g, facture
 d'environ 16 000 € HTVA par an ; seuls les deux plans de prévention de la commune (risque
 industriel, inondation) restent à vérifier. En bas, la vue « Territoire » (touche 2) : paysage réel,
@@ -25,7 +32,7 @@ carbone et prix moyen par région, production et fret. Diagnostic complet de Lyo
 
 | | Pour le chef d'entreprise | Côté data engineering |
 |---|---|---|
-| **1. Le prix ne dépend pas de l'adresse** | La péréquation tarifaire rend le prix identique partout, Corse et outre-mer compris : environ 0,20 €/kWh HTVA pour 350 MWh par an. C'est la consommation qui fait la facture, pas le site. | Les tranches Eurostat `nrg_pc_205` (semestrielles, HTVA) sont jointes à la consommation annuelle ; des scénarios à 3 ans sont calibrés sur les erreurs passées, sans regard vers le futur. |
+| **1. Le prix ne dépend pas de l'adresse** | La péréquation tarifaire rend le prix identique partout, Corse et outre-mer compris : environ 0,075 €/kWh HTVA pour 70 000 MWh par an (tranche IF). C'est la consommation qui fait la facture, pas le site ; seule la part acheminement (TURPE) change avec le domaine de tension. | Les tranches Eurostat `nrg_pc_205` (semestrielles, HTVA) sont jointes à la consommation annuelle ; des scénarios à 3 ans sont calibrés sur les erreurs passées, sans regard vers le futur. |
 | **2. Le carbone change d'un facteur 10 à 18 entre systèmes électriques** | 51,9 gCO₂e/kWh sur tout le continent, 594 à 957 en Corse et outre-mer, non interconnectés. Le seuil européen (taxonomie) est 100 : il compte pour un financement vert. Sur une île, l'heure compte aussi : en Corse, 522 g vers 13 h contre 681 g vers 5 h. | Facteurs en cycle de vie de la Base Carbone ADEME, en seed daté ; jointure par système électrique dérivé du code INSEE, jamais par libellé. Profil horaire des îles tiré de la production par filière d'EDF SEI (263 000 heures), calé pour redonner le facteur ADEME annuel. |
 | **3. La capacité de raccordement n'est pas publique** | Au-delà de 40 MW, c'est RTE et des délais de 2 à 7 ans. L'outil dit qui raccorde selon la puissance et signale la zone prioritaire RTE la plus proche ; seule une étude Enedis ou RTE fait foi. | Seuils de tension en seed, zones du SDDR 2025 géolocalisées, distance au plus proche dans DuckDB. Quand l'API Géorisques tombe, les risques viennent de l'export GASPAR chargé au `refresh`, qui fournit aussi les plans de prévention de chaque commune. |
 
@@ -77,7 +84,9 @@ Enedis ; au-delà de 20 MW, RTE devient probable et les délais s'allongent.
 Avec l'export de votre **courbe de charge** (CSV téléchargé depuis votre espace client
 Enedis), l'outil prend votre vraie consommation : volume annuel, pointe de puissance (donc qui
 raccorde), part en heures creuses, coût au tarif HP/HC actuel et carbone de vos heures de
-consommation. Un exemple est fourni pour essayer :
+consommation. Le coût au tarif HP/HC n'est chiffré que jusqu'à 36 kW ; au-delà, la courbe sert
+au volume, à la pointe et à l'acheminement. Un exemple (une courbe de bureau, en attendant une
+courbe HTA) est fourni pour essayer :
 
 ```powershell
 .\.venv\Scripts\python.exe -m ingestion.cli essentiel --adresse "3 allée des peupliers 91380 Chilly-Mazarin" --courbe docs/exemples/courbe_bureau_septembre.csv
@@ -94,7 +103,7 @@ Toutes s'écrivent `.\.venv\Scripts\python.exe -m ingestion.cli <commande>`.
 | Commande | Effet |
 |---|---|
 | `essentiel --adresse "…" [--puissance MW] [--conso MWh] [--activite data-center\|irve\|industrie\|logistique] [--courbe CSV] [--ca €] [--va €] [--surface m²] [--format json]` | Réponse courte : prix, carbone, prix de vente des locaux d'activité (DVF) et verdict « brancher ici ? » ; avec `--puissance` et `--conso` au-delà de 36 kVA, la part acheminement (TURPE 7) de la facture ; `--courbe` lit l'export Enedis, `--ca` donne la part de la facture dans le chiffre d'affaires, `--va` l'électro-intensité fiscale (taux réduit d'accise dès 0,5 % de la valeur ajoutée), `--activite` le profil de charge (journée type mesurée par Enedis pour l'industrie, puissance constante sinon) et les régimes d'accise de l'activité, sans taux chiffrés |
-| `diagnose --adresse "…" [--puissance MW] [--conso MWh] [--activite data-center\|irve\|industrie\|logistique] [--courbe CSV] [--ca €] [--va €] [--surface m²] [--format pdf\|md\|json]` | Diagnostic complet : industrie locale, réseau, raccordement (dont la qualité de fourniture du département), prix, carbone, risques, prix des locaux, puis le verdict « brancher ici ? » critère par critère |
+| `diagnose --adresse "…" [--puissance MW] [--conso MWh] [--activite data-center\|irve\|industrie\|logistique] [--courbe CSV] [--ca €] [--va €] [--surface m²] [--format pdf\|md\|json]` | Diagnostic complet : industrie locale, réseau, raccordement (dont la qualité de fourniture du département), prix, acheminement, carbone, risques et sismicité, foncier (zone d'urbanisme, friches à moins de 10 km, zones d'activité à moins de 5 km, prix des locaux), eau (arrêtés de restriction du jour), desserte (temps vers le fret, autoroute), bâtiment et productible solaire, puis le verdict « brancher ici ? » critère par critère ; `--sans-risques` coupe tous les appels à la demande (Géorisques, urbanisme, eau, solaire, desserte, zones d'activité) |
 | `compare --adresse "A" --adresse "B" … [mêmes options que diagnose]` | 2 à 6 adresses côte à côte, sans classement, avec le prix des locaux et le verdict « brancher ici ? » de chacune ; `texte`, `md`, `csv`, `json` |
 | `carte [--adresse "…"] [--puissance MW] [--reconstruire]` | Carte 3D hors ligne (`data/reports/carte.html`) |
 | `europe --adresse "…" [--conso MWh]` | Hors de France, dans l'UE : prix moyen du pays et carbone de sa production, comparés à la France à tranche égale (moyennes nationales) |
@@ -133,20 +142,21 @@ portique. Pour le rail, la longueur de voies est un repère de capacité : aucun
 Un clic sur une case affiche la fiche du département ; le survol d'une case donne sa note et ses
 raisons, celui d'un pôle sa puissance et sa production, celui d'un pôle de fret son tonnage.
 
-**Identifiants** (Tempo seulement) : copiez `identifiants.exemple.txt` en `identifiants.local.txt`.
-Ce fichier est ignoré par git et prime sur `.env`.
+**Identifiants** (`tempo` et `ecowatt` seulement, deux comptes RTE distincts) : copiez
+`identifiants.exemple.txt` en `identifiants.local.txt`. Ce fichier est ignoré par git et prime sur
+`.env`. Les autres commandes n'en demandent aucun.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    SRC[("ODRÉ · Eurostat · RTE · Enedis · GASPAR · EDF SEI · Ember · geo.api")] -->|"ingestion/ (PySpark)"| B["Bronze : Parquet + DuckDB (MERGE)"]
+    SRC[("ODRÉ · Eurostat · RTE · Enedis · GASPAR · EDF SEI · Ember · DVF · Cartofriches · SDES · DGAC · geo.api")] -->|"ingestion/ (PySpark)"| B["Bronze : Parquet + DuckDB (MERGE)"]
     B -->|dbt| S["Silver : nettoyé, codes INSEE"]
     S -->|dbt| G["Gold : prix, carbone, risques, diagnostic"]
     SEEDS[("Seeds : ADEME, tarifs, référentiels, limites")] --> G
     GEO[("Contours Etalab · relief IGN · Natural Earth")] -->|"ingestion/ (Python)"| B
     G --> CLI(["essentiel · diagnose · compare · carte · europe"])
-    BAN[("BAN · Géorisques · Géoportail de l'urbanisme, à la demande")] --> CLI
+    BAN[("À la demande : BAN · Géorisques · API Carto · BD TOPO · itinéraire IGN · VigiEau · PVGIS")] --> CLI
 ```
 
 - **Ingestion idempotente en PySpark** : chaque lot est typé et normalisé par une session Spark
@@ -185,6 +195,10 @@ flowchart LR
   36 719 polygones des communes de 2010, triés par `gid` pour une pagination stable et comptés
   contre le total annoncé ; l'adresse est située dans son polygone, ce qui reste juste dans une
   commune nouvelle.
+- **Sources à la demande** : ce qui dépend du point et change sans prévenir (zone d'urbanisme,
+  arrêtés sur l'eau, zones d'activité, itinéraires, bâtiment, productible solaire) est appelé au
+  moment de la question, jamais stocké ; un appel qui échoue est signalé dans sa section sans
+  bloquer le reste du diagnostic.
 - **Prix des locaux** : les ventes de locaux d'activité des cinq dernières années publiées (DVF, un fichier de ~100 Mo par année, lu en flux) donnent la médiane au m² par commune, le département en repli sous 5 ventes ; DVF ne sépare pas les bureaux des commerces et entrepôts, ne contient aucun loyer et ignore l'Alsace, la Moselle et Mayotte.
 - `data/` n'est pas versionné et se recrée par `refresh`. DuckDB n'accepte qu'un writer : fermez
   toute session `duckdb` pendant un chargement.
@@ -217,6 +231,11 @@ pièges des sources, plus les tests de données dbt. La CI GitHub Actions les jo
 [trafic aérien commercial de la DGAC](https://www.data.gouv.fr/datasets/64808a5811da153f1439914c) ·
 [chantiers de transport combiné de SNCF Réseau](https://www.data.gouv.fr/datasets/chantiers-de-transport-combines) (ODbL) ·
 [ventes immobilières DVF](https://www.data.gouv.fr/en/datasets/dvf) (DGFiP, Licence Ouverte 2.0) ·
+[Cartofriches](https://cartofriches.cerema.fr) (Cerema, Licence Ouverte 2.0) ·
+[BD TOPO et calcul d'itinéraire de la Géoplateforme](https://geoservices.ign.fr) (IGN, Licence Ouverte) ·
+[VigiEau](https://vigieau.gouv.fr) (ministère de la Transition écologique) ·
+[PVGIS](https://joint-research-centre.ec.europa.eu/photovoltaic-geographical-information-system-pvgis_en) (JRC, Commission européenne) ·
+[profils de charge > 36 kVA d'Enedis](https://opendata.enedis.fr) · [API Tempo et Ecowatt de RTE](https://data.rte-france.com) ·
 [Nominatim](https://nominatim.openstreetmap.org), données © contributeurs OpenStreetMap (ODbL) ·
 SDDR 2025 de RTE · barèmes et grille TURPE 7 de la CRE.
 
