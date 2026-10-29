@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(.venv/Scripts/python.exe -m ruff:*)",
+      "Bash(.venv/Scripts/python.exe -m pytest:*)",
+      "Bash(.venv/Scripts/python.exe .claude/scripts/verifier.py:*)",
+      "Bash(.venv/Scripts/python.exe -m ingestion.cli essentiel:*)",
+      "Bash(.venv/Scripts/python.exe -m ingestion.cli diagnose:*)",
+      "Bash(.venv/Scripts/python.exe -m ingestion.cli compare:*)",
+      "Bash(.venv/Scripts/python.exe -m ingestion.cli europe:*)",
+      "Bash(.venv/Scripts/python.exe -m ingestion.cli geocode:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr checks:*)",
+      "PowerShell(.\\.venv\\Scripts\\python.exe -m ruff:*)",
+      "PowerShell(.\\.venv\\Scripts\\python.exe -m pytest:*)",
+      "PowerShell(.\\.venv\\Scripts\\python.exe .claude/scripts/verifier.py:*)",
+      "PowerShell(.\\.venv\\Scripts\\python.exe -m ingestion.cli essentiel:*)",
+      "PowerShell(.\\.venv\\Scripts\\python.exe -m ingestion.cli diagnose:*)",
+      "PowerShell(.\\.venv\\Scripts\\python.exe -m ingestion.cli compare:*)"
+    ],
+    "deny": [
+      "Read(./identifiants.local.txt)",
+      "Read(./.env)",
+      "Edit(./identifiants.local.txt)",
+      "Edit(./.env)",
+      "Bash(git push origin main:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.venv/Scripts/python.exe\" \"$CLAUDE_PROJECT_DIR/.claude/hooks/ruff_apres_edition.py\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
