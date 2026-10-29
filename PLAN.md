@@ -101,22 +101,30 @@ d'acheminement, vérifié le 28 octobre).
 
 Déjà fait : étape 9 (maquettes 3D, carte à deux vues), sources 10.1 (Enedis par adresse), 10.2
 (grille TURPE 7 HTA-BT), 10.3 (continuité d'alimentation), 10.4 (zonage sismique) et 11 (pôles de
-fret) du 25 au 26 octobre ; étape 12 (prix de vente des locaux, PR 47) le 28 octobre. Sources 10.5 (profils de charge réels) et 10.6 (Ecowatt) le 29 octobre. Prochaines
-étapes, dans l'ordre où les prendre ; chacune n'est cochée qu'après ruff, pytest (dont `dbt build`)
-et un essai réel sur un projet de 1 à 50 MW :
+fret) du 25 au 26 octobre ; étape 12 (prix de vente des locaux, PR 47) le 28 octobre. Sources 10.5 (profils de charge réels) et 10.6 (Ecowatt) le 29 octobre. Prochaines étapes, réorganisées le 29 octobre en deux lots : celles qu'on peut
+commencer sans rien attendre, dans l'ordre où les prendre, puis celles qui attendent une source ou une
+date. Chacune n'est cochée qu'après ruff, pytest (dont `dbt build`) et un essai réel sur un projet de
+1 à 50 MW :
 
-| Ordre | Étape | Pourquoi pour ce persona | Bloqué par |
+**Lot A : à prendre maintenant** (les sources existent ; reste à lire les textes ou à tester l'API)
+
+| Ordre | Étape | Pourquoi pour ce persona | À vérifier avant de coder |
 |---|---|---|---|
-| 1 | **17** Grille **TURPE 7 HTB** (RTE) en seed daté, à côté de la grille HTA-BT | Au-delà de 20 MW la part acheminement n'est pas chiffrée aujourd'hui ; c'est elle qui varie selon le site (HTA ou HTB) | délibération CRE du TURPE 7 HTB à relire (hausse moyenne de 3,34 % au 1er août 2026) |
-| 2 | **8** Repère de prix au-delà de 150 000 MWh/an, après la fin de l'ARENH (contrats d'allocation de production nucléaire, prix de marché à terme) | Un projet de 20 MW constant dépasse la dernière tranche Eurostat (IG, sans borne) | source officielle et ouverte d'un prix à terme à trouver ; le « classement pondéré dans `compare` » est retiré (décision du 15 octobre maintenue) |
-| 3 | **18** Accise selon l'activité : taux réduits des électro-intensifs (déjà `--va`), des centres de stockage de données et des autres catégories du CIBS ; option `--activite` (`data-center`, `irve`, `industrie`, `logistique`) | Change la facture d'un data center de plusieurs centaines de milliers d'euros par an ; donne le profil de charge par défaut | articles du CIBS et conditions (seuils de consommation, efficacité) à relire avant de coder |
-| 4 | **19** Capacité d'accueil en soutirage : intégrer la carte des capacités de RTE et le nouveau Caparéseau dès publication ; chercher ce qu'Enedis publie en HTA (consommation, pas seulement production) | Première question du persona, sans réponse publique aujourd'hui | publication RTE attendue au 1er janvier 2027 (délibération CRE 2026-173) ; capacité Enedis réservée au portail client à ce jour |
-| 5 | **14** Zonage d'urbanisme à l'adresse (API Carto, Géoportail de l'Urbanisme) et **friches et zones d'activité** (Cartofriches) | Un terrain où l'activité industrielle ou l'entrepôt est interdit ne vaut rien, même raccordable | couverture variable selon les communes ; licence de Cartofriches à lire |
-| 6 | **15** Risques complémentaires (argiles, cavités, inondation à l'adresse) et **ICPE, Seveso, sols pollués** voisins (Géorisques) | Un site industriel ou logistique peut être soumis à autorisation ; voisinage Seveso | endpoints à relire (documentation en erreur le 28 octobre) |
-| 7 | **20** Eau : prélèvements et tension sur la ressource (BNPE, Hub'Eau, arrêtés sécheresse) | Refroidissement des data centers ; procédés industriels | licences et maille à vérifier |
-| 8 | **13** Accès routier : temps vers l'échangeur autoroutier, le port, l'aéroport et le chantier rail-route les plus proches (Géoplateforme, `bdtopo-osrm`) | Logistique et industrie : desserte poids lourds ; complète les pôles de fret | pas de profil poids lourd dans la Géoplateforme |
-| 9 | **16** Bâtiment et solaire : emprise (BD TOPO), productible solaire (PVGIS), solarisation des parkings et toitures (loi APER) | Autoconsommation d'un entrepôt ou d'un hub de recharge | licence de la BDNB ; conditions d'usage de PVGIS |
-| 10 | **6** Extension internationale, voir ci-dessous | En dernier (décision du 25 octobre) | jeton ENTSO-E et contours des zones de prix |
+| 1 | **18** Accise selon l'activité : taux réduits des électro-intensifs (déjà `--va`), des centres de stockage de données et des autres catégories du CIBS ; option `--activite` (`data-center`, `irve`, `industrie`, `logistique`) qui choisit aussi le profil de charge | Change la facture d'un data center de plusieurs centaines de milliers d'euros par an. Les profils mesurés de l'étape 10.5 (industrie, tertiaire) servent déjà de base ; `data-center`, `irve` et `logistique` n'ont pas de courbe publiée : puissance constante, dite telle | articles du CIBS et conditions (seuils de consommation, efficacité) ; règles de la réfaction pour les bornes de recharge |
+| 2 | **15** Risques complémentaires (argiles, cavités, inondation à l'adresse) et **ICPE, Seveso, sols pollués** voisins (Géorisques) | Un site industriel ou logistique peut être soumis à autorisation ; voisinage Seveso. S'appuie sur le critère « risques » du verdict | endpoints Géorisques à relire (documentation en erreur le 28 octobre) |
+| 3 | **14** Zonage d'urbanisme à l'adresse (API Carto, Géoportail de l'Urbanisme) et **friches et zones d'activité** (Cartofriches) | Un terrain où l'activité industrielle ou l'entrepôt est interdit ne vaut rien, même raccordable | couverture variable selon les communes ; licence de Cartofriches |
+| 4 | **20** Eau : prélèvements et tension sur la ressource (BNPE, Hub'Eau, arrêtés sécheresse) | Refroidissement des data centers ; procédés industriels | licences et maille |
+| 5 | **13** Accès routier : temps vers l'échangeur autoroutier, le port, l'aéroport et le chantier rail-route les plus proches (Géoplateforme, `bdtopo-osrm`) | Logistique et industrie : desserte poids lourds ; complète les pôles de fret | pas de profil poids lourd dans la Géoplateforme |
+| 6 | **16** Bâtiment et solaire : emprise (BD TOPO), productible solaire (PVGIS), solarisation des parkings et toitures (loi APER) | Autoconsommation d'un entrepôt ou d'un hub de recharge | licence de la BDNB ; conditions d'usage de PVGIS |
+
+**Lot B : en attente** (rien à coder tant que la condition n'est pas levée)
+
+| Étape | Pourquoi pour ce persona | Condition pour s'y mettre |
+|---|---|---|
+| **17** Grille **TURPE 7 HTB** (RTE) en seed daté, à côté de la grille HTA-BT | Au-delà de 20 MW la part acheminement n'est pas chiffrée ; c'est elle qui varie selon le site (HTA ou HTB). La plus utile du lot B | lire la délibération CRE du TURPE 7 HTB (hausse moyenne de 3,34 % au 1er août 2026) : peut passer en lot A dès que le texte est relu |
+| **19** Capacité d'accueil en soutirage : carte des capacités de RTE, nouveau Caparéseau ; ce qu'Enedis publie en HTA | Première question du persona, sans réponse publique aujourd'hui | publication RTE attendue au 1er janvier 2027 (délibération CRE 2026-173) ; capacité Enedis réservée au portail client |
+| **8** Repère de prix au-delà de 150 000 MWh/an, après la fin de l'ARENH | Un projet de 20 MW constant dépasse la dernière tranche Eurostat (IG, sans borne) | trouver une source officielle et ouverte d'un prix à terme ; le « classement pondéré dans `compare` » reste retiré (décision du 15 octobre) |
+| **6** Extension internationale, voir ci-dessous | En dernier (décision du 25 octobre) | jeton ENTSO-E et contours des zones de prix |
 
 Les bornes de recharge ont leurs propres règles de raccordement (prise en charge d'une part du coût
 par le tarif, dite réfaction) : à étudier avec l'étape 18, sans rien afficher avant d'avoir le texte.
@@ -127,7 +135,9 @@ par le tarif, dite réfaction) : à étudier avec l'étape 18, sans rien affiche
 - 1er février 2027 : indexation de l'accise, ligne à ajouter au seed `accise_electricite` ;
 - 1er août 2027 : nouvelle grille TURPE 7 HTA-BT, à reporter dans les seeds `turpe_soutirage`
   et `turpe_gestion_comptage` (les sorties le signalent une fois la date passée) ;
-- quand EDF SEI publiera 2025 : `refresh` pour recaler le carbone horaire des îles.
+- quand EDF SEI publiera 2025 : `refresh` pour recaler le carbone horaire des îles ;
+- chaque mois : `ecowatt` (jours à venir) pour garder l'historique du signal Ecowatt, qui n'est pas
+  rejouable ; `refresh` rafraîchit aussi les profils de charge Enedis (12 mois glissants).
 
 **Sources de l'étude du 25 octobre** : toutes intégrées (10.1 à 10.6).
 
