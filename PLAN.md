@@ -75,6 +75,7 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 | Rapport mensuel carbone et créneaux Tempo, sur le calendrier réel de l'API RTE (vérifié le 25 octobre sur septembre 2026 et janvier 2026) | `tempo`, `report` |
 | Profils de charge réels des points de plus de 250 kVA, industrie et tertiaire (Enedis, 12 mois, 843 072 demi-heures chargées le 29 octobre) : journée type pondérée par le nombre de points, chiffrée heure par heure comme le profil du seed (10.5) | `ingestion/extract_enedis.py`, `profils_charge_sup36`, `profils_charge_reels`, `fct_cout_horaire_profil` |
 | Signal Ecowatt (J à J+3) relevé à la demande par `ecowatt`, jours orange et rouges dans le rapport mensuel (10.6) | `RteEcowattClient`, `rte_ecowatt`, `ecowatt_jours`, `ligne_ecowatt` |
+| Modèle en étoile du 29 octobre : 3 dimensions (`dim_commune`, `dim_date`, `dim_risque`) et 4 faits (conso des entreprises, prix des locaux, risques, mix journalier), clés étrangères testées sur le warehouse réel | `dbt/models/etoile/` |
 | Sortie réduite à la réponse (journal sous `--verbose`) ; avant tout chargement, la commande `refresh` à lancer | `ingestion/cli.py` |
 
 **À surveiller** :
@@ -438,6 +439,7 @@ réduits d'accise des data centers et des industriels n'ont pas pu être relus d
 |---|---|
 | 12 oct. | Prix historiques par tranche Eurostat, pas de prix horaire ; scénarios à 3 ans |
 | 15 oct. | Comparaison sans classement |
+| 29 oct. | Étoile en schéma `etoile` au-dessus du gold, sans renommer les `fct_*` ; `dim_commune` reprend les communes des faits absentes du référentiel (clé étrangère jamais orpheline) |
 | 16 oct. | MVP recentré sur deux réponses, prix moyen et verdict carbone ; sans `--conso`, tranche IA |
 | 16 oct. | Verdict sur le facteur ADEME en cycle de vie, au seuil de 100 gCO₂e/kWh de la taxonomie |
 | 16 oct. | Local et à la demande uniquement : aucune exécution planifiée |
