@@ -118,16 +118,18 @@ seeds:
           - not_null
           - accepted_values:
               arguments:
-                values: [bt_inf36, bt_sup36, hta, htb]
+                values: [bt_inf36, bt_sup36, hta, htb1]
 
   - name: turpe_soutirage
     description: >
-      Composante annuelle de soutirage du TURPE 7 HTA-BT (acheminement sur le réseau de
-      distribution), validité `[date_debut, date_fin)`. Par domaine de tension (HTA à pointe
-      fixe, BT > 36 kVA), version (courte ou longue utilisation) et classe temporelle :
+      Composante annuelle de soutirage du TURPE 7 (acheminement), validité `[date_debut,
+      date_fin)`. Par domaine de tension (HTA à pointe fixe, BT > 36 kVA, HTB 1 à 3), version
+      (courte, moyenne ou longue utilisation ; `unique` en HTB 3) et classe temporelle :
       `b_eur_kva_an`, coefficient de puissance souscrite (€/kVA/an, €/kW/an en HTA), et
-      `c_eur_mwh`, coefficient de l'énergie (c€/kWh × 10). Valeurs de l'annexe 2 de la
-      délibération de la CRE n° 2026-105 du 21 mai 2026 (pages 25 à 27), applicables du 1er
+      `c_eur_mwh`, coefficient de l'énergie (c€/kWh × 10). HTA-BT : annexe 2 de la
+      délibération de la CRE n° 2026-105 du 21 mai 2026 (pages 25 à 27) ; HTB : annexe 2 de la
+      délibération n° 2026-104 du même jour (tableaux 3.4 à 3.10, pages 33 à 35, en c€/kWh
+      convertis ×10 ; b = 0 en HTB 3). Applicables du 1er
       août 2026 au 31 juillet 2027. Nouvelle grille chaque 1er août : clore les lignes en cours
       et ajouter les nouvelles.
     config:
@@ -146,13 +148,13 @@ seeds:
           - not_null
           - accepted_values:
               arguments:
-                values: [bt_sup36, hta]
+                values: [bt_sup36, hta, htb1, htb2, htb3]
       - name: utilisation
         data_tests:
           - not_null
           - accepted_values:
               arguments:
-                values: [courte, longue]
+                values: [courte, moyenne, longue, unique]
       - name: classe
         data_tests:
           - not_null
@@ -176,11 +178,12 @@ seeds:
 
   - name: turpe_gestion_comptage
     description: >
-      Composantes annuelles de gestion et de comptage du TURPE 7 HTA-BT, en €/an, même
+      Composantes annuelles de gestion et de comptage du TURPE 7, en €/an, même
       validité que `turpe_soutirage`. Gestion : contrat unique conclu par le fournisseur,
       terme Rf inclus (le cas d'une entreprise qui ne signe qu'avec son fournisseur) ;
-      comptage : compteur communicant, relève mensuelle. Délibération de la CRE n° 2026-105,
-      annexe 2 (pages 21 et 24).
+      comptage : compteur communicant, relève mensuelle. HTA-BT : délibération de la CRE n° 2026-105,
+      annexe 2 (pages 21 et 24) ; HTB : délibération n° 2026-104, tableaux 3.1 et 3.2 (contrat
+      d'accès au réseau, comptage hebdomadaire détenu par RTE).
     config:
       column_types:
         date_debut: date
@@ -197,7 +200,7 @@ seeds:
           - not_null
           - accepted_values:
               arguments:
-                values: [bt_sup36, hta]
+                values: [bt_sup36, hta, htb1, htb2, htb3]
 
   - name: limites_methodologiques
     description: >

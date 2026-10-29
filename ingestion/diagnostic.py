@@ -117,7 +117,7 @@ where profil = $profil
 """
 
 # Domaines chiffrés par la grille TURPE HTA-BT ; le tarif bleu inclut déjà l'acheminement
-DOMAINES_TURPE = {"bt_sup36": "BT > 36 kVA", "hta": "HTA"}
+DOMAINES_TURPE = {"bt_sup36": "BT > 36 kVA", "hta": "HTA", "htb1": "HTB 1"}
 
 _COUT_SQL = """
 select
@@ -429,7 +429,7 @@ class Seuil:
     domaine_tension: str
     gestionnaire: str
     commentaire: str
-    # Grille TURPE du domaine : `bt_inf36`, `bt_sup36`, `hta` ou `htb`
+    # Grille TURPE du domaine : `bt_inf36`, `bt_sup36`, `hta` ou `htb1`
     domaine_turpe: str
 
 
@@ -1870,8 +1870,6 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
                 f" souscrite, {_euros_arrondis(a.energie_eur)} pour l'énergie,"
                 f" {_euros_arrondis(a.gestion_comptage_eur)} de gestion et comptage par an",
             )
-        elif d.seuil.domaine_turpe == "htb":
-            texte(s, "Acheminement : grille TURPE HTB de RTE, non chiffrée ici.")
         elif d.seuil.domaine_turpe in DOMAINES_TURPE:
             texte(s, "Acheminement : préciser --conso (MWh par an) pour le chiffrer.")
         if d.seuil.domaine_turpe != "bt_inf36":
