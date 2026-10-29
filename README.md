@@ -16,17 +16,20 @@ les villes : l'outil n'y apporte rien de décisif.
 l'exploitant, que l'outil chiffre sans les vérifier), le loyer des locaux, la consommation d'un projet déduite de sa seule puissance. Il dit « non
 disponible » plutôt que de deviner.
 
-![Carte 3D, vue Raccorder : cases notées du rouge au vert, verdict « Brancher ici ? » pour un bureau à Lyon](docs/exemples/carte_lyon_decision.png)
+![Carte 3D, vue Raccorder : cases notées du rouge au vert, verdict « Brancher ici ? » pour un data center de 12 MW à Chilly-Mazarin](docs/exemples/carte_chilly_raccorder.png)
 
-![Carte 3D, vue Territoire : relief et couleurs réelles, carbone et prix moyen dans l'encart](docs/exemples/carte_lyon_reel.png)
+![Carte 3D, vue Territoire : relief et couleurs réelles, carbone, prix, production et fret dans l'encart](docs/exemples/carte_chilly_territoire.png)
 
-*La carte générée pour « 20 rue de la République, 69002 Lyon », des bureaux de 100 kVA et 80 MWh par
-an (capture antérieure au recentrage sur les projets de 1 à 50 MW, à refaire : étape A1 du
-[plan](PLAN.md)). En haut, la vue « Raccorder » (touche 1) : les cases sont notées du rouge au vert et la fiche donne
-le verdict : raccordement courant au réseau de distribution, carbone sous le seuil de 100 g, facture
-d'environ 16 000 € HTVA par an ; seuls les deux plans de prévention de la commune (risque
-industriel, inondation) restent à vérifier. En bas, la vue « Territoire » (touche 2) : paysage réel,
-carbone et prix moyen par région, production et fret. Diagnostic complet de Lyon : [en PDF](docs/exemples/implantation_lyon.pdf).*
+*La carte générée pour l'exemple de référence : un data center de 12 MW et 70 000 MWh par an au
+« 3 allée des Peupliers, 91380 Chilly-Mazarin » (`essentiel --puissance 12 --conso 70000
+--activite data-center`, le 29 octobre 2026). En haut, la vue « Raccorder » (touche 1) : les cases
+sont notées du rouge au vert, l'adresse est reliée à la zone prioritaire RTE Sud Île-de-France
+(capacité en 2030) et au site clé en main de Massy ; la fiche donne le verdict : raccordement en
+HTA chez Enedis, carbone sous le seuil de 100 g, facture d'environ 5,3 M€ HTVA par an dont une
+accise réduite possible d'environ 1,1 M€ de moins, foncier avec un site clé en main à 5 km ; seul
+le plan de prévention des inondations de l'Yvette reste à vérifier. En bas, la vue « Territoire »
+(touche 2) : paysage réel, carbone et prix moyen par région, production et fret. Diagnostic
+complet : [en PDF](docs/exemples/implantation_chilly.pdf).*
 
 ## Trois faits à connaître
 
@@ -84,12 +87,14 @@ Enedis ; au-delà de 20 MW, RTE devient probable et les délais s'allongent.
 Avec l'export de votre **courbe de charge** (CSV téléchargé depuis votre espace client
 Enedis), l'outil prend votre vraie consommation : volume annuel, pointe de puissance (donc qui
 raccorde), part en heures creuses, coût au tarif HP/HC actuel et carbone de vos heures de
-consommation. Le coût au tarif HP/HC n'est chiffré que jusqu'à 36 kW ; au-delà, la courbe sert
-au volume, à la pointe et à l'acheminement. Un exemple (une courbe de bureau, en attendant une
-courbe HTA) est fourni pour essayer :
+consommation. Le coût au tarif HP/HC n'est chiffré que jusqu'à 36 kW ; au-delà, aucun prix
+horaire n'est public : l'énergie reste au prix moyen de la tranche et la courbe sert au volume, à
+la pointe et à l'acheminement. Un exemple est fourni pour essayer : septembre 2026 d'un site
+industriel de 12 MW en pointe, tiré de la journée type mesurée par Enedis pour l'industrie (points
+de plus de 250 kVA, jours ouvrés et week-ends) et mis à l'échelle, pas la courbe d'un vrai site :
 
 ```powershell
-.\.venv\Scripts\python.exe -m ingestion.cli essentiel --adresse "3 allée des peupliers 91380 Chilly-Mazarin" --courbe docs/exemples/courbe_bureau_septembre.csv
+.\.venv\Scripts\python.exe -m ingestion.cli essentiel --adresse "3 allée des peupliers 91380 Chilly-Mazarin" --courbe docs/exemples/courbe_industrie_septembre.csv --activite industrie
 ```
 
 **4. Ouvrir la carte** `data/reports/carte.html` dans un navigateur : l'adresse y est épinglée et

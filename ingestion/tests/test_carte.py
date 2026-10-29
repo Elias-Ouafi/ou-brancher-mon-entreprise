@@ -216,7 +216,7 @@ def test_carte_hors_ligne_a_plat(
     path = carte.generer_carte(settings=settings_carte)
 
     assert path == settings_carte.reports_dir / "carte.html"
-    assert "Atlas électrique de France" in path.read_text(encoding="utf-8")
+    assert "<title>Où brancher mon entreprise</title>" in path.read_text(encoding="utf-8")
     assert "relief incomplet" in caplog.text
     assert lire_altitudes(settings_carte) == {}
 
