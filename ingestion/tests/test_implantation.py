@@ -12,6 +12,7 @@ from pytest_httpx import HTTPXMock
 from ingestion import cli
 from ingestion.config import Settings
 from ingestion.diagnostic import CoutProfil, Diagnostic, lire_diagnostic
+from ingestion.eau import SituationEau
 from ingestion.georisques import lire_rapport
 from ingestion.tests.conftest import FIXTURES_DIR
 from ingestion.tests.medallion import DBT_BIN
@@ -69,6 +70,7 @@ def _lyon(medallion_db: Path) -> Diagnostic:
         risques=lire_rapport(rapport),
         urbanisme=ZoneUrbanisme("U", "UB", None, "DOC", None, None),
         urbanisme_consulte=True,
+        eau=SituationEau([]),
     )
 
 

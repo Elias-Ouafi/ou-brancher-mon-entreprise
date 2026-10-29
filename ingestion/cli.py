@@ -16,6 +16,7 @@ from ingestion.diagnostic import (
     DiagnosticIndisponibleError,
     DonneesAbsentesError,
     avec_risques_locaux,
+    completer_eau,
     completer_risques,
     completer_urbanisme,
     essentiel_en_dict,
@@ -307,7 +308,7 @@ def build_parser() -> argparse.ArgumentParser:
     diagnose.add_argument(
         "--sans-risques",
         action="store_true",
-        help="ne consulte ni Géorisques ni le Géoportail de l'urbanisme (usage hors ligne)",
+        help="ne consulte ni Géorisques, ni l'urbanisme, ni VigiEau (usage hors ligne)",
     )
     diagnose.add_argument(
         "--sans-graphiques",
@@ -336,7 +337,7 @@ def build_parser() -> argparse.ArgumentParser:
     compare.add_argument(
         "--sans-risques",
         action="store_true",
-        help="ne consulte ni Géorisques ni le Géoportail de l'urbanisme",
+        help="ne consulte ni Géorisques, ni le Géoportail de l'urbanisme, ni VigiEau",
     )
 
     carte = subparsers.add_parser(
@@ -515,6 +516,7 @@ def main(argv: list[str] | None = None) -> int:
             if not args.sans_risques:
                 diagnostic = completer_risques(diagnostic, settings=settings)
                 diagnostic = completer_urbanisme(diagnostic, settings=settings)
+                diagnostic = completer_eau(diagnostic, settings=settings)
             if args.format == "texte":
                 print(formater_diagnostic(diagnostic))
             elif args.format == "json" and not args.output:
@@ -557,6 +559,7 @@ def main(argv: list[str] | None = None) -> int:
                 if not args.sans_risques:
                     diagnostic = completer_risques(diagnostic, settings=settings)
                     diagnostic = completer_urbanisme(diagnostic, settings=settings)
+                    diagnostic = completer_eau(diagnostic, settings=settings)
                 diagnostics.append(diagnostic)
             rendus = {
                 "texte": comparaison.formater_comparaison,

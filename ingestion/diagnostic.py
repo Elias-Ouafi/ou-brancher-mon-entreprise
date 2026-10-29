@@ -13,6 +13,7 @@ import duckdb
 
 from ingestion.config import Settings, get_settings
 from ingestion.courbe import BilanCourbe, Courbe, bilan_courbe
+from ingestion.eau import LIBELLES_NIVEAU, LIBELLES_TYPE, EauError, SituationEau, lire_situation_eau
 from ingestion.extract_sismique import contient
 from ingestion.geocode import Territoire, adresse_normalisee, code_commune_parent
 from ingestion.georisques import (
@@ -699,6 +700,9 @@ class Diagnostic:
     urbanisme: ZoneUrbanisme | None = None
     urbanisme_consulte: bool = False
     urbanisme_erreur: str | None = None
+    # Arrêtés de restriction des usages de l'eau en vigueur à l'adresse (VigiEau)
+    eau: SituationEau | None = None
+    eau_erreur: str | None = None
     # Nombre de friches d'au moins 1 ha à moins de `RAYON_FRICHES_KM`, et les plus proches ;
     # `None` si Cartofriches n'est pas chargé
     nb_friches: int | None = None
@@ -1420,6 +1424,29 @@ def ligne_urbanisme(zone: ZoneUrbanisme) -> str:
     return phrase
 
 
+def ligne_eau(eau: SituationEau) -> str:
+    if not eau.zones:
+        return "aucun arrêté de restriction des usages de l'eau en vigueur à cette adresse"
+    zones = ", ".join(
+        f"{LIBELLES_TYPE.get(z.type_zone, z.type_zone)} ({LIBELLES_NIVEAU[z.niveau]})"
+        for z in sorted(eau.zones, key=lambda z: -z.rang)
+    )
+    fins = [z.date_fin for z in eau.zones if z.date_fin]
+    phrase = f"niveau {LIBELLES_NIVEAU[eau.niveau_max]} en vigueur : {zones}"
+    if fins:
+        phrase += f", jusqu'au {max(fins):%d/%m/%Y}"
+    if eau.est_contraignante:
+        phrase += (
+            " ; à ce niveau, les usages de l'eau des entreprises peuvent être très réduits"
+            " ou suspendus selon l'arrêté"
+        )
+    else:
+        phrase += (
+            " ; à ce niveau, l'arrêté appelle surtout à la sobriété : en lire les usages encadrés"
+        )
+    return phrase
+
+
 def ligne_friches(nb: int, friches: list[Friche]) -> str:
     if not nb:
         return (
@@ -1529,6 +1556,14 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
         else asdict(d.entreprises_adresse),
         "courbe": None if d.courbe is None else asdict(d.courbe),
         "urbanisme": None if d.urbanisme is None else asdict(d.urbanisme),
+        "eau": None
+        if d.eau is None
+        else {
+            "niveau_max": d.eau.niveau_max,
+            "est_contraignante": d.eau.est_contraignante,
+            "zones": [asdict(z) for z in d.eau.zones],
+            "source": "VigiEau",
+        },
         "friches": None
         if d.nb_friches is None
         else {
@@ -1559,6 +1594,7 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
                 ("entreprises_enedis", d.entreprises_adresse is not None),
                 ("prix_locaux", d.prix_locaux is not None),
                 ("friches", d.nb_friches is not None),
+                ("restrictions_eau", d.eau is not None),
                 ("zonage_urbanisme", d.urbanisme_consulte and d.urbanisme_erreur is None),
             )
             if present and code in d.limites
@@ -1887,7 +1923,7 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
             )
     limite(s, "cout_profil")
 
-    s = bloc("6. Risques naturels et technologiques à l'adresse (Géorisques)")
+    s = bloc("6. Risques et contraintes du site : Géorisques et eau (arrêtés de restriction)")
     if d.plans_prevention is not None:
         texte(
             s,
@@ -1946,6 +1982,11 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
         limite(s, "risques_site")
     if d.risques is not None and any(r.code == "seisme" for r in d.risques.risques):
         limite(s, "zonage_sismique")
+    if d.eau is not None:
+        texte(s, f"Eau : {ligne_eau(d.eau)}")
+        limite(s, "restrictions_eau")
+    elif d.eau_erreur is not None:
+        texte(s, f"Restrictions d'eau non consultées : {d.eau_erreur}")
     s = bloc("7. Foncier : zonage d'urbanisme et prix des locaux d'activité (DVF)")
     if d.urbanisme is not None:
         texte(s, f"Zonage d'urbanisme : {ligne_urbanisme(d.urbanisme)}")
@@ -2072,6 +2113,17 @@ def completer_urbanisme(diagnostic: Diagnostic, *, settings: Settings | None = N
         logger.warning("zonage d'urbanisme non consulte : %s", error)
         return replace(diagnostic, urbanisme_erreur=str(error))
     return replace(diagnostic, urbanisme=zone, urbanisme_consulte=True)
+
+
+# Ajoute les arrêtés sécheresse de l'adresse ; ne fait jamais échouer le diagnostic
+def completer_eau(diagnostic: Diagnostic, *, settings: Settings | None = None) -> Diagnostic:
+    t = diagnostic.territoire
+    try:
+        eau = lire_situation_eau(latitude=t.latitude, longitude=t.longitude, settings=settings)
+    except EauError as error:
+        logger.warning("restrictions d'eau non consultees : %s", error)
+        return replace(diagnostic, eau_erreur=str(error))
+    return replace(diagnostic, eau=eau)
 
 
 def formater_diagnostic(diagnostic: Diagnostic) -> str:

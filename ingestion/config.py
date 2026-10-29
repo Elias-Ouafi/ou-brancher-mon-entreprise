@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     # API Carto de l'IGN (Géoportail de l'urbanisme : zone d'urbanisme d'un point), sans clé
     apicarto_base_url: str = "https://apicarto.ign.fr/api/"
 
+    # VigiEau (arrêtés de restriction des usages de l'eau en vigueur à un point), sans clé
+    vigieau_base_url: str = "https://api.vigieau.beta.gouv.fr/api/"
+
     # Service WFS de Géorisques (zonage sismique réglementaire), répond quand l'API se tait
     zonage_sismique_url: str = "https://www.georisques.gouv.fr/services"
 

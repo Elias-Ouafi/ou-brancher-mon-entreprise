@@ -27,6 +27,7 @@ from ingestion.diagnostic import (
     phrase_verdict,
     verdict,
 )
+from ingestion.eau import SituationEau
 from ingestion.geocode import Territoire
 from ingestion.georisques import lire_rapport
 from ingestion.tests.conftest import FIXTURES_DIR
@@ -367,12 +368,13 @@ def test_every_figure_comes_with_its_limit(medallion_db: Path, warehouse: Any) -
         risques=lire_rapport(rapport),
         urbanisme=ZoneUrbanisme("U", "UB", None, "DOC", None, None),
         urbanisme_consulte=True,
+        eau=SituationEau([]),
     )
     texte = formater_diagnostic(diagnostic)
     limites = [
         limite for (limite,) in _rows(warehouse, "SELECT limite FROM gold.limites_methodologiques")
     ]
-    assert len(limites) == 24
+    assert len(limites) == 25
     for limite in limites:
         assert limite in texte
 
