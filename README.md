@@ -146,7 +146,7 @@ flowchart LR
     SEEDS[("Seeds : ADEME, tarifs, référentiels, limites")] --> G
     GEO[("Contours Etalab · relief IGN · Natural Earth")] -->|"ingestion/ (Python)"| B
     G --> CLI(["essentiel · diagnose · compare · carte · europe"])
-    BAN[("BAN · Géorisques, à la demande")] --> CLI
+    BAN[("BAN · Géorisques · Géoportail de l'urbanisme, à la demande")] --> CLI
 ```
 
 - **Ingestion idempotente en PySpark** : chaque lot est typé et normalisé par une session Spark
@@ -196,7 +196,7 @@ pièges des sources, plus les tests de données dbt. La CI GitHub Actions les jo
 
 [ODRÉ](https://odre.opendatasoft.com) (éCO2mix, RTE) · [Eurostat](https://ec.europa.eu/eurostat) ·
 [Base Carbone de l'ADEME](https://data.ademe.fr/datasets/base-carboner) ·
-[Base Adresse Nationale](https://adresse.data.gouv.fr) · [Géorisques, GASPAR et zonage sismique](https://www.georisques.gouv.fr) ·
+[Base Adresse Nationale](https://adresse.data.gouv.fr) · [Géorisques, GASPAR et zonage sismique](https://www.georisques.gouv.fr) · [Géoportail de l'urbanisme (API Carto)](https://apicarto.ign.fr) ·
 [contours Etalab](https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/) ·
 [altimétrie IGN](https://geoservices.ign.fr/documentation/services/services-geoplateforme/altimetrie) ·
 [Natural Earth](https://www.naturalearthdata.com) ·

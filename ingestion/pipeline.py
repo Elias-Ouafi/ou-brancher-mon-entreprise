@@ -17,6 +17,7 @@ from ingestion.datasets import (
     ENEDIS_CONSO_ENTREPRISES,
     EUROSTAT_PRIX_ENTREPRISES,
     EUROSTAT_PRIX_UE,
+    FRICHES,
     GASPAR_PLANS,
     GASPAR_RISQUES,
     NATIONAL_TR,
@@ -39,6 +40,7 @@ from ingestion.extract_enedis import (
 )
 from ingestion.extract_eurostat import EurostatClient
 from ingestion.extract_fret import telecharger_aeroports, telecharger_chantiers, telecharger_ports
+from ingestion.extract_friches import telecharger_friches
 from ingestion.extract_gaspar import lire_export, lire_plans, telecharger_archive
 from ingestion.extract_odre import ExtractionWindow, OdreClient
 from ingestion.extract_production import telecharger_centres, telecharger_sites
@@ -517,6 +519,17 @@ def run_locaux_ingestion(
     settings = settings or get_settings()
     lignes = telecharger_ventes_locaux(settings=settings)
     return _charger_fichier(lignes, VENTES_LOCAUX, settings, run_id, now)
+
+
+# Friches référencées : le foncier déjà bâti, souvent déjà desservi, qu'un projet peut reprendre
+def run_friches_ingestion(
+    *,
+    settings: Settings | None = None,
+    run_id: str = "manual",
+    now: datetime | None = None,
+) -> tuple[ExtractionOutcome, LoadResult]:
+    settings = settings or get_settings()
+    return _charger_fichier(telecharger_friches(settings=settings), FRICHES, settings, run_id, now)
 
 
 def run_edf_sei_ingestion(

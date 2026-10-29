@@ -31,6 +31,7 @@ from ingestion.geocode import Territoire
 from ingestion.georisques import lire_rapport
 from ingestion.tests.conftest import FIXTURES_DIR
 from ingestion.tests.medallion import ANNEE_REFERENCE, DBT_BIN
+from ingestion.urbanisme import ZoneUrbanisme
 
 pytestmark = pytest.mark.skipif(DBT_BIN is None, reason="dbt non installé (uv sync --group dbt)")
 
@@ -364,12 +365,14 @@ def test_every_figure_comes_with_its_limit(medallion_db: Path, warehouse: Any) -
             database=medallion_db,
         ),
         risques=lire_rapport(rapport),
+        urbanisme=ZoneUrbanisme("U", "UB", None, "DOC", None, None),
+        urbanisme_consulte=True,
     )
     texte = formater_diagnostic(diagnostic)
     limites = [
         limite for (limite,) in _rows(warehouse, "SELECT limite FROM gold.limites_methodologiques")
     ]
-    assert len(limites) == 22
+    assert len(limites) == 24
     for limite in limites:
         assert limite in texte
 
@@ -526,7 +529,7 @@ def test_essentiel_command_answers_price_and_carbon(
     assert reponse["prix"]["facture_htva_eur_an"] is None
     assert reponse["carbone"]["est_decarbone"] is False
     assert reponse["carbone"]["systeme_electrique"] == "Corse"
-    assert set(reponse["limites"]) == {"prix_entreprise", "carbone_territoire"}
+    assert set(reponse["limites"]) == {"prix_entreprise", "carbone_territoire", "friches"}
     assert "carbone" in reponse["verdict"]["phrase"]
     assert len(reponse["verdict"]["criteres"]) == 5
 
