@@ -1,6 +1,6 @@
 # Plan du projet
 
-> Mis à jour le 28 octobre 2026. Périmètre : la France (métropole, Corse, outre-mer), en ligne de
+> Mis à jour le 29 octobre 2026. Périmètre : la France (métropole, Corse, outre-mer), en ligne de
 > commande, en local et à la demande.
 
 ## Persona
@@ -67,6 +67,8 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 | Pays de l'UE-27 : prix Eurostat et carbone Ember du pays, face à la France à tranche égale ; pays trouvé par Nominatim | `europe`, `fct_pays_ue` |
 | Mise à jour de toutes les sources, puis `dbt build` | `refresh` |
 | Rapport mensuel carbone et créneaux Tempo, sur le calendrier réel de l'API RTE (vérifié le 25 octobre sur septembre 2026 et janvier 2026) | `tempo`, `report` |
+| Profils de charge réels des points de plus de 250 kVA, industrie et tertiaire (Enedis, 12 mois, 843 072 demi-heures chargées le 29 octobre) : journée type pondérée par le nombre de points, chiffrée heure par heure comme le profil du seed (10.5) | `ingestion/extract_enedis.py`, `profils_charge_sup36`, `profils_charge_reels`, `fct_cout_horaire_profil` |
+| Signal Ecowatt (J à J+3) relevé à la demande par `ecowatt`, jours orange et rouges dans le rapport mensuel (10.6) | `RteEcowattClient`, `rte_ecowatt`, `ecowatt_jours`, `ligne_ecowatt` |
 | Sortie réduite à la réponse (journal sous `--verbose`) ; avant tout chargement, la commande `refresh` à lancer | `ingestion/cli.py` |
 
 **À surveiller** :
@@ -99,24 +101,30 @@ d'acheminement, vérifié le 28 octobre).
 
 Déjà fait : étape 9 (maquettes 3D, carte à deux vues), sources 10.1 (Enedis par adresse), 10.2
 (grille TURPE 7 HTA-BT), 10.3 (continuité d'alimentation), 10.4 (zonage sismique) et 11 (pôles de
-fret) du 25 au 26 octobre ; étape 12 (prix de vente des locaux, PR 47) le 28 octobre. Prochaines
-étapes, dans l'ordre où les prendre ; chacune n'est cochée qu'après ruff, pytest (dont `dbt build`)
-et un essai réel sur un projet de 1 à 50 MW :
+fret) du 25 au 26 octobre ; étape 12 (prix de vente des locaux, PR 47) le 28 octobre. Sources 10.5 (profils de charge réels) et 10.6 (Ecowatt) le 29 octobre. Prochaines étapes, réorganisées le 29 octobre en deux lots : celles qu'on peut
+commencer sans rien attendre, dans l'ordre où les prendre, puis celles qui attendent une source ou une
+date. Chacune n'est cochée qu'après ruff, pytest (dont `dbt build`) et un essai réel sur un projet de
+1 à 50 MW :
 
-| Ordre | Étape | Pourquoi pour ce persona | Bloqué par |
+**Lot A : à prendre maintenant** (les sources existent ; reste à lire les textes ou à tester l'API)
+
+| Ordre | Étape | Pourquoi pour ce persona | À vérifier avant de coder |
 |---|---|---|---|
-| 1 | **17** Grille **TURPE 7 HTB** (RTE) en seed daté, à côté de la grille HTA-BT | Au-delà de 20 MW la part acheminement n'est pas chiffrée aujourd'hui ; c'est elle qui varie selon le site (HTA ou HTB) | délibération CRE du TURPE 7 HTB à relire (hausse moyenne de 3,34 % au 1er août 2026) |
-| 2 | **8** Repère de prix au-delà de 150 000 MWh/an, après la fin de l'ARENH (contrats d'allocation de production nucléaire, prix de marché à terme) | Un projet de 20 MW constant dépasse la dernière tranche Eurostat (IG, sans borne) | source officielle et ouverte d'un prix à terme à trouver ; le « classement pondéré dans `compare` » est retiré (décision du 15 octobre maintenue) |
-| 3 | **18** Accise selon l'activité : taux réduits des électro-intensifs (déjà `--va`), des centres de stockage de données et des autres catégories du CIBS ; option `--activite` (`data-center`, `irve`, `industrie`, `logistique`) | Change la facture d'un data center de plusieurs centaines de milliers d'euros par an ; donne le profil de charge par défaut | articles du CIBS et conditions (seuils de consommation, efficacité) à relire avant de coder |
-| 4 | **10.5** Profils de charge réels > 36 kVA par secteur (Enedis `conso-sup36-region`) | Remplace les profils du seed : la part acheminement et le carbone horaire dépendent de la forme de la courbe | volume : filtrage à la source par région et secteur à mettre au point |
-| 5 | **19** Capacité d'accueil en soutirage : intégrer la carte des capacités de RTE et le nouveau Caparéseau dès publication ; chercher ce qu'Enedis publie en HTA (consommation, pas seulement production) | Première question du persona, sans réponse publique aujourd'hui | publication RTE attendue au 1er janvier 2027 (délibération CRE 2026-173) ; capacité Enedis réservée au portail client à ce jour |
-| 6 | **14** Zonage d'urbanisme à l'adresse (API Carto, Géoportail de l'Urbanisme) et **friches et zones d'activité** (Cartofriches) | Un terrain où l'activité industrielle ou l'entrepôt est interdit ne vaut rien, même raccordable | couverture variable selon les communes ; licence de Cartofriches à lire |
-| 7 | **15** Risques complémentaires (argiles, cavités, inondation à l'adresse) et **ICPE, Seveso, sols pollués** voisins (Géorisques) | Un site industriel ou logistique peut être soumis à autorisation ; voisinage Seveso | endpoints à relire (documentation en erreur le 28 octobre) |
-| 8 | **20** Eau : prélèvements et tension sur la ressource (BNPE, Hub'Eau, arrêtés sécheresse) | Refroidissement des data centers ; procédés industriels | licences et maille à vérifier |
-| 9 | **13** Accès routier : temps vers l'échangeur autoroutier, le port, l'aéroport et le chantier rail-route les plus proches (Géoplateforme, `bdtopo-osrm`) | Logistique et industrie : desserte poids lourds ; complète les pôles de fret | pas de profil poids lourd dans la Géoplateforme |
-| 10 | **16** Bâtiment et solaire : emprise (BD TOPO), productible solaire (PVGIS), solarisation des parkings et toitures (loi APER) | Autoconsommation d'un entrepôt ou d'un hub de recharge | licence de la BDNB ; conditions d'usage de PVGIS |
-| 11 | **10.6** Signal Ecowatt dans le rapport mensuel | Jours de tension : effacement et flexibilité d'un data center ou d'un hub de recharge | identifiants enregistrés le 28 octobre ; accès réel (plus de 403) à vérifier |
-| 12 | **6** Extension internationale, voir ci-dessous | En dernier (décision du 25 octobre) | jeton ENTSO-E et contours des zones de prix |
+| 1 | **18** Accise selon l'activité : taux réduits des électro-intensifs (déjà `--va`), des centres de stockage de données et des autres catégories du CIBS ; option `--activite` (`data-center`, `irve`, `industrie`, `logistique`) qui choisit aussi le profil de charge | Change la facture d'un data center de plusieurs centaines de milliers d'euros par an. Les profils mesurés de l'étape 10.5 (industrie, tertiaire) servent déjà de base ; `data-center`, `irve` et `logistique` n'ont pas de courbe publiée : puissance constante, dite telle | articles du CIBS et conditions (seuils de consommation, efficacité) ; règles de la réfaction pour les bornes de recharge |
+| 2 | **15** Risques complémentaires (argiles, cavités, inondation à l'adresse) et **ICPE, Seveso, sols pollués** voisins (Géorisques) | Un site industriel ou logistique peut être soumis à autorisation ; voisinage Seveso. S'appuie sur le critère « risques » du verdict | endpoints Géorisques à relire (documentation en erreur le 28 octobre) |
+| 3 | **14** Zonage d'urbanisme à l'adresse (API Carto, Géoportail de l'Urbanisme) et **friches et zones d'activité** (Cartofriches) | Un terrain où l'activité industrielle ou l'entrepôt est interdit ne vaut rien, même raccordable | couverture variable selon les communes ; licence de Cartofriches |
+| 4 | **20** Eau : prélèvements et tension sur la ressource (BNPE, Hub'Eau, arrêtés sécheresse) | Refroidissement des data centers ; procédés industriels | licences et maille |
+| 5 | **13** Accès routier : temps vers l'échangeur autoroutier, le port, l'aéroport et le chantier rail-route les plus proches (Géoplateforme, `bdtopo-osrm`) | Logistique et industrie : desserte poids lourds ; complète les pôles de fret | pas de profil poids lourd dans la Géoplateforme |
+| 6 | **16** Bâtiment et solaire : emprise (BD TOPO), productible solaire (PVGIS), solarisation des parkings et toitures (loi APER) | Autoconsommation d'un entrepôt ou d'un hub de recharge | licence de la BDNB ; conditions d'usage de PVGIS |
+
+**Lot B : en attente** (rien à coder tant que la condition n'est pas levée)
+
+| Étape | Pourquoi pour ce persona | Condition pour s'y mettre |
+|---|---|---|
+| **17** Grille **TURPE 7 HTB** (RTE) en seed daté, à côté de la grille HTA-BT | Au-delà de 20 MW la part acheminement n'est pas chiffrée ; c'est elle qui varie selon le site (HTA ou HTB). La plus utile du lot B | lire la délibération CRE du TURPE 7 HTB (hausse moyenne de 3,34 % au 1er août 2026) : peut passer en lot A dès que le texte est relu |
+| **19** Capacité d'accueil en soutirage : carte des capacités de RTE, nouveau Caparéseau ; ce qu'Enedis publie en HTA | Première question du persona, sans réponse publique aujourd'hui | publication RTE attendue au 1er janvier 2027 (délibération CRE 2026-173) ; capacité Enedis réservée au portail client |
+| **8** Repère de prix au-delà de 150 000 MWh/an, après la fin de l'ARENH | Un projet de 20 MW constant dépasse la dernière tranche Eurostat (IG, sans borne) | trouver une source officielle et ouverte d'un prix à terme ; le « classement pondéré dans `compare` » reste retiré (décision du 15 octobre) |
+| **6** Extension internationale, voir ci-dessous | En dernier (décision du 25 octobre) | jeton ENTSO-E et contours des zones de prix |
 
 Les bornes de recharge ont leurs propres règles de raccordement (prise en charge d'une part du coût
 par le tarif, dite réfaction) : à étudier avec l'étape 18, sans rien afficher avant d'avoir le texte.
@@ -127,21 +135,11 @@ par le tarif, dite réfaction) : à étudier avec l'étape 18, sans rien affiche
 - 1er février 2027 : indexation de l'accise, ligne à ajouter au seed `accise_electricite` ;
 - 1er août 2027 : nouvelle grille TURPE 7 HTA-BT, à reporter dans les seeds `turpe_soutirage`
   et `turpe_gestion_comptage` (les sorties le signalent une fois la date passée) ;
-- quand EDF SEI publiera 2025 : `refresh` pour recaler le carbone horaire des îles.
+- quand EDF SEI publiera 2025 : `refresh` pour recaler le carbone horaire des îles ;
+- chaque mois : `ecowatt` (jours à venir) pour garder l'historique du signal Ecowatt, qui n'est pas
+  rejouable ; `refresh` rafraîchit aussi les profils de charge Enedis (12 mois glissants).
 
-**Sources à intégrer (étude du 25 octobre)**, de la plus utile à « brancher ici ? » à la moins
-utile. Toutes sont publiées par leur producteur officiel, sous licence ouverte, et se lisent avec
-les clients HTTP déjà en place (data-fair comme EDF SEI, Opendatasoft comme ODRÉ) : aucune
-nouvelle dépendance.
-
-| Rang | Source | Producteur, accès | Ce qu'elle apporte | Limite ou blocage |
-|---|---|---|---|---|
-| ~~10.1~~ | **Fait le 25 octobre.** Consommation d'électricité annuelle des entreprises par adresse : dernière année seulement (2025, 499 125 lignes, 142 TWh, en 18 s) | Enedis, data-fair `opendata.enedis.fr`, jeu `consommation-annuelle-entreprise-par-adresse` | Industrie et tertiaire réels de la commune et de l'adresse (MWh, code NAF), au lieu des seuls sites raccordés à RTE | Réseau Enedis seulement (ni ELD ni RTE) ; 7 043 lignes sans adresse, comptées à la commune seulement |
-| ~~10.2~~ | **Fait le 26 octobre.** Grille TURPE 7 HTA-BT au 1er août 2026 | CRE, délibération n° 2026-105 du 21 mai 2026 (annexe 2, pages 21 à 27) ; seeds datés `turpe_soutirage` et `turpe_gestion_comptage` | Coût d'acheminement selon le domaine de tension (BT > 36 kVA, HTA courte ou longue utilisation) : 22,6 €/MWh pour 1 MW et 4 000 MWh en HTA | Mise à jour chaque 1er août ; HTB (RTE) non chiffré |
-| ~~10.3~~ | **Fait le 26 octobre.** Continuité d'alimentation : indicateur réglementaire par département (2009-2024) | Enedis, data-fair `opendata.enedis.fr`, jeu `indicateur-continuite-dalimentation` (licence ouverte, 94 départements × 16 ans = 1 504 lignes ; l'Agence ORE en publie une copie) ; bronze `enedis_continuite_alimentation`, gold `fct_continuite_departement` | Repère « qualité de fourniture » dans `diagnose` : part des clients du département au-delà des seuils réglementaires, face au seuil de 3 % et à la médiane des départements (1,7 % en 2024) ; vérifié sur l'Ain (4,6 %, au-dessus), Lyon (0,8 %), Ajaccio (non publiée) | Maille du département ; ni Corse, ni outre-mer, ni ELD ; pas de critère B par commune en open data |
-| ~~10.4~~ | **Fait le 26 octobre.** Zonage sismique réglementaire (décret n° 2010-1255, article D563-8-1 du code de l'environnement) | Géorisques, service WFS `https://www.georisques.gouv.fr/services`, couche `risq_zonage_sismique` (36 719 polygones, 158 Mo de géométrie, 85 s) ; bronze `zonage_sismique`, gold `fct_zonage_sismique` | Zone 1 à 5 à l'adresse quand l'API Géorisques est coupée ; vérifié sur Lyon (2), Nice (4), Pointe-à-Pitre (5), Paris (1) | Polygones des communes de 2010 sans code INSEE : situés par l'adresse, pas par le code commune |
-| 10.5 | Agrégats de consommation au pas d'une demi-heure des points de soutirage de plus de 36 kVA, par secteur d'activité et puissance souscrite (maille régionale) | Enedis, data-fair, jeu `conso-sup36-region` | Profils de charge réels par secteur pour `fct_cout_horaire_profil`, au lieu des profils du seed | Volume (34,6 M lignes) : filtrer à la source par région et secteur |
-| 10.6 | Signal Ecowatt (tension du système électrique, J à J+3) | RTE, API Ecowatt v5 (même compte que Tempo) | Jours de tension dans le rapport mensuel, à côté des jours rouges Tempo | Le bac à sable répond ; l'API réelle renvoie 403 tant que l'application n'est pas abonnée à « Ecowatt » sur le portail RTE |
+**Sources de l'étude du 25 octobre** : toutes intégrées (10.1 à 10.6).
 
 **Étude du 28 octobre : données géographiques (étapes 13 à 16 et suites)**. L'étude complète (sources, licences, imagerie, modèle d'indicateurs, moteur de classement) est restée hors du dépôt (documentation limitée à ce plan et au README) ; ne restent ici que ses conclusions. Trois manques sans source ouverte : les loyers et les annonces de locaux, la capacité d'accueil en soutirage, les parcelles et propriétaires (fichiers fonciers du Cerema, réservés aux ayants droit sous convention). Version 2 : photovoltaïque existant (OpenPVMapper, CC-BY, ~75 % de précision), bassin d'emploi (isochrone et flux domicile-travail INSEE), friches et zones d'activité (Cartofriches), détection de changement sur l'ortho. Version 3 : projections climatiques (DRIAS, Explore2), extension européenne. Imagerie : 100 % ouverte au lancement (BD ORTHO 20 cm, LiDAR HD) ; l'imagerie commerciale (Pléiades Neo, 22 à 33 $/km² chez un revendeur) n'est justifiée que pour un site précis. Points non vérifiés avant de coder : licences de la BDNB, du LiDAR HD, de DRIAS et de l'OCS GE ; endpoints Géorisques ; conditions d'usage de PVGIS ; couverture du GPU ; stress hydrique (BNPE, Hub'Eau) ; date de la carte RGA 2026.
 
@@ -307,7 +305,7 @@ Lyon, Ajaccio et Saint-Denis de La Réunion, et une capture mise à jour dans `d
 
 | Lot | Contenu | Validation |
 |---|---|---|
-| 0 | **Cohérence** (liste ci-dessous) : nom, exemples du README, captures, ordre des étapes | relecture README et PLAN, `essentiel` sur les exemples |
+| 11 | **Cohérence** (liste ci-dessous) : nom, exemples du README, captures, ordre des étapes | relecture README et PLAN, `essentiel` sur les exemples |
 | A | `reporting/charte.py` ; polices embarquées ; PDF et graphiques sur la charte ; carte sur la charte en r128 | rendu identique sur deux postes ; PDF sans caractère remplacé |
 | B | Prototype puis passage à three.js r186 (`WebGLRenderer`, `BatchedMesh` pour les maquettes) | carte sans requête réseau ; 60 images/s sur la métropole |
 | C | « Raccorder » selon la puissance : anneaux des domaines de tension, zones RTE en colonnes datées | 1, 12, 30 et 50 MW à Chilly-Mazarin et Dunkerque : gestionnaire conforme à `seuils_raccordement` |
@@ -420,6 +418,8 @@ autre paire sous licence OFL ; échelle de note daltonien-compatible à la place
 | 28 oct. | DVF : ventes de locaux d'activité d'un seul bien (ni logement, ni plusieurs dispositions), surfaces de 15 à 5 000 m² et prix de 100 à 15 000 €/m² (variables dbt `locaux_*`) ; médiane sur les cinq dernières années de ventes, fiable à partir de 5 ventes (`locaux_min_ventes`), sinon le département ; arrondissements de Paris, Lyon et Marseille ramenés à la commune ; fichiers annuels lus en flux (~100 Mo chacun), le pilote Spark passe à 3 Go (400 000 lignes saturaient 1 Go) ; Bourg-en-Bresse 1 179 €/m², Lyon 3 298, Paris 7 760 |
 | 28 oct. | Commentaires réservés à la logique du code (règle, piège d'une source, raison d'un choix) : plus d'en-tête d'utilité au-dessus de chaque fonction ni de chaque modèle dbt ; code le plus simple possible, en Python, PySpark et dbt |
 | 28 oct. | Consolidation : `essentiel`, `diagnose` et `compare` partagent les mêmes options de projet (`--puissance`, `--conso`, `--ca`, `--va`, `--surface`, `--courbe`) et les mêmes messages d'erreur ; essai de bout en bout après `refresh` complet |
+| 29 oct. | Profils de charge réels (10.5) : agrégat Enedis `conso-sup36-region`, plage « total > 250 kVA » (P7), industrie et tertiaire, 12 derniers mois publiés, filtré à la source (843 072 demi-heures au lieu de 34,6 M) ; les courbes masquées par le secret statistique sont écartées ; journée type par heure locale, jours ouvrés et week-end (jours fériés comptés ouvrés), moyenne des régions pondérée par le nombre de points ; `puissance_flexible_kw` à zéro (Enedis ne dit rien de la flexibilité) ; ajoutés à `fct_cout_horaire_profil` à côté du seed, qui reste le profil par défaut |
+| 29 oct. | Ecowatt (10.6) : l'API répond (HTTP 200) depuis l'application Ecowatt ; elle ne publie que le jour et les trois suivants, sans historique : la commande `ecowatt` se lance à la main, hors `refresh` (compte RTE requis, comme `tempo`), et le dernier niveau relevé d'un jour remplace le précédent ; le rapport dit combien de jours ont été relevés plutôt que de les supposer verts |
 | 28 oct. | Identifiants de l'application Ecowatt dans `identifiants.local.txt` (ignoré par git), sous `ECO2MIX_ECOWATT_*`, distincts de ceux de Tempo ; le secret a transité par la conversation : à régénérer si elle est partagée |
 
 ## Écarté

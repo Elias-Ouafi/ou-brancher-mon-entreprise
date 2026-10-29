@@ -11,9 +11,11 @@ from pytest_httpx import HTTPXMock
 from ingestion.config import Settings
 from ingestion.extract_rte import (
     CALENDAR_PATH,
+    ECOWATT_PATH,
     TOKEN_PATH,
     DayRange,
     RteCredentialsMissingError,
+    RteEcowattClient,
     RteTempoClient,
 )
 
@@ -145,3 +147,57 @@ def test_unknown_colors_are_dropped(httpx_mock: HTTPXMock, rte_settings: Setting
 
 def test_month_range_covers_every_day() -> None:
     assert DayRange.month(2026, 12) == DayRange(date(2026, 12, 1), date(2027, 1, 1))
+
+
+def _ecowatt_settings(rte_settings: Settings) -> Settings:
+    return rte_settings.model_copy(
+        update={"ecowatt_client_id": "eco-test", "ecowatt_client_secret": SecretStr("eco-secret")}
+    )
+
+
+def test_ecowatt_uses_its_own_application_and_counts_hours_in_alert(
+    httpx_mock: HTTPXMock, rte_settings: Settings
+) -> None:
+    httpx_mock.add_response(
+        url=TOKEN_URL, method="POST", json={"access_token": "jeton", "expires_in": 7200}
+    )
+    httpx_mock.add_response(
+        url=f"{RTE_BASE}{ECOWATT_PATH}",
+        json={
+            "signals": [
+                {
+                    "jour": "2026-10-30T00:00:00+01:00",
+                    "dvalue": 2,
+                    "message": "Ecowatt orange.",
+                    "values": [
+                        {"pas": 0, "hvalue": 1},
+                        {"pas": 1, "hvalue": 2},
+                        {"pas": 2, "hvalue": 3},
+                    ],
+                },
+                {
+                    "jour": "2026-10-29T00:00:00+01:00",
+                    "dvalue": 1,
+                    "message": "Pas d'alerte.",
+                    "values": [],
+                },
+                {"jour": "2026-10-31T00:00:00+01:00", "dvalue": 9, "message": "?", "values": []},
+            ]
+        },
+    )
+
+    with RteEcowattClient(_ecowatt_settings(rte_settings)) as client:
+        lignes = client.fetch_signaux()
+
+    assert [
+        (ligne["date_heure"][:10], ligne["niveau"], ligne["heures_en_alerte"]) for ligne in lignes
+    ] == [
+        ("2026-10-29", 1, 0),
+        ("2026-10-30", 2, 2),
+    ]
+    assert httpx_mock.get_requests()[0].headers["authorization"].startswith("Basic ")
+
+
+def test_ecowatt_needs_its_own_credentials(rte_settings: Settings) -> None:
+    with pytest.raises(RteCredentialsMissingError, match="Ecowatt"):
+        RteEcowattClient(rte_settings)

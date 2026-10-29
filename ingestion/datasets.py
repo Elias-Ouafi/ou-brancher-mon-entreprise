@@ -253,6 +253,15 @@ ENEDIS_CONSO_ENTREPRISES = DatasetSpec(
     description="Consommation annuelle d'électricité des entreprises par adresse (Enedis)",
 )
 
+# Courbe moyenne par point de soutirage de plus de 250 kVA, au pas d'une demi-heure
+PROFILS_CHARGE_SUP36 = DatasetSpec(
+    dataset_id="enedis-profils-charge-sup36",
+    keys=(code("code_region"), code("secteur"), code("profil"), instant("date_heure")),
+    attributes=(label("indice_representativite"),),
+    measures=measures("nb_points_soutirage", "courbe_moyenne_wh"),
+    description="Courbe de charge moyenne des points de soutirage de plus de 250 kVA (Enedis)",
+)
+
 # Part des clients Enedis du département au-delà des seuils réglementaires de coupure, par année
 CONTINUITE_ALIMENTATION = DatasetSpec(
     dataset_id="enedis-continuite-alimentation",
@@ -339,6 +348,15 @@ RTE_TEMPO = DatasetSpec(
     attributes=(label("couleur"),),
     measures=(),
     description="Calendrier Tempo RTE (couleur de chaque jour)",
+)
+
+# Signal Ecowatt de chaque jour (tension du système électrique), relevé du jour à J+3
+RTE_ECOWATT = DatasetSpec(
+    dataset_id="rte-ecowatt",
+    keys=(instant(KEY_COLUMN),),
+    attributes=(label("message"),),
+    measures=measures("niveau", "heures_en_alerte"),
+    description="Signal Ecowatt de RTE, un niveau par jour civil",
 )
 
 # Risques recensés par commune (DDRM), extraits de l'export GASPAR ; `millesime` : date du fichier
@@ -526,6 +544,7 @@ BRONZE_SPECS: tuple[DatasetSpec, ...] = (
     NATIONAL_TR,
     NATIONAL_CONS_DEF,
     RTE_TEMPO,
+    RTE_ECOWATT,
     EUROSTAT_PRIX_ENTREPRISES,
     GASPAR_RISQUES,
     GASPAR_PLANS,
@@ -539,6 +558,7 @@ BRONZE_SPECS: tuple[DatasetSpec, ...] = (
     EUROSTAT_PRIX_UE,
     EMBER_INTENSITE_CARBONE,
     ENEDIS_CONSO_ENTREPRISES,
+    PROFILS_CHARGE_SUP36,
     CONTINUITE_ALIMENTATION,
     VENTES_LOCAUX,
     *TERRITORIAL_SPECS,

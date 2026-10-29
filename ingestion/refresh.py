@@ -24,6 +24,7 @@ from ingestion.pipeline import (
     run_locaux_ingestion,
     run_prix_entreprises_ingestion,
     run_production_ingestion,
+    run_profils_charge_ingestion,
     run_zonage_sismique_ingestion,
 )
 
@@ -108,6 +109,7 @@ def run_refresh(
             "entreprises-enedis",
             lambda: run_enedis_entreprises_ingestion(settings=settings, run_id=run_id),
         ),
+        ("profils-charge", lambda: run_profils_charge_ingestion(settings=settings, run_id=run_id)),
         (
             "continuite-enedis",
             lambda: run_continuite_ingestion(settings=settings, run_id=run_id),

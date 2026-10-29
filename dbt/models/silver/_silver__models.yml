@@ -12,6 +12,26 @@ models:
         data_tests: [unique, not_null]
       - name: prix_m2
         data_tests: [not_null]
+  - name: ecowatt_jours
+    description: Signal Ecowatt de chaque jour relevé, nommé vert, orange ou rouge.
+    columns:
+      - name: jour
+        data_tests: [unique, not_null]
+      - name: niveau
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [vert, orange, rouge]
+  - name: profils_charge_sup36
+    description: Demi-heures dont la courbe n'est pas masquée par le secret statistique, en kW.
+    columns:
+      - name: puissance_moyenne_kw
+        data_tests:
+          - not_null
+          - accepted_range:
+              arguments:
+                min_value: 0
   - name: national_tr
     description: Temps réel nettoyé (lignes « à blanc » écartées), pas de 15 min.
     columns:
