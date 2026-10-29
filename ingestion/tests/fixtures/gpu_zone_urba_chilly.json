@@ -1,0 +1,51 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "id": "zone_urba.3869265",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     2.3415,
+     48.6735
+    ]
+   },
+   "geometry_name": "the_geom",
+   "properties": {
+    "gid": 3869265,
+    "gpu_doc_id": "2e018aad7e25effb980f4d34d2d7829c",
+    "gpu_status": "production",
+    "gpu_timestamp": "2026-02-21T13:25:03.014Z",
+    "partition": "DU_200058014",
+    "libelle": "UP21",
+    "libelong": "UP21 : Projet",
+    "typezone": "U",
+    "destdomi": null,
+    "nomfic": "200058014_reglement_20251216.pdf",
+    "urlfic": "",
+    "insee": null,
+    "datappro": null,
+    "datvalid": "20251216",
+    "idurba": "200058014_PLUI_20251216",
+    "idzone": null,
+    "lib_idzone": "",
+    "formdomi": "",
+    "destoui": "",
+    "destcdt": "",
+    "destnon": "",
+    "symbole": ""
+   }
+  }
+ ],
+ "totalFeatures": 1,
+ "numberMatched": 1,
+ "numberReturned": 1,
+ "timeStamp": "2026-10-29T09:40:57.560Z",
+ "crs": {
+  "type": "name",
+  "properties": {
+   "name": "urn:ogc:def:crs:EPSG::4326"
+  }
+ }
+}

@@ -16,6 +16,7 @@ from ingestion.georisques import lire_rapport
 from ingestion.tests.conftest import FIXTURES_DIR
 from ingestion.tests.medallion import DBT_BIN
 from ingestion.tests.test_diagnostic import territoire
+from ingestion.urbanisme import ZoneUrbanisme
 from reporting import implantation, implantation_charts
 from reporting.implantation import generer_rapport_implantation, lire_comparaisons, nom_fichier
 from reporting.implantation_pdf import _pdf
@@ -62,7 +63,13 @@ def _lyon(medallion_db: Path) -> Diagnostic:
     rapport = json.loads(
         (FIXTURES_DIR / "georisques_rapport_lyon.json").read_text(encoding="utf-8")
     )
-    return replace(diagnostic, cout=COUT, risques=lire_rapport(rapport))
+    return replace(
+        diagnostic,
+        cout=COUT,
+        risques=lire_rapport(rapport),
+        urbanisme=ZoneUrbanisme("U", "UB", None, "DOC", None, None),
+        urbanisme_consulte=True,
+    )
 
 
 def test_markdown_report_carries_every_limit_and_its_charts(

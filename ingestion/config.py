@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     # Export GASPAR (risques recensés par commune), servi hors de l'API : repli quand elle se tait
     gaspar_url: str = "https://files.georisques.fr/GASPAR/gaspar.zip"
 
+    # API Carto de l'IGN (Géoportail de l'urbanisme : zone d'urbanisme d'un point), sans clé
+    apicarto_base_url: str = "https://apicarto.ign.fr/api/"
+
     # Service WFS de Géorisques (zonage sismique réglementaire), répond quand l'API se tait
     zonage_sismique_url: str = "https://www.georisques.gouv.fr/services"
 

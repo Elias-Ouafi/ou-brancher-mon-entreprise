@@ -26,6 +26,7 @@ from ingestion.georisques import (
     risques_gaspar,
 )
 from ingestion.turpe import PROFIL_ACTIVITE, PROFIL_COURBE, Acheminement, lire_acheminement
+from ingestion.urbanisme import UrbanismeError, ZoneUrbanisme, lire_zone_urbanisme
 
 logger = logging.getLogger(__name__)
 
@@ -653,6 +654,11 @@ class Diagnostic:
     surface_m2: float | None = None
     # Clé de `ACTIVITES` donnée par `--activite`
     activite: str | None = None
+    # Zone d'urbanisme de l'adresse (Géoportail de l'urbanisme) ; `urbanisme_consulte` distingue
+    # « aucun document numérisé » de « non consulté »
+    urbanisme: ZoneUrbanisme | None = None
+    urbanisme_consulte: bool = False
+    urbanisme_erreur: str | None = None
 
     @property
     def commune_a_des_sites(self) -> bool:
@@ -1338,16 +1344,38 @@ def _critere_facture(d: Diagnostic) -> Critere:
     )
 
 
+def ligne_urbanisme(zone: ZoneUrbanisme) -> str:
+    nom = f"{zone.nom_type} {zone.libelle}".strip()
+    if zone.libelle_long and zone.libelle_long != zone.libelle:
+        nom += f" ({zone.libelle_long})"
+    phrase = f"{nom}, document {zone.document or 'non identifié'}"
+    if zone.date_validite:
+        phrase += f" validé le {zone.date_validite}"
+    if zone.est_inconstructible_activite:
+        phrase += (
+            " : hors exception locale (STECAL), l'activité industrielle ou logistique n'y est"
+            " pas permise"
+        )
+    else:
+        phrase += " : destination des constructions à confirmer au règlement de la zone"
+    if zone.url_reglement:
+        phrase += f" ({zone.url_reglement})"
+    return phrase
+
+
 def _critere_foncier(d: Diagnostic) -> Critere:
     site = d.site_cle_en_main
     if site is None:
-        return Critere("Foncier", "info", "aucun site clé en main", "Dans ce territoire.")
-    return Critere(
-        "Foncier",
-        "info",
-        f"site clé en main {_distance(site.distance_km)}",
-        f"{site.commune}, annoncé prêt en {site.maturite_site}.",
-    )
+        valeur, detail = "aucun site clé en main", "Dans ce territoire."
+    else:
+        valeur = f"site clé en main {_distance(site.distance_km)}"
+        detail = f"{site.commune}, annoncé prêt en {site.maturite_site}."
+    etat = "info"
+    if (zone := d.urbanisme) is not None:
+        detail += f" Zonage : {ligne_urbanisme(zone)}."
+        if zone.est_inconstructible_activite:
+            etat = "attention"
+    return Critere("Foncier", etat, valeur, detail)
 
 
 def phrase_verdict(criteres: list[Critere]) -> str:
@@ -1420,6 +1448,7 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
         if d.entreprises_adresse is None
         else asdict(d.entreprises_adresse),
         "courbe": None if d.courbe is None else asdict(d.courbe),
+        "urbanisme": None if d.urbanisme is None else asdict(d.urbanisme),
         "locaux": None
         if d.prix_locaux is None
         else {**asdict(d.prix_locaux), "surface_m2": d.surface_m2, "source": "DVF (DGFiP)"},
@@ -1441,6 +1470,7 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
                 ("accise_activite", d.activite is not None),
                 ("entreprises_enedis", d.entreprises_adresse is not None),
                 ("prix_locaux", d.prix_locaux is not None),
+                ("zonage_urbanisme", d.urbanisme_consulte and d.urbanisme_erreur is None),
             )
             if present and code in d.limites
         },
@@ -1827,7 +1857,19 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
         limite(s, "risques_site")
     if d.risques is not None and any(r.code == "seisme" for r in d.risques.risques):
         limite(s, "zonage_sismique")
-    s = bloc("7. Prix des locaux d'activité (ventes DVF)")
+    s = bloc("7. Foncier : zonage d'urbanisme et prix des locaux d'activité (DVF)")
+    if d.urbanisme is not None:
+        texte(s, f"Zonage d'urbanisme : {ligne_urbanisme(d.urbanisme)}")
+        limite(s, "zonage_urbanisme")
+    elif d.urbanisme_erreur is not None:
+        texte(s, f"Zonage d'urbanisme non consulté : {d.urbanisme_erreur}")
+    elif d.urbanisme_consulte:
+        texte(
+            s,
+            "Zonage d'urbanisme : aucune zone numérisée au Géoportail de l'urbanisme à cette"
+            " adresse (document non publié ou non numérisé).",
+        )
+        limite(s, "zonage_urbanisme")
     if d.prix_locaux is not None:
         texte(s, ligne_locaux(d.prix_locaux, d.surface_m2, d.territoire.commune))
         limite(s, "prix_locaux")
@@ -1927,6 +1969,17 @@ def completer_risques(diagnostic: Diagnostic, *, settings: Settings | None = Non
         logger.warning("risques non evalues : %s", error)
         return replace(diagnostic, risques_erreur=str(error))
     return replace(diagnostic, risques=risques)
+
+
+# Ajoute la zone d'urbanisme de l'adresse ; ne fait jamais échouer le diagnostic
+def completer_urbanisme(diagnostic: Diagnostic, *, settings: Settings | None = None) -> Diagnostic:
+    t = diagnostic.territoire
+    try:
+        zone = lire_zone_urbanisme(latitude=t.latitude, longitude=t.longitude, settings=settings)
+    except UrbanismeError as error:
+        logger.warning("zonage d'urbanisme non consulte : %s", error)
+        return replace(diagnostic, urbanisme_erreur=str(error))
+    return replace(diagnostic, urbanisme=zone, urbanisme_consulte=True)
 
 
 def formater_diagnostic(diagnostic: Diagnostic) -> str:
