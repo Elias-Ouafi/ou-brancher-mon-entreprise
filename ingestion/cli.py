@@ -11,6 +11,7 @@ from ingestion.config import Settings, get_settings
 from ingestion.courbe import Courbe, CourbeError, lire_courbe
 from ingestion.datasets import NATIONAL_CONS_DEF, NATIONAL_TR, SPECS, get_spec
 from ingestion.diagnostic import (
+    ACTIVITES,
     Diagnostic,
     DiagnosticIndisponibleError,
     DonneesAbsentesError,
@@ -132,6 +133,11 @@ def _add_projet_options(parser: argparse.ArgumentParser) -> None:
         help="surface des locaux cherchés en m² : coût d'achat d'après les ventes DVF",
     )
     parser.add_argument(
+        "--activite",
+        choices=sorted(ACTIVITES),
+        help="activité du projet : profil de charge et régimes d'accise (taux non chiffrés)",
+    )
+    parser.add_argument(
         "--courbe",
         help="export CSV de la courbe de charge Enedis : vraie consommation, pointe et carbone",
     )
@@ -157,6 +163,7 @@ def _diagnostiquer(adresse: str, args: argparse.Namespace, settings: Settings) -
         ca_eur=args.ca,
         va_eur=args.va,
         surface_m2=args.surface,
+        activite=args.activite,
         courbe=_lire_courbe(args.courbe),
         settings=settings,
     )

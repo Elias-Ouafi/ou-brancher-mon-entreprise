@@ -56,6 +56,7 @@ def _lyon(medallion_db: Path) -> Diagnostic:
         conso_mwh=350,
         ca_eur=5_000_000,
         va_eur=1_000_000,
+        activite="industrie",
         database=medallion_db,
     )
     rapport = json.loads(

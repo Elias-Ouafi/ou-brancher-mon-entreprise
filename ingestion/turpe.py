@@ -17,6 +17,8 @@ HEURES_POINTE = {9, 10, 18, 19}
 # Sans courbe de charge : même puissance à toute heure de l'année
 PROFIL_PLAT = "plat"
 PROFIL_COURBE = "courbe"
+# Journée type mesurée par Enedis pour l'activité demandée (`--activite`)
+PROFIL_ACTIVITE = "activite"
 
 _SOUTIRAGE_SQL = """
 select date_debut, utilisation, classe, b_eur_kva_an, c_eur_mwh
@@ -70,12 +72,23 @@ def parts_energie(points: Iterable[tuple[datetime, float]]) -> dict[str, float]:
     return {classe: energies[classe] / total for classe in CLASSES} if total else {}
 
 
-# Un kWh à chaque heure d'une année de grille, en heure de Paris (changements d'heure compris)
-def parts_profil_plat(debut: date) -> dict[str, float]:
+# Un kWh à chaque heure d'une année de grille, en heure de Paris (changements d'heure compris) ;
+# avec une journée type {(type de jour, heure locale): kW}, chaque heure pèse sa puissance
+def parts_profil_annee(
+    debut: date, journee_type: dict[tuple[str, int], float] | None = None
+) -> dict[str, float]:
     depart = datetime(debut.year, debut.month, debut.day, tzinfo=PARIS_TZ).astimezone(UTC)
     fin = datetime(debut.year + 1, debut.month, debut.day, tzinfo=PARIS_TZ).astimezone(UTC)
     nb_heures = int((fin - depart).total_seconds() // 3600)
-    return parts_energie((depart + timedelta(hours=h), 1.0) for h in range(nb_heures))
+
+    def poids(instant: datetime) -> float:
+        if journee_type is None:
+            return 1.0
+        local = instant.astimezone(PARIS_TZ)
+        return journee_type.get(("ouvre" if local.weekday() < 5 else "week_end", local.hour), 0.0)
+
+    heures = (depart + timedelta(hours=h) for h in range(nb_heures))
+    return parts_energie((instant, poids(instant)) for instant in heures)
 
 
 # Parts puissance et énergie d'une version : une même puissance souscrite dans toutes les
@@ -102,6 +115,7 @@ def lire_acheminement(
     puissance_kva: float,
     conso_mwh: float,
     points: Iterable[tuple[datetime, float]] | None = None,
+    journee_type: dict[tuple[str, int], float] | None = None,
 ) -> Acheminement | None:
     lignes = connection.execute(_SOUTIRAGE_SQL, {"domaine": domaine_turpe}).fetchall()
     fixes = connection.execute(_FIXES_SQL, {"domaine": domaine_turpe}).fetchone()
@@ -112,8 +126,11 @@ def lire_acheminement(
     for _, utilisation, classe, b, c in lignes:
         grilles[utilisation][classe] = (b, c)
     parts = parts_energie(points) if points is not None else {}
-    profil = PROFIL_COURBE if parts else PROFIL_PLAT
-    parts = parts or parts_profil_plat(debut)
+    profil = PROFIL_COURBE
+    if not parts and journee_type:
+        parts, profil = parts_profil_annee(debut, journee_type), PROFIL_ACTIVITE
+    if not parts:
+        parts, profil = parts_profil_annee(debut), PROFIL_PLAT
 
     versions = []
     for utilisation, coefficients in grilles.items():
