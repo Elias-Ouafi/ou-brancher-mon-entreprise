@@ -21,3 +21,6 @@ dbt/target/
 dbt/logs/
 dbt/dbt_packages/
 
+
+# Claude Code : réglages propres au poste
+.claude/settings.local.json
