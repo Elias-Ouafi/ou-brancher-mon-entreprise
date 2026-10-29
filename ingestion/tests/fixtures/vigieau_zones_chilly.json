@@ -1,0 +1,161 @@
+[
+ {
+  "id": 7545774,
+  "nom": "2026-nnn_ziap_aep",
+  "code": null,
+  "type": "AEP",
+  "arrete": {
+   "id": 36887,
+   "cheminFichier": "https://regleau.s3.gra.perf.cloud.ovh.net/arrete-restriction/36887/arrete-rtu_2026-253_vigilance_zone-interconnect_20260630.pdf",
+   "dateFinValidite": "2026-10-31T00:00:00.000Z",
+   "dateDebutValidite": "2026-07-02T00:00:00.000Z",
+   "cheminFichierArreteCadre": "https://regleau.s3.gra.perf.cloud.ovh.net/arrete-cadre/30540/arrete-cadre_2024-212_sech%26eau_20240531.pdf"
+  },
+  "usages": [
+   {
+    "id": 1990043,
+    "nom": "Alimentation des fontaines publiques et privées d’ornement.",
+    "thematique": "Alimenter des fontaines et autres usages de loisirs",
+    "description": "Sensibilisation du grand public et des collectivités aux règles de bon usage et d’économie d’eau.",
+    "concerneEntreprise": true,
+    "concerneParticulier": true,
+    "concerneCollectivite": true,
+    "concerneExploitation": false
+   },
+   {
+    "id": 1990044,
+    "nom": "Alimentation en eau potable des populations (usages prioritaires : santé, salubrité et sécurité civile).",
+    "thematique": "Prélever",
+    "description": "Sensibilisation du grand public et des collectivités aux règles de bon usage et d’économie d’eau.",
+    "concerneEntreprise": true,
+    "concerneParticulier": true,
+    "concerneCollectivite": true,
+    "concerneExploitation": true
+   },
+   {
+    "id": 1990045,
+    "nom": "Arrosage des arbres ou arbustes plantés en pleine terre depuis moins de deux ans.",
+    "thematique": "Arroser",
+    "description": "Sensibilisation du grand public et des collectivités aux règles de bon usage et d’économie d’eau.",
+    "concerneEntreprise": true,
+    "concerneParticulier": true,
+    "concerneCollectivite": true,
+    "concerneExploitation": true
+   }
+  ],
+  "idSandre": null,
+  "departement": "91",
+  "niveauGravite": "vigilance",
+  "ressourceInfluencee": false,
+  "gid": null,
+  "CdZAS": null,
+  "LbZAS": "2026-nnn_ziap_aep",
+  "TypeZAS": "AEP"
+ },
+ {
+  "id": 7545756,
+  "nom": "Yvette-Bièvre & Orge-Rémarde – zone interconnectée agglomération parisienne",
+  "code": "11_91_18",
+  "type": "SOU",
+  "arrete": {
+   "id": 37922,
+   "cheminFichier": "https://regleau.s3.gra.perf.cloud.ovh.net/arrete-restriction/37922/81859d27-bda0-41d2-beca-2f57f67f5ead/arrete-rtu_2026-420_vigilance_orge-remarde_20261013.pdf",
+   "dateFinValidite": "2026-12-31T00:00:00.000Z",
+   "dateDebutValidite": "2026-10-16T00:00:00.000Z",
+   "cheminFichierArreteCadre": "https://regleau.s3.gra.perf.cloud.ovh.net/arrete-cadre/30540/arrete-cadre_2024-212_sech%26eau_20240531.pdf"
+  },
+  "usages": [
+   {
+    "id": 2538230,
+    "nom": "Alimentation des fontaines publiques et privées d’ornement.",
+    "thematique": "Alimenter des fontaines et autres usages de loisirs",
+    "description": "Sensibilisation du grand public et des collectivités aux règles de bon usage et d’économie d’eau.",
+    "concerneEntreprise": true,
+    "concerneParticulier": true,
+    "concerneCollectivite": true,
+    "concerneExploitation": false
+   },
+   {
+    "id": 2538231,
+    "nom": "Alimentation en eau potable des populations (usages prioritaires : santé, salubrité et sécurité civile).",
+    "thematique": "Prélever",
+    "description": "Sensibilisation du grand public et des collectivités aux règles de bon usage et d’économie d’eau.",
+    "concerneEntreprise": true,
+    "concerneParticulier": true,
+    "concerneCollectivite": true,
+    "concerneExploitation": true
+   },
+   {
+    "id": 2538232,
+    "nom": "Arrosage des arbres ou arbustes plantés en pleine terre depuis moins de deux ans.",
+    "thematique": "Arroser",
+    "description": "Sensibilisation du grand public et des collectivités aux règles de bon usage et d’économie d’eau.",
+    "concerneEntreprise": true,
+    "concerneParticulier": true,
+    "concerneCollectivite": true,
+    "concerneExploitation": true
+   }
+  ],
+  "idSandre": 2170,
+  "departement": "91",
+  "niveauGravite": "vigilance",
+  "ressourceInfluencee": false,
+  "gid": 2170,
+  "CdZAS": "11_91_18",
+  "LbZAS": "Yvette-Bièvre & Orge-Rémarde – zone interconnectée agglomération parisienne",
+  "TypeZAS": "SOU"
+ },
+ {
+  "id": 7545753,
+  "nom": "Yvette-Bièvre & Orge-Rémarde – zone interconnectée agglomération parisienne",
+  "code": "11_91_02",
+  "type": "SUP",
+  "arrete": {
+   "id": 37922,
+   "cheminFichier": "https://regleau.s3.gra.perf.cloud.ovh.net/arrete-restriction/37922/81859d27-bda0-41d2-beca-2f57f67f5ead/arrete-rtu_2026-420_vigilance_orge-remarde_20261013.pdf",
+   "dateFinValidite": "2026-12-31T00:00:00.000Z",
+   "dateDebutValidite": "2026-10-16T00:00:00.000Z",
+   "cheminFichierArreteCadre": "https://regleau.s3.gra.perf.cloud.ovh.net/arrete-cadre/30540/arrete-cadre_2024-212_sech%26eau_20240531.pdf"
+  },
+  "usages": [
+   {
+    "id": 2538172,
+    "nom": "Alimentation des fontaines publiques et privées d’ornement.",
+    "thematique": "Alimenter des fontaines et autres usages de loisirs",
+    "description": "Sensibilisation du grand public et des collectivités aux règles de bon usage et d’économie d’eau.",
+    "concerneEntreprise": true,
+    "concerneParticulier": true,
+    "concerneCollectivite": true,
+    "concerneExploitation": false
+   },
+   {
+    "id": 2538173,
+    "nom": "Alimentation en eau potable des populations (usages prioritaires : santé, salubrité et sécurité civile).",
+    "thematique": "Prélever",
+    "description": "Sensibilisation du grand public et des collectivités aux règles de bon usage et d’économie d’eau.",
+    "concerneEntreprise": true,
+    "concerneParticulier": true,
+    "concerneCollectivite": true,
+    "concerneExploitation": true
+   },
+   {
+    "id": 2538174,
+    "nom": "Arrosage des arbres ou arbustes plantés en pleine terre depuis moins de deux ans.",
+    "thematique": "Arroser",
+    "description": "Sensibilisation du grand public et des collectivités aux règles de bon usage et d’économie d’eau.",
+    "concerneEntreprise": true,
+    "concerneParticulier": true,
+    "concerneCollectivite": true,
+    "concerneExploitation": true
+   }
+  ],
+  "idSandre": 2183,
+  "departement": "91",
+  "niveauGravite": "vigilance",
+  "ressourceInfluencee": false,
+  "gid": 2183,
+  "CdZAS": "11_91_02",
+  "LbZAS": "Yvette-Bièvre & Orge-Rémarde – zone interconnectée agglomération parisienne",
+  "TypeZAS": "SUP"
+ }
+]
