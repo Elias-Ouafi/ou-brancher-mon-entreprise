@@ -1,7 +1,9 @@
 # Où brancher mon entreprise : consignes pour Claude
 
 Le projet se décrit dans [README.md](README.md) (usage, architecture) et [PLAN.md](PLAN.md) (état,
-étapes, décisions en vigueur). Les lire avant toute étape ; ce fichier ne les répète pas.
+étapes, décisions en vigueur). Les lire avant toute étape ; ce fichier ne les répète pas. La
+prochaine étape se lit dans « Suite » de PLAN (lots A, B, C et ordre conseillé) ; une étape finie
+en sort pour devenir une ligne de « État » (skill `cloturer-etape`).
 
 ## Environnement
 
