@@ -470,6 +470,26 @@ VENTES_LOCAUX = DatasetSpec(
     description="Ventes de locaux d'activité par mutation (DVF, DGFiP)",
 )
 
+# Friches référencées dans Cartofriches (Cerema), une ligne par site géolocalisé
+FRICHES = DatasetSpec(
+    dataset_id="friches",
+    keys=(code("site_id"),),
+    attributes=(
+        label("site_nom"),
+        label("site_type"),
+        label("site_statut"),
+        label("site_reconv_type"),
+        period("site_actu_date"),
+        code("comm_insee"),
+        label("comm_nom"),
+        label("proprio_type"),
+        label("sol_pollution_existe"),
+        label("urba_zone_type"),
+    ),
+    measures=measures("bati_surface_m2", "unite_fonciere_surface_m2", "latitude", "longitude"),
+    description="Friches référencées dans Cartofriches (Cerema, Licence Ouverte v2)",
+)
+
 EDF_SEI_PRODUCTION = DatasetSpec(
     dataset_id="edf-sei-production",
     keys=(code("territoire"), instant("date_heure")),
@@ -561,6 +581,7 @@ BRONZE_SPECS: tuple[DatasetSpec, ...] = (
     PROFILS_CHARGE_SUP36,
     CONTINUITE_ALIMENTATION,
     VENTES_LOCAUX,
+    FRICHES,
     *TERRITORIAL_SPECS,
 )
 

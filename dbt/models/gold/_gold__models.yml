@@ -440,6 +440,17 @@ models:
               arguments:
                 min_value: 1
                 max_value: 5
+  - name: fct_friches
+    description: >
+      Friches de Cartofriches (Cerema) d'au moins 1 ha et pas encore reconverties, avec leur
+      position ; le diagnostic cherche les plus proches de l'adresse.
+    columns:
+      - name: site_id
+        data_tests: [unique, not_null]
+      - name: latitude
+        data_tests: [not_null]
+      - name: surface_m2
+        data_tests: [not_null]
   - name: fct_prix_locaux
     description: >
       Prix de vente au m² des locaux d'activité (DVF) sur les cinq dernières années de ventes :

@@ -291,6 +291,32 @@ limit 1
 """
 
 
+# Friches d'au moins 1 ha à moins de 10 km à vol d'oiseau, les plus proches d'abord
+RAYON_FRICHES_KM = 10
+NB_FRICHES_AFFICHEES = 3
+
+_FRICHES_SQL = f"""
+select *
+from (
+    select
+        site_id,
+        coalesce(site_nom, site_id) as nom,
+        type_friche,
+        statut,
+        commune,
+        surface_m2,
+        type_zone_urbanisme,
+        pollution_sol,
+        {_DISTANCE_KM_SQL} as distance_km
+    from gold.fct_friches
+    where abs(latitude - $latitude) < {RAYON_FRICHES_KM} / 111.0
+      and abs(longitude - $longitude) < {RAYON_FRICHES_KM} / (111.0 * cos(radians($latitude)))
+)
+where distance_km <= {RAYON_FRICHES_KM}
+order by distance_km
+"""
+
+
 class DiagnosticIndisponibleError(RuntimeError):
     pass
 
@@ -317,6 +343,7 @@ SOURCES_CHARGEES: dict[str, str] = {
     "zonage_sismique": "zonage sismique",
     "enedis_continuite_alimentation": "continuité Enedis",
     "ventes_locaux": "ventes de locaux DVF",
+    "friches": "friches Cartofriches",
 }
 # Au-delà, une source n'a pas été rechargée depuis plus d'un cycle mensuel de `refresh`
 AGE_MAX_JOURS = 45
@@ -530,6 +557,19 @@ class PartValeurAjoutee:
 
 
 @dataclass(frozen=True, slots=True)
+class Friche:
+    site_id: str
+    nom: str
+    type_friche: str
+    statut: str | None
+    commune: str | None
+    surface_m2: float
+    type_zone_urbanisme: str | None
+    pollution_sol: str | None
+    distance_km: float
+
+
+@dataclass(frozen=True, slots=True)
 class PartChiffreAffaires:
     chiffre_affaires_eur: float
     facture_eur: float
@@ -659,6 +699,10 @@ class Diagnostic:
     urbanisme: ZoneUrbanisme | None = None
     urbanisme_consulte: bool = False
     urbanisme_erreur: str | None = None
+    # Nombre de friches d'au moins 1 ha à moins de `RAYON_FRICHES_KM`, et les plus proches ;
+    # `None` si Cartofriches n'est pas chargé
+    nb_friches: int | None = None
+    friches: list[Friche] = field(default_factory=list)
 
     @property
     def commune_a_des_sites(self) -> bool:
@@ -830,6 +874,17 @@ def lire_diagnostic(
                 if "ventes_locaux" in chargements
                 else None
             )
+            friches_proches = (
+                [
+                    Friche(*ligne)
+                    for ligne in connection.execute(
+                        _FRICHES_SQL,
+                        {"latitude": territoire.latitude, "longitude": territoire.longitude},
+                    ).fetchall()
+                ]
+                if "friches" in chargements
+                else None
+            )
     except duckdb.CatalogException as error:
         raise DonneesAbsentesError(
             f"couche gold incomplete : {str(error).splitlines()[0]}"
@@ -869,6 +924,8 @@ def lire_diagnostic(
         prix_locaux=None if prix_locaux is None else PrixLocaux(**prix_locaux),
         surface_m2=surface_m2,
         activite=activite,
+        nb_friches=None if friches_proches is None else len(friches_proches),
+        friches=(friches_proches or [])[:NB_FRICHES_AFFICHEES],
         **ligne,
     )
 
@@ -1363,6 +1420,27 @@ def ligne_urbanisme(zone: ZoneUrbanisme) -> str:
     return phrase
 
 
+def ligne_friches(nb: int, friches: list[Friche]) -> str:
+    if not nb:
+        return (
+            f"aucune friche de 1 ha ou plus référencée à moins de {RAYON_FRICHES_KM} km"
+            " (inventaire déclaratif : une friche non référencée n'y figure pas)"
+        )
+    pluriel = "s" if nb > 1 else ""
+    details = []
+    for f in friches:
+        zone = f", zone {f.type_zone_urbanisme}" if f.type_zone_urbanisme else ""
+        statut = f", {f.statut}" if f.statut else ""
+        details.append(
+            f"{f.nom} à {f.commune or 'commune inconnue'} ({f.type_friche}, "
+            f"{_nombre(f.surface_m2 / 10_000, 1)} ha{zone}{statut}) {_distance(f.distance_km)}"
+        )
+    return (
+        f"{nb} friche{pluriel} de 1 ha ou plus à moins de {RAYON_FRICHES_KM} km ; les plus"
+        f" proches : {' ; '.join(details)}"
+    )
+
+
 def _critere_foncier(d: Diagnostic) -> Critere:
     site = d.site_cle_en_main
     if site is None:
@@ -1371,6 +1449,8 @@ def _critere_foncier(d: Diagnostic) -> Critere:
         valeur = f"site clé en main {_distance(site.distance_km)}"
         detail = f"{site.commune}, annoncé prêt en {site.maturite_site}."
     etat = "info"
+    if d.nb_friches is not None:
+        detail += f" {d.nb_friches} friche(s) de 1 ha ou plus à moins de {RAYON_FRICHES_KM} km."
     if (zone := d.urbanisme) is not None:
         detail += f" Zonage : {ligne_urbanisme(zone)}."
         if zone.est_inconstructible_activite:
@@ -1449,6 +1529,14 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
         else asdict(d.entreprises_adresse),
         "courbe": None if d.courbe is None else asdict(d.courbe),
         "urbanisme": None if d.urbanisme is None else asdict(d.urbanisme),
+        "friches": None
+        if d.nb_friches is None
+        else {
+            "nb_dans_le_rayon": d.nb_friches,
+            "rayon_km": RAYON_FRICHES_KM,
+            "plus_proches": [asdict(f) for f in d.friches],
+            "source": "Cartofriches (Cerema)",
+        },
         "locaux": None
         if d.prix_locaux is None
         else {**asdict(d.prix_locaux), "surface_m2": d.surface_m2, "source": "DVF (DGFiP)"},
@@ -1470,6 +1558,7 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
                 ("accise_activite", d.activite is not None),
                 ("entreprises_enedis", d.entreprises_adresse is not None),
                 ("prix_locaux", d.prix_locaux is not None),
+                ("friches", d.nb_friches is not None),
                 ("zonage_urbanisme", d.urbanisme_consulte and d.urbanisme_erreur is None),
             )
             if present and code in d.limites
@@ -1870,6 +1959,9 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
             " adresse (document non publié ou non numérisé).",
         )
         limite(s, "zonage_urbanisme")
+    if d.nb_friches is not None:
+        texte(s, f"Friches : {ligne_friches(d.nb_friches, d.friches)}")
+        limite(s, "friches")
     if d.prix_locaux is not None:
         texte(s, ligne_locaux(d.prix_locaux, d.surface_m2, d.territoire.commune))
         limite(s, "prix_locaux")
