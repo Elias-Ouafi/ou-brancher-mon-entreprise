@@ -63,7 +63,8 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 | Carbone heure par heure en Corse et outre-mer (production EDF SEI, profil calé sur l'ADEME) | `fct_carbone_horaire_zni` |
 | Part acheminement de la facture (TURPE 7 HTA-BT et HTB 1 à 3 au 1er août 2026) selon le domaine de tension, la puissance et la consommation, sur la courbe de charge si elle est fournie ; HTB dès 40 MW, HTB 1 par défaut | `ingestion/turpe.py`, seeds `turpe_soutirage`, `turpe_gestion_comptage` |
 | Part de la facture dans le chiffre d'affaires (`--ca`) et électro-intensité fiscale dans la valeur ajoutée (`--va`, accise au tarif normal de 26,35 €/MWh) | `essentiel`, `diagnose`, seed `accise_electricite` |
-| Activité du projet (`--activite data-center\|irve\|industrie\|logistique`) : profil de charge de l'acheminement et régimes d'accise de l'activité, **sans taux réduits chiffrés** | `essentiel`, `diagnose` |
+| Activité du projet (`--activite data-center\|irve\|industrie\|logistique`) : profil de charge de l'acheminement et régime d'accise de l'activité | `essentiel`, `diagnose` |
+| Accise au tarif réduit de la loi de finances 2026, face au tarif normal : 10 €/MWh au-delà du premier GWh pour un data center (refusé si `--va` montre moins de 2,25 % d'électro-intensité), 5,5, 3 ou 0,5 €/MWh selon le palier pour l'industrie ; montant, économie et conditions, dans les deux commandes, le verdict et le JSON | `accise_reduite`, `ligne_accise`, seed `accise_electricite` |
 | Courbe de charge Enedis (`--courbe`) : consommation, pointe, heures creuses, coût (jusqu'à 36 kW) et carbone réels | `ingestion/courbe.py` |
 | Diagnostic complet : industrie, réseau, zone RTE, site clé en main, risques | `diagnose`, `compare` |
 | Entreprises raccordées à Enedis (2025) : volume, industrie et premier secteur NAF de la commune, rang dans le département ; consommation déjà relevée à l'adresse (« Déjà raccordé ici ») | `fct_conso_entreprises_commune`, `fct_conso_entreprises_adresse`, seed `dim_naf2` |
@@ -120,9 +121,8 @@ n'est cochée qu'après ruff, pytest (dont `dbt build`) et un essai réel sur un
 (`python .claude/scripts/verifier.py`). Trois lots : A, à prendre maintenant ; B, en attente d'une
 source, d'une date ou d'une décision ; C, présenter le projet à un incubateur.
 
-**Ordre conseillé** : A1 (accise chiffrée, l'écart le plus fort sur la facture) ; A2 (cohérence :
-les exemples du README parlent encore de bureaux) ; C21 (phrase de mission, sans code) ; C25
-(démonstration rejouable) ; puis les entretiens C23 **avant** les pistes nouvelles, que leurs
+**Ordre conseillé** : A1 (cohérence : les exemples du README parlent encore de bureaux) ; C21
+(phrase de mission, sans code) ; C25 (démonstration rejouable) ; A2 et la suite du lot A ; puis les entretiens C23 **avant** les pistes nouvelles, que leurs
 réponses peuvent réordonner.
 
 ### Lot A : à prendre maintenant
@@ -131,13 +131,14 @@ Les sources existent ; il reste à lire un texte, à tester une API ou à finir 
 
 | Ordre | Étape | Reste à faire | Pourquoi pour ce persona | À vérifier avant de coder |
 |---|---|---|---|---|
-| 1 | **18** Accise selon l'activité (`--activite` et régimes faits le 29 octobre) | Chiffrer les taux réduits : centres de stockage de données, électro-intensifs (paliers de `--va`), catégories E23 à E25 et E30 ; règles de la réfaction des bornes de recharge (part du raccordement prise en charge par le tarif), sans rien afficher avant d'avoir le texte | Change la facture d'un data center de plusieurs centaines de milliers d'euros par an | Texte consolidé du CIBS (Légifrance, L312-64 à L312-72) et BOFiP ; 10 €/MWh pour les data centers selon la loi de finances 2026 contre 12 €/MWh à la FAQ des douanes ; conditions (seuils de consommation, efficacité, chaleur fatale, L312-70) |
-| 2 | **0** Cohérence (lot 0 de la refonte de la carte) | Captures et PDF de `docs/exemples/` refaits pour 12 MW à Chilly-Mazarin ; courbe d'exemple HTA à la place de `courbe_bureau_septembre.csv` et coût de `--courbe` au-delà de 36 kW (TURPE déjà sur la courbe, reste le prix de l'énergie) ; un seul nom (« Atlas électrique » et « Où se brancher » dans `reporting/carte.html`) ; bandeau d'aide lisible sur les cases claires | Le README et la carte montrent encore des bureaux de 100 kVA ; préalable à la démonstration (C25) | Source d'une courbe HTA publiable (export anonymisé ou profil Enedis > 250 kVA déjà chargé) |
-| 3 | **17** TURPE 7 HTB (grille HTB 1 à 3 faite le 29 octobre) | Calendrier horosaisonnier HTB (supposé identique à la HTA), composante d'injection-soutirage, alimentations de secours | Au-delà de 40 MW, l'acheminement est chiffré sur une hypothèse | Délibération CRE 2025-77 et 2026-104 (annexe 2) |
-| 4 | **16** Bâtiment et solaire (emprise BD TOPO et productible PVGIS faits le 29 octobre) | Obligations de solarisation des parkings et toitures de la loi APER, échéances reportées par la loi du 26 novembre 2025 ; structure des toitures | Autoconsommation d'un entrepôt ou d'un hub de recharge ; obligation légale du site | Texte de la loi du 26 novembre 2025 ; licence de la BDNB |
-| 5 | **20** Eau (arrêtés VigiEau faits le 29 octobre) | Tension sur la ressource : débits (Hub'Eau hydrométrie) ou niveaux de nappe (Hub'Eau piézométrie) rapportés à une référence publiée ; les volumes BNPE ne disent pas la disponibilité | Refroidissement des data centers ; procédés industriels | Référence officielle de tension (seuils, débits d'étiage) et licence ; maille |
+| 1 | **0** Cohérence (lot 0 de la refonte de la carte) | Captures et PDF de `docs/exemples/` refaits pour 12 MW à Chilly-Mazarin ; courbe d'exemple HTA à la place de `courbe_bureau_septembre.csv` et coût de `--courbe` au-delà de 36 kW (TURPE déjà sur la courbe, reste le prix de l'énergie) ; un seul nom (« Atlas électrique » et « Où se brancher » dans `reporting/carte.html`) ; bandeau d'aide lisible sur les cases claires | Le README et la carte montrent encore des bureaux de 100 kVA ; préalable à la démonstration (C25) | Source d'une courbe HTA publiable (export anonymisé ou profil Enedis > 250 kVA déjà chargé) |
+| 2 | **17** TURPE 7 HTB (grille HTB 1 à 3 faite le 29 octobre) | Calendrier horosaisonnier HTB (supposé identique à la HTA), composante d'injection-soutirage, alimentations de secours | Au-delà de 40 MW, l'acheminement est chiffré sur une hypothèse | Délibération CRE 2025-77 et 2026-104 (annexe 2) |
+| 3 | **16** Bâtiment et solaire (emprise BD TOPO et productible PVGIS faits le 29 octobre) | Obligations de solarisation des parkings et toitures de la loi APER, échéances reportées par la loi du 26 novembre 2025 ; structure des toitures | Autoconsommation d'un entrepôt ou d'un hub de recharge ; obligation légale du site | Texte de la loi du 26 novembre 2025 ; licence de la BDNB |
+| 4 | **20** Eau (arrêtés VigiEau faits le 29 octobre) | Tension sur la ressource : débits (Hub'Eau hydrométrie) ou niveaux de nappe (Hub'Eau piézométrie) rapportés à une référence publiée ; les volumes BNPE ne disent pas la disponibilité | Refroidissement des data centers ; procédés industriels | Référence officielle de tension (seuils, débits d'étiage) et licence ; maille |
 
-Fins d'étapes closes, gardées en limite plutôt qu'en étape : l'échangeur autoroutier de
+Fins d'étapes closes, gardées en limite plutôt qu'en étape : l'étape 18 est terminée (le tarif
+réduit des secteurs exposés à la concurrence internationale, fixés par arrêté, n'est pas
+identifié par l'outil) ; l'échangeur autoroutier de
 l'étape 13 n'est pas identifiable dans la BD TOPO (bretelles sans classement) et la Géoplateforme
 n'a pas de profil poids lourd ; l'étape 14 (urbanisme, friches, zones d'activité) est terminée.
 
@@ -147,6 +148,7 @@ n'est décidé) :
 | Manque | Piste | Condition |
 |---|---|---|
 | Taux de charge réel : `--conso` doit être donnée, rien n'est déduit de `--puissance` (un data center n'utilise qu'environ 20 % de la puissance demandée, chiffre relayé) | Consommation par défaut déduite de `--puissance` et `--activite`, dite hypothèse | Une source officielle du taux de charge par activité ; sans elle, rien |
+| Coût du raccordement, dont la réfaction des bornes de recharge (part prise en charge par le tarif) | Ordre de grandeur du coût de raccordement selon le domaine de tension | Barème de raccordement d'Enedis et texte de la réfaction (arrêté et délibération CRE) ; rien sans texte |
 | Débouché de la chaleur fatale, condition de l'accise réduite des data centers (L312-70) | Réseaux de chaleur à proximité | Jeu national des réseaux de chaleur : producteur et licence à vérifier |
 | Zones « prêtes à raccorder » de RTE (ports de Dunkerque, du Havre, de Fos et cinq zones moyennes) | Une couche de plus dans « Raccorder » | Périmètres publiés par RTE |
 | Maturité du projet pour la file « premier prêt, premier servi » | Pièces d'un dossier de raccordement (autorisations, maîtrise du foncier) en liste de vérification | Relecture de la procédure RTE de 2026 et de la délibération CRE 2026-32 |
@@ -163,7 +165,7 @@ Rien à coder tant que la condition n'est pas levée.
 |---|---|---|
 | **15** Risques complémentaires (argiles, cavités, inondation à l'adresse) et **ICPE, Seveso, sols pollués** voisins (Géorisques) | Un site industriel ou logistique peut être soumis à autorisation ; voisinage Seveso. S'appuie sur le critère « risques » du verdict | Géorisques coupe Python depuis le poste (voir « À surveiller ») ; `/installations_classees`, `/ssp/casias` et `/ssp/instructions` répondent à `curl` : un essai réel depuis Python doit passer |
 | **19** Capacité d'accueil en soutirage : carte des capacités de RTE, nouveau Caparéseau ; ce qu'Enedis publie en HTA | Première question du persona, sans réponse publique aujourd'hui | Publication RTE attendue au 1er janvier 2027 (délibération CRE 2026-173) ; capacité Enedis réservée au portail client |
-| **Carte** Refonte (lots A à F, voir plus bas) | Une carte lisible imprimée, qui montre ce que la puissance demandée change | Décisions de direction artistique (fond, polices, échelle de note) ; lot 0 fait (A2) |
+| **Carte** Refonte (lots A à F, voir plus bas) | Une carte lisible imprimée, qui montre ce que la puissance demandée change | Décisions de direction artistique (fond, polices, échelle de note) ; lot 0 fait (A1) |
 | **S** Ambiance sonore de la tuile (demande du 29 octobre) : un son discret qui rappelle le facteur le plus marquant de la case (par exemple un bourdonnement électrique si le nucléaire domine), aucun s'il n'y a pas de facteur dominant | Rendre la carte plus parlante sans texte de plus ; le son n'est jamais une information en soi | Après le lot A de la carte. Prérequis : règle du facteur dominant écrite à partir des critères déjà calculés, « aucun » possible ; sons libres de droits (CC0 ou domaine public, licence et auteur notés dans le dépôt) ; lecture après un geste de l'utilisateur, volume bas, bouton de coupure, sans effet sur le rapport imprimé ; vérification par le skill `essai-carte` |
 | **8** Repère de prix au-delà de 150 000 MWh/an, après la fin de l'ARENH | Un projet de 20 MW constant dépasse la dernière tranche Eurostat (IG, sans borne) | Une source officielle et ouverte d'un prix à terme ; le classement pondéré dans `compare` reste écarté (décision du 15 octobre) |
 | **6** Extension internationale, voir plus bas | En dernier (décision du 25 octobre) | Jeton ENTSO-E et contours des zones de prix |
@@ -191,7 +193,8 @@ leurs conclusions reviennent ici.
 À lancer à la main, aucune planification :
 - 1er janvier 2027 : refonte de Caparéseau et éventuelle carte des capacités en soutirage de RTE
   (délibération CRE 2026-173), à intégrer dès publication (étape 19) ;
-- 1er février 2027 : indexation de l'accise, ligne à ajouter au seed `accise_electricite` ;
+- 1er janvier et 1er février 2027 : tarifs réduits de la loi de finances 2027 et indexation du tarif
+  normal de l'accise, lignes à clore et à ajouter au seed `accise_electricite` ;
 - 1er août 2027 : nouvelle grille TURPE 7 HTA-BT et HTB, à reporter dans les seeds
   `turpe_soutirage` et `turpe_gestion_comptage` (les sorties le signalent une fois la date passée) ;
 - avril et octobre : actualisation de DVF, puis `refresh` ;
@@ -233,7 +236,7 @@ Inondations.
 
 ## Refonte de la carte et direction artistique (étude du 28 octobre, à valider)
 
-Proposition, rien n'est codé ni décidé hors du lot 0 (étape A2). Elle garde les décisions en
+Proposition, rien n'est codé ni décidé hors du lot 0 (étape A1). Elle garde les décisions en
 vigueur : ligne de commande, local, page HTML autonome qui s'ouvre hors ligne (pas de site web,
 pas de CDN), données publiques sourcées, « non disponible » plutôt qu'un chiffre inventé.
 
@@ -326,7 +329,7 @@ mise à jour dans `docs/exemples/`.
 
 | Lot | Contenu | Validation |
 |---|---|---|
-| 0 | **Cohérence** : étape A2 du lot A (captures, courbe d'exemple, nom, bandeau d'aide) | relecture README et PLAN, `essentiel` sur les exemples |
+| 0 | **Cohérence** : étape A1 du lot A (captures, courbe d'exemple, nom, bandeau d'aide) | relecture README et PLAN, `essentiel` sur les exemples |
 | A | `reporting/charte.py` ; polices embarquées ; PDF et graphiques sur la charte ; carte sur la charte en r128 | rendu identique sur deux postes ; PDF sans caractère remplacé |
 | B | Prototype puis passage à three.js r186 (`WebGLRenderer`, `BatchedMesh` pour les maquettes) | carte sans requête réseau ; 60 images/s sur la métropole |
 | C | « Raccorder » selon la puissance : anneaux des domaines de tension, zones RTE en colonnes datées | 1, 12, 30 et 50 MW à Chilly-Mazarin et Dunkerque : gestionnaire conforme à `seuils_raccordement` |
@@ -360,8 +363,8 @@ manques qui en découlent sont dans « Suite », lot A.
 Trous de la recherche : aucun rapport récent de Cushman & Wakefield, CBRE, Gerlog ou de l'ADEME n'a
 été trouvé (requêtes sans résultat) ; Yottar reste introuvable en source publique ; l'état des
 obligations de l'ADEME et de l'Arcep sur le WUE et la chaleur fatale n'est pas établi ; les taux
-réduits d'accise des data centers et des industriels n'ont pas pu être relus dans un texte lisible
-(étape 18).
+réduits d'accise ont depuis été lus dans le formulaire 2040-TIC-SD et le texte consolidé du CIBS
+(étape 18, décision du 29 octobre).
 
 ## Ce que demandent les incubateurs : recherche du 29 octobre
 
@@ -447,7 +450,7 @@ source ne fixe un nombre d'entretiens clients.
 | 24 oct. | Critère risques : « attention » seulement si un plan de prévention (PPRN, PPRT, PPRM) approuvé, anticipé, prescrit ou prorogé couvre la commune (export GASPAR, plans caducs écartés) ; sinon « info » avec les risques recensés ; « inconnu » si les plans ne sont pas chargés |
 | 24 oct. | Chaque sortie donne la date de chargement de ses sources ; au-delà de 45 jours, elle demande un `refresh` |
 | 24 oct. | Une étape n'est validée qu'après un test complet : ruff, pytest (dont `dbt build`), essai réel |
-| 24 oct. | `--va` : électro-intensité = consommation × accise au tarif normal du seed (26,35 €/MWh depuis le 1er août 2026, voir 29 oct.) ÷ valeur ajoutée, paliers 0,5 %, 3,375 % et 6,75 % (CIBS L312-65, L312-71) ; montant du taux réduit non chiffré |
+| 24 oct. | `--va` : électro-intensité = consommation × accise au tarif normal du seed (26,35 €/MWh depuis le 1er août 2026, voir 29 oct.) ÷ valeur ajoutée, paliers 0,5 %, 2,25 % et 6,75 % depuis le 1er janvier 2026 (CIBS L312-65, L312-71) ; taux réduits chiffrés le 29 oct. |
 | 24 oct. | `--courbe` : export Enedis lu en Python à la demande, jamais stocké ; horodate = fin du pas ; tient lieu de `--conso` et `--puissance` s'ils manquent ; coût au barème HP/HC en vigueur, seulement jusqu'à 36 kW |
 | 24 oct. | Carbone horaire des îles : profil de la part thermique calé sur le facteur ADEME annuel, plutôt que des facteurs par filière non sourcés ; imports de la Corse comptés non thermiques |
 | 24 oct. | UE-27 : moyennes nationales seulement (Eurostat depuis 2024-S1, deux derniers semestres ; Ember, dernière année, production sans échanges) ; jointure des trois codes pays par le seed `dim_pays_ue` ; hors UE refusé |
@@ -481,7 +484,7 @@ source ne fixe un nombre d'entretiens clients.
 | 28 oct. | Identifiants de l'application Ecowatt dans `identifiants.local.txt` (ignoré par git), sous `ECO2MIX_ECOWATT_*`, distincts de ceux de Tempo ; le secret a transité par la conversation : à régénérer si elle est partagée |
 | 29 oct. | Profils de charge réels (10.5) : agrégat Enedis `conso-sup36-region`, plage « total > 250 kVA » (P7), industrie et tertiaire, 12 derniers mois publiés, filtré à la source (843 072 demi-heures au lieu de 34,6 M) ; les courbes masquées par le secret statistique sont écartées ; journée type par heure locale, jours ouvrés et week-end (jours fériés comptés ouvrés), moyenne des régions pondérée par le nombre de points ; `puissance_flexible_kw` à zéro (Enedis ne dit rien de la flexibilité) ; ajoutés à `fct_cout_horaire_profil` à côté du seed, qui reste le profil par défaut |
 | 29 oct. | Ecowatt (10.6) : l'API répond (HTTP 200) depuis l'application Ecowatt ; elle ne publie que le jour et les trois suivants, sans historique : la commande `ecowatt` se lance à la main, hors `refresh` (compte RTE requis, comme `tempo`), et le dernier niveau relevé d'un jour remplace le précédent ; le rapport dit combien de jours ont été relevés plutôt que de les supposer verts |
-| 29 oct. | Accise selon l'activité (18), première partie : `--activite` (`data-center`, `irve`, `industrie`, `logistique`) choisit le profil de charge de l'acheminement (journée type Enedis > 250 kVA pour l'industrie, puissance constante dite telle pour les autres) et affiche les régimes d'accise de l'attestation 2040-TIC-ATT-E (codes E15, E16, E21, E23 à E25, E30 ; CIBS L312-64 à L312-72). **Aucun taux réduit n'est chiffré** : les sources lues se contredisent ou sont illisibles (reste de l'étape 18, lot A) |
+| 29 oct. | Accise selon l'activité (18), première partie : `--activite` (`data-center`, `irve`, `industrie`, `logistique`) choisit le profil de charge de l'acheminement (journée type Enedis > 250 kVA pour l'industrie, puissance constante dite telle pour les autres) et affiche les régimes d'accise de l'attestation 2040-TIC-ATT-E (codes E15, E16, E21, E23 à E25, E30 ; CIBS L312-64 à L312-72). Taux chiffrés le même jour (voir plus bas) |
 | 29 oct. | Accise au tarif normal corrigée : le formulaire DGFiP 2040-TIC-SD (2026) donne 26,35 €/MWh pour les entreprises à compter du 1er août 2026 (20,42 de tarif normal + 5,93 de majoration), après 26,58 du 1er février au 31 juillet 2026 ; `--va` s'appuie désormais sur 26,35. Les taux réduits du même formulaire ne sont pas chiffrés : l'extraction du PDF désaligne les libellés et les montants |
 | 29 oct. | TURPE 7 HTB (17) : grille HTB 1 à 3 du 1er août 2026 (délibération CRE 2026-104, annexe 2) en seed daté à côté de la HTA-BT, appliquée dès 40 MW avec HTB 1 par défaut ; calendrier horosaisonnier supposé identique à la HTA jusqu'à relecture de la délibération 2025-77 |
 | 29 oct. | Zonage d'urbanisme (14) : zone du point par l'API Carto de l'IGN (module GPU, sans clé), appelée à la demande par `diagnose` et `compare` sauf sous `--sans-risques` ; la plus contraignante des zones superposées (A ou N) passe devant ; type de zone seulement, la destination autorisée se lit au règlement (lien donné s'il est publié) ; zone A ou N : critère « foncier » à vérifier ; aucune zone : « document non publié ou non numérisé », jamais un chiffre inventé. Pas de stockage local (couverture et version du document changent) |
@@ -491,6 +494,7 @@ source ne fixe un nombre d'entretiens clients.
 | 29 oct. | Accès routier (13) : calcul d'itinéraire de la Géoplateforme (ressource `bdtopo-pgr`, profil voiture : `bdtopo-osrm`, cité auparavant, n'existe plus) vers les pôles de fret de `fct_poles_fret` (centre de la commune pour ports et aéroports, ordre de grandeur) ; pas de profil poids lourd, dit dans la limite ; l'échangeur autoroutier n'est pas identifiable dans la BD TOPO (bretelles sans classement) : seule la distance à vol d'oiseau jusqu'au tronçon « type autoroutier » classé autoroute (10 km au plus) est donnée ; à la demande |
 | 29 oct. | Bâtiment et solaire (16) : bâtiment de la BD TOPO à 60 m au plus de l'adresse (le plus proche si l'adresse n'est pas dessus) et PVGIS 5.3 (JRC) pour un kWc de panneaux fixes, inclinaison et orientation optimales, 14 % de pertes ; aucun dimensionnement de centrale déduit de l'emprise (hypothèses non sourcées) ; obligations de la loi APER non évaluées (reste de l'étape 16, lot A) |
 | 29 oct. | Étoile en schéma `etoile` au-dessus du gold, sans renommer les `fct_*` ; `dim_commune` reprend les communes des faits absentes du référentiel (clé étrangère jamais orpheline) |
+| 29 oct. | Accise réduite chiffrée (18, fin) : tarifs de la loi de finances 2026 (loi n° 2026-103) lus dans le formulaire DGFiP 2040-TIC-SD 2026, en mode « table » de pdftotext (le mode « layout » décalait d'une ligne libellés et montants ; alignement vérifié sur les tarifs normaux, dont le montant figure dans le libellé), et recoupés avec le texte consolidé du CIBS sur Légifrance : 5,5 €/MWh (grande consommatrice, dès 0,5 % d'électro-intensité), 3 (électro-sensible, dès 2,25 %), 0,5 (électro-intensive, dès 6,75 %), 0,5 (exposée à la concurrence internationale, L312-72), 10 pour les centres de stockage de données sur la fraction au-delà de 1 GWh par an (L312-64, L312-70) ; seed `accise_electricite` à une ligne par catégorie. Les paliers de `--va` passent de 3,375 % (bouclier tarifaire, fini le 31 décembre 2025) à 2,25 %. Tarif réduit total, sans majoration ZNI à part (le formulaire n'en déclare pas). Industriel : seulement sans `--activite` ou avec `industrie` (sections B à E de la NACE) ; data center : refusé quand `--va` montre moins de 2,25 % (condition 8 de L312-70), les sept autres conditions dites, pas vérifiées ; aucune réduction pour la recharge ni l'entrepôt. Montants donnés à côté du prix moyen Eurostat, sans l'en retrancher (on ignore la part d'accise réduite dans la moyenne de la tranche) |
 | 29 oct. | Prochaines étapes en trois lots (A maintenant, B en attente, C incubateur) ; une étape terminée quitte « Suite » et ne reste que dans « État » et les décisions |
 
 ## Écarté

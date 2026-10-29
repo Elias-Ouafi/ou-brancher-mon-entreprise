@@ -572,9 +572,10 @@ def test_essentiel_puts_the_bill_against_turnover(medallion_db: Path) -> None:
 
 
 # 350 MWh à 26,35 € = 9 223 € d'accise : 0,93 % d'une VA de 1 M€ (premier palier), 0,47 % de
-# 2 M€ (sous le seuil), 7 % de 133 000 € (dernier palier)
+# 2 M€ (sous le seuil), 3,07 % de 300 000 € (électro-sensible), 7 % de 133 000 € (dernier palier)
 @pytest.mark.parametrize(
-    ("va", "palier"), [(1_000_000, 0.005), (2_000_000, None), (133_000, 0.0675)]
+    ("va", "palier"),
+    [(1_000_000, 0.005), (2_000_000, None), (300_000, 0.0225), (133_000, 0.0675)],
 )
 def test_value_added_share_places_the_fiscal_threshold(
     medallion_db: Path, va: float, palier: float | None
@@ -596,6 +597,76 @@ def test_value_added_share_places_the_fiscal_threshold(
     assert "part_valeur_ajoutee" in reponse["limites"]
 
 
+# Tarifs réduits de la loi de finances 2026 : 5,5, 3 et 0,5 €/MWh selon le palier
+@pytest.mark.parametrize(
+    ("va", "categorie", "tarif"),
+    [(1_000_000, "grande_consommatrice", 5.5), (300_000, "electro_sensible", 3.0),
+     (133_000, "electro_intensive", 0.5)],
+)  # fmt: skip
+def test_industrial_reduced_excise_follows_the_threshold(
+    medallion_db: Path, va: float, categorie: str, tarif: float
+) -> None:
+    from ingestion.diagnostic import diagnostic_en_dict, formater_diagnostic
+
+    diagnostic = lire_diagnostic(
+        territoire("69123", "Lyon"),
+        conso_mwh=350,
+        va_eur=va,
+        activite="industrie",
+        database=medallion_db,
+    )
+    r = diagnostic.accise_reduite
+    assert r is not None
+    assert (r.categorie, r.tarif_eur_mwh, r.mwh_reduits) == (categorie, tarif, 350)
+    assert r.economie_eur == pytest.approx(350 * (26.35 - tarif))
+    assert "Accise : environ" in formater_diagnostic(diagnostic)
+    assert diagnostic_en_dict(diagnostic)["accise_reduite"]["categorie"] == categorie
+
+
+# 50 000 MWh : le premier GWh au tarif normal, 49 000 MWh à 10 €/MWh
+def test_data_center_reduced_excise_starts_after_the_first_gwh(medallion_db: Path) -> None:
+    from ingestion.diagnostic import essentiel_en_dict, formater_essentiel
+
+    diagnostic = lire_diagnostic(
+        territoire("69123", "Lyon"), conso_mwh=50_000, activite="data-center", database=medallion_db
+    )
+    r = diagnostic.accise_reduite
+    assert r is not None
+    assert (r.categorie, r.tarif_eur_mwh, r.mwh_reduits) == ("centre_stockage_donnees", 10, 49_000)
+    assert r.accise_reduite_eur == pytest.approx(1_000 * 26.35 + 49_000 * 10)
+    texte = formater_essentiel(diagnostic)
+    assert "au tarif réduit de 10 €/MWh (centre de stockage de données) sur 49 000 MWh" in texte
+    assert "huit conditions" in texte
+    assert essentiel_en_dict(diagnostic)["accise_reduite"]["economie_eur"] == r.economie_eur
+
+
+@pytest.mark.parametrize(
+    ("conso", "va", "activite", "message"),
+    [
+        # 50 000 MWh à 26,35 € = 1,32 M€, 0,66 % d'une VA de 200 M€ : sous l'électro-sensibilité
+        (50_000, 200_000_000, "data-center", "sous les 2,25 %"),
+        (400, None, "data-center", "consommation sous 1 GWh"),
+        (350, 1_000_000, "irve", None),
+        (350, 1_000_000, "logistique", None),
+    ],
+)
+def test_reduced_excise_is_withheld_when_conditions_fail(
+    medallion_db: Path, conso: float, va: float | None, activite: str, message: str | None
+) -> None:
+    from ingestion.diagnostic import ligne_accise
+
+    diagnostic = lire_diagnostic(
+        territoire("69123", "Lyon"),
+        conso_mwh=conso,
+        va_eur=va,
+        activite=activite,
+        database=medallion_db,
+    )
+    assert diagnostic.accise_reduite is None
+    ligne = ligne_accise(diagnostic)
+    assert ligne is None if message is None else message in ligne
+
+
 def test_excise_rate_comes_from_the_dated_seed(medallion_db: Path) -> None:
     diagnostic = lire_diagnostic(
         territoire("69123", "Lyon"), conso_mwh=350, va_eur=1_000_000, database=medallion_db
@@ -603,6 +674,7 @@ def test_excise_rate_comes_from_the_dated_seed(medallion_db: Path) -> None:
     assert diagnostic.accise is not None
     assert diagnostic.accise.tarif_eur_mwh == 26.35
     assert diagnostic.accise.date_debut == date(2026, 8, 1)
+    assert diagnostic.accise.reduits["centre_stockage_donnees"] == 10
     sans_va = lire_diagnostic(territoire("69123", "Lyon"), conso_mwh=350, database=medallion_db)
     assert sans_va.accise is None
     assert sans_va.part_valeur_ajoutee is None

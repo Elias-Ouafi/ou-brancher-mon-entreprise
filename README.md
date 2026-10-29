@@ -12,8 +12,8 @@ les villes : l'outil n'y apporte rien de décisif.
 
 **Ce que l'outil ne dit pas** (aucune source publique) : la capacité réellement disponible au poste
 (seule une étude Enedis ou RTE fait foi ; RTE annonce une carte des capacités en soutirage pour le
-1er janvier 2027), le montant des taux réduits d'accise (régimes affichés, taux non chiffrés), le
-loyer des locaux, la consommation d'un projet déduite de sa seule puissance. Il dit « non
+1er janvier 2027), le droit effectif à un tarif réduit d'accise (il dépend de conditions propres à
+l'exploitant, que l'outil chiffre sans les vérifier), le loyer des locaux, la consommation d'un projet déduite de sa seule puissance. Il dit « non
 disponible » plutôt que de deviner.
 
 ![Carte 3D, vue Raccorder : cases notées du rouge au vert, verdict « Brancher ici ? » pour un bureau à Lyon](docs/exemples/carte_lyon_decision.png)
@@ -21,7 +21,7 @@ disponible » plutôt que de deviner.
 ![Carte 3D, vue Territoire : relief et couleurs réelles, carbone et prix moyen dans l'encart](docs/exemples/carte_lyon_reel.png)
 
 *La carte générée pour « 20 rue de la République, 69002 Lyon », des bureaux de 100 kVA et 80 MWh par
-an (capture antérieure au recentrage sur les projets de 1 à 50 MW, à refaire : étape A2 du
+an (capture antérieure au recentrage sur les projets de 1 à 50 MW, à refaire : étape A1 du
 [plan](PLAN.md)). En haut, la vue « Raccorder » (touche 1) : les cases sont notées du rouge au vert et la fiche donne
 le verdict : raccordement courant au réseau de distribution, carbone sous le seuil de 100 g, facture
 d'environ 16 000 € HTVA par an ; seuls les deux plans de prévention de la commune (risque
@@ -102,7 +102,7 @@ Toutes s'écrivent `.\.venv\Scripts\python.exe -m ingestion.cli <commande>`.
 
 | Commande | Effet |
 |---|---|
-| `essentiel --adresse "…" [--puissance MW] [--conso MWh] [--activite data-center\|irve\|industrie\|logistique] [--courbe CSV] [--ca €] [--va €] [--surface m²] [--format json]` | Réponse courte : prix, carbone, prix de vente des locaux d'activité (DVF) et verdict « brancher ici ? » ; avec `--puissance` et `--conso` au-delà de 36 kVA, la part acheminement (TURPE 7) de la facture ; `--courbe` lit l'export Enedis, `--ca` donne la part de la facture dans le chiffre d'affaires, `--va` l'électro-intensité fiscale (taux réduit d'accise dès 0,5 % de la valeur ajoutée), `--activite` le profil de charge (journée type mesurée par Enedis pour l'industrie, puissance constante sinon) et les régimes d'accise de l'activité, sans taux chiffrés |
+| `essentiel --adresse "…" [--puissance MW] [--conso MWh] [--activite data-center\|irve\|industrie\|logistique] [--courbe CSV] [--ca €] [--va €] [--surface m²] [--format json]` | Réponse courte : prix, carbone, prix de vente des locaux d'activité (DVF) et verdict « brancher ici ? » ; avec `--puissance` et `--conso` au-delà de 36 kVA, la part acheminement (TURPE 7) de la facture ; `--courbe` lit l'export Enedis, `--ca` donne la part de la facture dans le chiffre d'affaires, `--va` l'électro-intensité fiscale (taux réduit d'accise dès 0,5 % de la valeur ajoutée), `--activite` le profil de charge (journée type mesurée par Enedis pour l'industrie, puissance constante sinon) et le régime d'accise de l'activité ; avec `--va` ou `--activite`, l'accise au tarif réduit de la loi de finances 2026 face au tarif normal (10 €/MWh au-delà du premier GWh pour un data center, 5,5, 3 ou 0,5 €/MWh selon le palier d'électro-intensité pour l'industrie), sous conditions |
 | `diagnose --adresse "…" [--puissance MW] [--conso MWh] [--activite data-center\|irve\|industrie\|logistique] [--courbe CSV] [--ca €] [--va €] [--surface m²] [--format pdf\|md\|json]` | Diagnostic complet : industrie locale, réseau, raccordement (dont la qualité de fourniture du département), prix, acheminement, carbone, risques et sismicité, foncier (zone d'urbanisme, friches à moins de 10 km, zones d'activité à moins de 5 km, prix des locaux), eau (arrêtés de restriction du jour), desserte (temps vers le fret, autoroute), bâtiment et productible solaire, puis le verdict « brancher ici ? » critère par critère ; `--sans-risques` coupe tous les appels à la demande (Géorisques, urbanisme, eau, solaire, desserte, zones d'activité) |
 | `compare --adresse "A" --adresse "B" … [mêmes options que diagnose]` | 2 à 6 adresses côte à côte, sans classement, avec le prix des locaux et le verdict « brancher ici ? » de chacune ; `texte`, `md`, `csv`, `json` |
 | `carte [--adresse "…"] [--puissance MW] [--reconstruire]` | Carte 3D hors ligne (`data/reports/carte.html`) |
@@ -209,7 +209,7 @@ flowchart LR
 .\.venv\Scripts\python.exe -m ruff check . ; .\.venv\Scripts\python.exe -m pytest
 ```
 
-535 tests sans réseau, dont un `dbt build` complet sur une base synthétique qui reproduit les
+544 tests sans réseau, dont un `dbt build` complet sur une base synthétique qui reproduit les
 pièges des sources, plus les tests de données dbt. La CI GitHub Actions les joue à chaque PR.
 
 ## Sources et licence
@@ -237,7 +237,9 @@ pièges des sources, plus les tests de données dbt. La CI GitHub Actions les jo
 [PVGIS](https://joint-research-centre.ec.europa.eu/photovoltaic-geographical-information-system-pvgis_en) (JRC, Commission européenne) ·
 [profils de charge > 36 kVA d'Enedis](https://opendata.enedis.fr) · [API Tempo et Ecowatt de RTE](https://data.rte-france.com) ·
 [Nominatim](https://nominatim.openstreetmap.org), données © contributeurs OpenStreetMap (ODbL) ·
-SDDR 2025 de RTE · barèmes et grille TURPE 7 de la CRE.
+SDDR 2025 de RTE · barèmes et grille TURPE 7 de la CRE ·
+[code des impositions sur les biens et services](https://www.legifrance.gouv.fr/codes/section_lc/LEGITEXT000044595989/LEGISCTA000044598507/) (Légifrance) et
+[formulaire 2040-TIC-SD](https://www.impots.gouv.fr/sites/default/files/formulaires/2040-tic-sd/2026/2040-tic-sd_5321.pdf) (DGFiP) pour l'accise.
 
 Code sous [licence MIT](LICENSE) ; les données restent sous la licence de leurs producteurs.
 [three.js](https://threejs.org) r128, embarqué dans `reporting/vendor/`, est sous licence MIT.

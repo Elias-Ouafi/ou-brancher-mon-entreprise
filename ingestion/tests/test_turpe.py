@@ -195,9 +195,9 @@ def test_industry_activity_follows_the_measured_typical_day(medallion_db: Path) 
     assert "accise_activite" in essentiel_en_dict(industrie)["limites"]
 
 
-# Sans courbe publiée, un data center reste à puissance constante, dite telle, et sans taux
+# Sans courbe publiée, un data center reste à puissance constante, dite telle
 @avec_dbt
-def test_data_center_activity_stays_flat_and_names_the_regime_without_a_rate(
+def test_data_center_activity_stays_flat_and_names_its_excise_regime(
     medallion_db: Path,
 ) -> None:
     diagnostic = lire_diagnostic(
@@ -211,7 +211,7 @@ def test_data_center_activity_stays_flat_and_names_the_regime_without_a_rate(
     assert diagnostic.acheminement.profil == PROFIL_PLAT
     texte = formater_diagnostic(diagnostic)
     assert "E16, CIBS L312-64 et L312-70" in texte
-    assert "Taux non chiffrés" in texte
+    assert "huit conditions cumulatives" in texte
     assert "puissance constante, faute de courbe publiée" in texte
 
 
