@@ -4,6 +4,7 @@ import csv
 import io
 import logging
 import re
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -156,4 +157,98 @@ def telecharger_continuite(
             http.close()
     lignes = lire_continuite(reponse.content, colonnes)
     logger.info("enedis continuite lignes=%d annees=%d", len(lignes), len(colonnes))
+    return lignes
+
+
+JEU_PROFILS = "conso-sup36-region"
+CHAMPS_PROFILS = (
+    "horodate",
+    "code_region",
+    "profil",
+    "secteur_activite",
+    "nb_points_soutirage",
+    "courbe_moyenne_ndeg1_ndeg2_wh",
+    "indice_representativite_courbe_ndeg1_ndeg2",
+)
+# Total des points de plus de 250 kVA (ceux d'un projet de 1 MW et plus), industrie et tertiaire
+FILTRE_PROFILS = (
+    'plage_de_puissance_souscrite:"P7: Total > 250 kVA"'
+    ' AND secteur_activite:("S2: Industrie" OR "S3: Tertiaire")'
+)
+MOIS_PROFILS = 12
+
+
+def _nombre(valeur: str | None) -> float | None:
+    return float(valeur) if valeur else None
+
+
+# « S2: Industrie » -> S2 ; « ENT1 (+ ENT2) » -> ENT1
+def lire_page_profils(contenu: bytes) -> list[dict[str, Any]]:
+    lecteur = csv.reader(io.StringIO(contenu.decode("utf-8-sig")))
+    entete = next(lecteur, None)
+    if entete is None:
+        return []
+    if len(entete) != len(CHAMPS_PROFILS):
+        raise EnedisError(f"profils de charge Enedis : {len(entete)} colonnes reçues")
+    lignes = []
+    for horodate, region, profil, secteur, points, courbe, indice in lecteur:
+        if not horodate:
+            continue
+        lignes.append(
+            {
+                "date_heure": datetime.fromisoformat(horodate).astimezone(UTC).isoformat(),
+                "code_region": region,
+                "profil": profil.split(" ")[0],
+                "secteur": secteur.split(":")[0],
+                "nb_points_soutirage": _nombre(points),
+                "courbe_moyenne_wh": _nombre(courbe),
+                "indice_representativite": indice or None,
+            }
+        )
+    return lignes
+
+
+def telecharger_profils_charge(
+    *, settings: Settings | None = None, client: httpx.Client | None = None
+) -> list[dict[str, Any]]:
+    settings = settings or get_settings()
+    http = client or _client(settings)
+    try:
+        derniere = _retrying(settings)(
+            lambda: _verifier(
+                http.get(
+                    f"{JEU_PROFILS}/lines",
+                    params={"size": 1, "sort": "-horodate", "select": "horodate"},
+                )
+            )
+        ).json()["results"]
+        if not derniere:
+            raise EnedisError("profils de charge Enedis : aucune courbe publiée")
+        fin = datetime.fromisoformat(derniere[0]["horodate"]).date()
+        debut = fin - timedelta(days=round(MOIS_PROFILS * 30.4375))
+        url: str | None = f"{JEU_PROFILS}/lines"
+        params: dict[str, Any] | None = {
+            "format": "csv",
+            "size": TAILLE_PAGE,
+            "qs": f"{FILTRE_PROFILS} AND horodate:[{debut} TO {fin}]",
+            "sort": "_i",
+            "select": ",".join(CHAMPS_PROFILS),
+        }
+        lignes: list[dict[str, Any]] = []
+        pages = 0
+        while url:
+            reponse = _retrying(settings)(
+                lambda url=url, params=params: _verifier(http.get(url, params=params))
+            )
+            page = lire_page_profils(reponse.content)
+            lignes += page
+            pages += 1
+            suivante = reponse.links.get("next", {}).get("url")
+            url, params = (suivante, None) if page and suivante else (None, None)
+    finally:
+        if client is None:
+            http.close()
+    logger.info(
+        "enedis profils de charge du %s au %s lignes=%d pages=%d", debut, fin, len(lignes), pages
+    )
     return lignes

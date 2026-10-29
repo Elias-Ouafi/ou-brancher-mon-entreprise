@@ -101,6 +101,9 @@ class Settings(BaseSettings):
 
     rte_client_id: str | None = None
     rte_client_secret: SecretStr | None = None
+    # Application Ecowatt du portail RTE, distincte de celle de Tempo
+    ecowatt_client_id: str | None = None
+    ecowatt_client_secret: SecretStr | None = None
 
     lookback_hours: int = Field(default=3, ge=1)
 

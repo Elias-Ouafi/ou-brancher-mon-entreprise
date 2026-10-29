@@ -49,6 +49,13 @@ def test_coverage_reflects_the_single_loaded_day(connection: duckdb.DuckDBPyConn
     assert rapport.prix_disponibles
 
 
+def test_ecowatt_days_in_tension_are_reported(connection: duckdb.DuckDBPyConnection) -> None:
+    rapport = collect(connection, JUIN, now=NOW)
+
+    assert rapport.jours_ecowatt_connus == 2
+    assert rapport.jours_ecowatt_tension == [(date(2026, 6, 30), "orange")]
+
+
 def test_best_window_is_the_cheapest_blue_off_peak(connection: duckdb.DuckDBPyConnection) -> None:
     rapport = collect(connection, JUIN, now=NOW)
 

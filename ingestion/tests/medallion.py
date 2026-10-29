@@ -31,6 +31,8 @@ from ingestion.datasets import (
     NATIONAL_TR,
     PORTS_FRET,
     POSTES_RTE,
+    PROFILS_CHARGE_SUP36,
+    RTE_ECOWATT,
     RTE_TEMPO,
     SITES_PRODUCTION,
     VENTES_LOCAUX,
@@ -470,6 +472,41 @@ def edf_sei_production() -> list[dict[str, Any]]:
     return lignes
 
 
+# Deux régions, juin 2026 : l'industrie appelle 300 kW de 8 h à 17 h locales et 100 kW sinon, le
+# tertiaire 200 kW ; une demi-heure masquée par le secret statistique
+def profils_charge_sup36() -> list[dict[str, Any]]:
+    debut = datetime(2026, 6, 1, tzinfo=UTC)
+    lignes = []
+    for n in range(30 * 48):
+        instant = debut + timedelta(minutes=30 * n)
+        en_journee = 6 <= instant.hour < 15
+        for region in ("11", "84"):
+            for secteur, kw in (("S2", 300.0 if en_journee else 100.0), ("S3", 200.0)):
+                masquee = n == 0 and region == "11" and secteur == "S2"
+                lignes.append(
+                    {
+                        "date_heure": instant.isoformat(),
+                        "code_region": region,
+                        "profil": "ENT3",
+                        "secteur": secteur,
+                        "nb_points_soutirage": 1000.0 if region == "11" else 500.0,
+                        "courbe_moyenne_wh": None if masquee else kw * 1000 / 2,
+                        "indice_representativite": "S" if masquee else "98",
+                    }
+                )
+    return lignes
+
+
+# Le 29 juin vert, le 30 juin orange (4 h en alerte)
+def ecowatt() -> list[dict[str, Any]]:
+    return [
+        {"date_heure": "2026-06-28T22:00:00+00:00", "message": "Pas d'alerte.", "niveau": 1.0,
+         "heures_en_alerte": 0.0},
+        {"date_heure": "2026-06-29T22:00:00+00:00", "message": "Ecowatt orange.", "niveau": 2.0,
+         "heures_en_alerte": 4.0},
+    ]  # fmt: skip
+
+
 # Italie et France, tranche IB : la moyenne des deux derniers semestres vaut 0,26 et 0,20
 def prix_ue() -> list[dict[str, Any]]:
     series = {"IT": (0.24, 0.25, 0.27), "FR": (0.18, 0.19, 0.21)}
@@ -720,6 +757,7 @@ def build_warehouse(tmp_path: Path, *, with_tempo: bool = True) -> Path:
     load_bronze(database, tmp_path, NATIONAL_TR, temps_reel())
     if with_tempo:
         load_bronze(database, tmp_path, RTE_TEMPO, tempo())
+        load_bronze(database, tmp_path, RTE_ECOWATT, ecowatt())
     load_bronze(database, tmp_path, CONSO_IRIS, conso_iris())
     load_bronze(database, tmp_path, EQUILIBRE_REGIONAL, equilibre_regional())
     load_bronze(database, tmp_path, CONTRAINTES_REGIONALES, contraintes_regionales())
@@ -730,6 +768,7 @@ def build_warehouse(tmp_path: Path, *, with_tempo: bool = True) -> Path:
     load_bronze(database, tmp_path, GASPAR_PLANS, gaspar_plans())
     load_bronze(database, tmp_path, ZONAGE_SISMIQUE, zonage_sismique())
     load_bronze(database, tmp_path, EDF_SEI_PRODUCTION, edf_sei_production())
+    load_bronze(database, tmp_path, PROFILS_CHARGE_SUP36, profils_charge_sup36())
     load_bronze(database, tmp_path, EUROSTAT_PRIX_UE, prix_ue())
     load_bronze(database, tmp_path, EMBER_INTENSITE_CARBONE, ember_intensites())
     load_bronze(database, tmp_path, SITES_PRODUCTION, sites_production())
