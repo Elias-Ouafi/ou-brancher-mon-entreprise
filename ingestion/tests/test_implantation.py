@@ -14,6 +14,7 @@ from ingestion.config import Settings
 from ingestion.diagnostic import CoutProfil, Diagnostic, lire_diagnostic
 from ingestion.eau import SituationEau
 from ingestion.georisques import lire_rapport
+from ingestion.solaire import Productible
 from ingestion.tests.conftest import FIXTURES_DIR
 from ingestion.tests.medallion import DBT_BIN
 from ingestion.tests.test_diagnostic import territoire
@@ -73,6 +74,8 @@ def _lyon(medallion_db: Path) -> Diagnostic:
         eau=SituationEau([]),
         nb_zones_activite=0,
         acces_routier=[],
+        productible=Productible(1100.0, None, None),
+        solaire_consulte=True,
     )
 
 

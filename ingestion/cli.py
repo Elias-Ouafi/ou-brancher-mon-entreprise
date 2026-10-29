@@ -19,6 +19,7 @@ from ingestion.diagnostic import (
     completer_acces_routier,
     completer_eau,
     completer_risques,
+    completer_solaire,
     completer_urbanisme,
     completer_zones_activite,
     essentiel_en_dict,
@@ -519,6 +520,7 @@ def main(argv: list[str] | None = None) -> int:
                 diagnostic = completer_risques(diagnostic, settings=settings)
                 diagnostic = completer_urbanisme(diagnostic, settings=settings)
                 diagnostic = completer_eau(diagnostic, settings=settings)
+                diagnostic = completer_solaire(diagnostic, settings=settings)
                 diagnostic = completer_acces_routier(diagnostic, settings=settings)
                 diagnostic = completer_zones_activite(diagnostic, settings=settings)
             if args.format == "texte":
@@ -564,6 +566,7 @@ def main(argv: list[str] | None = None) -> int:
                     diagnostic = completer_risques(diagnostic, settings=settings)
                     diagnostic = completer_urbanisme(diagnostic, settings=settings)
                     diagnostic = completer_eau(diagnostic, settings=settings)
+                    diagnostic = completer_solaire(diagnostic, settings=settings)
                     diagnostic = completer_acces_routier(diagnostic, settings=settings)
                     diagnostic = completer_zones_activite(diagnostic, settings=settings)
                 diagnostics.append(diagnostic)

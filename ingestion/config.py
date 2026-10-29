@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     itineraire_url: str = "https://data.geopf.fr/navigation/itineraire"
     itineraire_ressource: str = "bdtopo-pgr"
 
+    # PVGIS (Commission européenne, JRC) : productible photovoltaïque d'un kWc en un point
+    pvgis_url: str = "https://re.jrc.ec.europa.eu/api/v5_3/PVcalc"
+
     # VigiEau (arrêtés de restriction des usages de l'eau en vigueur à un point), sans clé
     vigieau_base_url: str = "https://api.vigieau.beta.gouv.fr/api/"
 

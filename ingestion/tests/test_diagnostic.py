@@ -30,6 +30,7 @@ from ingestion.diagnostic import (
 from ingestion.eau import SituationEau
 from ingestion.geocode import Territoire
 from ingestion.georisques import lire_rapport
+from ingestion.solaire import Productible
 from ingestion.tests.conftest import FIXTURES_DIR
 from ingestion.tests.medallion import ANNEE_REFERENCE, DBT_BIN
 from ingestion.urbanisme import ZoneUrbanisme
@@ -371,12 +372,14 @@ def test_every_figure_comes_with_its_limit(medallion_db: Path, warehouse: Any) -
         eau=SituationEau([]),
         nb_zones_activite=0,
         acces_routier=[],
+        productible=Productible(1100.0, None, None),
+        solaire_consulte=True,
     )
     texte = formater_diagnostic(diagnostic)
     limites = [
         limite for (limite,) in _rows(warehouse, "SELECT limite FROM gold.limites_methodologiques")
     ]
-    assert len(limites) == 27
+    assert len(limites) == 28
     for limite in limites:
         assert limite in texte
 
@@ -568,7 +571,7 @@ def test_essentiel_puts_the_bill_against_turnover(medallion_db: Path) -> None:
     assert "part_chiffre_affaires" in reponse["limites"]
 
 
-# 350 MWh à 26,58 € = 9 303 € d'accise : 0,93 % d'une VA de 1 M€ (premier palier), 0,47 % de
+# 350 MWh à 26,35 € = 9 223 € d'accise : 0,93 % d'une VA de 1 M€ (premier palier), 0,47 % de
 # 2 M€ (sous le seuil), 7 % de 133 000 € (dernier palier)
 @pytest.mark.parametrize(
     ("va", "palier"), [(1_000_000, 0.005), (2_000_000, None), (133_000, 0.0675)]
@@ -583,7 +586,7 @@ def test_value_added_share_places_the_fiscal_threshold(
     )
     part = diagnostic.part_valeur_ajoutee
     assert part is not None
-    assert part.electro_intensite == pytest.approx(350 * 26.58 / va)
+    assert part.electro_intensite == pytest.approx(350 * 26.35 / va)
     assert part.palier == palier
     texte = formater_essentiel(diagnostic)
     assert "Part de la valeur ajoutée : facture" in texte
@@ -598,8 +601,8 @@ def test_excise_rate_comes_from_the_dated_seed(medallion_db: Path) -> None:
         territoire("69123", "Lyon"), conso_mwh=350, va_eur=1_000_000, database=medallion_db
     )
     assert diagnostic.accise is not None
-    assert diagnostic.accise.tarif_eur_mwh == 26.58
-    assert diagnostic.accise.date_debut == date(2026, 2, 1)
+    assert diagnostic.accise.tarif_eur_mwh == 26.35
+    assert diagnostic.accise.date_debut == date(2026, 8, 1)
     sans_va = lire_diagnostic(territoire("69123", "Lyon"), conso_mwh=350, database=medallion_db)
     assert sans_va.accise is None
     assert sans_va.part_valeur_ajoutee is None

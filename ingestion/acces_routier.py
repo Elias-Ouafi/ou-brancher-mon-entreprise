@@ -9,7 +9,7 @@ import httpx
 
 from ingestion.config import Settings, get_settings
 from ingestion.extract_geo import _retrying, _verifier
-from ingestion.extract_odre import USER_AGENT, ExtractionError
+from ingestion.extract_odre import USER_AGENT, ExtractionError, RetryableStatusError
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +99,7 @@ def chercher_autoroute(
             lambda: _verifier(http.get(reglages.geoplateforme_wfs_url, params=params))
         )
         trouve = lire_autoroute(reponse.json(), latitude=latitude, longitude=longitude)
-    except (httpx.HTTPError, ValueError) as error:
+    except (httpx.HTTPError, RetryableStatusError, ValueError) as error:
         raise AccesRoutierError(f"WFS BD TOPO : {type(error).__name__} {error}") from error
     return trouve if trouve and trouve[1] <= RAYON_AUTOROUTE_KM else None
 
@@ -127,7 +127,7 @@ def itineraire(
         )
         corps = reponse.json()
         return float(corps["distance"]), float(corps["duration"])
-    except (httpx.HTTPError, ValueError, KeyError, TypeError) as error:
+    except (httpx.HTTPError, RetryableStatusError, ValueError, KeyError, TypeError) as error:
         logger.warning("itineraire non calcule : %s", error)
         return None
 

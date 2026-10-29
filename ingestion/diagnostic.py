@@ -27,6 +27,14 @@ from ingestion.georisques import (
     lire_zonage,
     risques_gaspar,
 )
+from ingestion.solaire import (
+    PERTES_PCT,
+    Batiment,
+    Productible,
+    SolaireError,
+    lire_batiment,
+    lire_productible_pvgis,
+)
 from ingestion.turpe import PROFIL_ACTIVITE, PROFIL_COURBE, Acheminement, lire_acheminement
 from ingestion.urbanisme import UrbanismeError, ZoneUrbanisme, lire_zone_urbanisme
 from ingestion.zones_activite import (
@@ -733,6 +741,11 @@ class Diagnostic:
     poles_proches: list[tuple[str, str, float, float]] = field(default_factory=list)
     acces_routier: list[Acces] | None = None
     acces_routier_erreur: str | None = None
+    # Bâtiment de l'adresse (BD TOPO) et productible photovoltaïque d'un kWc (PVGIS)
+    batiment: Batiment | None = None
+    productible: Productible | None = None
+    solaire_consulte: bool = False
+    solaire_erreur: str | None = None
     # Nombre de friches d'au moins 1 ha à moins de `RAYON_FRICHES_KM`, et les plus proches ;
     # `None` si Cartofriches n'est pas chargé
     nb_friches: int | None = None
@@ -1510,6 +1523,27 @@ def ligne_acces(acces: list[Acces]) -> str:
     return " ; ".join(morceaux)
 
 
+def ligne_solaire(batiment: Batiment | None, productible: Productible) -> str:
+    if batiment is None:
+        lieu = "aucun bâtiment de la BD TOPO à moins de 60 m de l'adresse"
+    else:
+        qui = batiment.usage.lower() if batiment.usage else "usage inconnu"
+        taille = f"{_nombre(batiment.emprise_m2)} m² au sol"
+        if batiment.hauteur_m:
+            taille += f", {_nombre(batiment.hauteur_m, 1)} m de haut"
+        position = (
+            "sur l'adresse" if batiment.contient_adresse else f"à {_nombre(batiment.distance_m)} m"
+        )
+        lieu = f"bâtiment {qui} {position} ({taille})"
+    angles = ""
+    if productible.inclinaison_deg is not None:
+        angles = f", inclinaison {_nombre(productible.inclinaison_deg)}° optimale"
+    return (
+        f"{lieu} ; productible de {_nombre(productible.kwh_par_kwc_an)} kWh par kWc et par an"
+        f" (panneaux fixes{angles}, pertes de {PERTES_PCT} %, PVGIS)"
+    )
+
+
 def ligne_zones_activite(nb: int, zones: list[ZoneActivite]) -> str:
     if not nb:
         return (
@@ -1648,6 +1682,13 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
             "zones": [asdict(z) for z in d.eau.zones],
             "source": "VigiEau",
         },
+        "solaire": None
+        if not d.solaire_consulte or d.productible is None
+        else {
+            "batiment": None if d.batiment is None else asdict(d.batiment),
+            "productible": asdict(d.productible),
+            "source": "BD TOPO (IGN) et PVGIS (Commission européenne)",
+        },
         "acces_routier": None
         if d.acces_routier is None
         else {
@@ -1693,6 +1734,7 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
                 ("prix_locaux", d.prix_locaux is not None),
                 ("friches", d.nb_friches is not None),
                 ("acces_routier", d.acces_routier is not None),
+                ("solaire", d.solaire_consulte and d.productible is not None),
                 ("zones_activite", d.nb_zones_activite is not None),
                 ("restrictions_eau", d.eau is not None),
                 ("zonage_urbanisme", d.urbanisme_consulte and d.urbanisme_erreur is None),
@@ -2100,6 +2142,11 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
             " adresse (document non publié ou non numérisé).",
         )
         limite(s, "zonage_urbanisme")
+    if d.solaire_consulte and d.productible is not None:
+        texte(s, f"Bâtiment et solaire : {ligne_solaire(d.batiment, d.productible)}")
+        limite(s, "solaire")
+    elif d.solaire_erreur is not None:
+        texte(s, f"Bâtiment et solaire non évalués : {d.solaire_erreur}")
     if d.acces_routier is not None:
         texte(
             s,
@@ -2228,6 +2275,20 @@ def completer_urbanisme(diagnostic: Diagnostic, *, settings: Settings | None = N
         logger.warning("zonage d'urbanisme non consulte : %s", error)
         return replace(diagnostic, urbanisme_erreur=str(error))
     return replace(diagnostic, urbanisme=zone, urbanisme_consulte=True)
+
+
+# Ajoute le bâtiment de l'adresse et le productible solaire ; ne fait jamais échouer le diagnostic
+def completer_solaire(diagnostic: Diagnostic, *, settings: Settings | None = None) -> Diagnostic:
+    t = diagnostic.territoire
+    try:
+        batiment = lire_batiment(latitude=t.latitude, longitude=t.longitude, settings=settings)
+        productible = lire_productible_pvgis(
+            latitude=t.latitude, longitude=t.longitude, settings=settings
+        )
+    except SolaireError as error:
+        logger.warning("bâtiment et solaire non evalues : %s", error)
+        return replace(diagnostic, solaire_erreur=str(error))
+    return replace(diagnostic, batiment=batiment, productible=productible, solaire_consulte=True)
 
 
 # Ajoute les temps d'accès à l'autoroute et aux pôles de fret ; ne fait jamais échouer le diagnostic

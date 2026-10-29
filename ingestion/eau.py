@@ -9,7 +9,7 @@ import httpx
 
 from ingestion.config import Settings, get_settings
 from ingestion.extract_geo import _retrying, _verifier
-from ingestion.extract_odre import USER_AGENT, ExtractionError
+from ingestion.extract_odre import USER_AGENT, ExtractionError, RetryableStatusError
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +108,7 @@ def lire_situation_eau(
     try:
         reponse = _retrying(reglages)(lambda: _verifier(http.get(ZONES_PATH, params=params)))
         return lire_zones(reponse.json())
-    except (httpx.HTTPError, ValueError) as error:
+    except (httpx.HTTPError, RetryableStatusError, ValueError) as error:
         raise EauError(f"{ZONES_PATH} : {type(error).__name__} {error}") from error
     finally:
         if proprietaire:

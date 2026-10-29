@@ -10,7 +10,7 @@ import httpx
 
 from ingestion.config import Settings, get_settings
 from ingestion.extract_geo import _retrying, _verifier
-from ingestion.extract_odre import USER_AGENT, ExtractionError
+from ingestion.extract_odre import USER_AGENT, ExtractionError, RetryableStatusError
 from ingestion.extract_sismique import contient
 
 logger = logging.getLogger(__name__)
@@ -126,7 +126,7 @@ def lire_zones_activite(
             for z in lire_zones(reponse.json(), latitude=latitude, longitude=longitude)
             if z.distance_km <= RAYON_KM
         ]
-    except (httpx.HTTPError, ValueError) as error:
+    except (httpx.HTTPError, RetryableStatusError, ValueError) as error:
         raise ZonesActiviteError(f"WFS BD TOPO : {type(error).__name__} {error}") from error
     finally:
         if proprietaire:
