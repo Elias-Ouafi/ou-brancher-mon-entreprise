@@ -13,7 +13,7 @@ from ingestion import cli
 from ingestion.config import Settings
 from ingestion.diagnostic import CoutProfil, Diagnostic, lire_diagnostic
 from ingestion.eau import SituationEau
-from ingestion.georisques import lire_rapport
+from ingestion.georisques import Voisinage, lire_rapport
 from ingestion.solaire import Productible
 from ingestion.tests.conftest import FIXTURES_DIR
 from ingestion.tests.medallion import DBT_BIN
@@ -72,6 +72,7 @@ def _lyon(medallion_db: Path) -> Diagnostic:
         urbanisme=ZoneUrbanisme("U", "UB", None, "DOC", None, None),
         urbanisme_consulte=True,
         eau=SituationEau([]),
+        voisinage=Voisinage(None, 0, [], 0, 0, [], 0, 0, 0),
         nb_zones_activite=0,
         acces_routier=[],
         productible=Productible(1100.0, None, None),

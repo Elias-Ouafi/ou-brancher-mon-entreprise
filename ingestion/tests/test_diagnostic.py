@@ -29,7 +29,7 @@ from ingestion.diagnostic import (
 )
 from ingestion.eau import SituationEau
 from ingestion.geocode import Territoire
-from ingestion.georisques import lire_rapport
+from ingestion.georisques import Voisinage, lire_rapport
 from ingestion.solaire import Productible
 from ingestion.tests.conftest import FIXTURES_DIR
 from ingestion.tests.medallion import ANNEE_REFERENCE, DBT_BIN
@@ -370,6 +370,7 @@ def test_every_figure_comes_with_its_limit(medallion_db: Path, warehouse: Any) -
         urbanisme=ZoneUrbanisme("U", "UB", None, "DOC", None, None),
         urbanisme_consulte=True,
         eau=SituationEau([]),
+        voisinage=Voisinage(None, 0, [], 0, 0, [], 0, 0, 0),
         nb_zones_activite=0,
         acces_routier=[],
         productible=Productible(1100.0, None, None),
@@ -379,7 +380,7 @@ def test_every_figure_comes_with_its_limit(medallion_db: Path, warehouse: Any) -
     limites = [
         limite for (limite,) in _rows(warehouse, "SELECT limite FROM gold.limites_methodologiques")
     ]
-    assert len(limites) == 28
+    assert len(limites) == 29
     for limite in limites:
         assert limite in texte
 

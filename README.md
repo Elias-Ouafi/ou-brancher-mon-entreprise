@@ -108,7 +108,7 @@ Toutes s'écrivent `.\.venv\Scripts\python.exe -m ingestion.cli <commande>`.
 | Commande | Effet |
 |---|---|
 | `essentiel --adresse "…" [--puissance MW] [--conso MWh] [--activite data-center\|irve\|industrie\|logistique] [--courbe CSV] [--ca €] [--va €] [--surface m²] [--format json]` | Réponse courte : prix, carbone, prix de vente des locaux d'activité (DVF) et verdict « brancher ici ? » ; avec `--puissance` et `--conso` au-delà de 36 kVA, la part acheminement (TURPE 7) de la facture ; `--courbe` lit l'export Enedis, `--ca` donne la part de la facture dans le chiffre d'affaires, `--va` l'électro-intensité fiscale (taux réduit d'accise dès 0,5 % de la valeur ajoutée), `--activite` le profil de charge (journée type mesurée par Enedis pour l'industrie, puissance constante sinon) et le régime d'accise de l'activité ; avec `--va` ou `--activite`, l'accise au tarif réduit de la loi de finances 2026 face au tarif normal (10 €/MWh au-delà du premier GWh pour un data center, 5,5, 3 ou 0,5 €/MWh selon le palier d'électro-intensité pour l'industrie), sous conditions |
-| `diagnose --adresse "…" [--puissance MW] [--conso MWh] [--activite data-center\|irve\|industrie\|logistique] [--courbe CSV] [--ca €] [--va €] [--surface m²] [--format pdf\|md\|json]` | Diagnostic complet : industrie locale, réseau, raccordement (dont la qualité de fourniture du département), prix, acheminement, carbone, risques et sismicité, foncier (zone d'urbanisme, friches à moins de 10 km, zones d'activité à moins de 5 km, prix des locaux), eau (arrêtés de restriction du jour), desserte (temps vers le fret, autoroute), bâtiment et productible solaire, puis le verdict « brancher ici ? » critère par critère ; `--sans-risques` coupe tous les appels à la demande (Géorisques, urbanisme, eau, solaire, desserte, zones d'activité) |
+| `diagnose --adresse "…" [--puissance MW] [--conso MWh] [--activite data-center\|irve\|industrie\|logistique] [--courbe CSV] [--ca €] [--va €] [--surface m²] [--format pdf\|md\|json]` | Diagnostic complet : industrie locale, réseau, raccordement (dont la qualité de fourniture du département), prix, acheminement, carbone, risques et sismicité, voisinage (argiles, cavités à 500 m, Seveso à 5 km, installations classées à 1 km, sols pollués à 500 m), foncier (zone d'urbanisme, friches à moins de 10 km, zones d'activité à moins de 5 km, prix des locaux), eau (arrêtés de restriction du jour), desserte (temps vers le fret, autoroute), bâtiment et productible solaire, puis le verdict « brancher ici ? » critère par critère ; `--sans-risques` coupe tous les appels à la demande (Géorisques, urbanisme, eau, solaire, desserte, zones d'activité) |
 | `compare --adresse "A" --adresse "B" … [mêmes options que diagnose]` | 2 à 6 adresses côte à côte, sans classement, avec le prix des locaux et le verdict « brancher ici ? » de chacune ; `texte`, `md`, `csv`, `json` |
 | `carte [--adresse "…"] [--puissance MW] [--reconstruire]` | Carte 3D hors ligne (`data/reports/carte.html`) |
 | `europe --adresse "…" [--conso MWh]` | Hors de France, dans l'UE : prix moyen du pays et carbone de sa production, comparés à la France à tranche égale (moyennes nationales) |
@@ -199,7 +199,9 @@ flowchart LR
   sismicité réglementaire (1 à 5) vient de la couche WFS de Géorisques, chargée par `refresh` :
   36 719 polygones des communes de 2010, triés par `gid` pour une pagination stable et comptés
   contre le total annoncé ; l'adresse est située dans son polygone, ce qui reste juste dans une
-  commune nouvelle.
+  commune nouvelle. Le voisinage (argiles, cavités, Seveso, installations classées, sols pollués)
+  vient des mêmes API Géorisques, à la demande, et complète le détail du critère sans en changer
+  l'état.
 - **Sources à la demande** : ce qui dépend du point et change sans prévenir (zone d'urbanisme,
   arrêtés sur l'eau, zones d'activité, itinéraires, bâtiment, productible solaire) est appelé au
   moment de la question, jamais stocké ; un appel qui échoue est signalé dans sa section sans
@@ -214,14 +216,14 @@ flowchart LR
 .\.venv\Scripts\python.exe -m ruff check . ; .\.venv\Scripts\python.exe -m pytest
 ```
 
-544 tests sans réseau, dont un `dbt build` complet sur une base synthétique qui reproduit les
+551 tests sans réseau, dont un `dbt build` complet sur une base synthétique qui reproduit les
 pièges des sources, plus les tests de données dbt. La CI GitHub Actions les joue à chaque PR.
 
 ## Sources et licence
 
 [ODRÉ](https://odre.opendatasoft.com) (éCO2mix, RTE) · [Eurostat](https://ec.europa.eu/eurostat) ·
 [Base Carbone de l'ADEME](https://data.ademe.fr/datasets/base-carboner) ·
-[Base Adresse Nationale](https://adresse.data.gouv.fr) · [Géorisques, GASPAR et zonage sismique](https://www.georisques.gouv.fr) · [Géoportail de l'urbanisme (API Carto)](https://apicarto.ign.fr) ·
+[Base Adresse Nationale](https://adresse.data.gouv.fr) · [Géorisques, GASPAR, zonage sismique, installations classées et sols pollués](https://www.georisques.gouv.fr) · [Géoportail de l'urbanisme (API Carto)](https://apicarto.ign.fr) ·
 [contours Etalab](https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/) ·
 [altimétrie IGN](https://geoservices.ign.fr/documentation/services/services-geoplateforme/altimetrie) ·
 [Natural Earth](https://www.naturalearthdata.com) ·

@@ -10,6 +10,7 @@ from typing import Any
 import httpx
 from tenacity import Retrying, retry_if_exception_type, stop_after_attempt, wait_exponential
 
+from ingestion.acces_routier import _distance_km
 from ingestion.config import Settings, get_settings
 from ingestion.extract_odre import (
     RETRYABLE_STATUS_CODES,
@@ -23,6 +24,16 @@ logger = logging.getLogger(__name__)
 RAPPORT_PATH = "resultats_rapport_risque"
 GASPAR_PATH = "gaspar/risques"
 ZONAGE_PATH = "zonage_sismique"
+
+# Rayons du voisinage : un choix de l'outil, aucun texte n'en fixe ; l'appartenance à un périmètre
+# de plan de prévention technologique (PPRT) se lit dans les plans de prévention, pas ici
+RAYON_SEVESO_KM = 5
+RAYON_ICPE_KM = 1
+RAYON_SOLS_M = 500
+# Taille de page maximale admise par l'API
+TAILLE_PAGE = 1000
+REGIMES_ICPE = {"Autorisation", "Enregistrement"}
+EN_EXPLOITATION = "En exploitation avec titre"
 
 LIBELLES: dict[str, str] = {
     "inondation": "Inondation",
@@ -210,6 +221,84 @@ def avec_zonage(risques: list[Risque], seisme: Risque) -> list[Risque]:
     return [seisme, *(r for r in risques if r.code != "gaspar_13")]
 
 
+@dataclass(frozen=True, slots=True)
+class Installation:
+    nom: str
+    commune: str
+    regime: str
+    # `seuil bas` ou `seuil haut` ; `None` hors Seveso
+    seveso: str | None
+    distance_km: float
+
+
+@dataclass(frozen=True, slots=True)
+class Voisinage:
+    # Exposition aux argiles (retrait-gonflement) à l'adresse ; `None` hors carte
+    argiles: str | None
+    nb_cavites: int
+    # Établissements Seveso en exploitation à moins de `RAYON_SEVESO_KM`, les plus proches d'abord
+    seveso: list[Installation]
+    # Installations classées (autorisation ou enregistrement) en exploitation à moins de
+    # `RAYON_ICPE_KM`, Seveso compris
+    nb_icpe: int
+    nb_icpe_autorisation: int
+    # Sols pollués à moins de `RAYON_SOLS_M` : secteurs d'information sur les sols (SIS),
+    # servitudes d'utilité publique (SUP), sites en cours d'instruction, anciens sites (CASIAS)
+    sis: list[str]
+    nb_sup: int
+    nb_instructions_en_cours: int
+    nb_casias: int
+
+
+def lire_installations(
+    entrees: list[dict[str, Any]], *, latitude: float, longitude: float
+) -> list[Installation]:
+    installations = []
+    for e in entrees:
+        # « Non ICPE » et « Autres régimes » sont sans titre ni état d'activité
+        if e.get("regime") not in REGIMES_ICPE or e.get("etatActivite") != EN_EXPLOITATION:
+            continue
+        if e.get("latitude") is None or e.get("longitude") is None:
+            continue
+        statut = str(e.get("statutSeveso") or "")
+        installations.append(
+            Installation(
+                nom=str(e.get("raisonSociale") or "établissement sans nom"),
+                commune=str(e.get("commune") or ""),
+                regime=str(e["regime"]),
+                seveso=statut.removeprefix("Seveso ") if statut.startswith("Seveso") else None,
+                distance_km=_distance_km(latitude, longitude, e["latitude"], e["longitude"]),
+            )
+        )
+    return sorted(installations, key=lambda i: i.distance_km)
+
+
+def lire_voisinage(
+    *,
+    rga: dict[str, Any],
+    cavites: dict[str, Any],
+    installations: list[Installation],
+    sis: dict[str, Any],
+    sup: dict[str, Any],
+    instructions: dict[str, Any],
+    casias: dict[str, Any],
+) -> Voisinage:
+    proches = [i for i in installations if i.distance_km <= RAYON_ICPE_KM]
+    return Voisinage(
+        argiles=rga.get("exposition") or None,
+        nb_cavites=int(cavites.get("results") or 0),
+        seveso=[i for i in installations if i.seveso and i.distance_km <= RAYON_SEVESO_KM],
+        nb_icpe=len(proches),
+        nb_icpe_autorisation=sum(1 for i in proches if i.regime == "Autorisation"),
+        sis=[str(e.get("nom") or "secteur sans nom") for e in sis.get("data") or []],
+        nb_sup=int(sup.get("results") or 0),
+        nb_instructions_en_cours=sum(
+            1 for e in instructions.get("data") or [] if e.get("statut") == "En cours"
+        ),
+        nb_casias=int(casias.get("results") or 0),
+    )
+
+
 class GeorisquesClient:
     def __init__(
         self,
@@ -265,18 +354,49 @@ class GeorisquesClient:
             risques = avec_zonage(risques, seisme)
         return RisquesSite(url=None, risques=risques, maille="commune")
 
-    def _json(self, path: str, *, latitude: float, longitude: float) -> dict[str, Any]:
+    def voisinage(self, *, latitude: float, longitude: float) -> Voisinage:
+        point = {"latitude": latitude, "longitude": longitude}
+        sols = {"rayon": RAYON_SOLS_M, "page_size": TAILLE_PAGE}
+        entrees: list[dict[str, Any]] = []
+        page, pages = 1, 1
+        while page <= pages:
+            reponse = self._json(
+                "installations_classees",
+                **point,
+                rayon=RAYON_SEVESO_KM * 1000,
+                page_size=TAILLE_PAGE,
+                page=page,
+            )
+            entrees += reponse.get("data") or []
+            pages, page = int(reponse.get("total_pages") or 1), page + 1
+        return lire_voisinage(
+            rga=self._json("rga", **point),
+            cavites=self._json("cavites", **point, rayon=RAYON_SOLS_M),
+            installations=lire_installations(entrees, **point),
+            sis=self._json("ssp/conclusions_sis", **point, **sols),
+            sup=self._json("ssp/conclusions_sup", **point, **sols),
+            instructions=self._json("ssp/instructions", **point, **sols),
+            casias=self._json("ssp/casias", **point, **sols),
+        )
+
+    def _json(
+        self, path: str, *, latitude: float, longitude: float, **params: Any
+    ) -> dict[str, Any]:
 
         def envoyer() -> httpx.Response:
             self.calls += 1
-            response = self._client.get(path, params={"latlon": f"{longitude},{latitude}"})
+            response = self._client.get(
+                path, params={"latlon": f"{longitude},{latitude}", **params}
+            )
             if response.status_code in RETRYABLE_STATUS_CODES:
                 raise RetryableStatusError(response.status_code)
             response.raise_for_status()
             return response
 
         try:
-            payload = self._retrying(envoyer).json()
+            reponse = self._retrying(envoyer)
+            # `rga` répond 200 sans corps là où la carte des argiles n'existe pas
+            payload = reponse.json() if reponse.content else {}
         except (httpx.HTTPError, RetryableStatusError, ValueError) as error:
             raise GeorisquesError(f"{path} : {type(error).__name__} {error}") from error
         if not isinstance(payload, dict):
@@ -328,3 +448,10 @@ def lire_risques(
             return client.rapport_commune(
                 latitude=latitude, longitude=longitude, codes_commune=codes_commune
             )
+
+
+def lire_voisinage_site(
+    *, latitude: float, longitude: float, settings: Settings | None = None
+) -> Voisinage:
+    with GeorisquesClient(settings) as client:
+        return client.voisinage(latitude=latitude, longitude=longitude)
