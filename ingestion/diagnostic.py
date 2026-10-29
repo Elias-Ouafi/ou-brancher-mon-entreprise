@@ -1215,6 +1215,12 @@ def ligne_courbe(b: BilanCourbe) -> str:
     if b.cout_htva_eur_an is not None:
         cout = _euros_arrondis(b.cout_htva_eur_an)
         phrase += f" ; environ {cout} HTVA par an au tarif HP/HC actuel"
+    else:
+        # Au-delà de 36 kVA, aucun prix horaire public : l'énergie reste au prix de la tranche
+        phrase += (
+            " ; énergie au prix moyen de la tranche (aucun prix horaire public au-delà de"
+            " 36 kVA), acheminement chiffré sur cette courbe"
+        )
     if b.intensite_courbe_g_kwh is not None and b.intensite_reseau_g_kwh:
         ecart = b.intensite_courbe_g_kwh / b.intensite_reseau_g_kwh - 1
         sens = "de plus" if ecart >= 0 else "de moins"
