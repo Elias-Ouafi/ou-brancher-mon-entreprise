@@ -1,0 +1,96 @@
+version: 2
+
+# Modèle dimensionnel en étoile, bâti sur les tables gold : les faits portent des mesures et des clés,
+# les dimensions les attributs d'analyse. Les tables fct_* restent la source des commandes.
+models:
+  - name: dim_commune
+    description: Territoire à la maille commune, avec département et région.
+    columns:
+      - name: code_insee_commune
+        data_tests: [unique, not_null]
+      - name: code_departement
+        data_tests: [not_null]
+
+  - name: dim_date
+    description: Calendrier civil, un jour par ligne.
+    columns:
+      - name: jour
+        data_tests: [unique, not_null]
+
+  - name: dim_risque
+    description: Types de risques recensés par GASPAR.
+    columns:
+      - name: num_risque
+        data_tests: [unique, not_null]
+
+  - name: fait_conso_entreprises
+    description: Consommation des entreprises raccordées à Enedis, par commune et année.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [code_insee_commune, annee]
+    columns:
+      - name: code_insee_commune
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_commune')
+                field: code_insee_commune
+      - name: jour_reference
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: jour
+
+  - name: fait_prix_locaux
+    description: Prix de vente au m² des locaux d'activité, par commune (cinq dernières années DVF).
+    columns:
+      - name: code_insee_commune
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_commune')
+                field: code_insee_commune
+      - name: jour_derniere_vente
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: jour
+
+  - name: fait_risque_commune
+    description: Risques recensés par commune (dernier export GASPAR).
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [code_insee_commune, num_risque]
+    columns:
+      - name: code_insee_commune
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_commune')
+                field: code_insee_commune
+      - name: num_risque
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_risque')
+                field: num_risque
+
+  - name: fait_mix_journalier
+    description: Bilan énergétique et carbone national par jour civil.
+    columns:
+      - name: jour
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: jour

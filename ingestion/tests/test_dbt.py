@@ -173,3 +173,34 @@ def test_hourly_carbon_intensity_is_weighted_by_production(
         "SELECT taux_co2_g_kwh, nb_mesures, est_complete FROM gold.fct_creneau_horaire"
         " WHERE heure_utc = '2026-06-30 17:00:00+00'",
     ) == [(80.0, 2, True)]
+
+
+def test_etoile_facts_join_their_dimensions(warehouse: duckdb.DuckDBPyConnection) -> None:
+    tables = {
+        name
+        for (name,) in _rows(
+            warehouse,
+            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'etoile'",
+        )
+    }
+    assert {
+        "dim_commune",
+        "dim_date",
+        "dim_risque",
+        "fait_conso_entreprises",
+        "fait_prix_locaux",
+        "fait_risque_commune",
+        "fait_mix_journalier",
+    } <= tables
+    # Étoile : région et département se lisent par la dimension commune, sans jointure en cascade
+    lyon = _rows(
+        warehouse,
+        "SELECT departement, region FROM etoile.dim_commune WHERE code_insee_commune = '69123'",
+    )
+    assert lyon == [("Rhône", "Auvergne-Rhône-Alpes")]
+    orphelins = _rows(
+        warehouse,
+        "SELECT count(*) FROM etoile.fait_mix_journalier f "
+        "LEFT JOIN etoile.dim_date d USING (jour) WHERE d.jour IS NULL",
+    )
+    assert orphelins == [(0,)]

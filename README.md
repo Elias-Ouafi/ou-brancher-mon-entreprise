@@ -157,6 +157,12 @@ flowchart LR
   suivi, bascule sur l'export CSV, nouvelles tentatives exponentielles.
 - **Silver et gold en dbt-duckdb**, reconstruits à chaque run (quelques secondes). Jointures par
   code INSEE ; énergie = puissance × durée (jours de 23 ou 25 h) ; verdict carbone en cycle de vie.
+- **Étoile** (schéma `etoile`, `dbt/models/etoile/`) : modèle dimensionnel bâti sur le gold, pour
+  l'analyse en SQL ou en outil de BI. Dimensions `dim_commune` (commune, département, région aplatis),
+  `dim_date` (2010-2035) et `dim_risque` ; faits `fait_conso_entreprises` (commune × année),
+  `fait_prix_locaux` (commune), `fait_risque_commune` (commune × risque) et `fait_mix_journalier`
+  (jour). Les clés étrangères sont contrôlées par des tests `relationships` ; les `fct_*` restent
+  la source des commandes.
 - **Gold principal** : `fct_diagnostic_territoire` (une ligne par département),
   `fct_prix_entreprise_tranche`, `fct_carbone_territoire`, `fct_carbone_horaire_zni`,
   `fct_risques_commune`, `fct_plans_prevention_commune`, `fct_zonage_sismique`, `fct_prix_locaux`, `fct_sites_production`, `fct_poles_fret`, `fct_pays_ue`,
@@ -189,7 +195,7 @@ flowchart LR
 .\.venv\Scripts\python.exe -m ruff check . ; .\.venv\Scripts\python.exe -m pytest
 ```
 
-480 tests sans réseau, dont un `dbt build` complet sur une base synthétique qui reproduit les
+535 tests sans réseau, dont un `dbt build` complet sur une base synthétique qui reproduit les
 pièges des sources, plus les tests de données dbt. La CI GitHub Actions les joue à chaque PR.
 
 ## Sources et licence
