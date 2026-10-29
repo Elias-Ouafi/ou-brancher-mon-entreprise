@@ -16,12 +16,13 @@ from ingestion.tests.medallion import DBT_BIN
 from ingestion.tests.test_diagnostic import territoire
 from ingestion.turpe import (
     PARIS_TZ,
+    PROFIL_ACTIVITE,
     PROFIL_COURBE,
     PROFIL_PLAT,
     Acheminement,
     classe_temporelle,
     parts_energie,
-    parts_profil_plat,
+    parts_profil_annee,
 )
 
 avec_dbt = pytest.mark.skipif(DBT_BIN is None, reason="dbt non installé (uv sync --group dbt)")
@@ -48,9 +49,19 @@ def test_time_class_follows_the_turpe_calendar(instant: datetime, classe: str) -
 
 # Une année de grille, du 1er août 2026 au 31 juillet 2027 : 8 760 heures
 def test_flat_profile_counts_every_hour_of_the_tariff_year() -> None:
-    parts = parts_profil_plat(date(2026, 8, 1))
+    parts = parts_profil_annee(date(2026, 8, 1))
     heures = {classe: round(part * 8760) for classe, part in parts.items()}
     assert heures == {"pointe": 308, "hph": 2108, "hch": 1207, "hpb": 3424, "hcb": 1713}
+
+
+# Une journée type qui n'appelle de la puissance que les jours ouvrés à midi : jamais d'heures
+# creuses ni de pointe, et un kWh par jour ouvré de l'année de grille
+def test_typical_day_weights_only_its_own_hours() -> None:
+    parts = parts_profil_annee(date(2026, 8, 1), {("ouvre", 12): 5.0})
+    assert sum(parts.values()) == pytest.approx(1)
+    assert parts["hch"] == parts["hcb"] == parts["pointe"] == 0
+    assert parts["hph"] > 0
+    assert parts["hpb"] > parts["hph"]
 
 
 # Les instants de la courbe sont en UTC : 8 h UTC en janvier, c'est 9 h à Paris, en pointe
@@ -164,3 +175,42 @@ def test_load_curve_replaces_the_flat_profile(medallion_db: Path) -> None:
     assert a.profil == PROFIL_COURBE
     assert a.domaine_turpe == "bt_sup36"
     assert "votre courbe de charge" in formater_essentiel(diagnostic)
+
+
+# L'industrie mesurée appelle 300 kW de 6 h à 15 h UTC et 100 kW sinon (données synthétiques) :
+# plus d'énergie en heures pleines que la puissance constante, donc un acheminement plus cher
+@avec_dbt
+def test_industry_activity_follows_the_measured_typical_day(medallion_db: Path) -> None:
+    ville = territoire("69123", "Lyon")
+    plat = lire_diagnostic(ville, puissance_mw=1, conso_mwh=4000, database=medallion_db)
+    industrie = lire_diagnostic(
+        ville, puissance_mw=1, conso_mwh=4000, activite="industrie", database=medallion_db
+    )
+    assert plat.acheminement is not None and industrie.acheminement is not None
+    assert industrie.acheminement.profil == PROFIL_ACTIVITE
+    assert industrie.acheminement.energie_eur > plat.acheminement.energie_eur
+    texte = formater_essentiel(industrie)
+    assert "journée type mesurée par Enedis pour l'industrie" in texte
+    assert "CIBS L312-65 et L312-71" in texte
+    assert essentiel_en_dict(industrie)["activite"]["code"] == "industrie"
+    assert "accise_activite" in essentiel_en_dict(industrie)["limites"]
+
+
+# Sans courbe publiée, un data center reste à puissance constante, dite telle, et sans taux
+@avec_dbt
+def test_data_center_activity_stays_flat_and_names_the_regime_without_a_rate(
+    medallion_db: Path,
+) -> None:
+    diagnostic = lire_diagnostic(
+        territoire("69123", "Lyon"),
+        puissance_mw=12,
+        conso_mwh=70_000,
+        activite="data-center",
+        database=medallion_db,
+    )
+    assert diagnostic.acheminement is not None
+    assert diagnostic.acheminement.profil == PROFIL_PLAT
+    texte = formater_diagnostic(diagnostic)
+    assert "E16, CIBS L312-64 et L312-70" in texte
+    assert "Taux non chiffrés" in texte
+    assert "puissance constante, faute de courbe publiée" in texte

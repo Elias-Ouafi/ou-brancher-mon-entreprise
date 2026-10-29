@@ -360,6 +360,7 @@ def test_every_figure_comes_with_its_limit(medallion_db: Path, warehouse: Any) -
             conso_mwh=350,
             ca_eur=5_000_000,
             va_eur=1_000_000,
+            activite="industrie",
             database=medallion_db,
         ),
         risques=lire_rapport(rapport),
@@ -368,7 +369,7 @@ def test_every_figure_comes_with_its_limit(medallion_db: Path, warehouse: Any) -
     limites = [
         limite for (limite,) in _rows(warehouse, "SELECT limite FROM gold.limites_methodologiques")
     ]
-    assert len(limites) == 21
+    assert len(limites) == 22
     for limite in limites:
         assert limite in texte
 

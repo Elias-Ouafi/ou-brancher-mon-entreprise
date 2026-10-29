@@ -25,7 +25,7 @@ from ingestion.georisques import (
     lire_zonage,
     risques_gaspar,
 )
-from ingestion.turpe import PROFIL_COURBE, Acheminement, lire_acheminement
+from ingestion.turpe import PROFIL_ACTIVITE, PROFIL_COURBE, Acheminement, lire_acheminement
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +52,54 @@ where $puissance >= puissance_min_mw
 
 
 PROFIL_DEFAUT = "bureau_36kva"
+
+
+@dataclass(frozen=True, slots=True)
+class Activite:
+    libelle: str
+    # Journée type mesurée par Enedis (`profils_charge_reels`) ; `None` : puissance constante
+    profil_charge: str | None
+    # Régimes d'accise de l'attestation officielle 2040-TIC-ATT-E, sans taux (sources divergentes)
+    accise: str
+
+
+ACTIVITES: dict[str, Activite] = {
+    "data-center": Activite(
+        "data center",
+        None,
+        "centres de stockage de données (E16, CIBS L312-64 et L312-70) : tarif réduit sur la"
+        " fraction au-delà de 1 GWh par an, sous conditions cumulatives attestées au"
+        " fournisseur",
+    ),
+    "irve": Activite(
+        "bornes de recharge",
+        None,
+        "aucun usage de l'attestation officielle ne vise la recharge de véhicules (seuls"
+        " le transport guidé, E15, et le transport collectif routier de personnes, E19, y"
+        " figurent)",
+    ),
+    "industrie": Activite(
+        "industrie",
+        "industrie_sup250kva",
+        "activité industrielle (CIBS L312-65 et L312-71) : grande consommatrice (E23) dès 0,5 %"
+        " d'électro-intensité, électro-sensible (E24) dès 2,25 %, électro-intensive (E25) dès"
+        " 6,75 %, ou exposée à la concurrence internationale (E30, L312-72) dès 0,5 % : voir"
+        " --va",
+    ),
+    "logistique": Activite(
+        "logistique",
+        None,
+        "aucun usage de l'attestation officielle ne vise l'entrepôt ; seulement la"
+        " manutention portuaire (E21, dès 0,5 %), le transport guidé (E15) ou l'alimentation"
+        " à quai (E18) si l'activité en relève",
+    ),
+}
+
+_PROFIL_CHARGE_SQL = """
+select type_jour, heure_debut, puissance_kw
+from gold.profils_charge_reels
+where profil = $profil
+"""
 
 # Domaines chiffrés par la grille TURPE HTA-BT ; le tarif bleu inclut déjà l'acheminement
 DOMAINES_TURPE = {"bt_sup36": "BT > 36 kVA", "hta": "HTA"}
@@ -603,6 +651,8 @@ class Diagnostic:
     # Prix de vente des locaux d'activité (DVF) et surface cherchée avec `--surface`
     prix_locaux: PrixLocaux | None = None
     surface_m2: float | None = None
+    # Clé de `ACTIVITES` donnée par `--activite`
+    activite: str | None = None
 
     @property
     def commune_a_des_sites(self) -> bool:
@@ -650,6 +700,7 @@ def lire_diagnostic(
     ca_eur: float | None = None,
     va_eur: float | None = None,
     surface_m2: float | None = None,
+    activite: str | None = None,
     courbe: Courbe | None = None,
     settings: Settings | None = None,
     database: Path | None = None,
@@ -670,6 +721,17 @@ def lire_diagnostic(
                 connection, _DIAGNOSTIC_SQL, {"commune": commune, "departement": departement}
             )
             seuil = _seuil(connection, puissance_mw) if puissance_mw is not None else None
+            profil_charge = ACTIVITES[activite].profil_charge if activite else None
+            journee_type = (
+                {
+                    (type_jour, heure): kw
+                    for type_jour, heure, kw in connection.execute(
+                        _PROFIL_CHARGE_SQL, {"profil": profil_charge}
+                    ).fetchall()
+                }
+                if profil_charge
+                else None
+            )
             acheminement = (
                 lire_acheminement(
                     connection,
@@ -677,6 +739,7 @@ def lire_diagnostic(
                     puissance_kva=seuil.puissance_mw * 1000,
                     conso_mwh=conso_mwh,
                     points=None if courbe is None else courbe.points,
+                    journee_type=journee_type,
                 )
                 if seuil is not None and seuil.domaine_turpe in DOMAINES_TURPE and conso_mwh
                 else None
@@ -799,6 +862,7 @@ def lire_diagnostic(
         continuite=None if continuite is None else Continuite(**continuite),
         prix_locaux=None if prix_locaux is None else PrixLocaux(**prix_locaux),
         surface_m2=surface_m2,
+        activite=activite,
         **ligne,
     )
 
@@ -902,6 +966,8 @@ def essentiel(diagnostic: Diagnostic) -> Section:
         section.elements.append(("texte", f"Part du chiffre d'affaires : {_part_ca(part)}"))
     if (va := d.part_valeur_ajoutee) is not None:
         section.elements.append(("texte", f"Part de la valeur ajoutée : {_part_va(va)}"))
+    if d.activite is not None:
+        section.elements.append(("texte", f"Activité : {ligne_activite(d.activite)}"))
     if d.courbe is not None:
         section.elements.append(("texte", f"Votre courbe de charge : {ligne_courbe(d.courbe)}"))
     if (locaux := d.prix_locaux) is not None:
@@ -967,7 +1033,10 @@ def ligne_courbe(b: BilanCourbe) -> str:
 
 
 def ligne_acheminement(a: Acheminement) -> str:
-    source = "votre courbe de charge" if a.profil == PROFIL_COURBE else "puissance constante"
+    source = {
+        PROFIL_COURBE: "votre courbe de charge",
+        PROFIL_ACTIVITE: "journée type mesurée par Enedis pour l'industrie",
+    }.get(a.profil, "puissance constante")
     phrase = (
         f"environ {_euros_arrondis(a.total_eur)} HTVA par an, soit"
         f" {_nombre(a.prix_eur_mwh, 1)} €/MWh, déjà compris dans le prix moyen (TURPE 7"
@@ -980,6 +1049,16 @@ def ligne_acheminement(a: Acheminement) -> str:
             " seeds turpe_soutirage et turpe_gestion_comptage"
         )
     return phrase
+
+
+def ligne_activite(code: str) -> str:
+    a = ACTIVITES[code]
+    charge = (
+        "journée type mesurée par Enedis (points de plus de 250 kVA)"
+        if a.profil_charge
+        else "puissance constante, faute de courbe publiée"
+    )
+    return f"{a.libelle}, profil de charge : {charge}. Accise : {a.accise}. Taux non chiffrés."
 
 
 def ligne_locaux(p: PrixLocaux, surface_m2: float | None, commune: str) -> str:
@@ -1319,6 +1398,9 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
         "part_valeur_ajoutee": None
         if d.part_valeur_ajoutee is None
         else asdict(d.part_valeur_ajoutee),
+        "activite": None
+        if d.activite is None
+        else {"code": d.activite, **asdict(ACTIVITES[d.activite])},
         "carbone": None
         if c is None
         else {
@@ -1356,6 +1438,7 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
                 ("part_chiffre_affaires", d.part_chiffre_affaires is not None),
                 ("acheminement_turpe", d.acheminement is not None),
                 ("part_valeur_ajoutee", d.part_valeur_ajoutee is not None),
+                ("accise_activite", d.activite is not None),
                 ("entreprises_enedis", d.entreprises_adresse is not None),
                 ("prix_locaux", d.prix_locaux is not None),
             )
@@ -1645,6 +1728,9 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
         if (va := d.part_valeur_ajoutee) is not None:
             texte(s, f"Part de la valeur ajoutée : {_part_va(va)}")
             limite(s, "part_valeur_ajoutee")
+        if d.activite is not None:
+            texte(s, f"Activité : {ligne_activite(d.activite)}")
+            limite(s, "accise_activite")
 
     s = bloc("5. Carbone du réseau et coût horaire d'un profil type")
     if d.carbone is not None:
