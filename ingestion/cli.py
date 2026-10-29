@@ -16,6 +16,7 @@ from ingestion.diagnostic import (
     DiagnosticIndisponibleError,
     DonneesAbsentesError,
     avec_risques_locaux,
+    completer_acces_routier,
     completer_eau,
     completer_risques,
     completer_urbanisme,
@@ -518,6 +519,7 @@ def main(argv: list[str] | None = None) -> int:
                 diagnostic = completer_risques(diagnostic, settings=settings)
                 diagnostic = completer_urbanisme(diagnostic, settings=settings)
                 diagnostic = completer_eau(diagnostic, settings=settings)
+                diagnostic = completer_acces_routier(diagnostic, settings=settings)
                 diagnostic = completer_zones_activite(diagnostic, settings=settings)
             if args.format == "texte":
                 print(formater_diagnostic(diagnostic))
@@ -562,6 +564,7 @@ def main(argv: list[str] | None = None) -> int:
                     diagnostic = completer_risques(diagnostic, settings=settings)
                     diagnostic = completer_urbanisme(diagnostic, settings=settings)
                     diagnostic = completer_eau(diagnostic, settings=settings)
+                    diagnostic = completer_acces_routier(diagnostic, settings=settings)
                     diagnostic = completer_zones_activite(diagnostic, settings=settings)
                 diagnostics.append(diagnostic)
             rendus = {

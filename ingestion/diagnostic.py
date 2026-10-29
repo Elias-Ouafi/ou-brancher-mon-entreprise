@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo
 
 import duckdb
 
+from ingestion.acces_routier import Acces, AccesRoutierError, lire_acces
 from ingestion.config import Settings, get_settings
 from ingestion.courbe import BilanCourbe, Courbe, bilan_courbe
 from ingestion.eau import LIBELLES_NIVEAU, LIBELLES_TYPE, EauError, SituationEau, lire_situation_eau
@@ -214,6 +215,22 @@ where case
 end
 order by distance_km
 limit 1
+"""
+
+# Pôle de fret le plus proche de chaque mode, dans le même territoire que l'adresse
+_POLES_PROCHES_SQL = f"""
+select mode, nom, latitude, longitude
+from (
+    select
+        *,
+        row_number() over (partition by mode order by {_DISTANCE_KM_SQL}) as rang
+    from gold.fct_poles_fret
+    where case
+        when $est_zni then code_departement = $departement
+        else code_departement not like '97%' and code_departement not in ('2A', '2B')
+    end
+)
+where rang = 1
 """
 
 _CARBONE_SQL = """
@@ -711,6 +728,11 @@ class Diagnostic:
     nb_zones_activite: int | None = None
     zones_activite: list[ZoneActivite] = field(default_factory=list)
     zones_activite_erreur: str | None = None
+    # Pôle de fret le plus proche de chaque mode (type, nom, latitude, longitude) ; l'accès routier
+    # (`completer_acces_routier`) en calcule les temps de trajet
+    poles_proches: list[tuple[str, str, float, float]] = field(default_factory=list)
+    acces_routier: list[Acces] | None = None
+    acces_routier_erreur: str | None = None
     # Nombre de friches d'au moins 1 ha à moins de `RAYON_FRICHES_KM`, et les plus proches ;
     # `None` si Cartofriches n'est pas chargé
     nb_friches: int | None = None
@@ -886,6 +908,15 @@ def lire_diagnostic(
                 if "ventes_locaux" in chargements
                 else None
             )
+            poles_proches = connection.execute(
+                _POLES_PROCHES_SQL,
+                {
+                    "latitude": territoire.latitude,
+                    "longitude": territoire.longitude,
+                    "departement": departement,
+                    "est_zni": bool(ligne and ligne["est_zni"]),
+                },
+            ).fetchall()
             friches_proches = (
                 [
                     Friche(*ligne)
@@ -936,6 +967,7 @@ def lire_diagnostic(
         prix_locaux=None if prix_locaux is None else PrixLocaux(**prix_locaux),
         surface_m2=surface_m2,
         activite=activite,
+        poles_proches=poles_proches,
         nb_friches=None if friches_proches is None else len(friches_proches),
         friches=(friches_proches or [])[:NB_FRICHES_AFFICHEES],
         **ligne,
@@ -1455,6 +1487,29 @@ def ligne_eau(eau: SituationEau) -> str:
     return phrase
 
 
+LIBELLES_ACCES = {"port": "port", "aeroport": "aéroport", "rail": "rail-route"}
+
+
+def ligne_acces(acces: list[Acces]) -> str:
+    morceaux = []
+    for a in acces:
+        if a.type_acces == "autoroute":
+            morceaux.append(f"autoroute {a.nom} {_distance(a.distance_vol_km)} à vol d'oiseau")
+            continue
+        nom = f"{LIBELLES_ACCES[a.type_acces]} {a.nom}"
+        if a.duree_min is None or a.distance_route_km is None:
+            morceaux.append(
+                f"{nom} {_distance(a.distance_vol_km)} à vol d'oiseau (trajet non calculé)"
+            )
+        else:
+            morceaux.append(
+                f"{nom} à {_nombre(a.duree_min)} min ({_nombre(a.distance_route_km)} km)"
+            )
+    if not any(a.type_acces == "autoroute" for a in acces):
+        morceaux.insert(0, "aucune autoroute à moins de 10 km")
+    return " ; ".join(morceaux)
+
+
 def ligne_zones_activite(nb: int, zones: list[ZoneActivite]) -> str:
     if not nb:
         return (
@@ -1593,6 +1648,12 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
             "zones": [asdict(z) for z in d.eau.zones],
             "source": "VigiEau",
         },
+        "acces_routier": None
+        if d.acces_routier is None
+        else {
+            "acces": [asdict(a) for a in d.acces_routier],
+            "source": "BD TOPO et Géoplateforme (IGN)",
+        },
         "zones_activite": None
         if d.nb_zones_activite is None
         else {
@@ -1631,6 +1692,7 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
                 ("entreprises_enedis", d.entreprises_adresse is not None),
                 ("prix_locaux", d.prix_locaux is not None),
                 ("friches", d.nb_friches is not None),
+                ("acces_routier", d.acces_routier is not None),
                 ("zones_activite", d.nb_zones_activite is not None),
                 ("restrictions_eau", d.eau is not None),
                 ("zonage_urbanisme", d.urbanisme_consulte and d.urbanisme_erreur is None),
@@ -2025,7 +2087,7 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
         limite(s, "restrictions_eau")
     elif d.eau_erreur is not None:
         texte(s, f"Restrictions d'eau non consultées : {d.eau_erreur}")
-    s = bloc("7. Foncier : zonage d'urbanisme et prix des locaux d'activité (DVF)")
+    s = bloc("7. Foncier, desserte et prix des locaux d'activité (DVF)")
     if d.urbanisme is not None:
         texte(s, f"Zonage d'urbanisme : {ligne_urbanisme(d.urbanisme)}")
         limite(s, "zonage_urbanisme")
@@ -2038,6 +2100,14 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
             " adresse (document non publié ou non numérisé).",
         )
         limite(s, "zonage_urbanisme")
+    if d.acces_routier is not None:
+        texte(
+            s,
+            f"Accès routier (voiture, pas de profil poids lourd) : {ligne_acces(d.acces_routier)}",
+        )
+        limite(s, "acces_routier")
+    elif d.acces_routier_erreur is not None:
+        texte(s, f"Accès routier non évalué : {d.acces_routier_erreur}")
     if d.nb_zones_activite is not None:
         texte(
             s, f"Zones d'activité : {ligne_zones_activite(d.nb_zones_activite, d.zones_activite)}"
@@ -2158,6 +2228,24 @@ def completer_urbanisme(diagnostic: Diagnostic, *, settings: Settings | None = N
         logger.warning("zonage d'urbanisme non consulte : %s", error)
         return replace(diagnostic, urbanisme_erreur=str(error))
     return replace(diagnostic, urbanisme=zone, urbanisme_consulte=True)
+
+
+# Ajoute les temps d'accès à l'autoroute et aux pôles de fret ; ne fait jamais échouer le diagnostic
+def completer_acces_routier(
+    diagnostic: Diagnostic, *, settings: Settings | None = None
+) -> Diagnostic:
+    t = diagnostic.territoire
+    try:
+        acces = lire_acces(
+            latitude=t.latitude,
+            longitude=t.longitude,
+            poles=diagnostic.poles_proches,
+            settings=settings,
+        )
+    except AccesRoutierError as error:
+        logger.warning("acces routier non evalue : %s", error)
+        return replace(diagnostic, acces_routier_erreur=str(error))
+    return replace(diagnostic, acces_routier=acces)
 
 
 # Ajoute les zones d'activité proches de l'adresse ; ne fait jamais échouer le diagnostic

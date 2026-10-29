@@ -72,6 +72,7 @@ def _lyon(medallion_db: Path) -> Diagnostic:
         urbanisme_consulte=True,
         eau=SituationEau([]),
         nb_zones_activite=0,
+        acces_routier=[],
     )
 
 
