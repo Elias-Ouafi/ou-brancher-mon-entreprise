@@ -25,6 +25,8 @@ models:
       +schema: silver
     gold:
       +schema: gold
+    etoile:
+      +schema: etoile
 
 seeds:
   eco2mix:
