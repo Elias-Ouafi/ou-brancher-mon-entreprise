@@ -13,6 +13,11 @@ Modèle à suivre : le commit `242e88d` (DVF, étape 12), `git show 242e88d`.
    mieux de repli signalé). Noter l'URL, la licence, la maille, le millésime, le volume.
 2. Interroger l'API ou le fichier réel une fois pour voir les colonnes, les pièges (BOM, codes
    INSEE tronqués, secret statistique, pagination plafonnée) et le total annoncé.
+3. Choisir le mode : médaillon (ci-dessous) pour un jeu national chargé par `refresh` ; **appel à
+   la demande, sans stockage**, pour ce qui dépend du point et change sans prévenir (zone
+   d'urbanisme, arrêtés sur l'eau, itinéraires). Modèle à la demande : `ingestion/eau.py` (client
+   httpx, erreur propre `…Error`, `completer_…` dans `ingestion/diagnostic.py` qui journalise
+   l'échec sans bloquer, coupé par `--sans-risques`). Noter le choix en décision datée dans PLAN.
 
 ## Fichiers à toucher, dans l'ordre
 
