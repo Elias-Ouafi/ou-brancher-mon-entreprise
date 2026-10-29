@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     # Export GASPAR (risques recensés par commune), servi hors de l'API : repli quand elle se tait
     gaspar_url: str = "https://files.georisques.fr/GASPAR/gaspar.zip"
 
+    # API Carto de l'IGN (Géoportail de l'urbanisme : zone d'urbanisme d'un point), sans clé
+    apicarto_base_url: str = "https://apicarto.ign.fr/api/"
+
     # Service WFS de Géorisques (zonage sismique réglementaire), répond quand l'API se tait
     zonage_sismique_url: str = "https://www.georisques.gouv.fr/services"
 
@@ -95,6 +98,10 @@ class Settings(BaseSettings):
     # Ventes immobilières par année (DVF géolocalisé, DGFiP et Etalab, Licence Ouverte 2.0)
     dvf_url: str = "https://files.data.gouv.fr/geo-dvf/latest/csv/{annee}/full.csv.gz"
     dvf_nb_annees: int = 5
+
+    # Friches référencées dans Cartofriches (Cerema, Licence Ouverte v2) : le lien permanent de la
+    # ressource data.gouv.fr suit la dernière version publiée du fichier
+    friches_url: str = "https://www.data.gouv.fr/fr/datasets/r/74feb3ed-5f9f-4ef8-8fab-b0128d569a99"
 
     # Service d'altimétrie de la Géoplateforme (IGN, RGE ALTI), sans clé
     altimetrie_base_url: str = "https://data.geopf.fr/altimetrie"
