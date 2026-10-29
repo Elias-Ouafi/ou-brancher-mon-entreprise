@@ -31,6 +31,23 @@ sources:
         columns:
           - name: date_heure
             data_tests: [unique, not_null]
+      - name: rte_ecowatt
+        description: >
+          Signal Ecowatt de RTE (tension du système électrique) : une ligne par jour civil,
+          `date_heure` = minuit heure de Paris, `niveau` 1 (pas d'alerte), 2 (orange) ou 3
+          (rouge), `heures_en_alerte` = heures du jour au niveau 2 ou 3. L'API ne publie que
+          le jour et les trois suivants : l'historique se constitue au fil de la commande
+          `ecowatt`, lancée à la main, le niveau le plus récent remplaçant le précédent.
+        columns:
+          - name: date_heure
+            data_tests: [unique, not_null]
+          - name: niveau
+            data_tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: [1, 2, 3]
+                    quote: false
       - name: consommation_annuelle_par_iris
         description: >
           Consommation annuelle d'électricité et de gaz des sites industriels raccordés
@@ -179,6 +196,25 @@ sources:
               - accepted_values:
                   arguments:
                     values: [INDUSTRIE, TERTIAIRE, AGRICULTURE, INCONNU]
+      - name: enedis_profils_charge_sup36
+        description: >
+          Courbe de charge moyenne par point de soutirage de plus de 250 kVA, au pas d'une demi-heure,
+          par région, profil Enedis (ENT1 ou ENT3) et secteur (S2 industrie, S3 tertiaire), sur les
+          12 derniers mois publiés (Enedis, data-fair, licence ouverte). `courbe_moyenne_wh` est
+          vide quand le secret statistique masque la courbe (`indice_representativite` = S).
+        data_tests:
+          - unique_combination:
+              arguments:
+                columns: [code_region, secteur, profil, date_heure]
+        columns:
+          - name: secteur
+            data_tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: [S2, S3]
+          - name: date_heure
+            data_tests: [not_null]
       - name: ventes_locaux
         description: >
           Ventes de locaux industriels, commerciaux ou assimilés (DVF géolocalisé, DGFiP et

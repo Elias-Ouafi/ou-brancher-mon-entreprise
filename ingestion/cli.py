@@ -37,6 +37,7 @@ from ingestion.pipeline import (
     extract_to_parquet,
     load_to_warehouse,
     run_consolidation,
+    run_ecowatt_ingestion,
     run_ingestion,
     run_prix_entreprises_ingestion,
     run_tempo_ingestion,
@@ -365,6 +366,10 @@ def build_parser() -> argparse.ArgumentParser:
     tempo.add_argument("--start", type=date.fromisoformat, help="premier jour (inclus)")
     tempo.add_argument("--end", type=date.fromisoformat, help="dernier jour (exclu)")
     tempo.add_argument("--run-id", default="manual", help="suffixe du fichier Parquet")
+    ecowatt = subparsers.add_parser(
+        "ecowatt", help="relève le signal Ecowatt du jour à J+3 (API RTE, sans historique)"
+    )
+    ecowatt.add_argument("--run-id", default="manual", help="suffixe du fichier Parquet")
 
     prix = subparsers.add_parser(
         "prix", help="charge les prix de l'electricite des entreprises (Eurostat)"
@@ -609,6 +614,13 @@ def main(argv: list[str] | None = None) -> int:
                 logger.error("%s", error)
                 return 1
             logger.info("tempo charge %s %s", outcome, result.as_dict())
+        case "ecowatt":
+            try:
+                outcome, result = run_ecowatt_ingestion(settings=settings, run_id=args.run_id)
+            except RteCredentialsMissingError as error:
+                logger.error("%s", error)
+                return 1
+            logger.info("ecowatt charge %s %s", outcome, result.as_dict())
         case "prix":
             outcome, result = run_prix_entreprises_ingestion(settings=settings, run_id=args.run_id)
             logger.info("prix entreprises charges %s %s", outcome, result.as_dict())

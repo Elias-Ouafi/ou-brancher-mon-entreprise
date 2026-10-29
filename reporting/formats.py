@@ -34,6 +34,19 @@ def co2(valeur: float | None) -> str:
     return "n.d." if valeur is None else f"{nombre(valeur)} g/kWh"
 
 
+def ligne_ecowatt(jours_connus: int, jours_en_tension: list[tuple[date, str]]) -> str:
+    if not jours_connus:
+        return (
+            "Aucun signal Ecowatt relevé ce mois-ci : l'API ne publie que le jour et les trois "
+            "suivants (`python -m ingestion.cli ecowatt`, identifiants Ecowatt requis)."
+        )
+    sur = f"sur {jours_connus} jour(s) relevé(s)"
+    if not jours_en_tension:
+        return f"Ecowatt : aucun jour orange ni rouge {sur}."
+    detail = ", ".join(f"{jour(j)} ({niveau})" for j, niveau in jours_en_tension)
+    return f"Ecowatt : {len(jours_en_tension)} jour(s) de tension {sur} : {detail}."
+
+
 def jour(valeur: date) -> str:
     return f"{JOURS[valeur.weekday()]} {valeur.day} {MOIS[valeur.month - 1]}"
 

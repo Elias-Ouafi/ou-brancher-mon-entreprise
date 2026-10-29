@@ -9,6 +9,7 @@ from reporting.formats import (
     euros,
     heure,
     jour,
+    ligne_ecowatt,
     nom_mois,
     nombre,
     plage,
@@ -162,6 +163,8 @@ def _tempo(rapport: RapportMensuel, graphiques: _Graphiques) -> list[str]:
             "Le calendrier Tempo de ce mois n'est pas chargé "
             "(`python -m ingestion.cli tempo --month AAAA-MM`, identifiants RTE requis).",
             "",
+            ligne_ecowatt(rapport.jours_ecowatt_connus, rapport.jours_ecowatt_tension),
+            "",
         ]
         return blocs
     blocs += graphiques.image("calendrier_tempo", "Calendrier Tempo du mois")
@@ -170,6 +173,7 @@ def _tempo(rapport: RapportMensuel, graphiques: _Graphiques) -> list[str]:
             "**Jours rouges :** " + ", ".join(jour(j) for j in rapport.jours_rouges) + ".",
             "",
         ]
+    blocs += [ligne_ecowatt(rapport.jours_ecowatt_connus, rapport.jours_ecowatt_tension), ""]
     if rapport.synthese:
         blocs += [
             "### Prix et carbone par type d'heure",

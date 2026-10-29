@@ -21,7 +21,7 @@ from reportlab.platypus import (
 
 from reporting import charts
 from reporting.data import Creneau, RapportMensuel
-from reporting.formats import NBSP, nom_mois
+from reporting.formats import NBSP, ligne_ecowatt, nom_mois
 from reporting.formats import co2 as _co2
 from reporting.formats import creneau_tarif as _creneau_tarif
 from reporting.formats import euros as _euros
@@ -299,6 +299,12 @@ def _section_tempo(rapport: RapportMensuel) -> list:
                 STYLES["texte"],
             )
         )
+    blocs.append(
+        Paragraph(
+            ligne_ecowatt(rapport.jours_ecowatt_connus, rapport.jours_ecowatt_tension),
+            STYLES["texte"],
+        )
+    )
     if rapport.synthese:
         blocs += [
             Paragraph("Prix et carbone par type d'heure", STYLES["h2"]),
