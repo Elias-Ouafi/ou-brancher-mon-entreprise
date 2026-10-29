@@ -233,12 +233,15 @@ seeds:
 
   - name: accise_electricite
     description: >
-      Accise sur l'électricité au tarif normal des PME et de la haute puissance (plus de
-      36 kVA), en €/MWh, validité `[date_debut, date_fin)`. C'est la base légale du calcul
-      d'électro-intensité (`--va`, CIBS L312-65) : le barème en vigueur est la ligne sans
-      `date_fin`. Indexé chaque 1er février : clore la ligne en cours et en ajouter une à
-      chaque loi de finances ; les sorties le signalent quand un 1er février est passé
-      depuis `date_debut`.
+      Accise sur l'électricité en €/MWh, validité `[date_debut, date_fin)` ; le barème en
+      vigueur d'une catégorie est sa ligne sans `date_fin`. `pme_haute_puissance` : tarif
+      normal des PME et de la haute puissance (plus de 36 kVA), majoration ZNI comprise,
+      base légale du calcul d'électro-intensité (`--va`, CIBS L312-65) ; indexé chaque
+      1er février, les sorties le signalent quand un 1er février est passé depuis
+      `date_debut`. Autres catégories : tarifs réduits fixés par la loi de finances
+      (CIBS L312-64 et L312-65), lus dans le formulaire 2040-TIC-SD et recoupés avec le texte
+      consolidé de Légifrance. Clore la ligne en cours et en ajouter une à chaque loi de
+      finances.
     config:
       column_types:
         date_debut: date
