@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 TOKEN_PATH = "/token/oauth/"
 CALENDAR_PATH = "/open_api/tempo_like_supply_contract/v1/tempo_like_calendars"
+ECOWATT_PATH = "/open_api/ecowatt/v5/signals"
 
 # Plage maximale acceptée par l'API en un appel
 MAX_DAYS_PER_CALL = 366
@@ -29,6 +30,8 @@ MAX_DAYS_PER_CALL = 366
 TOKEN_EXPIRY_MARGIN_SECONDS = 60
 
 TEMPO_COLORS = frozenset({"BLUE", "WHITE", "RED"})
+# 1 : pas d'alerte, 2 : Ecowatt orange, 3 : Ecowatt rouge
+ECOWATT_NIVEAUX = frozenset({1, 2, 3})
 
 
 class RteCredentialsMissingError(ExtractionError):
@@ -71,12 +74,7 @@ def _paris_midnight(day: date) -> str:
 class RteTempoClient:
     def __init__(self, settings: Settings | None = None, *, client: httpx.Client | None = None):
         self.settings = settings or get_settings()
-        if not (self.settings.rte_client_id and self.settings.rte_client_secret):
-            raise RteCredentialsMissingError(
-                "identifiants RTE absents : renseigner ECO2MIX_RTE_CLIENT_ID et "
-                "ECO2MIX_RTE_CLIENT_SECRET (compte gratuit sur https://data.rte-france.com, "
-                "API « Tempo Like Supply Contract »)"
-            )
+        self._identifiants()
         self.calls = 0
         self._token: str | None = None
         self._token_expires_at = 0.0
@@ -95,6 +93,15 @@ class RteTempoClient:
             retry=retry_if_exception_type((httpx.TransportError, RetryableStatusError)),
             reraise=True,
         )
+
+    def _identifiants(self) -> tuple[str, str]:
+        if not (self.settings.rte_client_id and self.settings.rte_client_secret):
+            raise RteCredentialsMissingError(
+                "identifiants RTE absents : renseigner ECO2MIX_RTE_CLIENT_ID et "
+                "ECO2MIX_RTE_CLIENT_SECRET (compte gratuit sur https://data.rte-france.com, "
+                "API « Tempo Like Supply Contract »)"
+            )
+        return self.settings.rte_client_id, self.settings.rte_client_secret.get_secret_value()
 
     def close(self) -> None:
         logger.info("rte_api_calls=%d", self.calls)
@@ -142,16 +149,13 @@ class RteTempoClient:
         if self._token is not None and time.monotonic() < self._token_expires_at:
             return self._token
 
-        assert self.settings.rte_client_secret is not None
+        identifiant, secret = self._identifiants()
 
         def _send() -> httpx.Response:
             self.calls += 1
             response = self._client.post(
                 TOKEN_PATH,
-                auth=(
-                    self.settings.rte_client_id or "",
-                    self.settings.rte_client_secret.get_secret_value(),
-                ),
+                auth=(identifiant, secret),
                 data={"grant_type": "client_credentials"},
             )
             if response.status_code in RETRYABLE_STATUS_CODES:
@@ -181,3 +185,40 @@ class RteTempoClient:
             return response
 
         return self._retrying(_send)
+
+
+# Application Ecowatt du portail RTE, distincte de celle de Tempo
+class RteEcowattClient(RteTempoClient):
+    def _identifiants(self) -> tuple[str, str]:
+        if not (self.settings.ecowatt_client_id and self.settings.ecowatt_client_secret):
+            raise RteCredentialsMissingError(
+                "identifiants Ecowatt absents : renseigner ECO2MIX_ECOWATT_CLIENT_ID et "
+                "ECO2MIX_ECOWATT_CLIENT_SECRET (application Ecowatt du portail "
+                "https://data.rte-france.com)"
+            )
+        return (
+            self.settings.ecowatt_client_id,
+            self.settings.ecowatt_client_secret.get_secret_value(),
+        )
+
+    # Signal du jour et des trois jours suivants : l'API ne publie aucun historique
+    def fetch_signaux(self) -> list[dict[str, Any]]:
+        signaux = self._get(ECOWATT_PATH, params={}).json().get("signals", [])
+        records = []
+        for signal in signaux:
+            niveau = signal.get("dvalue")
+            if niveau not in ECOWATT_NIVEAUX:
+                logger.warning("niveau Ecowatt inconnu ignoré : %r", signal.get("dvalue"))
+                continue
+            records.append(
+                {
+                    "date_heure": signal["jour"],
+                    "message": signal.get("message"),
+                    "niveau": niveau,
+                    "heures_en_alerte": sum(
+                        1 for pas in signal.get("values", []) if pas.get("hvalue", 0) >= 2
+                    ),
+                }
+            )
+        records.sort(key=lambda record: record["date_heure"])
+        return records

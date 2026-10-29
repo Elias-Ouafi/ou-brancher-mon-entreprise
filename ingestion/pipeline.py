@@ -21,6 +21,8 @@ from ingestion.datasets import (
     GASPAR_RISQUES,
     NATIONAL_TR,
     PORTS_FRET,
+    PROFILS_CHARGE_SUP36,
+    RTE_ECOWATT,
     RTE_TEMPO,
     SITES_PRODUCTION,
     VENTES_LOCAUX,
@@ -30,13 +32,17 @@ from ingestion.datasets import (
 from ingestion.extract_dvf import telecharger_ventes_locaux
 from ingestion.extract_edf_sei import telecharger_production
 from ingestion.extract_ember import telecharger_intensites
-from ingestion.extract_enedis import telecharger_conso_entreprises, telecharger_continuite
+from ingestion.extract_enedis import (
+    telecharger_conso_entreprises,
+    telecharger_continuite,
+    telecharger_profils_charge,
+)
 from ingestion.extract_eurostat import EurostatClient
 from ingestion.extract_fret import telecharger_aeroports, telecharger_chantiers, telecharger_ports
 from ingestion.extract_gaspar import lire_export, lire_plans, telecharger_archive
 from ingestion.extract_odre import ExtractionWindow, OdreClient
 from ingestion.extract_production import telecharger_centres, telecharger_sites
-from ingestion.extract_rte import DayRange, RteTempoClient
+from ingestion.extract_rte import DayRange, RteEcowattClient, RteTempoClient
 from ingestion.extract_sismique import telecharger_zonage
 from ingestion.transform import PARIS_TZ, records_to_table, write_parquet
 from ingestion.warehouse import LoadResult, build_loader
@@ -367,6 +373,18 @@ def run_tempo_ingestion(
     return outcome, result
 
 
+def run_ecowatt_ingestion(
+    *,
+    settings: Settings | None = None,
+    run_id: str = "manual",
+    now: datetime | None = None,
+) -> tuple[ExtractionOutcome, LoadResult]:
+    settings = settings or get_settings()
+    with RteEcowattClient(settings) as client:
+        lignes = client.fetch_signaux()
+    return _charger_fichier(lignes, RTE_ECOWATT, settings, run_id, now)
+
+
 def run_prix_entreprises_ingestion(
     *,
     settings: Settings | None = None,
@@ -522,6 +540,17 @@ def run_enedis_entreprises_ingestion(
     settings = settings or get_settings()
     lignes = telecharger_conso_entreprises(annee=annee, settings=settings)
     return _charger_fichier(lignes, ENEDIS_CONSO_ENTREPRISES, settings, run_id, now)
+
+
+def run_profils_charge_ingestion(
+    *,
+    settings: Settings | None = None,
+    run_id: str = "manual",
+    now: datetime | None = None,
+) -> tuple[ExtractionOutcome, LoadResult]:
+    settings = settings or get_settings()
+    lignes = telecharger_profils_charge(settings=settings)
+    return _charger_fichier(lignes, PROFILS_CHARGE_SUP36, settings, run_id, now)
 
 
 def run_continuite_ingestion(

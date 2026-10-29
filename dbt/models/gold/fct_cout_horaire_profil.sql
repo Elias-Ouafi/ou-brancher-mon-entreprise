@@ -16,6 +16,14 @@ tarifs as (
         *,
         prix_ht_eur_kwh + accise_eur_kwh as prix_htva_eur_kwh
     from {{ ref('tarifs_hphc') }}
+),
+
+profils as (
+    select profil, type_jour, heure_debut, heure_fin, puissance_kw, puissance_flexible_kw
+    from {{ ref('profils_consommation') }}
+    union all
+    select profil, type_jour, heure_debut, heure_fin, puissance_kw, puissance_flexible_kw
+    from {{ ref('profils_charge_reels') }}
 )
 
 select
@@ -34,7 +42,7 @@ select
     creneaux.taux_co2_g_kwh,
     profil.puissance_kw * creneaux.taux_co2_g_kwh / 1000 as emissions_kgco2
 from creneaux
-inner join {{ ref('profils_consommation') }} as profil
+inner join profils as profil
     on profil.type_jour = creneaux.type_jour
     and creneaux.heure_locale >= profil.heure_debut
     and creneaux.heure_locale < profil.heure_fin

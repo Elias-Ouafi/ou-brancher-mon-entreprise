@@ -100,6 +100,7 @@ Toutes s'écrivent `.\.venv\Scripts\python.exe -m ingestion.cli <commande>`.
 | `europe --adresse "…" [--conso MWh]` | Hors de France, dans l'UE : prix moyen du pays et carbone de sa production, comparés à la France à tranche égale (moyennes nationales) |
 | `refresh [--months 180]` | Met à jour toutes les sources, puis `dbt build` |
 | `tempo --month 2026-09` | Charge le calendrier Tempo du mois depuis l'API RTE (compte RTE requis, hors `refresh`) |
+| `ecowatt` | Relève le signal Ecowatt du jour à J+3 (API RTE, compte Ecowatt requis, hors `refresh`) ; le rapport mensuel compte les jours orange et rouges relevés |
 | `report --month 2026-09` | Rapport mensuel carbone et créneaux Tempo, après `tempo` pour le même mois ; prix Tempo connus depuis le 1er février 2026 |
 
 Les commandes qui répondent à une question (`essentiel`, `diagnose`, `compare`, `carte`, `europe`)
@@ -188,7 +189,7 @@ flowchart LR
 .\.venv\Scripts\python.exe -m ruff check . ; .\.venv\Scripts\python.exe -m pytest
 ```
 
-473 tests sans réseau, dont un `dbt build` complet sur une base synthétique qui reproduit les
+480 tests sans réseau, dont un `dbt build` complet sur une base synthétique qui reproduit les
 pièges des sources, plus les tests de données dbt. La CI GitHub Actions les joue à chaque PR.
 
 ## Sources et licence

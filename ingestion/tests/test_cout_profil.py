@@ -35,8 +35,8 @@ def _heure(warehouse: duckdb.DuckDBPyConnection, heure_utc: str) -> tuple[Any, .
     return _rows(
         warehouse,
         "SELECT type_jour, periode_tarifaire, conso_kwh, conso_flexible_kwh,"
-        " prix_htva_eur_kwh, cout_htva_eur, emissions_kgco2"
-        f" FROM gold.fct_cout_horaire_profil WHERE heure_utc = '{heure_utc}'",
+        " prix_htva_eur_kwh, cout_htva_eur, emissions_kgco2 FROM gold.fct_cout_horaire_profil"
+        f" WHERE profil = 'bureau_36kva' AND heure_utc = '{heure_utc}'",
     )[0]
 
 
@@ -67,7 +67,7 @@ def test_sunday_of_25_hours_counts_every_hour_without_price(
     assert _rows(
         warehouse,
         "SELECT count(*), sum(conso_kwh), count(prix_htva_eur_kwh), min(type_jour)"
-        f" FROM gold.fct_cout_horaire_profil WHERE jour = '{JOUR_25H}'",
+        f" FROM gold.fct_cout_horaire_profil WHERE profil = 'bureau_36kva' AND jour = '{JOUR_25H}'",
     ) == [(25, 150.0, 0, "week_end")]
 
 
@@ -75,7 +75,7 @@ def test_month_outside_tariff_grid_has_no_cost(warehouse: duckdb.DuckDBPyConnect
     assert _rows(
         warehouse,
         "SELECT cout_htva_eur, gain_decalage_eur, est_complet"
-        " FROM gold.fct_cout_mensuel_profil WHERE mois = '2025-10-01'",
+        " FROM gold.fct_cout_mensuel_profil WHERE profil = 'bureau_36kva' AND mois = '2025-10-01'",
     ) == [(None, None, False)]
 
 
@@ -86,7 +86,7 @@ def test_shifting_flexible_load_saves_the_peak_off_peak_gap(
     kwh, gain, co2, complet = _rows(
         warehouse,
         "SELECT kwh_decales, gain_decalage_eur, co2_evite_kg, est_complet"
-        " FROM gold.fct_cout_mensuel_profil WHERE mois = '2026-06-01'",
+        " FROM gold.fct_cout_mensuel_profil WHERE profil = 'bureau_36kva' AND mois = '2026-06-01'",
     )[0]
     assert kwh == 24.0
     assert gain == pytest.approx(24 * (PRIX_HP - PRIX_HC))
@@ -134,3 +134,28 @@ def test_cost_section_warns_about_zni_tariffs(medallion_db: Path) -> None:
     texte = formater_diagnostic(diagnostic)
     assert "3,0 kgCO₂ évités" in texte
     assert "la Corse et l'outre-mer ont leurs propres barèmes" in texte
+
+
+def test_measured_sector_profiles_are_weighted_by_points_and_hidden_curves_are_dropped(
+    warehouse: duckdb.DuckDBPyConnection,
+) -> None:
+    # Industrie, jour ouvré à 10 h locale : 300 kW dans les deux régions
+    assert _rows(
+        warehouse,
+        "SELECT puissance_kw, puissance_flexible_kw FROM gold.profils_charge_reels"
+        " WHERE profil = 'industrie_sup250kva' AND type_jour = 'ouvre' AND heure_debut = 10",
+    ) == [(300.0, 0.0)]
+    assert _rows(
+        warehouse,
+        "SELECT sum(nb_mesures) FROM gold.profils_charge_reels"
+        " WHERE profil = 'industrie_sup250kva'",
+    ) == [(30 * 48 * 2 - 1,)]
+
+
+def test_measured_profile_is_costed_hour_by_hour(warehouse: duckdb.DuckDBPyConnection) -> None:
+    # 30 juin 2026, 10 h à Paris : 300 kW en heures pleines
+    assert _rows(
+        warehouse,
+        "SELECT conso_kwh, periode_tarifaire FROM gold.fct_cout_horaire_profil"
+        " WHERE profil = 'industrie_sup250kva' AND heure_utc = '2026-06-30 08:00:00+00'",
+    ) == [(300.0, "hp")]

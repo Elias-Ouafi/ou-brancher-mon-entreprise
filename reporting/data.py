@@ -101,6 +101,8 @@ class RapportMensuel:
     jours_plus_carbones: list[tuple[date, float]] = field(default_factory=list)
     calendrier: dict[date, str] = field(default_factory=dict)
     repartition_tempo: dict[str, int] = field(default_factory=dict)
+    jours_ecowatt_connus: int = 0
+    jours_ecowatt_tension: list[tuple[date, str]] = field(default_factory=list)
     jours_rouges: list[date] = field(default_factory=list)
     synthese: list[SyntheseTarif] = field(default_factory=list)
     profil_horaire: list[tuple[int, float | None, float | None]] = field(default_factory=list)
@@ -172,6 +174,15 @@ def collect(
         {"debut": debut, "fin": fin},
     ).fetchall()
 
+    jours_ecowatt = connection.execute(
+        """
+        SELECT jour, niveau FROM silver.ecowatt_jours
+        WHERE jour >= $debut AND jour < $fin
+        ORDER BY jour
+        """,
+        {"debut": debut, "fin": fin},
+    ).fetchall()
+
     rapport = RapportMensuel(
         mois=mois,
         options=options,
@@ -184,6 +195,8 @@ def collect(
         calendrier=dict(jours_tempo),
         repartition_tempo={c: sum(1 for _, col in jours_tempo if col == c) for c in COULEURS},
         jours_rouges=[jour for jour, couleur in jours_tempo if couleur == "rouge"],
+        jours_ecowatt_connus=len(jours_ecowatt),
+        jours_ecowatt_tension=[(j, n) for j, n in jours_ecowatt if n != "vert"],
     )
     if not rapport.a_des_donnees:
         return rapport

@@ -207,6 +207,24 @@ models:
               config:
                 severity: warn
 
+  - name: profils_charge_reels
+    description: >
+      Journée type par secteur (industrie, tertiaire) des points de soutirage de plus de 250 kVA,
+      mesurée sur les 12 derniers mois publiés par Enedis : puissance moyenne par point (kW) à
+      chaque heure locale, jours ouvrés et week-end. Même forme que le seed `profils_consommation`.
+      Les jours fériés comptent comme jours ouvrés.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [profil, type_jour, heure_debut]
+    columns:
+      - name: puissance_kw
+        data_tests:
+          - not_null
+          - accepted_range:
+              arguments:
+                min_value: 0
+
   - name: fct_cout_horaire_profil
     description: >
       Coût (€ HTVA, option Heures Creuses non résidentielle) et carbone d'un profil type,
