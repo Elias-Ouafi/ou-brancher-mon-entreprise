@@ -344,6 +344,63 @@ Lyon, Ajaccio et Saint-Denis de La Réunion, et une capture mise à jour dans `d
 autre paire sous licence OFL ; échelle de note daltonien-compatible à la place du rouge → vert
 (décision du 26 octobre à remplacer).
 
+## Besoins des porteurs de projets : recherche du 29 octobre
+
+Recherche documentaire pour le persona (1 à 50 MW). Niveau de preuve noté à chaque ligne :
+**P** = document du producteur lu (RTE, Enedis, DGE, DGFiP), **S** = chiffre relayé par la presse
+ou un cabinet, non recoupé avec le texte d'origine. Aucun chiffre S n'entre dans l'outil.
+
+### Ce que disent les sources
+
+| Segment | Constat | Niveau | Source |
+|---|---|---|---|
+| Tous | Plus de 200 projets industriels, près de 33 GW, attendent un raccordement au réseau haute tension (data centers, hydrogène, industrie lourde) : près de trois fois la consommation actuelle de l'industrie française | P | [RTE, « Réussir l'électrification de la France », 3 juillet 2026](https://www.rte-france.com/actualites/2026-07-03-reussir-electrification-france) |
+| Tous | File d'attente : « premier prêt, premier servi » à la place de « premier arrivé, premier servi » d'ici fin 2026 ; la CRE demande à RTE une première évolution tenant compte de la maturité des projets au plus tard le 1er octobre 2026 | P (RTE) ; S (CRE) | RTE (même page) ; [CRE, délibération n° 2026-32 du 4 février 2026](https://www.cre.fr/fileadmin/Documents/Deliberations/2026/260204_2026-32_Procedure_raccordement_RTE.pdf), citée par une recherche, texte non relu |
+| Tous | Zones « prêtes à raccorder » : environ 9 GW de plus d'ici 2029 sur les ports industriels de Dunkerque, du Havre et de Fos, et environ 5 GW dans cinq zones industrielles moyennes | P | RTE (même page) |
+| Data centers | Cinq projets de 700 MW à 2 GW en procédure accélérée sur des sites identifiés par l'État, raccordement visé en 2028-2029 | P | RTE (même page) |
+| Data centers | Environ 80 projets et 18 GW de capacité réservée en mai 2026 (5 GW fin 2024) ; 72 % de la puissance demandée en développement ; huit data centers seulement raccordés à RTE (800 MW) ; ceux raccordés depuis deux à trois ans n'utilisent en moyenne que 20 % de la puissance demandée | S | [Institut Quorum](https://www.institut-quorum.fr/article-data-centers-reseau-electrique), [France Épargne](https://www.france-epargne.fr/news/data-centers-883-milliards-annonces-en-france-18-gw-en-attente-de-raccordement) |
+| Data centers | Enedis raccorde jusqu'à 40 MW (contrainte : le poste source le plus proche), RTE au-delà (contrainte : capacité du réseau HTB) ; étude exploratoire facultative de six semaines environ, sans réservation de capacité ; autorisations à fournir trois mois avant la convention de raccordement | S | [gridreadiness.com](https://gridreadiness.com/raccordement-data-center) |
+| Data centers | Eau : prélèvement direct de l'ordre de 680 000 m³ en France en 2023, presque tout en eau potable du réseau ; le WUE (litres par kWh) est bien moins publié que le PUE ; le refroidissement adiabatique économise de l'électricité au prix de l'eau ; potentiel de chaleur fatale de 1 TWh par an aujourd'hui et 3,5 TWh en 2030 (ADEME) | S | [Hubblo](https://hubblo.org/fr/articles/data-center-water-consumption-assessment/), [IMT](https://imtech.imt.fr/2026/05/29/centres-de-donnees-refroidissement-consommation-eau/) |
+| Bornes de recharge poids lourds | Dépôt et entrepôt : 8,3 TWh en 2035 (11,8 TWh de recharge au total) et 16,8 TWh en 2050 ; pic de puissance de 2,4 GW en 2035 et 4,8 GW en 2050 ; besoin diffus sur environ 7 300 zones logistiques, surtout en HTA (au-dessus de 250 kVA) ; un seul poste source dépasse 10 MW en 2035, 12 en 2040, 33 en 2050 ; une dizaine de zones à plus de 5 MW en 2035 (environ 40 en 2050), dont Saint-Quentin-Fallavier à plus de 10 MW dès 2035 | P | [Enedis, « Quels besoins de recharge au dépôt et en entrepôt pour les poids lourds électriques ? », décembre 2025](https://www.enedis.fr/sites/default/files/documents/pdf/rapport-quels-besoins-de-recharge-au-depot-et-en-entrepot-pour-les-poids-lourds-electriques-decembre-2025.pdf) |
+| Bornes de recharge poids lourds | Itinérance : environ 1,1 GW au pic en 2035, 12 200 points sur 519 aires, 630 M€ de réseau, une soixantaine de postes sources à renforcer ou créer ; schéma national de 8 000 points poids lourds sur environ 560 aires ; 78 points publics poids lourds (16 MW) fin 2024 ; règlement AFIR : 400 MW au moins d'ici 2031 sur le réseau central | S | [VINCI Autoroutes, Enedis, TotalEnergies (2024)](https://ep.totalenergies.com/system/files/documents/2024-03/Electrification_des_poids_lourds_Enedis_TotalEnergies_VINCI-Autoroutes.pdf), [L'Officiel des transporteurs](https://www.lofficieldestransporteurs.fr/transition-ecologique/bornes-de-recharge-8-000-points-dedies-aux-poids-lourds-deployes-sur-le-reseau-routier-national-dici-2035-973174.php) |
+| Industrie | Le guide ministériel liste les facteurs du choix de site : taille du foncier, besoin en raccordement, infrastructures de transport, réseaux d'eau et d'énergie, offre de services, risques technologiques, adéquation du PLU, enveloppe d'artificialisation de la commune (zéro artificialisation nette) ; un besoin élevé de puissance en zone déjà en tension allonge fortement le raccordement | P | [DGE, « Guide de l'implantation industrielle », mai 2025](https://www.entreprises.gouv.fr/files/files/Publications/2025/Guide/20250519-guide-implantation-industrielle-dge.pdf) |
+| Industrie | Cibles publiques : autorisation environnementale ramenée de 17 à 9 mois (loi industrie verte de 2023) ; 55 sites « clés en main France 2030 » annoncés en 2024 ; France Foncier + : plus de 6 000 ha de foncier économique en 2025, fiche par terrain (eau, électricité, surface, transports) | P | DGE (même guide) |
+| Logistique | Le critère dominant reste la surface adaptée, le coût du foncier et l'accès ; la distance de 10 m entre bornes et bâtiments est recommandée contre l'emballement thermique ; entrepôt d'au moins 50 000 m³ : enregistrement ou autorisation ICPE | S | [Institut Paris Région (SDRIF-E, janvier 2026)](https://www.institutparisregion.fr/fileadmin/DataStorage/SavoirFaire/NosTravaux/planification/idf2040/sdrife/fichesguides/SDRIF-E_fiche_29_logistique.pdf), [INERIS (AIDA)](https://aida.ineris.fr/sites/default/files/guides/Procedures_1510_Urba_Mars2025_vf.pdf) |
+| Prix | Fin de l'ARENH le 31 décembre 2025, remplacé par le versement nucléaire universel (redistribution au-delà de 78 €/MWh) ; contrats de livraison 2026 entre 57 et 75 €/MWh selon les articles | S | [Selectra](https://entreprises.selectra.info/energie/electricite/arenh), [Optima](https://www.optima-energie.fr/blog/actualites/prix-de-lelectricite-et-du-gaz-evolution/) |
+
+Trous de la recherche : aucun rapport récent de Cushman & Wakefield, CBRE, Gerlog ou de l'ADEME n'a
+été trouvé (requêtes sans résultat) ; Yottar reste introuvable en source publique ; l'état des
+obligations de l'ADEME et de l'Arcep sur le WUE et la chaleur fatale n'est pas établi ; les taux
+réduits d'accise des data centers et des industriels n'ont pas pu être relus dans un texte lisible
+(voir les décisions du 29 octobre).
+
+### Ce que l'outil couvre déjà, ce qu'il manque
+
+| Besoin repéré | État dans l'outil |
+|---|---|
+| Domaine de tension, gestionnaire et délai selon la puissance | couvert (`seuils_raccordement`) |
+| Zone prioritaire RTE, site clé en main, contraintes réseau | couvert |
+| Foncier : zonage, friches, zones d'activité, sites clés en main | couvert (étapes 14 et 12) |
+| Eau : restrictions du jour | couvert (étape 20, première partie) |
+| Desserte : fret, autoroute | couvert (étape 13, sans poids lourd) |
+| Solaire : productible, emprise | couvert (étape 16) |
+| Capacité réelle en soutirage | absent : non publiée (étape 19) |
+| Maturité du projet pour la file « premier prêt, premier servi » | absent : pas une donnée d'adresse, mais une liste de pièces à fournir (autorisations, foncier maîtrisé) |
+| Taux de charge réel d'un data center (environ 20 % de la puissance demandée selon RTE, relayé) | absent : `--conso` doit être donnée, aucune consommation n'est déduite de `--puissance` |
+| Débouché de la chaleur fatale (réseau de chaleur proche) | absent : condition de l'accise réduite des data centers (L312-70) |
+| Tension sur la ressource en eau (débits, nappes) | absent (BNPE donne des volumes, pas la tension) |
+| ICPE, Seveso, sols pollués | absent : Géorisques refuse Python depuis le poste (étape 15) |
+| Artificialisation (zéro artificialisation nette) de la commune | absent |
+| Zones « prêtes à raccorder » de RTE (ports de Dunkerque, du Havre, de Fos et cinq zones moyennes) | absent : périmètres à relire chez RTE |
+
+### Pistes qui en découlent (à trier, rien n'est décidé)
+
+1. **Réseaux de chaleur à proximité** (jeu national des réseaux de chaleur, producteur et licence à vérifier) pour la condition de réutilisation de la chaleur fatale des data centers.
+2. **Zones « prêtes à raccorder »** de RTE : une couche de plus dans « Raccorder » si RTE publie les périmètres.
+3. **Pièces de maturité** d'un dossier de raccordement (autorisations, maîtrise du foncier), affichées en liste de vérification, après relecture de la procédure RTE de 2026 et du texte de la CRE.
+4. **Artificialisation par commune** (Portail de l'artificialisation des sols, Cerema), pour la ligne « enveloppe restante » du guide de la DGE.
+5. **Étude Enedis sur les dépôts** : réutiliser la maille des zones logistiques (SDES) pour situer une adresse dans une zone à fort besoin de puissance.
+
 ## Ce que les études ont établi (9 et 15 octobre)
 
 - **Les besoins des entreprises**, dans l'ordre : de la puissance disponible à une date connue
