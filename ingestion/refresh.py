@@ -19,6 +19,7 @@ from ingestion.pipeline import (
     run_enedis_entreprises_ingestion,
     run_europe_ingestion,
     run_fret_ingestion,
+    run_friches_ingestion,
     run_gaspar_ingestion,
     run_ingestion,
     run_locaux_ingestion,
@@ -104,6 +105,7 @@ def run_refresh(
         ("production", lambda: run_production_ingestion(settings=settings, run_id=run_id)),
         ("fret", lambda: run_fret_ingestion(settings=settings, run_id=run_id)),
         ("locaux", lambda: run_locaux_ingestion(settings=settings, run_id=run_id)),
+        ("friches", lambda: run_friches_ingestion(settings=settings, run_id=run_id)),
         ("europe", lambda: run_europe_ingestion(settings=settings, run_id=run_id)),
         (
             "entreprises-enedis",

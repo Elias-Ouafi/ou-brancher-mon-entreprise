@@ -230,6 +230,15 @@ sources:
             data_tests: [not_null]
           - name: valeur_fonciere
             data_tests: [not_null]
+      - name: friches
+        description: >
+          Friches référencées dans Cartofriches (Cerema, Licence Ouverte v2), une ligne par site
+          géolocalisé. Inventaire déclaratif : il n'est pas exhaustif et des surfaces manquent.
+        columns:
+          - name: site_id
+            data_tests: [unique, not_null]
+          - name: latitude
+            data_tests: [not_null]
       - name: enedis_continuite_alimentation
         description: >
           Indicateur réglementaire de continuité d'alimentation (Enedis, data-fair, licence

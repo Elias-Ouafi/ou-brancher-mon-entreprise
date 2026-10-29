@@ -25,6 +25,7 @@ from ingestion.datasets import (
     EQUILIBRE_REGIONAL,
     EUROSTAT_PRIX_ENTREPRISES,
     EUROSTAT_PRIX_UE,
+    FRICHES,
     GASPAR_PLANS,
     GASPAR_RISQUES,
     NATIONAL_CONS_DEF,
@@ -716,6 +717,33 @@ def ventes_locaux() -> list[dict[str, Any]]:
     ]
 
 
+# Friches autour de Lyon (45.75 N, 4.85 E) : deux gardées à 2 et 5 km ; écartées : trop loin
+# (12 km, hors rayon mais gardée en gold), trop petite, déjà reconvertie, sans surface
+def friches() -> list[dict[str, Any]]:
+    def friche(identifiant, nord_km, hectares, statut="friche sans projet", **autres):
+        return {
+            "site_id": identifiant,
+            "site_nom": f"Site {identifiant}",
+            "site_type": "friche industrielle",
+            "site_statut": statut,
+            "comm_insee": "69123",
+            "comm_nom": "Lyon",
+            "urba_zone_type": "U",
+            "unite_fonciere_surface_m2": None if hectares is None else hectares * 10_000,
+            "latitude": 45.75 + nord_km / 111.0,
+            "longitude": 4.85,
+        } | autres
+
+    return [
+        friche("F1", 2, 5),
+        friche("F2", 5, 3, "friche avec projet"),
+        friche("F3", 12, 20),
+        friche("F4", 1, 0.8),
+        friche("F5", 1.5, 6, "friche reconvertie"),
+        friche("F6", 0.5, None),
+    ]
+
+
 def load_bronze(
     database: Path, tmp_path: Path, spec: DatasetSpec, records: list[dict[str, Any]]
 ) -> None:
@@ -779,6 +807,7 @@ def build_warehouse(tmp_path: Path, *, with_tempo: bool = True) -> Path:
     load_bronze(database, tmp_path, ENEDIS_CONSO_ENTREPRISES, conso_entreprises())
     load_bronze(database, tmp_path, CONTINUITE_ALIMENTATION, continuite_alimentation())
     load_bronze(database, tmp_path, VENTES_LOCAUX, ventes_locaux())
+    load_bronze(database, tmp_path, FRICHES, friches())
     ensure_bronze_tables(settings=Settings(_env_file=None, duckdb_path=database))
     dbt_build(database, tmp_path)
     return database
