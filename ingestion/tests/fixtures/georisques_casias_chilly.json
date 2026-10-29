@@ -1,0 +1,191 @@
+{
+ "results": 9,
+ "page": 1,
+ "total_pages": 1,
+ "data": [
+  {
+   "identifiant_ssp": "SSP3881553",
+   "identifiant_casias": "IDF9100582",
+   "nom_etablissement": "Pressing",
+   "activite_principale": null,
+   "adresse": "avenue Pierre Brossolette",
+   "adresse_lieudit": null,
+   "code_insee": "91161",
+   "nom_commune": "CHILLY MAZARIN",
+   "statut": "Indéterminé",
+   "fiche_risque": "https://fiches-risques.brgm.fr/georisques/casias/SSP3881553",
+   "date_maj": "2014-12-04",
+   "geom": {
+    "type": "Point",
+    "coordinates": [
+     2.319051,
+     48.700366
+    ]
+   }
+  },
+  {
+   "identifiant_ssp": "SSP3881557",
+   "identifiant_casias": "IDF9100586",
+   "nom_etablissement": "Station service",
+   "activite_principale": null,
+   "adresse": "7 avenue Pierre Brossolette",
+   "adresse_lieudit": null,
+   "code_insee": "91161",
+   "nom_commune": "CHILLY MAZARIN",
+   "statut": "Indéterminé",
+   "fiche_risque": "https://fiches-risques.brgm.fr/georisques/casias/SSP3881557",
+   "date_maj": "2014-12-04",
+   "geom": {
+    "type": "Point",
+    "coordinates": [
+     2.318208,
+     48.700806
+    ]
+   }
+  },
+  {
+   "identifiant_ssp": "SSP3881589",
+   "identifiant_casias": "IDF9100618",
+   "nom_etablissement": "Laboratoire",
+   "activite_principale": null,
+   "adresse": "2 rue Président François Mitterand du",
+   "adresse_lieudit": null,
+   "code_insee": "91161",
+   "nom_commune": "CHILLY MAZARIN",
+   "statut": "Indéterminé",
+   "fiche_risque": "https://fiches-risques.brgm.fr/georisques/casias/SSP3881589",
+   "date_maj": "2014-12-04",
+   "geom": {
+    "type": "Point",
+    "coordinates": [
+     2.31344,
+     48.700329
+    ]
+   }
+  },
+  {
+   "identifiant_ssp": "SSP3881590",
+   "identifiant_casias": "IDF9100619",
+   "nom_etablissement": "Laboratoire",
+   "activite_principale": null,
+   "adresse": "2 rue François Mouthon",
+   "adresse_lieudit": null,
+   "code_insee": "91161",
+   "nom_commune": "CHILLY MAZARIN",
+   "statut": "En arrêt",
+   "fiche_risque": "https://fiches-risques.brgm.fr/georisques/casias/SSP3881590",
+   "date_maj": "2014-12-04",
+   "geom": {
+    "type": "Point",
+    "coordinates": [
+     2.313589,
+     48.700518
+    ]
+   }
+  },
+  {
+   "identifiant_ssp": "SSP3881591",
+   "identifiant_casias": "IDF9100620",
+   "nom_etablissement": "Laboratoire",
+   "activite_principale": null,
+   "adresse": "42 rue François Mouthon",
+   "adresse_lieudit": null,
+   "code_insee": "91161",
+   "nom_commune": "CHILLY MAZARIN",
+   "statut": "Indéterminé",
+   "fiche_risque": "https://fiches-risques.brgm.fr/georisques/casias/SSP3881591",
+   "date_maj": "2014-12-04",
+   "geom": {
+    "type": "Point",
+    "coordinates": [
+     2.317106,
+     48.703873
+    ]
+   }
+  },
+  {
+   "identifiant_ssp": "SSP3881593",
+   "identifiant_casias": "IDF9100622",
+   "nom_etablissement": "Collège",
+   "activite_principale": null,
+   "adresse": "avenue Parc du",
+   "adresse_lieudit": null,
+   "code_insee": "91161",
+   "nom_commune": "CHILLY MAZARIN",
+   "statut": "Indéterminé",
+   "fiche_risque": "https://fiches-risques.brgm.fr/georisques/casias/SSP3881593",
+   "date_maj": "2014-12-04",
+   "geom": {
+    "type": "Point",
+    "coordinates": [
+     2.308995,
+     48.704311
+    ]
+   }
+  },
+  {
+   "identifiant_ssp": "SSP3881603",
+   "identifiant_casias": "IDF9100632",
+   "nom_etablissement": null,
+   "activite_principale": null,
+   "adresse": "rue Tulipiers des",
+   "adresse_lieudit": null,
+   "code_insee": "91161",
+   "nom_commune": "CHILLY MAZARIN",
+   "statut": "Indéterminé",
+   "fiche_risque": "https://fiches-risques.brgm.fr/georisques/casias/SSP3881603",
+   "date_maj": "2014-12-04",
+   "geom": {
+    "type": "Point",
+    "coordinates": [
+     2.318235,
+     48.700824
+    ]
+   }
+  },
+  {
+   "identifiant_ssp": "SSP3881604",
+   "identifiant_casias": "IDF9100633",
+   "nom_etablissement": "",
+   "activite_principale": null,
+   "adresse": "1 rue Verte",
+   "adresse_lieudit": null,
+   "code_insee": "91161",
+   "nom_commune": "CHILLY MAZARIN",
+   "statut": "En arrêt",
+   "fiche_risque": "https://fiches-risques.brgm.fr/georisques/casias/SSP3881604",
+   "date_maj": "2018-06-11",
+   "geom": {
+    "type": "Point",
+    "coordinates": [
+     2.31299,
+     48.703503
+    ]
+   }
+  },
+  {
+   "identifiant_ssp": "SSP610406",
+   "identifiant_casias": "0006503933",
+   "nom_etablissement": "METABRAIN (MERCK,LIPHA,SODEPHARM,ANPHAR)",
+   "activite_principale": null,
+   "adresse": "2/4 Ave du Président F. Mitterrand",
+   "adresse_lieudit": null,
+   "code_insee": "91161",
+   "nom_commune": "CHILLY MAZARIN",
+   "statut": "En arrêt",
+   "fiche_risque": "https://fiches-risques.brgm.fr/georisques/casias/SSP610406",
+   "date_maj": "2026-06-19",
+   "geom": {
+    "type": "Point",
+    "coordinates": [
+     2.314499,
+     48.700321
+    ]
+   }
+  }
+ ],
+ "response_code": 200,
+ "message": null,
+ "next": null,
+ "previous": null
+}

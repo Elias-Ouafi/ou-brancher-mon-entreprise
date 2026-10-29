@@ -1,0 +1,88 @@
+{
+ "results": 7,
+ "page": 1,
+ "total_pages": 1,
+ "data": [
+  {
+   "raisonSociale": "SMCA",
+   "commune": "Paray-Vieille-Poste",
+   "codeInsee": "91479",
+   "longitude": 2.36868,
+   "latitude": 48.723691,
+   "statutSeveso": "Seveso seuil bas",
+   "etatActivite": "En exploitation avec titre",
+   "regime": "Autorisation",
+   "codeAIOT": "0006503634"
+  },
+  {
+   "raisonSociale": "CARREFOUR",
+   "commune": "Athis-Mons",
+   "codeInsee": "91027",
+   "longitude": 2.372486,
+   "latitude": 48.712405,
+   "statutSeveso": "Non Seveso",
+   "etatActivite": "En fin d'exploitation",
+   "regime": "Autorisation",
+   "codeAIOT": "0006503645"
+  },
+  {
+   "raisonSociale": "VICKING",
+   "commune": "Athis-Mons",
+   "codeInsee": "91027",
+   "longitude": 2.375824,
+   "latitude": 48.712845,
+   "statutSeveso": "Non Seveso",
+   "etatActivite": "En fin d'exploitation",
+   "regime": "Enregistrement",
+   "codeAIOT": "0006503646"
+  },
+  {
+   "raisonSociale": "TOTAL MARKETING SERVICES",
+   "commune": "Ballainvilliers",
+   "codeInsee": "91044",
+   "longitude": 2.282309,
+   "latitude": 48.677446,
+   "statutSeveso": null,
+   "etatActivite": null,
+   "regime": "Autres régimes",
+   "codeAIOT": "0006503667"
+  },
+  {
+   "raisonSociale": "MDS(ex INTERFORUM)",
+   "commune": "Ballainvilliers",
+   "codeInsee": "91044",
+   "longitude": 2.295455,
+   "latitude": 48.673567,
+   "statutSeveso": null,
+   "etatActivite": null,
+   "regime": "Non ICPE",
+   "codeAIOT": "0006503673"
+  },
+  {
+   "raisonSociale": "EG Group",
+   "commune": "Ballainvilliers",
+   "codeInsee": "91044",
+   "longitude": 2.279706,
+   "latitude": 48.669218,
+   "statutSeveso": null,
+   "etatActivite": null,
+   "regime": "Autres régimes",
+   "codeAIOT": "0006503675"
+  },
+  {
+   "raisonSociale": "BSA INTERNATIONAL",
+   "commune": "Chilly-Mazarin",
+   "codeInsee": "91161",
+   "longitude": 2.309678,
+   "latitude": 48.706239,
+   "statutSeveso": null,
+   "etatActivite": null,
+   "regime": "Autres régimes",
+   "codeAIOT": "0006503879"
+  }
+ ],
+ "response_code": 200,
+ "message": null,
+ "next": null,
+ "previous": null
+}
