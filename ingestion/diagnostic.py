@@ -18,12 +18,17 @@ from ingestion.eau import LIBELLES_NIVEAU, LIBELLES_TYPE, EauError, SituationEau
 from ingestion.extract_sismique import contient
 from ingestion.geocode import Territoire, adresse_normalisee, code_commune_parent
 from ingestion.georisques import (
+    RAYON_ICPE_KM,
+    RAYON_SEVESO_KM,
+    RAYON_SOLS_M,
     Exposition,
     GeorisquesError,
     Risque,
     RisquesSite,
+    Voisinage,
     avec_zonage,
     lire_risques,
+    lire_voisinage_site,
     lire_zonage,
     risques_gaspar,
 )
@@ -770,6 +775,9 @@ class Diagnostic:
     # Arrêtés de restriction des usages de l'eau en vigueur à l'adresse (VigiEau)
     eau: SituationEau | None = None
     eau_erreur: str | None = None
+    # Argiles, cavités, Seveso, installations classées et sols pollués autour de l'adresse
+    voisinage: Voisinage | None = None
+    voisinage_erreur: str | None = None
     # Zones d'activité de la BD TOPO à moins de `RAYON_ZONES_ACTIVITE_KM` (nombre et plus proches)
     nb_zones_activite: int | None = None
     zones_activite: list[ZoneActivite] = field(default_factory=list)
@@ -1496,11 +1504,62 @@ def _critere_risques(d: Diagnostic) -> Critere:
             f"{len(plans)} plan{'s' if len(plans) > 1 else ''} de prévention dans la commune",
             f"{liste_plans(plans, NB_PLANS_CITES)}. Le règlement du plan peut interdire ou"
             " conditionner la construction selon la zone : le consulter en mairie avant de"
-            " s'engager.",
+            f" s'engager.{_voisinage_court(d.voisinage)}",
         )
     return Critere(
-        "Risques", "info", "aucun plan de prévention dans la commune", _risques_recenses(d.risques)
+        "Risques",
+        "info",
+        "aucun plan de prévention dans la commune",
+        _risques_recenses(d.risques) + _voisinage_court(d.voisinage),
     )
+
+
+# Le voisinage informe sans changer l'état du critère : un Seveso seuil haut impose un plan de
+# prévention technologique, que les plans de la commune donnent déjà
+def _voisinage_court(v: Voisinage | None) -> str:
+    if v is None:
+        return ""
+    if v.seveso:
+        s = v.seveso[0]
+        phrase = f" Seveso le plus proche : {s.nom} ({s.seveso}) {_distance(s.distance_km)}."
+    else:
+        phrase = f" Aucun établissement Seveso en exploitation à moins de {RAYON_SEVESO_KM} km."
+    if v.sis:
+        phrase += (
+            f" Secteurs d'information sur les sols à moins de {RAYON_SOLS_M} m : {len(v.sis)}."
+        )
+    return phrase
+
+
+def lignes_voisinage(v: Voisinage) -> list[str]:
+    argiles = (
+        f"Argiles (retrait-gonflement) à l'adresse : {v.argiles.lower()}"
+        if v.argiles
+        else "Argiles (retrait-gonflement) : territoire non couvert par la carte d'exposition"
+    )
+    cavites = f"Cavités souterraines à moins de {RAYON_SOLS_M} m : {v.nb_cavites or 'aucune'}"
+    seveso = f"Seveso en exploitation à moins de {RAYON_SEVESO_KM} km : " + (
+        "; ".join(f"{s.nom} ({s.seveso}, {s.commune}) {_distance(s.distance_km)}" for s in v.seveso)
+        or "aucun"
+    )
+    icpe = (
+        f"Installations classées en exploitation à moins de {RAYON_ICPE_KM} km : {v.nb_icpe}"
+        f" (dont {v.nb_icpe_autorisation} sous autorisation, le reste sous enregistrement)"
+    )
+    sols = [
+        f"secteurs d'information sur les sols {len(v.sis)}"
+        + (f" ({', '.join(v.sis)})" if v.sis else ""),
+        f"servitudes d'utilité publique {v.nb_sup}",
+        f"sites pollués en cours d'instruction {v.nb_instructions_en_cours}",
+        f"anciens sites industriels ou de service (CASIAS) {v.nb_casias}",
+    ]
+    return [
+        argiles,
+        cavites,
+        seveso,
+        icpe,
+        f"Sols pollués à moins de {RAYON_SOLS_M} m : " + " ; ".join(sols),
+    ]
 
 
 def _risques_recenses(r: RisquesSite | None) -> str:
@@ -2248,6 +2307,12 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
         limite(s, "risques_site")
     if d.risques is not None and any(r.code == "seisme" for r in d.risques.risques):
         limite(s, "zonage_sismique")
+    if d.voisinage is not None:
+        for ligne in lignes_voisinage(d.voisinage):
+            texte(s, ligne)
+        limite(s, "voisinage_site")
+    elif d.voisinage_erreur is not None:
+        texte(s, f"Voisinage (argiles, Seveso, sols pollués) non consulté : {d.voisinage_erreur}")
     if d.eau is not None:
         texte(s, f"Eau : {ligne_eau(d.eau)}")
         limite(s, "restrictions_eau")
@@ -2388,6 +2453,19 @@ def completer_risques(diagnostic: Diagnostic, *, settings: Settings | None = Non
         logger.warning("risques non evalues : %s", error)
         return replace(diagnostic, risques_erreur=str(error))
     return replace(diagnostic, risques=risques)
+
+
+# Ajoute le voisinage de l'adresse (Géorisques) ; ne fait jamais échouer le diagnostic
+def completer_voisinage(diagnostic: Diagnostic, *, settings: Settings | None = None) -> Diagnostic:
+    t = diagnostic.territoire
+    try:
+        voisinage = lire_voisinage_site(
+            latitude=t.latitude, longitude=t.longitude, settings=settings
+        )
+    except GeorisquesError as error:
+        logger.warning("voisinage non consulte : %s", error)
+        return replace(diagnostic, voisinage_erreur=str(error))
+    return replace(diagnostic, voisinage=voisinage)
 
 
 # Ajoute la zone d'urbanisme de l'adresse ; ne fait jamais échouer le diagnostic
