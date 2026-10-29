@@ -39,8 +39,9 @@ def _decoder(contenu: bytes) -> str:
     return "\n".join(ligne(brut) for brut in contenu.split(b"\n"))
 
 
+# Les guillemets doublés de certains noms arrivent précédés d'une barre oblique inverse
 def _texte(valeur: str | None) -> str | None:
-    texte = (valeur or "").strip()
+    texte = (valeur or "").replace("\\", "").replace('"', "").strip()
     return None if texte in {"", "NA"} else texte
 
 

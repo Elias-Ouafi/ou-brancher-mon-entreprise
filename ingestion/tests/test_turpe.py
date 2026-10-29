@@ -135,7 +135,6 @@ def test_low_voltage_version_follows_hours_of_use(
     ("puissance", "conso", "message"),
     [
         (0.03, 100, None),
-        (100, 100_000, "grille TURPE HTB de RTE, non chiffrée ici"),
         (1, None, "préciser --conso (MWh par an) pour le chiffrer"),
     ],
 )
@@ -214,3 +213,18 @@ def test_data_center_activity_stays_flat_and_names_the_regime_without_a_rate(
     assert "E16, CIBS L312-64 et L312-70" in texte
     assert "Taux non chiffrés" in texte
     assert "puissance constante, faute de courbe publiée" in texte
+
+
+# Au-delà de 40 MW : grille HTB 1 de RTE, gestion et comptage du contrat d'accès au réseau
+@avec_dbt
+def test_transmission_grid_is_priced_from_40_mw(medallion_db: Path) -> None:
+    diagnostic = lire_diagnostic(
+        territoire("69123"), puissance_mw=45, conso_mwh=300_000, database=medallion_db
+    )
+    a = diagnostic.acheminement
+    assert a is not None
+    assert (a.domaine_turpe, a.utilisation, a.profil) == ("htb1", "longue", PROFIL_PLAT)
+    assert a.gestion_comptage_eur == pytest.approx(15_857.88)
+    assert a.puissance_eur == pytest.approx(1_938_600)
+    assert a.total_eur == pytest.approx(3_830_653, abs=5)
+    assert "TURPE 7 HTB 1, longue utilisation" in formater_diagnostic(diagnostic)

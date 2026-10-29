@@ -11,8 +11,10 @@ from zoneinfo import ZoneInfo
 
 import duckdb
 
+from ingestion.acces_routier import Acces, AccesRoutierError, lire_acces
 from ingestion.config import Settings, get_settings
 from ingestion.courbe import BilanCourbe, Courbe, bilan_courbe
+from ingestion.eau import LIBELLES_NIVEAU, LIBELLES_TYPE, EauError, SituationEau, lire_situation_eau
 from ingestion.extract_sismique import contient
 from ingestion.geocode import Territoire, adresse_normalisee, code_commune_parent
 from ingestion.georisques import (
@@ -25,8 +27,20 @@ from ingestion.georisques import (
     lire_zonage,
     risques_gaspar,
 )
+from ingestion.solaire import (
+    PERTES_PCT,
+    Batiment,
+    Productible,
+    SolaireError,
+    lire_batiment,
+    lire_productible_pvgis,
+)
 from ingestion.turpe import PROFIL_ACTIVITE, PROFIL_COURBE, Acheminement, lire_acheminement
 from ingestion.urbanisme import UrbanismeError, ZoneUrbanisme, lire_zone_urbanisme
+from ingestion.zones_activite import (
+    RAYON_KM as RAYON_ZONES_ACTIVITE_KM,
+)
+from ingestion.zones_activite import ZoneActivite, ZonesActiviteError, lire_zones_activite
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +117,7 @@ where profil = $profil
 """
 
 # Domaines chiffrés par la grille TURPE HTA-BT ; le tarif bleu inclut déjà l'acheminement
-DOMAINES_TURPE = {"bt_sup36": "BT > 36 kVA", "hta": "HTA"}
+DOMAINES_TURPE = {"bt_sup36": "BT > 36 kVA", "hta": "HTA", "htb1": "HTB 1"}
 
 _COUT_SQL = """
 select
@@ -209,6 +223,22 @@ where case
 end
 order by distance_km
 limit 1
+"""
+
+# Pôle de fret le plus proche de chaque mode, dans le même territoire que l'adresse
+_POLES_PROCHES_SQL = f"""
+select mode, nom, latitude, longitude
+from (
+    select
+        *,
+        row_number() over (partition by mode order by {_DISTANCE_KM_SQL}) as rang
+    from gold.fct_poles_fret
+    where case
+        when $est_zni then code_departement = $departement
+        else code_departement not like '97%' and code_departement not in ('2A', '2B')
+    end
+)
+where rang = 1
 """
 
 _CARBONE_SQL = """
@@ -399,7 +429,7 @@ class Seuil:
     domaine_tension: str
     gestionnaire: str
     commentaire: str
-    # Grille TURPE du domaine : `bt_inf36`, `bt_sup36`, `hta` ou `htb`
+    # Grille TURPE du domaine : `bt_inf36`, `bt_sup36`, `hta` ou `htb1`
     domaine_turpe: str
 
 
@@ -699,6 +729,23 @@ class Diagnostic:
     urbanisme: ZoneUrbanisme | None = None
     urbanisme_consulte: bool = False
     urbanisme_erreur: str | None = None
+    # Arrêtés de restriction des usages de l'eau en vigueur à l'adresse (VigiEau)
+    eau: SituationEau | None = None
+    eau_erreur: str | None = None
+    # Zones d'activité de la BD TOPO à moins de `RAYON_ZONES_ACTIVITE_KM` (nombre et plus proches)
+    nb_zones_activite: int | None = None
+    zones_activite: list[ZoneActivite] = field(default_factory=list)
+    zones_activite_erreur: str | None = None
+    # Pôle de fret le plus proche de chaque mode (type, nom, latitude, longitude) ; l'accès routier
+    # (`completer_acces_routier`) en calcule les temps de trajet
+    poles_proches: list[tuple[str, str, float, float]] = field(default_factory=list)
+    acces_routier: list[Acces] | None = None
+    acces_routier_erreur: str | None = None
+    # Bâtiment de l'adresse (BD TOPO) et productible photovoltaïque d'un kWc (PVGIS)
+    batiment: Batiment | None = None
+    productible: Productible | None = None
+    solaire_consulte: bool = False
+    solaire_erreur: str | None = None
     # Nombre de friches d'au moins 1 ha à moins de `RAYON_FRICHES_KM`, et les plus proches ;
     # `None` si Cartofriches n'est pas chargé
     nb_friches: int | None = None
@@ -874,6 +921,15 @@ def lire_diagnostic(
                 if "ventes_locaux" in chargements
                 else None
             )
+            poles_proches = connection.execute(
+                _POLES_PROCHES_SQL,
+                {
+                    "latitude": territoire.latitude,
+                    "longitude": territoire.longitude,
+                    "departement": departement,
+                    "est_zni": bool(ligne and ligne["est_zni"]),
+                },
+            ).fetchall()
             friches_proches = (
                 [
                     Friche(*ligne)
@@ -924,6 +980,7 @@ def lire_diagnostic(
         prix_locaux=None if prix_locaux is None else PrixLocaux(**prix_locaux),
         surface_m2=surface_m2,
         activite=activite,
+        poles_proches=poles_proches,
         nb_friches=None if friches_proches is None else len(friches_proches),
         friches=(friches_proches or [])[:NB_FRICHES_AFFICHEES],
         **ligne,
@@ -1420,6 +1477,92 @@ def ligne_urbanisme(zone: ZoneUrbanisme) -> str:
     return phrase
 
 
+def ligne_eau(eau: SituationEau) -> str:
+    if not eau.zones:
+        return "aucun arrêté de restriction des usages de l'eau en vigueur à cette adresse"
+    zones = ", ".join(
+        f"{LIBELLES_TYPE.get(z.type_zone, z.type_zone)} ({LIBELLES_NIVEAU[z.niveau]})"
+        for z in sorted(eau.zones, key=lambda z: -z.rang)
+    )
+    fins = [z.date_fin for z in eau.zones if z.date_fin]
+    phrase = f"niveau {LIBELLES_NIVEAU[eau.niveau_max]} en vigueur : {zones}"
+    if fins:
+        phrase += f", jusqu'au {max(fins):%d/%m/%Y}"
+    if eau.est_contraignante:
+        phrase += (
+            " ; à ce niveau, les usages de l'eau des entreprises peuvent être très réduits"
+            " ou suspendus selon l'arrêté"
+        )
+    else:
+        phrase += (
+            " ; à ce niveau, l'arrêté appelle surtout à la sobriété : en lire les usages encadrés"
+        )
+    return phrase
+
+
+LIBELLES_ACCES = {"port": "port", "aeroport": "aéroport", "rail": "rail-route"}
+
+
+def ligne_acces(acces: list[Acces]) -> str:
+    morceaux = []
+    for a in acces:
+        if a.type_acces == "autoroute":
+            morceaux.append(f"autoroute {a.nom} {_distance(a.distance_vol_km)} à vol d'oiseau")
+            continue
+        nom = f"{LIBELLES_ACCES[a.type_acces]} {a.nom}"
+        if a.duree_min is None or a.distance_route_km is None:
+            morceaux.append(
+                f"{nom} {_distance(a.distance_vol_km)} à vol d'oiseau (trajet non calculé)"
+            )
+        else:
+            morceaux.append(
+                f"{nom} à {_nombre(a.duree_min)} min ({_nombre(a.distance_route_km)} km)"
+            )
+    if not any(a.type_acces == "autoroute" for a in acces):
+        morceaux.insert(0, "aucune autoroute à moins de 10 km")
+    return " ; ".join(morceaux)
+
+
+def ligne_solaire(batiment: Batiment | None, productible: Productible) -> str:
+    if batiment is None:
+        lieu = "aucun bâtiment de la BD TOPO à moins de 60 m de l'adresse"
+    else:
+        qui = batiment.usage.lower() if batiment.usage else "usage inconnu"
+        taille = f"{_nombre(batiment.emprise_m2)} m² au sol"
+        if batiment.hauteur_m:
+            taille += f", {_nombre(batiment.hauteur_m, 1)} m de haut"
+        position = (
+            "sur l'adresse" if batiment.contient_adresse else f"à {_nombre(batiment.distance_m)} m"
+        )
+        lieu = f"bâtiment {qui} {position} ({taille})"
+    angles = ""
+    if productible.inclinaison_deg is not None:
+        angles = f", inclinaison {_nombre(productible.inclinaison_deg)}° optimale"
+    return (
+        f"{lieu} ; productible de {_nombre(productible.kwh_par_kwc_an)} kWh par kWc et par an"
+        f" (panneaux fixes{angles}, pertes de {PERTES_PCT} %, PVGIS)"
+    )
+
+
+def ligne_zones_activite(nb: int, zones: list[ZoneActivite]) -> str:
+    if not nb:
+        return (
+            f"aucune zone d'activité ou industrielle à moins de {RAYON_ZONES_ACTIVITE_KM} km"
+            " (BD TOPO)"
+        )
+    details = [
+        f"{z.nom} ({_nombre(z.surface_ha, 1 if z.surface_ha < 10 else 0)} ha, "
+        + ("l'adresse est dedans" if z.contient_adresse else _distance(z.distance_km))
+        + ")"
+        for z in zones
+    ]
+    pluriel = "s" if nb > 1 else ""
+    return (
+        f"{nb} zone{pluriel} d'activité ou industrielle{pluriel} à moins de"
+        f" {RAYON_ZONES_ACTIVITE_KM} km ; les plus proches : {' ; '.join(details)}"
+    )
+
+
 def ligne_friches(nb: int, friches: list[Friche]) -> str:
     if not nb:
         return (
@@ -1449,6 +1592,8 @@ def _critere_foncier(d: Diagnostic) -> Critere:
         valeur = f"site clé en main {_distance(site.distance_km)}"
         detail = f"{site.commune}, annoncé prêt en {site.maturite_site}."
     etat = "info"
+    if d.zones_activite and d.zones_activite[0].contient_adresse:
+        detail += f" Adresse dans la zone d'activité {d.zones_activite[0].nom}."
     if d.nb_friches is not None:
         detail += f" {d.nb_friches} friche(s) de 1 ha ou plus à moins de {RAYON_FRICHES_KM} km."
     if (zone := d.urbanisme) is not None:
@@ -1529,6 +1674,35 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
         else asdict(d.entreprises_adresse),
         "courbe": None if d.courbe is None else asdict(d.courbe),
         "urbanisme": None if d.urbanisme is None else asdict(d.urbanisme),
+        "eau": None
+        if d.eau is None
+        else {
+            "niveau_max": d.eau.niveau_max,
+            "est_contraignante": d.eau.est_contraignante,
+            "zones": [asdict(z) for z in d.eau.zones],
+            "source": "VigiEau",
+        },
+        "solaire": None
+        if not d.solaire_consulte or d.productible is None
+        else {
+            "batiment": None if d.batiment is None else asdict(d.batiment),
+            "productible": asdict(d.productible),
+            "source": "BD TOPO (IGN) et PVGIS (Commission européenne)",
+        },
+        "acces_routier": None
+        if d.acces_routier is None
+        else {
+            "acces": [asdict(a) for a in d.acces_routier],
+            "source": "BD TOPO et Géoplateforme (IGN)",
+        },
+        "zones_activite": None
+        if d.nb_zones_activite is None
+        else {
+            "nb_dans_le_rayon": d.nb_zones_activite,
+            "rayon_km": RAYON_ZONES_ACTIVITE_KM,
+            "plus_proches": [asdict(z) for z in d.zones_activite],
+            "source": "BD TOPO (IGN)",
+        },
         "friches": None
         if d.nb_friches is None
         else {
@@ -1559,6 +1733,10 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
                 ("entreprises_enedis", d.entreprises_adresse is not None),
                 ("prix_locaux", d.prix_locaux is not None),
                 ("friches", d.nb_friches is not None),
+                ("acces_routier", d.acces_routier is not None),
+                ("solaire", d.solaire_consulte and d.productible is not None),
+                ("zones_activite", d.nb_zones_activite is not None),
+                ("restrictions_eau", d.eau is not None),
                 ("zonage_urbanisme", d.urbanisme_consulte and d.urbanisme_erreur is None),
             )
             if present and code in d.limites
@@ -1692,8 +1870,6 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
                 f" souscrite, {_euros_arrondis(a.energie_eur)} pour l'énergie,"
                 f" {_euros_arrondis(a.gestion_comptage_eur)} de gestion et comptage par an",
             )
-        elif d.seuil.domaine_turpe == "htb":
-            texte(s, "Acheminement : grille TURPE HTB de RTE, non chiffrée ici.")
         elif d.seuil.domaine_turpe in DOMAINES_TURPE:
             texte(s, "Acheminement : préciser --conso (MWh par an) pour le chiffrer.")
         if d.seuil.domaine_turpe != "bt_inf36":
@@ -1887,7 +2063,7 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
             )
     limite(s, "cout_profil")
 
-    s = bloc("6. Risques naturels et technologiques à l'adresse (Géorisques)")
+    s = bloc("6. Risques et contraintes du site : Géorisques et eau (arrêtés de restriction)")
     if d.plans_prevention is not None:
         texte(
             s,
@@ -1946,7 +2122,12 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
         limite(s, "risques_site")
     if d.risques is not None and any(r.code == "seisme" for r in d.risques.risques):
         limite(s, "zonage_sismique")
-    s = bloc("7. Foncier : zonage d'urbanisme et prix des locaux d'activité (DVF)")
+    if d.eau is not None:
+        texte(s, f"Eau : {ligne_eau(d.eau)}")
+        limite(s, "restrictions_eau")
+    elif d.eau_erreur is not None:
+        texte(s, f"Restrictions d'eau non consultées : {d.eau_erreur}")
+    s = bloc("7. Foncier, desserte et prix des locaux d'activité (DVF)")
     if d.urbanisme is not None:
         texte(s, f"Zonage d'urbanisme : {ligne_urbanisme(d.urbanisme)}")
         limite(s, "zonage_urbanisme")
@@ -1959,6 +2140,26 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
             " adresse (document non publié ou non numérisé).",
         )
         limite(s, "zonage_urbanisme")
+    if d.solaire_consulte and d.productible is not None:
+        texte(s, f"Bâtiment et solaire : {ligne_solaire(d.batiment, d.productible)}")
+        limite(s, "solaire")
+    elif d.solaire_erreur is not None:
+        texte(s, f"Bâtiment et solaire non évalués : {d.solaire_erreur}")
+    if d.acces_routier is not None:
+        texte(
+            s,
+            f"Accès routier (voiture, pas de profil poids lourd) : {ligne_acces(d.acces_routier)}",
+        )
+        limite(s, "acces_routier")
+    elif d.acces_routier_erreur is not None:
+        texte(s, f"Accès routier non évalué : {d.acces_routier_erreur}")
+    if d.nb_zones_activite is not None:
+        texte(
+            s, f"Zones d'activité : {ligne_zones_activite(d.nb_zones_activite, d.zones_activite)}"
+        )
+        limite(s, "zones_activite")
+    elif d.zones_activite_erreur is not None:
+        texte(s, f"Zones d'activité non consultées : {d.zones_activite_erreur}")
     if d.nb_friches is not None:
         texte(s, f"Friches : {ligne_friches(d.nb_friches, d.friches)}")
         limite(s, "friches")
@@ -2072,6 +2273,64 @@ def completer_urbanisme(diagnostic: Diagnostic, *, settings: Settings | None = N
         logger.warning("zonage d'urbanisme non consulte : %s", error)
         return replace(diagnostic, urbanisme_erreur=str(error))
     return replace(diagnostic, urbanisme=zone, urbanisme_consulte=True)
+
+
+# Ajoute le bâtiment de l'adresse et le productible solaire ; ne fait jamais échouer le diagnostic
+def completer_solaire(diagnostic: Diagnostic, *, settings: Settings | None = None) -> Diagnostic:
+    t = diagnostic.territoire
+    try:
+        batiment = lire_batiment(latitude=t.latitude, longitude=t.longitude, settings=settings)
+        productible = lire_productible_pvgis(
+            latitude=t.latitude, longitude=t.longitude, settings=settings
+        )
+    except SolaireError as error:
+        logger.warning("bâtiment et solaire non evalues : %s", error)
+        return replace(diagnostic, solaire_erreur=str(error))
+    return replace(diagnostic, batiment=batiment, productible=productible, solaire_consulte=True)
+
+
+# Ajoute les temps d'accès à l'autoroute et aux pôles de fret ; ne fait jamais échouer le diagnostic
+def completer_acces_routier(
+    diagnostic: Diagnostic, *, settings: Settings | None = None
+) -> Diagnostic:
+    t = diagnostic.territoire
+    try:
+        acces = lire_acces(
+            latitude=t.latitude,
+            longitude=t.longitude,
+            poles=diagnostic.poles_proches,
+            settings=settings,
+        )
+    except AccesRoutierError as error:
+        logger.warning("acces routier non evalue : %s", error)
+        return replace(diagnostic, acces_routier_erreur=str(error))
+    return replace(diagnostic, acces_routier=acces)
+
+
+# Ajoute les zones d'activité proches de l'adresse ; ne fait jamais échouer le diagnostic
+def completer_zones_activite(
+    diagnostic: Diagnostic, *, settings: Settings | None = None
+) -> Diagnostic:
+    t = diagnostic.territoire
+    try:
+        nb, zones = lire_zones_activite(
+            latitude=t.latitude, longitude=t.longitude, settings=settings
+        )
+    except ZonesActiviteError as error:
+        logger.warning("zones d'activite non consultees : %s", error)
+        return replace(diagnostic, zones_activite_erreur=str(error))
+    return replace(diagnostic, nb_zones_activite=nb, zones_activite=zones)
+
+
+# Ajoute les arrêtés sécheresse de l'adresse ; ne fait jamais échouer le diagnostic
+def completer_eau(diagnostic: Diagnostic, *, settings: Settings | None = None) -> Diagnostic:
+    t = diagnostic.territoire
+    try:
+        eau = lire_situation_eau(latitude=t.latitude, longitude=t.longitude, settings=settings)
+    except EauError as error:
+        logger.warning("restrictions d'eau non consultees : %s", error)
+        return replace(diagnostic, eau_erreur=str(error))
+    return replace(diagnostic, eau=eau)
 
 
 def formater_diagnostic(diagnostic: Diagnostic) -> str:

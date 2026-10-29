@@ -163,11 +163,11 @@ flowchart LR
   `fct_mix`, `fct_conso_entreprises_commune` et `fct_conso_entreprises_adresse` (entreprises
   raccordées à Enedis, dernière année publiée). Les seeds datés (tarifs, accise, grille TURPE 7, SDDR, sites clés en main, facteurs ADEME) sont à mettre à jour à chaque
   nouvelle source et recréés à chaque `dbt build` ; `limites_methodologiques` porte la limite de chaque indicateur.
-- **Acheminement** : la grille TURPE 7 HTA-BT (seeds `turpe_soutirage` et
-  `turpe_gestion_comptage`, délibération CRE 2026-105) chiffre la part réseau de la facture selon
+- **Acheminement** : la grille TURPE 7 HTA-BT (délibération CRE 2026-105) et HTB 1 à 3 (2026-104, appliquée dès 40 MW avec
+  HTB 1 par défaut), seeds `turpe_soutirage` et `turpe_gestion_comptage`, chiffre la part réseau de la facture selon
   le domaine de tension : puissance souscrite, énergie répartie par classe temporelle (pointe,
   heures pleines et creuses, saison haute ou basse) sur la courbe de charge ou, à défaut, sur
-  toutes les heures de l'année, version courte ou longue utilisation retenue au moindre coût
+  toutes les heures de l'année, version courte, moyenne ou longue utilisation retenue au moindre coût
   (`ingestion/turpe.py`).
 - **Fiabilité** : géocodage BAN sur cinq candidats, adresse refusée si trop approximative ou
   ambiguë ; consommation Enedis cherchée à l'adresse seulement quand la BAN la trouve au numéro

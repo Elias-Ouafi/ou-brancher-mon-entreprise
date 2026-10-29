@@ -9,7 +9,7 @@ import httpx
 
 from ingestion.config import Settings, get_settings
 from ingestion.extract_geo import _retrying, _verifier
-from ingestion.extract_odre import USER_AGENT, ExtractionError
+from ingestion.extract_odre import USER_AGENT, ExtractionError, RetryableStatusError
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +97,7 @@ def lire_zone_urbanisme(
             lambda: _verifier(http.get(ZONE_URBA_PATH, params={"geom": geometrie}))
         )
         return lire_zone(reponse.json())
-    except (httpx.HTTPError, ValueError) as error:
+    except (httpx.HTTPError, RetryableStatusError, ValueError) as error:
         raise UrbanismeError(f"{ZONE_URBA_PATH} : {type(error).__name__} {error}") from error
     finally:
         if proprietaire:

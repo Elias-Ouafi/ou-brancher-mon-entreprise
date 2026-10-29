@@ -125,3 +125,13 @@ def test_foncier_criterion_follows_the_zone(medallion_db: Any) -> None:
     assert "aucune zone numérisée" in formater_diagnostic(vide)
     assert essentiel_en_dict(agricole)["urbanisme"]["type_zone"] == "A"
     assert "zonage_urbanisme" in essentiel_en_dict(agricole)["limites"]
+
+
+# Constaté en réel : l'API Carto a répondu 500 à chaque essai et fait planter le diagnostic
+def test_persistent_server_error_becomes_a_clean_failure(
+    httpx_mock: HTTPXMock, reglages: Settings
+) -> None:
+    httpx_mock.add_response(status_code=500, is_reusable=True)
+
+    with pytest.raises(UrbanismeError):
+        lire_zone_urbanisme(latitude=48.6, longitude=2.3, settings=reglages)
