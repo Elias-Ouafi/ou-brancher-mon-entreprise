@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Atlas électrique de France</title>
+<title>Où brancher mon entreprise</title>
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:">
 <style>
 /* Plein écran : carte 3D au fond, adresse en haut, verdict ou fiche en bas à gauche, lentilles en bas à droite */
@@ -109,8 +109,8 @@ button { font: inherit; }
 .tip { position: fixed; z-index: 6; pointer-events: none; padding: 6px 10px; border-radius: 3px; font-size: 13px; max-width: 260px; }
 .tip b { font-family: var(--f-display); font-size: 13.5px; letter-spacing: .03em; }
 .tip div { color: var(--parch-dim); }
-.hint { position: fixed; z-index: 3; top: calc(52px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); font-size: 12.5px; color: var(--parch-dim);
-  text-shadow: 0 1px 3px var(--ink); white-space: nowrap; }
+.hint { position: fixed; z-index: 3; top: calc(52px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); font-size: 12.5px; color: var(--parch);
+  background: color-mix(in srgb, var(--ink) 78%, transparent); padding: 3px 12px; border-radius: 12px; white-space: nowrap; }
 .erreur { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; font-size: 16px; }
 
 @media (max-width: 760px) {
@@ -130,7 +130,7 @@ button { font: inherit; }
 <div id="labels"></div>
 
 <div class="topbar frame">
-  <span class="brand">Atlas électrique</span>
+  <span class="brand">Où brancher mon entreprise</span>
   <span class="sep"></span>
   <span class="res" id="adr">Aucune adresse : lancer essentiel ou carte --adresse</span>
   <span class="chip" id="genere"></span>
@@ -459,7 +459,7 @@ for (const t of land) { const d = DEP[t.dep] || {}, r = [];
 const avis = n => n > .15 ? "favorable" : n < -.15 ? "défavorable" : "neutre";
 const LENS = {
   raccordement: { tile: t => [ramp(NOTE, (t.note + 1) / 2), t.baseH], show: ["sites", "zones", "liens", "production", "fret"],
-    legend: `<h3>Où se brancher</h3><div class="bar" style="background:linear-gradient(90deg,${NOTE.join(",")})"></div><div class="ticks"><span>défavorable</span><span>neutre</span><span>favorable</span></div><p>Vert : zone de raccordement prioritaire RTE ou site clé en main à proximité, poste 400 kV dans le département. Rouge : contraintes RTE prévues, relief, électricité carbonée, région importatrice. Indicatif : seule une étude Enedis ou RTE fait foi.</p><p>Anneau bleu et bannière : zone prioritaire RTE (SDDR 2025). Hangar au drapeau doré : site clé en main France 2030. Maquettes : centrales d'au moins 200 MW (20 MW en Corse et outre-mer) ; ports (socle bleu), aéroports (socle gris-bleu) et chantiers rail-route (socle violet) au-delà d'un seuil de fret, détaillés dans la vue Territoire. Épingle rouge : votre adresse, reliée à la zone RTE utile et au site le plus proche.</p>` },
+    legend: `<h3>Note des cases</h3><div class="bar" style="background:linear-gradient(90deg,${NOTE.join(",")})"></div><div class="ticks"><span>défavorable</span><span>neutre</span><span>favorable</span></div><p>Vert : zone de raccordement prioritaire RTE ou site clé en main à proximité, poste 400 kV dans le département. Rouge : contraintes RTE prévues, relief, électricité carbonée, région importatrice. Indicatif : seule une étude Enedis ou RTE fait foi.</p><p>Anneau bleu et bannière : zone prioritaire RTE (SDDR 2025). Hangar au drapeau doré : site clé en main France 2030. Maquettes : centrales d'au moins 200 MW (20 MW en Corse et outre-mer) ; ports (socle bleu), aéroports (socle gris-bleu) et chantiers rail-route (socle violet) au-delà d'un seuil de fret, détaillés dans la vue Territoire. Épingle rouge : votre adresse, reliée à la zone RTE utile et au site le plus proche.</p>` },
   // Paysage réel : couleurs naturelles et relief IGN, sans note ; l'électricité du territoire passe par l'encart
   territoire: { tile: t => [t.biome, t.baseH], show: ["mountains", "production", "fret"],
     legend: () => `<h3>Territoire</h3><div class="teintes">${TEINTES.map(([c, n]) => `<span><i style="background:${c}"></i>${n}</span>`).join("")}</div><p>Couleurs naturelles, hauteur selon l'altitude moyenne (IGN).</p>${legendeElectricite()}${legendeProduction()}${legendeFret()}` },

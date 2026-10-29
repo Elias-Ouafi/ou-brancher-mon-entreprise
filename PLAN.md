@@ -90,6 +90,7 @@ verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamou
 | Profils de charge réels des points de plus de 250 kVA, industrie et tertiaire (Enedis, 12 mois, 843 072 demi-heures chargées le 29 octobre) : journée type pondérée par le nombre de points, chiffrée heure par heure comme le profil du seed | `ingestion/extract_enedis.py`, `profils_charge_sup36`, `profils_charge_reels`, `fct_cout_horaire_profil` |
 | Signal Ecowatt (J à J+3) relevé à la demande par `ecowatt`, jours orange et rouges dans le rapport mensuel | `RteEcowattClient`, `rte_ecowatt`, `ecowatt_jours`, `ligne_ecowatt` |
 | Modèle en étoile : 3 dimensions (`dim_commune`, `dim_date`, `dim_risque`) et 4 faits (conso des entreprises, prix des locaux, risques, mix journalier), clés étrangères testées sur le warehouse réel | `dbt/models/etoile/` |
+| Exemples du README sur le persona : captures des deux vues et PDF de `diagnose` pour 12 MW et 70 000 MWh à Chilly-Mazarin, courbe d'exemple HTA de 12 MW (journée type Enedis de l'industrie mise à l'échelle) ; un seul nom, « Où brancher mon entreprise », sur la carte | `docs/exemples/` |
 | Sortie réduite à la réponse (journal sous `--verbose`) ; avant tout chargement, la commande `refresh` à lancer | `ingestion/cli.py` |
 
 **À surveiller** :
@@ -121,8 +122,8 @@ n'est cochée qu'après ruff, pytest (dont `dbt build`) et un essai réel sur un
 (`python .claude/scripts/verifier.py`). Trois lots : A, à prendre maintenant ; B, en attente d'une
 source, d'une date ou d'une décision ; C, présenter le projet à un incubateur.
 
-**Ordre conseillé** : A1 (cohérence : les exemples du README parlent encore de bureaux) ; C21
-(phrase de mission, sans code) ; C25 (démonstration rejouable) ; A2 et la suite du lot A ; puis les entretiens C23 **avant** les pistes nouvelles, que leurs
+**Ordre conseillé** : C21 (phrase de mission, sans code) ; C25 (démonstration rejouable, que les
+exemples du 29 octobre préparent) ; le lot A dans l'ordre ; puis les entretiens C23 **avant** les pistes nouvelles, que leurs
 réponses peuvent réordonner.
 
 ### Lot A : à prendre maintenant
@@ -131,10 +132,9 @@ Les sources existent ; il reste à lire un texte, à tester une API ou à finir 
 
 | Ordre | Étape | Reste à faire | Pourquoi pour ce persona | À vérifier avant de coder |
 |---|---|---|---|---|
-| 1 | **0** Cohérence (lot 0 de la refonte de la carte) | Captures et PDF de `docs/exemples/` refaits pour 12 MW à Chilly-Mazarin ; courbe d'exemple HTA à la place de `courbe_bureau_septembre.csv` et coût de `--courbe` au-delà de 36 kW (TURPE déjà sur la courbe, reste le prix de l'énergie) ; un seul nom (« Atlas électrique » et « Où se brancher » dans `reporting/carte.html`) ; bandeau d'aide lisible sur les cases claires | Le README et la carte montrent encore des bureaux de 100 kVA ; préalable à la démonstration (C25) | Source d'une courbe HTA publiable (export anonymisé ou profil Enedis > 250 kVA déjà chargé) |
-| 2 | **17** TURPE 7 HTB (grille HTB 1 à 3 faite le 29 octobre) | Calendrier horosaisonnier HTB (supposé identique à la HTA), composante d'injection-soutirage, alimentations de secours | Au-delà de 40 MW, l'acheminement est chiffré sur une hypothèse | Délibération CRE 2025-77 et 2026-104 (annexe 2) |
-| 3 | **16** Bâtiment et solaire (emprise BD TOPO et productible PVGIS faits le 29 octobre) | Obligations de solarisation des parkings et toitures de la loi APER, échéances reportées par la loi du 26 novembre 2025 ; structure des toitures | Autoconsommation d'un entrepôt ou d'un hub de recharge ; obligation légale du site | Texte de la loi du 26 novembre 2025 ; licence de la BDNB |
-| 4 | **20** Eau (arrêtés VigiEau faits le 29 octobre) | Tension sur la ressource : débits (Hub'Eau hydrométrie) ou niveaux de nappe (Hub'Eau piézométrie) rapportés à une référence publiée ; les volumes BNPE ne disent pas la disponibilité | Refroidissement des data centers ; procédés industriels | Référence officielle de tension (seuils, débits d'étiage) et licence ; maille |
+| 1 | **17** TURPE 7 HTB (grille HTB 1 à 3 faite le 29 octobre) | Calendrier horosaisonnier HTB (supposé identique à la HTA), composante d'injection-soutirage, alimentations de secours | Au-delà de 40 MW, l'acheminement est chiffré sur une hypothèse | Délibération CRE 2025-77 et 2026-104 (annexe 2) |
+| 2 | **16** Bâtiment et solaire (emprise BD TOPO et productible PVGIS faits le 29 octobre) | Obligations de solarisation des parkings et toitures de la loi APER, échéances reportées par la loi du 26 novembre 2025 ; structure des toitures | Autoconsommation d'un entrepôt ou d'un hub de recharge ; obligation légale du site | Texte de la loi du 26 novembre 2025 ; licence de la BDNB |
+| 3 | **20** Eau (arrêtés VigiEau faits le 29 octobre) | Tension sur la ressource : débits (Hub'Eau hydrométrie) ou niveaux de nappe (Hub'Eau piézométrie) rapportés à une référence publiée ; les volumes BNPE ne disent pas la disponibilité | Refroidissement des data centers ; procédés industriels | Référence officielle de tension (seuils, débits d'étiage) et licence ; maille |
 
 Fins d'étapes closes, gardées en limite plutôt qu'en étape : l'étape 18 est terminée (le tarif
 réduit des secteurs exposés à la concurrence internationale, fixés par arrêté, n'est pas
@@ -165,7 +165,7 @@ Rien à coder tant que la condition n'est pas levée.
 |---|---|---|
 | **15** Risques complémentaires (argiles, cavités, inondation à l'adresse) et **ICPE, Seveso, sols pollués** voisins (Géorisques) | Un site industriel ou logistique peut être soumis à autorisation ; voisinage Seveso. S'appuie sur le critère « risques » du verdict | Géorisques coupe Python depuis le poste (voir « À surveiller ») ; `/installations_classees`, `/ssp/casias` et `/ssp/instructions` répondent à `curl` : un essai réel depuis Python doit passer |
 | **19** Capacité d'accueil en soutirage : carte des capacités de RTE, nouveau Caparéseau ; ce qu'Enedis publie en HTA | Première question du persona, sans réponse publique aujourd'hui | Publication RTE attendue au 1er janvier 2027 (délibération CRE 2026-173) ; capacité Enedis réservée au portail client |
-| **Carte** Refonte (lots A à F, voir plus bas) | Une carte lisible imprimée, qui montre ce que la puissance demandée change | Décisions de direction artistique (fond, polices, échelle de note) ; lot 0 fait (A1) |
+| **Carte** Refonte (lots A à F, voir plus bas) | Une carte lisible imprimée, qui montre ce que la puissance demandée change | Décisions de direction artistique (fond, polices, échelle de note) ; lot 0 fait le 29 octobre |
 | **S** Ambiance sonore de la tuile (demande du 29 octobre) : un son discret qui rappelle le facteur le plus marquant de la case (par exemple un bourdonnement électrique si le nucléaire domine), aucun s'il n'y a pas de facteur dominant | Rendre la carte plus parlante sans texte de plus ; le son n'est jamais une information en soi | Après le lot A de la carte. Prérequis : règle du facteur dominant écrite à partir des critères déjà calculés, « aucun » possible ; sons libres de droits (CC0 ou domaine public, licence et auteur notés dans le dépôt) ; lecture après un geste de l'utilisateur, volume bas, bouton de coupure, sans effet sur le rapport imprimé ; vérification par le skill `essai-carte` |
 | **8** Repère de prix au-delà de 150 000 MWh/an, après la fin de l'ARENH | Un projet de 20 MW constant dépasse la dernière tranche Eurostat (IG, sans borne) | Une source officielle et ouverte d'un prix à terme ; le classement pondéré dans `compare` reste écarté (décision du 15 octobre) |
 | **6** Extension internationale, voir plus bas | En dernier (décision du 25 octobre) | Jeton ENTSO-E et contours des zones de prix |
@@ -236,7 +236,7 @@ Inondations.
 
 ## Refonte de la carte et direction artistique (étude du 28 octobre, à valider)
 
-Proposition, rien n'est codé ni décidé hors du lot 0 (étape A1). Elle garde les décisions en
+Proposition, rien n'est codé ni décidé hors du lot 0 (fait le 29 octobre). Elle garde les décisions en
 vigueur : ligne de commande, local, page HTML autonome qui s'ouvre hors ligne (pas de site web,
 pas de CDN), données publiques sourcées, « non disponible » plutôt qu'un chiffre inventé.
 
@@ -266,7 +266,7 @@ les cartes en relief de la presse de données.
 
 | Élément | Proposition | Pourquoi |
 |---|---|---|
-| Nom | « Où brancher mon entreprise » partout ; « Brancher ici ? » réservé au verdict | La carte s'appelle aujourd'hui « Atlas électrique », sa légende « Où se brancher » : trois noms pour un outil |
+| Nom | « Où brancher mon entreprise » partout ; « Brancher ici ? » réservé au verdict | Fait le 29 octobre (lot 0) : la carte s'appelait « Atlas électrique », sa légende « Où se brancher » |
 | Fond | Papier clair (`#F4F1EA`), encre bleu nuit (`#14202B`) ; mer en bleu gris désaturé ; relief en ombrage gris chaud, pas de cônes | Même identité que le PDF (fond clair) ; lisible imprimé et en capture pour un comité de direction |
 | Accent | Un seul : vert « décarboné » (`#2E7D5B`) pour ce qui est favorable et sourcé ; orange brûlé (`#C2571A`) pour « à vérifier » | Le vert porte le message bas-carbone ; l'or et le parchemin actuels évoquent un jeu de stratégie |
 | Note des cases | Échelle divergente orange brûlé → blanc → bleu-vert, contrôlée pour le daltonisme (deutéranopie, protanopie) | Le rouge → vert actuel est illisible pour environ 8 % des hommes |
@@ -329,7 +329,7 @@ mise à jour dans `docs/exemples/`.
 
 | Lot | Contenu | Validation |
 |---|---|---|
-| 0 | **Cohérence** : étape A1 du lot A (captures, courbe d'exemple, nom, bandeau d'aide) | relecture README et PLAN, `essentiel` sur les exemples |
+| 0 | **Fait le 29 octobre** : captures et PDF pour 12 MW à Chilly-Mazarin, courbe d'exemple HTA, un seul nom, bandeau d'aide sur fond | relecture README et PLAN, `essentiel` sur les exemples |
 | A | `reporting/charte.py` ; polices embarquées ; PDF et graphiques sur la charte ; carte sur la charte en r128 | rendu identique sur deux postes ; PDF sans caractère remplacé |
 | B | Prototype puis passage à three.js r186 (`WebGLRenderer`, `BatchedMesh` pour les maquettes) | carte sans requête réseau ; 60 images/s sur la métropole |
 | C | « Raccorder » selon la puissance : anneaux des domaines de tension, zones RTE en colonnes datées | 1, 12, 30 et 50 MW à Chilly-Mazarin et Dunkerque : gestionnaire conforme à `seuils_raccordement` |
@@ -495,6 +495,7 @@ source ne fixe un nombre d'entretiens clients.
 | 29 oct. | Bâtiment et solaire (16) : bâtiment de la BD TOPO à 60 m au plus de l'adresse (le plus proche si l'adresse n'est pas dessus) et PVGIS 5.3 (JRC) pour un kWc de panneaux fixes, inclinaison et orientation optimales, 14 % de pertes ; aucun dimensionnement de centrale déduit de l'emprise (hypothèses non sourcées) ; obligations de la loi APER non évaluées (reste de l'étape 16, lot A) |
 | 29 oct. | Étoile en schéma `etoile` au-dessus du gold, sans renommer les `fct_*` ; `dim_commune` reprend les communes des faits absentes du référentiel (clé étrangère jamais orpheline) |
 | 29 oct. | Accise réduite chiffrée (18, fin) : tarifs de la loi de finances 2026 (loi n° 2026-103) lus dans le formulaire DGFiP 2040-TIC-SD 2026, en mode « table » de pdftotext (le mode « layout » décalait d'une ligne libellés et montants ; alignement vérifié sur les tarifs normaux, dont le montant figure dans le libellé), et recoupés avec le texte consolidé du CIBS sur Légifrance : 5,5 €/MWh (grande consommatrice, dès 0,5 % d'électro-intensité), 3 (électro-sensible, dès 2,25 %), 0,5 (électro-intensive, dès 6,75 %), 0,5 (exposée à la concurrence internationale, L312-72), 10 pour les centres de stockage de données sur la fraction au-delà de 1 GWh par an (L312-64, L312-70) ; seed `accise_electricite` à une ligne par catégorie. Les paliers de `--va` passent de 3,375 % (bouclier tarifaire, fini le 31 décembre 2025) à 2,25 %. Tarif réduit total, sans majoration ZNI à part (le formulaire n'en déclare pas). Industriel : seulement sans `--activite` ou avec `industrie` (sections B à E de la NACE) ; data center : refusé quand `--va` montre moins de 2,25 % (condition 8 de L312-70), les sept autres conditions dites, pas vérifiées ; aucune réduction pour la recharge ni l'entrepôt. Montants donnés à côté du prix moyen Eurostat, sans l'en retrancher (on ignore la part d'accise réduite dans la moyenne de la tranche) |
+| 29 oct. | Cohérence (lot 0) : exemples du README refaits sur l'exemple de référence ; captures prises par Chrome sans interface (`--headless=new`, rendu WebGL logiciel SwiftShader), la vue « Territoire » par un appel à `setLens` ajouté à une copie de la page, jamais au gabarit ; courbe d'exemple tirée de `profils_charge_reels` (industrie > 250 kVA) et mise à l'échelle d'une pointe de 12 MW, dite comme telle, à la place de la courbe de bureau. Au-delà de 36 kVA, `--courbe` ne chiffre pas l'énergie heure par heure (aucun prix horaire public, décision du 12 octobre) : la ligne renvoie au prix de la tranche et à l'acheminement sur la courbe |
 | 29 oct. | Prochaines étapes en trois lots (A maintenant, B en attente, C incubateur) ; une étape terminée quitte « Suite » et ne reste que dans « État » et les décisions |
 
 ## Écarté
