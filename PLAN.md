@@ -135,6 +135,23 @@ date. Chacune n'est cochée qu'après ruff, pytest (dont `dbt build`) et un essa
 | **6** Extension internationale, voir ci-dessous | En dernier (décision du 25 octobre) | jeton ENTSO-E et contours des zones de prix |
 | **S** Ambiance sonore de la tuile (demande du 29 octobre) : un petit son discret, en fond, qui rappelle le facteur le plus marquant de la tuile où l'on se situe (par exemple un bourdonnement électrique si le nucléaire et l'électricité dominent) ; aucun son s'il n'y a pas de facteur dominant | Rendre la carte plus parlante sans texte de plus ; le son n'est jamais une information en soi, seulement un rappel de ce que la fiche dit déjà | 1) règle de choix du facteur dominant, écrite et documentée (à partir des critères déjà calculés pour la tuile, sans nouveau chiffre), avec « aucun » comme résultat possible ; 2) sons **libres de droits** (CC0 ou domaine public, licence et auteur notés dans le dépôt, jamais de son sans licence vérifiée) ; 3) lecture déclenchée par l'utilisateur (navigateur : pas de son avant un geste), volume bas, bouton de coupure, sans effet sur le rapport imprimé ; 4) vérification dans le navigateur intégré (skill `essai-carte`) |
 
+**Lot C : présenter le projet à un incubateur** (recherche du 29 octobre, détail dans « Ce que
+demandent les incubateurs » plus bas). Étapes surtout hors code ; seules 21 et 25 touchent au
+dépôt et suivent la règle des trois vérifications. Le dossier, le pitch et le Lean Canvas restent
+hors du dépôt (documentation limitée à README et PLAN), comme l'étude du 28 octobre ; seules leurs
+conclusions reviennent ici.
+
+| Ordre | Étape | Ce que l'incubateur demande | Application à l'outil |
+|---|---|---|---|
+| 1 | **21** Phrase de mission et « pourquoi maintenant » en tête du README | Une phrase de mission, pas une liste de fonctions ; problème, solution, pourquoi maintenant (plan Sequoia) | Une phrase du type « dire en une commande si un projet de 1 à 50 MW peut se brancher à une adresse, quand et à quel coût » ; « pourquoi maintenant » appuyé sur des sources P déjà au plan : 33 GW en file d'attente (RTE, juillet 2026), file « premier prêt, premier servi » d'ici fin 2026, carte des capacités en soutirage attendue le 1er janvier 2027 |
+| 2 | **22** Lean Canvas en neuf blocs, chaque bloc écrit comme une hypothèse à tester | Format recommandé par Bpifrance Création pour les projets qui avancent par itération | Segments à départager : porteurs de data centers, opérateurs de recharge poids lourds, industriels, foncières logistiques, agences de développement économique ; les trois problèmes du persona (puissance et délai, foncier constructible, coût complet) ; indicateurs chiffrés ; avantage : tout est sourcé, daté et reproductible en local |
+| 3 | **23** Preuve du besoin : entretiens avec des porteurs de projets avant tout nouveau développement | « Comment savez-vous que les gens ont besoin de ce que vous faites ? » (question de candidature YC, relayée) ; le bloc « problème » se fonde sur des entretiens, pas sur des suppositions | Grille de questions tirée des « absents » de la recherche du 29 octobre (capacité réelle, pièces de maturité, chaleur fatale, eau) ; nombre d'entretiens à fixer, aucune source lue n'en donne ; noter pour chaque entretien le critère qui a décidé ou bloqué un site. Les réponses peuvent réordonner les lots A et B |
+| 4 | **24** Traction mesurée sans télémétrie | Chiffres concrets : utilisateurs, croissance, état du prototype (conseils relayés sur la candidature YC) | L'outil reste local : aucune collecte d'usage n'est ajoutée. Traction comptée à la main : essais réels menés avec un porteur de projet, retours écrits, issues et étoiles GitHub, adresses de recette couvertes (11 aujourd'hui) |
+| 5 | **25** Démonstration rejouable sans `refresh` de 180 mois | Station F demande une vidéo de présentation ; YC une vidéo des fondateurs ; MVP existant exigé (Station F) | Un mode démonstration qui tourne sur la base synthétique déjà utilisée par les tests (`medallion_db`), dit comme tel dans la sortie, pour qu'un jury lance `essentiel` et la carte en quelques minutes ; vidéo de 1 à 2 min sur l'exemple de référence (12 MW à Chilly-Mazarin), hors dépôt |
+| 6 | **26** Modèle économique à décider | Bloc « revenus » du Lean Canvas et section « business model » du plan Sequoia | Pistes à trancher, rien n'est décidé : outil libre (MIT) et études sur mesure, offre aux collectivités et agences de développement, licence d'usage. À vérifier d'abord : la réutilisation commerciale de chaque source (Licence Ouverte : permise ; ODbL des chantiers SNCF Réseau : partage à l'identique des données dérivées) |
+| 7 | **27** Concurrence et alternatives | Concurrents directs et indirects, et comment les battre (plan Sequoia) | Tableau des alternatives : Caparéseau, France Foncier +, sites clés en main France 2030, Yottar (aucune source publique trouvée), cabinets de conseil en implantation, étude exploratoire de raccordement de RTE ou Enedis ; ce que chacun donne ou non par rapport à l'outil |
+| 8 | **28** Choix du programme et calendrier (relevé à la main, aucune planification) | Chaque programme a son thème, ses critères et ses dates | Voir le tableau des programmes plus bas ; GreenTech Innovation et Station F Founders correspondent au sujet (transition écologique, projet tech avec MVP) ; vérifier les règlements en vigueur avant de candidater, les pages lues datent de 2018 à 2026 |
+
 Les bornes de recharge ont leurs propres règles de raccordement (prise en charge d'une part du coût
 par le tarif, dite réfaction) : à étudier avec l'étape 18, sans rien afficher avant d'avoir le texte.
 
@@ -402,6 +419,36 @@ réduits d'accise des data centers et des industriels n'ont pas pu être relus d
 3. **Pièces de maturité** d'un dossier de raccordement (autorisations, maîtrise du foncier), affichées en liste de vérification, après relecture de la procédure RTE de 2026 et du texte de la CRE.
 4. **Artificialisation par commune** (Portail de l'artificialisation des sols, Cerema), pour la ligne « enveloppe restante » du guide de la DGE.
 5. **Étude Enedis sur les dépôts** : réutiliser la maille des zones logistiques (SDES) pour situer une adresse dans une zone à fort besoin de puissance.
+
+## Ce que demandent les incubateurs : recherche du 29 octobre
+
+Recherche documentaire pour présenter le projet (étapes 21 à 28, lot C). Même notation que plus
+haut : **P** = page du programme ou de l'organisme lue, **S** = relayé par un tiers. Il n'existe pas
+de business plan unique imposé : chaque programme a son formulaire, mais tous reviennent aux mêmes
+blocs (problème, solution, marché, concurrence, modèle économique, équipe, traction).
+
+| Programme ou méthode | Ce qui est demandé ou jugé | Niveau | Source |
+|---|---|---|---|
+| Plan de Sequoia | Dix sections : mission en une phrase, problème, solution, pourquoi maintenant, marché, concurrence, modèle économique, équipe, finances, vision à cinq ans | P | [Sequoia, « Writing a business plan »](https://sequoiacap.com/article/writing-a-business-plan/) |
+| Lean Canvas | Neuf blocs (segments, problèmes, proposition de valeur, solutions, canaux, revenus, coûts, indicateurs clés, avantage concurrentiel) ; outil à reprendre et faire pivoter, pour convaincre partenaires et financeurs | P | [Bpifrance Création](https://bpifrance-creation.fr/moment-de-vie/lean-canvas-lapplication-methode-du-lean-startup) |
+| Y Combinator | Devise « Make something people want » ; entretien en visioconférence, décision le jour même ; questions de candidature citées par un tiers : pourquoi cette idée, expertise du domaine, preuve que les gens en ont besoin, avancement, vidéo des fondateurs ; réponses courtes et sans jargon commercial | P (page de candidature) ; S (questions) | [YC, Apply](https://www.ycombinator.com/apply), [Arc](https://arc.dev/employer-blog/y-combinator-application-tips/) |
+| Station F, Founders Program | Projet technologique, équipe à plein temps, MVP déjà construit ; formulaire et vidéo ; trois mois (réseau et apprentissage, puis exécution), mentor choisi, jusqu'à 15 mois d'hébergement ; thème différent à chaque promotion | P (page de 2023) | [Station F, batch 3](https://stationf.co/news/founders-program-batch-3-open) |
+| GreenTech Innovation (ministère de la Transition écologique, Ecolab du CGDD) | Label et accompagnement ; jugé sur l'ambition environnementale, la faisabilité, le réalisme économique et l'innovation ; 20 à 25 projets par édition ; appel annuel (clos le 19 janvier 2026 pour l'édition 2026) | S | [FrenchWeb](https://www.frenchweb.fr/greentech-innovation-2026-derniere-ligne-droite-avant-la-cloture-des-candidatures-le-19-janvier-2026/459622), [greentechinnovation.fr](https://greentechinnovation.fr/en/2025/04/22/startup-apply-to-the-greentech-initiative-2/) |
+| Bourse French Tech (Bpifrance) | Jeune entreprise immatriculée en France ; dépenses de faisabilité, modèle économique, tests ; **montants contradictoires selon les relais (30 000 à 90 000 €)**, page officielle refusée à la lecture (HTTP 403) | S | [les-aides.fr](https://les-aides.fr/aide/VCEvGZx2wMDhXw/bpifrance/bourse-french-tech-emergence.html), [Hayot Expertise](https://hayot-expertise.fr/blog/bourse-french-tech-bpifrance-conditions) |
+| Réseau Entreprendre | Prêt d'honneur sans intérêt ni garantie ; étude par des chefs d'entreprise puis comité d'engagement ; critère central : emplois créés (au moins 5 à 3 ans selon les antennes) | S | [Guide du candidat 2025 (Côte d'Azur)](https://www.reseau-entreprendre.org/cote-d-azur/wp-content/uploads/sites/75/2025/03/Guide-du-candidat-2025.pdf), [Maddyness](https://www.maddyness.com/2019/12/09/aides-subvention-prets-honneur/) |
+| Wilco | Appels par thème ; en 2018, Île-de-France, moins de trois ans, traction commerciale déjà là, prêt d'honneur et 36 mois d'accompagnement | S (2018 à 2022) | [Maddyness](https://www.maddyness.com/evenement/appel-a-candidature-wilco-btoc/) |
+
+Ce qui s'applique au projet tel qu'il est : le MVP existe (16 octobre), il est technologique et
+touche la transition écologique, ce qui le place dans les critères de Station F et de GreenTech
+Innovation. Ce qui manque à tous les dossiers : la preuve du besoin par des entretiens, des
+chiffres de traction, un modèle économique et une équipe décrite. Réseau Entreprendre et la Bourse
+French Tech supposent une entreprise créée (et des emplois pour le premier) : à voir après
+l'étape 26.
+
+Trous de la recherche : page officielle de la Bourse French Tech illisible (403) ; règlement 2027 de
+GreenTech Innovation non publié ; aucun incubateur spécialisé énergie et data centers actif trouvé
+(EDF Pulse Incubation accompagne des projets climat, sans lien établi avec le raccordement) ; aucune
+source ne fixe un nombre d'entretiens clients.
 
 ## Ce que les études ont établi (9 et 15 octobre)
 
