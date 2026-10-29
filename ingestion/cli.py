@@ -19,6 +19,7 @@ from ingestion.diagnostic import (
     completer_eau,
     completer_risques,
     completer_urbanisme,
+    completer_zones_activite,
     essentiel_en_dict,
     formater_diagnostic,
     formater_essentiel,
@@ -308,7 +309,7 @@ def build_parser() -> argparse.ArgumentParser:
     diagnose.add_argument(
         "--sans-risques",
         action="store_true",
-        help="ne consulte ni Géorisques, ni l'urbanisme, ni VigiEau (usage hors ligne)",
+        help="ne consulte ni Géorisques, ni l'urbanisme, ni l'eau, ni la BD TOPO (hors ligne)",
     )
     diagnose.add_argument(
         "--sans-graphiques",
@@ -517,6 +518,7 @@ def main(argv: list[str] | None = None) -> int:
                 diagnostic = completer_risques(diagnostic, settings=settings)
                 diagnostic = completer_urbanisme(diagnostic, settings=settings)
                 diagnostic = completer_eau(diagnostic, settings=settings)
+                diagnostic = completer_zones_activite(diagnostic, settings=settings)
             if args.format == "texte":
                 print(formater_diagnostic(diagnostic))
             elif args.format == "json" and not args.output:
@@ -560,6 +562,7 @@ def main(argv: list[str] | None = None) -> int:
                     diagnostic = completer_risques(diagnostic, settings=settings)
                     diagnostic = completer_urbanisme(diagnostic, settings=settings)
                     diagnostic = completer_eau(diagnostic, settings=settings)
+                    diagnostic = completer_zones_activite(diagnostic, settings=settings)
                 diagnostics.append(diagnostic)
             rendus = {
                 "texte": comparaison.formater_comparaison,

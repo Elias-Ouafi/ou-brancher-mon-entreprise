@@ -28,6 +28,10 @@ from ingestion.georisques import (
 )
 from ingestion.turpe import PROFIL_ACTIVITE, PROFIL_COURBE, Acheminement, lire_acheminement
 from ingestion.urbanisme import UrbanismeError, ZoneUrbanisme, lire_zone_urbanisme
+from ingestion.zones_activite import (
+    RAYON_KM as RAYON_ZONES_ACTIVITE_KM,
+)
+from ingestion.zones_activite import ZoneActivite, ZonesActiviteError, lire_zones_activite
 
 logger = logging.getLogger(__name__)
 
@@ -703,6 +707,10 @@ class Diagnostic:
     # Arrêtés de restriction des usages de l'eau en vigueur à l'adresse (VigiEau)
     eau: SituationEau | None = None
     eau_erreur: str | None = None
+    # Zones d'activité de la BD TOPO à moins de `RAYON_ZONES_ACTIVITE_KM` (nombre et plus proches)
+    nb_zones_activite: int | None = None
+    zones_activite: list[ZoneActivite] = field(default_factory=list)
+    zones_activite_erreur: str | None = None
     # Nombre de friches d'au moins 1 ha à moins de `RAYON_FRICHES_KM`, et les plus proches ;
     # `None` si Cartofriches n'est pas chargé
     nb_friches: int | None = None
@@ -1447,6 +1455,25 @@ def ligne_eau(eau: SituationEau) -> str:
     return phrase
 
 
+def ligne_zones_activite(nb: int, zones: list[ZoneActivite]) -> str:
+    if not nb:
+        return (
+            f"aucune zone d'activité ou industrielle à moins de {RAYON_ZONES_ACTIVITE_KM} km"
+            " (BD TOPO)"
+        )
+    details = [
+        f"{z.nom} ({_nombre(z.surface_ha, 1 if z.surface_ha < 10 else 0)} ha, "
+        + ("l'adresse est dedans" if z.contient_adresse else _distance(z.distance_km))
+        + ")"
+        for z in zones
+    ]
+    pluriel = "s" if nb > 1 else ""
+    return (
+        f"{nb} zone{pluriel} d'activité ou industrielle{pluriel} à moins de"
+        f" {RAYON_ZONES_ACTIVITE_KM} km ; les plus proches : {' ; '.join(details)}"
+    )
+
+
 def ligne_friches(nb: int, friches: list[Friche]) -> str:
     if not nb:
         return (
@@ -1476,6 +1503,8 @@ def _critere_foncier(d: Diagnostic) -> Critere:
         valeur = f"site clé en main {_distance(site.distance_km)}"
         detail = f"{site.commune}, annoncé prêt en {site.maturite_site}."
     etat = "info"
+    if d.zones_activite and d.zones_activite[0].contient_adresse:
+        detail += f" Adresse dans la zone d'activité {d.zones_activite[0].nom}."
     if d.nb_friches is not None:
         detail += f" {d.nb_friches} friche(s) de 1 ha ou plus à moins de {RAYON_FRICHES_KM} km."
     if (zone := d.urbanisme) is not None:
@@ -1564,6 +1593,14 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
             "zones": [asdict(z) for z in d.eau.zones],
             "source": "VigiEau",
         },
+        "zones_activite": None
+        if d.nb_zones_activite is None
+        else {
+            "nb_dans_le_rayon": d.nb_zones_activite,
+            "rayon_km": RAYON_ZONES_ACTIVITE_KM,
+            "plus_proches": [asdict(z) for z in d.zones_activite],
+            "source": "BD TOPO (IGN)",
+        },
         "friches": None
         if d.nb_friches is None
         else {
@@ -1594,6 +1631,7 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
                 ("entreprises_enedis", d.entreprises_adresse is not None),
                 ("prix_locaux", d.prix_locaux is not None),
                 ("friches", d.nb_friches is not None),
+                ("zones_activite", d.nb_zones_activite is not None),
                 ("restrictions_eau", d.eau is not None),
                 ("zonage_urbanisme", d.urbanisme_consulte and d.urbanisme_erreur is None),
             )
@@ -2000,6 +2038,13 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
             " adresse (document non publié ou non numérisé).",
         )
         limite(s, "zonage_urbanisme")
+    if d.nb_zones_activite is not None:
+        texte(
+            s, f"Zones d'activité : {ligne_zones_activite(d.nb_zones_activite, d.zones_activite)}"
+        )
+        limite(s, "zones_activite")
+    elif d.zones_activite_erreur is not None:
+        texte(s, f"Zones d'activité non consultées : {d.zones_activite_erreur}")
     if d.nb_friches is not None:
         texte(s, f"Friches : {ligne_friches(d.nb_friches, d.friches)}")
         limite(s, "friches")
@@ -2113,6 +2158,21 @@ def completer_urbanisme(diagnostic: Diagnostic, *, settings: Settings | None = N
         logger.warning("zonage d'urbanisme non consulte : %s", error)
         return replace(diagnostic, urbanisme_erreur=str(error))
     return replace(diagnostic, urbanisme=zone, urbanisme_consulte=True)
+
+
+# Ajoute les zones d'activité proches de l'adresse ; ne fait jamais échouer le diagnostic
+def completer_zones_activite(
+    diagnostic: Diagnostic, *, settings: Settings | None = None
+) -> Diagnostic:
+    t = diagnostic.territoire
+    try:
+        nb, zones = lire_zones_activite(
+            latitude=t.latitude, longitude=t.longitude, settings=settings
+        )
+    except ZonesActiviteError as error:
+        logger.warning("zones d'activite non consultees : %s", error)
+        return replace(diagnostic, zones_activite_erreur=str(error))
+    return replace(diagnostic, nb_zones_activite=nb, zones_activite=zones)
 
 
 # Ajoute les arrêtés sécheresse de l'adresse ; ne fait jamais échouer le diagnostic

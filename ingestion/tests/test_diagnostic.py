@@ -369,12 +369,13 @@ def test_every_figure_comes_with_its_limit(medallion_db: Path, warehouse: Any) -
         urbanisme=ZoneUrbanisme("U", "UB", None, "DOC", None, None),
         urbanisme_consulte=True,
         eau=SituationEau([]),
+        nb_zones_activite=0,
     )
     texte = formater_diagnostic(diagnostic)
     limites = [
         limite for (limite,) in _rows(warehouse, "SELECT limite FROM gold.limites_methodologiques")
     ]
-    assert len(limites) == 25
+    assert len(limites) == 26
     for limite in limites:
         assert limite in texte
 
