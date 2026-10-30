@@ -13,16 +13,9 @@ from reporting import implantation_charts
 from reporting.implantation import GRAPHIQUES, SOURCES, Comparaisons, pied_de_page, texte_compact
 from reporting.pdf import ALERTE, STYLES, _encadre, _image, _kpis, _pied_de_page
 
-# Caractères hors Windows-1252, et leur équivalent lisible en Helvetica
-SUBSTITUTIONS = {"→": "—", "↳": "", "≤": "&lt;=", "≥": "&gt;=", "₂": "<sub>2</sub>"}
 
-
-# Texte prêt pour un `Paragraph` : échappé, puis débarrassé des glyphes absents
 def _pdf(texte: str) -> str:
-    texte = escape(texte_compact(texte))
-    for caractere, remplacement in SUBSTITUTIONS.items():
-        texte = texte.replace(caractere, remplacement)
-    return texte
+    return escape(texte_compact(texte))
 
 
 def _nombre(valeur: float, decimales: int = 0) -> str:

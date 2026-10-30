@@ -4,14 +4,15 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 
 from ingestion.diagnostic import Diagnostic
+from reporting import charte
 from reporting.charts import ENCRE, GRILLE, _png
 from reporting.implantation import NB_DEPARTEMENTS_AFFICHES, Comparaisons
 
-# L'adresse diagnostiquée ressort en couleur, les autres territoires en gris
-ICI = "#2F6DB5"
-AUTRES = "#C9D3DD"
-HC = "#E8EEF6"
-FLEXIBLE = "#E08A00"
+# L'adresse diagnostiquée ressort à l'encre, les autres territoires en gris
+ICI = charte.ENCRE
+AUTRES = charte.GRIS
+HC = charte.ENCART
+FLEXIBLE = charte.ORANGE
 
 
 def _barres(ax: plt.Axes, libelles: list[str], valeurs: list[float], ici: list[bool]) -> None:
