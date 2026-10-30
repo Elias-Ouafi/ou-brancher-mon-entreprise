@@ -63,6 +63,31 @@ def test_only_operating_classified_sites_are_kept_closest_first() -> None:
     assert seveso[0].distance_km == pytest.approx(4.83, abs=0.01)
 
 
+def test_site_whose_postcode_and_commune_disagree_is_dropped() -> None:
+    commun = {
+        "regime": "Autorisation",
+        "etatActivite": "En exploitation avec titre",
+        "statutSeveso": "Seveso seuil bas",
+        "latitude": 48.85297,
+        "longitude": 2.349996,
+    }
+    entrees = [
+        {
+            **commun,
+            "raisonSociale": "TRIADIS SERVICES",
+            "codePostal": "76000",
+            "codeInsee": "75056",
+        },
+        {**commun, "raisonSociale": "AJACCIO", "codePostal": "20000", "codeInsee": "2A004"},
+        {**commun, "raisonSociale": "SAINT-DENIS", "codePostal": "97400", "codeInsee": "97411"},
+        {**commun, "raisonSociale": "SANS CODE POSTAL", "codeInsee": "75056"},
+    ]
+
+    installations = lire_installations(entrees, latitude=48.8471, longitude=2.2862)
+
+    assert {i.nom for i in installations} == {"AJACCIO", "SAINT-DENIS", "SANS CODE POSTAL"}
+
+
 def test_neighbourhood_counts_each_family() -> None:
     v = lire_voisinage(
         rga=fixture("rga"),
