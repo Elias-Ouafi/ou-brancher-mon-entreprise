@@ -250,6 +250,19 @@ class Voisinage:
     nb_casias: int
 
 
+def departement(code: str) -> str:
+    # Corse : 20xxx au code postal, 2A ou 2B au code commune ; outre-mer sur trois chiffres
+    if code[:2] in {"2A", "2B"}:
+        return "20"
+    return code[:3] if code.startswith("97") else code[:2]
+
+
+def departements_differents(code_postal: Any, code_insee: Any) -> bool:
+    if not code_postal or not code_insee:
+        return False
+    return departement(str(code_postal)) != departement(str(code_insee))
+
+
 def lire_installations(
     entrees: list[dict[str, Any]], *, latitude: float, longitude: float
 ) -> list[Installation]:
@@ -259,6 +272,10 @@ def lire_installations(
         if e.get("regime") not in REGIMES_ICPE or e.get("etatActivite") != EN_EXPLOITATION:
             continue
         if e.get("latitude") is None or e.get("longitude") is None:
+            continue
+        # Fiche incohérente : TRIADIS SERVICES, rue de Madagascar à Rouen (76000), porte le code
+        # commune de Paris et le centre de Paris pour position ; elle sortait à 5 km du 15e
+        if departements_differents(e.get("codePostal"), e.get("codeInsee")):
             continue
         statut = str(e.get("statutSeveso") or "")
         installations.append(
