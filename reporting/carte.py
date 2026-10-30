@@ -42,6 +42,7 @@ from ingestion.hexagones import (
     lire_terres,
     points_terrestres,
 )
+from reporting import charte
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,7 @@ VENDOR = Path(__file__).with_name("vendor")
 SCRIPTS = ("three.min.js", "OrbitControls.js")
 MARQUEUR_DONNEES = "/*__DONNEES__*/null"
 MARQUEUR_SCRIPTS = "<!--__SCRIPTS__-->"
+MARQUEUR_CHARTE = "/*__CHARTE__*/"
 # Gardé dans la page générée : l'adresse se remplace sans reconstruire la carte
 MARQUEUR_ADRESSE = "/*__ADRESSE__*/"
 _LIGNE_ADRESSE = re.compile(r"^(DATA\.adresse = /\*__ADRESSE__\*/).*$", re.MULTILINE)
@@ -263,6 +265,7 @@ def rendre_html(donnees: dict[str, Any]) -> str:
     )
     gabarit = GABARIT.read_text(encoding="utf-8")
     html = gabarit.replace(MARQUEUR_SCRIPTS, scripts).replace(MARQUEUR_DONNEES, _json(donnees))
+    html = html.replace(MARQUEUR_CHARTE, charte.css())
     return placer_adresse(html, adresse)
 
 
@@ -332,6 +335,7 @@ def _carte_a_jour(path: Path, settings: Settings) -> bool:
     if not path.exists() or MARQUEUR_ADRESSE not in path.read_text(encoding="utf-8"):
         return False
     sources = [Path(settings.duckdb_path), GABARIT, *(VENDOR / nom for nom in SCRIPTS)]
+    sources += [Path(charte.__file__), *(charte.police(f, g) for f, g in charte.FICHIERS)]
     sources += [p for jeu in (CONTOURS_JEU, TERRES_JEU) if (p := dernier_geojson(jeu, settings))]
     date_carte = path.stat().st_mtime
     return all(not p.exists() or p.stat().st_mtime <= date_carte for p in sources)

@@ -22,7 +22,7 @@ disponible » plutôt que de deviner.
 
 *La carte générée pour l'exemple de référence : un data center de 12 MW et 70 000 MWh par an au
 « 3 allée des Peupliers, 91380 Chilly-Mazarin » (`essentiel --puissance 12 --conso 70000
---activite data-center`, le 29 octobre 2026). En haut, la vue « Raccorder » (touche 1) : les cases
+--activite data-center`, le 29 octobre 2026, captures refaites sur la charte claire le 30 octobre). En haut, la vue « Raccorder » (touche 1) : les cases
 sont notées du rouge au vert, l'adresse est reliée à la zone prioritaire RTE Sud Île-de-France
 (capacité en 2030) et au site clé en main de Massy ; la fiche donne le verdict : raccordement en
 HTA chez Enedis, carbone sous le seuil de 100 g, facture d'environ 5,3 M€ HTVA par an dont une
@@ -207,6 +207,14 @@ flowchart LR
   moment de la question, jamais stocké ; un appel qui échoue est signalé dans sa section sans
   bloquer le reste du diagnostic.
 - **Prix des locaux** : les ventes de locaux d'activité des cinq dernières années publiées (DVF, un fichier de ~100 Mo par année, lu en flux) donnent la médiane au m² par commune, le département en repli sous 5 ventes ; DVF ne sépare pas les bureaux des commerces et entrepôts, ne contient aucun loyer et ignore l'Alsace, la Moselle et Mayotte.
+- **Charte** : couleurs et polices de la carte, du PDF et des graphiques viennent d'un seul module,
+  `reporting/charte.py` (papier clair, encre bleu nuit, vert pour le favorable, orange pour « à
+  vérifier » ; Spectral pour les titres, Inter pour le texte et les chiffres). Les polices,
+  versionnées dans `reporting/polices/`, sont tirées des fichiers Google Fonts par fontTools,
+  réduites au latin et aux symboles des sorties (₂, ≥, →) ; Inter est un instantané de la police
+  variable (`--update-name-table`, sinon le gras garde le nom « Inter-Regular ») :
+  `python -m fontTools.varLib.instancer "Inter[opsz,wght].ttf" wght=700 opsz=14 --update-name-table -o Inter-700.ttf`,
+  puis `python -m fontTools.subset Inter-700.ttf --unicodes="U+0020-007E,U+00A0-017F,U+2000-206F,U+2070-209F,U+20AC,U+2190-21FF,U+2200-22FF" --layout-features="kern,liga,tnum,lnum" --output-file=reporting/polices/Inter-Bold.ttf`.
 - `data/` n'est pas versionné et se recrée par `refresh`. DuckDB n'accepte qu'un writer : fermez
   toute session `duckdb` pendant un chargement.
 
@@ -250,3 +258,6 @@ SDDR 2025 de RTE · barèmes et grille TURPE 7 de la CRE ·
 
 Code sous [licence MIT](LICENSE) ; les données restent sous la licence de leurs producteurs.
 [three.js](https://threejs.org) r128, embarqué dans `reporting/vendor/`, est sous licence MIT.
+Les polices [Spectral](https://github.com/productiontype/Spectral) (Production Type) et
+[Inter](https://github.com/rsms/inter), embarquées dans `reporting/polices/`, sont sous licence
+SIL Open Font License 1.1 (fichiers `OFL-*.txt`).

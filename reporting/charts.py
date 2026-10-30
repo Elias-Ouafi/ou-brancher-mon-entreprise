@@ -13,18 +13,22 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Patch, Rectangle
 
+from reporting import charte
 from reporting.data import RapportMensuel
 
-# Couleurs Tempo, adoucies pour rester lisibles en fond de graphique
-TEMPO_HEX = {"bleu": "#2F6DB5", "blanc": "#B8BEC6", "rouge": "#D0312D", None: "#EEEEEE"}
-ENCRE = "#1F2933"
-GRILLE = "#D9DEE3"
-PIC = "#D0312D"
-CO2 = "#4A5A6A"
-PRIX = "#E08A00"
+TEMPO_HEX = {**charte.TEMPO, None: charte.ENCART}
+ENCRE = charte.ENCRE
+GRILLE = charte.FILET
+PIC = charte.ORANGE
+CO2 = charte.DISCRET
+PRIX = charte.ORANGE
+HEURES_CREUSES = charte.MER
+HEURES_PLEINES = charte.GRIS
 
+charte.enregistrer_matplotlib()
 plt.rcParams.update(
     {
+        "font.family": charte.TEXTE,
         "font.size": 9,
         "axes.edgecolor": GRILLE,
         "axes.labelcolor": ENCRE,
@@ -106,7 +110,7 @@ def carte_chaleur(rapport: RapportMensuel) -> bytes:
 def profil_horaire(rapport: RapportMensuel) -> bytes:
     heures = [p[0] for p in rapport.profil_horaire]
     co2 = [p[1] if p[1] is not None else np.nan for p in rapport.profil_horaire]
-    couleurs = ["#8FB3D9" if h >= 22 or h < 6 else "#C9D3DD" for h in heures]
+    couleurs = [HEURES_CREUSES if h >= 22 or h < 6 else HEURES_PLEINES for h in heures]
 
     fig, ax = plt.subplots(figsize=(7.2, 2.6))
     ax.bar(heures, co2, color=couleurs, width=0.8)
@@ -114,8 +118,8 @@ def profil_horaire(rapport: RapportMensuel) -> bytes:
     ax.set_ylabel("gCO₂/kWh moyen")
     ax.set_xticks(range(0, 24, 2))
     handles = [
-        Patch(color="#8FB3D9", label="heures creuses (22 h–6 h)"),
-        Patch(color="#C9D3DD", label="heures pleines"),
+        Patch(color=HEURES_CREUSES, label="heures creuses (22 h–6 h)"),
+        Patch(color=HEURES_PLEINES, label="heures pleines"),
     ]
     prix = [p[2] for p in rapport.profil_horaire]
     if any(v is not None for v in prix):
