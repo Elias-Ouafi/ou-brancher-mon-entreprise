@@ -7,6 +7,7 @@ from pathlib import Path
 
 import duckdb
 import pytest
+from fontTools.ttLib import TTFont
 from pytest_httpx import HTTPXMock
 
 from ingestion import cli
@@ -19,7 +20,7 @@ from ingestion.tests.conftest import FIXTURES_DIR
 from ingestion.tests.medallion import DBT_BIN
 from ingestion.tests.test_diagnostic import territoire
 from ingestion.urbanisme import ZoneUrbanisme
-from reporting import implantation, implantation_charts
+from reporting import charte, implantation, implantation_charts
 from reporting.implantation import generer_rapport_implantation, lire_comparaisons, nom_fichier
 from reporting.implantation_pdf import _pdf
 
@@ -186,11 +187,13 @@ def test_file_name_is_ascii_and_keyed_by_commune(medallion_db: Path) -> None:
     )
 
 
-def test_pdf_text_replaces_glyphs_missing_from_standard_fonts() -> None:
-    assert _pdf("BT ≤ 36 kVA") == "BT &lt;= 36 kVA"
-    assert _pdf("12 MW → HTA & co") == "12 MW — HTA &amp; co"
-    assert _pdf("22 gCO₂/kWh") == "22 gCO<sub>2</sub>/kWh"
+def test_pdf_text_keeps_glyphs_of_the_embedded_font() -> None:
+    assert _pdf("BT ≤ 36 kVA") == "BT ≤ 36 kVA"
+    assert _pdf("12 MW → HTA & co") == "12 MW → HTA &amp; co"
+    assert _pdf("22 gCO₂/kWh") == "22 gCO₂/kWh"
     assert _pdf("Commune     : 1 site") == "Commune : 1 site"
+    cmap = TTFont(charte.police(charte.TEXTE)).getBestCmap()
+    assert all(ord(c) in cmap for c in "≤≥→↳₂€ «»…–—œŒ\u2019\u202f")
 
 
 def _ban(httpx_mock: HTTPXMock) -> None:

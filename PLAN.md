@@ -1,6 +1,6 @@
 # Plan du projet
 
-> Mis à jour le 29 octobre 2026. Périmètre : la France (métropole, Corse, outre-mer), en ligne de
+> Mis à jour le 30 octobre 2026. Périmètre : la France (métropole, Corse, outre-mer), en ligne de
 > commande, en local et à la demande.
 
 Ce fichier porte l'état du projet, les étapes qui restent, les recherches qui les justifient et
@@ -93,6 +93,7 @@ voisinage du site (argiles, cavités, Seveso, installations classées, sols poll
 | Modèle en étoile : 3 dimensions (`dim_commune`, `dim_date`, `dim_risque`) et 4 faits (conso des entreprises, prix des locaux, risques, mix journalier), clés étrangères testées sur le warehouse réel | `dbt/models/etoile/` |
 | Exemples du README sur le persona : captures des deux vues et PDF de `diagnose` pour 12 MW et 70 000 MWh à Chilly-Mazarin, courbe d'exemple HTA de 12 MW (journée type Enedis de l'industrie mise à l'échelle) ; un seul nom, « Où brancher mon entreprise », sur la carte | `docs/exemples/` |
 | Voisinage du site (étape 15, 29 octobre), à la demande par l'API Géorisques : argiles à l'adresse, cavités à moins de 500 m, établissements Seveso en exploitation à moins de 5 km (distance), installations classées sous autorisation ou enregistrement à moins de 1 km, sols pollués à moins de 500 m (SIS, SUP, sites en instruction, CASIAS) ; à Chilly-Mazarin : argiles fortes, SMCA (Seveso seuil bas) à 4,8 km, 2 installations classées, 11 anciens sites CASIAS | `GeorisquesClient.voisinage`, `completer_voisinage`, `lignes_voisinage` |
+| Charte commune (lot A de la refonte de la carte, 30 octobre) : papier clair et encre bleu nuit, vert pour le favorable, orange pour « à vérifier », Spectral et Inter embarquées (OFL) dans la carte, le PDF et les graphiques ; le PDF garde ₂, ≥ et → au lieu de les remplacer | `reporting/charte.py`, `reporting/polices/` |
 | Sortie réduite à la réponse (journal sous `--verbose`) ; avant tout chargement, la commande `refresh` à lancer | `ingestion/cli.py` |
 
 **À surveiller** :
@@ -168,8 +169,8 @@ Rien à coder tant que la condition n'est pas levée.
 | Étape | Pourquoi pour ce persona | Condition pour s'y mettre |
 |---|---|---|
 | **19** Capacité d'accueil en soutirage : carte des capacités de RTE, nouveau Caparéseau ; ce qu'Enedis publie en HTA | Première question du persona, sans réponse publique aujourd'hui | Publication RTE attendue au 1er janvier 2027 (délibération CRE 2026-173) ; capacité Enedis réservée au portail client |
-| **Carte** Refonte (lots A à F, voir plus bas) | Une carte lisible imprimée, qui montre ce que la puissance demandée change | Décisions de direction artistique (fond, polices, échelle de note) ; lot 0 fait le 29 octobre |
-| **S** Ambiance sonore de la tuile (demande du 29 octobre) : un son discret qui rappelle le facteur le plus marquant de la case (par exemple un bourdonnement électrique si le nucléaire domine), aucun s'il n'y a pas de facteur dominant | Rendre la carte plus parlante sans texte de plus ; le son n'est jamais une information en soi | Après le lot A de la carte. Prérequis : règle du facteur dominant écrite à partir des critères déjà calculés, « aucun » possible ; sons libres de droits (CC0 ou domaine public, licence et auteur notés dans le dépôt) ; lecture après un geste de l'utilisateur, volume bas, bouton de coupure, sans effet sur le rapport imprimé ; vérification par le skill `essai-carte` |
+| **Carte** Refonte (lots B à F, voir plus bas) | Une carte lisible imprimée, qui montre ce que la puissance demandée change | Lots 0 et A faits (29 et 30 octobre) ; suite : lot B, prototype three.js r186 hors ligne |
+| **S** Ambiance sonore de la tuile (demande du 29 octobre) : un son discret qui rappelle le facteur le plus marquant de la case (par exemple un bourdonnement électrique si le nucléaire domine), aucun s'il n'y a pas de facteur dominant | Rendre la carte plus parlante sans texte de plus ; le son n'est jamais une information en soi | Lot A de la carte fait le 30 octobre. Prérequis restants : règle du facteur dominant écrite à partir des critères déjà calculés, « aucun » possible ; sons libres de droits (CC0 ou domaine public, licence et auteur notés dans le dépôt) ; lecture après un geste de l'utilisateur, volume bas, bouton de coupure, sans effet sur le rapport imprimé ; vérification par le skill `essai-carte` |
 | **8** Repère de prix au-delà de 150 000 MWh/an, après la fin de l'ARENH | Un projet de 20 MW constant dépasse la dernière tranche Eurostat (IG, sans borne) | Une source officielle et ouverte d'un prix à terme ; le classement pondéré dans `compare` reste écarté (décision du 15 octobre) |
 | **6** Extension internationale, voir plus bas | En dernier (décision du 25 octobre) | Jeton ENTSO-E et contours des zones de prix |
 
@@ -239,7 +240,7 @@ Inondations.
 
 ## Refonte de la carte et direction artistique (étude du 28 octobre, à valider)
 
-Proposition, rien n'est codé ni décidé hors du lot 0 (fait le 29 octobre). Elle garde les décisions en
+Lots 0 et A faits (29 et 30 octobre) ; le reste est une proposition. Elle garde les décisions en
 vigueur : ligne de commande, local, page HTML autonome qui s'ouvre hors ligne (pas de site web,
 pas de CDN), données publiques sourcées, « non disponible » plutôt qu'un chiffre inventé.
 
@@ -270,10 +271,10 @@ les cartes en relief de la presse de données.
 | Élément | Proposition | Pourquoi |
 |---|---|---|
 | Nom | « Où brancher mon entreprise » partout ; « Brancher ici ? » réservé au verdict | Fait le 29 octobre (lot 0) : la carte s'appelait « Atlas électrique », sa légende « Où se brancher » |
-| Fond | Papier clair (`#F4F1EA`), encre bleu nuit (`#14202B`) ; mer en bleu gris désaturé ; relief en ombrage gris chaud, pas de cônes | Même identité que le PDF (fond clair) ; lisible imprimé et en capture pour un comité de direction |
+| Fond | **Fait le 30 octobre** : papier clair (`#F4F1EA`), encre bleu nuit (`#14202B`), mer en bleu gris désaturé. Reste au lot E : relief en ombrage gris chaud, pas de cônes | Même identité que le PDF (fond clair) ; lisible imprimé et en capture pour un comité de direction |
 | Accent | Un seul : vert « décarboné » (`#2E7D5B`) pour ce qui est favorable et sourcé ; orange brûlé (`#C2571A`) pour « à vérifier » | Le vert porte le message bas-carbone ; l'or et le parchemin actuels évoquent un jeu de stratégie |
-| Note des cases | Échelle divergente orange brûlé → blanc → bleu-vert, contrôlée pour le daltonisme (deutéranopie, protanopie) | Le rouge → vert actuel est illisible pour environ 8 % des hommes |
-| Typographie | **Spectral** (Production Type, Paris ; SIL OFL) pour les titres, **Inter** (OFL, chiffres tabulaires) pour le texte et les nombres ; embarquées en base64 dans la page et enregistrées dans reportlab pour le PDF | Trajan Pro n'est installé presque nulle part (rendu différent d'un poste à l'autre) ; Helvetica du PDF n'a pas « ₂ » ni « ≥ », d'où la table de remplacement de `reporting/implantation_pdf.py` |
+| Note des cases | Écartée le 30 octobre : le rouge → blanc → vert est gardé (décision du porteur), malgré sa lecture difficile pour environ 8 % des hommes | — |
+| Typographie | **Fait le 30 octobre** : **Spectral** (Production Type, Paris ; SIL OFL) pour les titres, **Inter** (OFL, chiffres tabulaires) pour le texte et les nombres ; embarquées en base64 dans la page et enregistrées dans reportlab pour le PDF | Trajan Pro n'est installé presque nulle part (rendu différent d'un poste à l'autre) ; Helvetica du PDF n'a pas « ₂ » ni « ≥ », d'où la table de remplacement de `reporting/implantation_pdf.py` |
 | Maquettes | Gardées (centrales, fret, sites) mais en « maquette d'architecte » : blanc cassé mat, une seule couleur de filière en touche, ombres douces | Elles restent la signature de la carte ; moins de couleurs, plus de lisibilité |
 | Mouvement | Une arrivée de caméra (France → adresse, 1,5 s), transitions entre vues ; tout coupé sous `prefers-reduced-motion` | L'effet « avant-gardiste » vient de la mise en scène, pas de l'accumulation d'effets |
 | Interdits | Ni Marianne, ni bloc-marque, ni police Marianne du système de design de l'État | Réservés à l'État (charte de la marque État, loi de 1918 sur les sceaux) : l'outil n'est pas un service public |
@@ -282,9 +283,9 @@ Source unique des couleurs et polices : un module `reporting/charte.py` (constan
 `carte.html` en variables CSS et lu par `pdf.py`, `charts.py` et `implantation_charts.py`, au lieu
 des trois jeux de couleurs actuels (navy et or de la carte, gris et bleu du PDF, palette Tempo).
 
-**À décider avant le lot A** : fond clair (proposé) ou sombre actuel ; Spectral et Inter ou une
-autre paire sous licence OFL ; échelle de note daltonien-compatible à la place du rouge → vert
-(décision du 26 octobre à remplacer).
+Décidé le 30 octobre : fond clair, Spectral et Inter, échelle rouge → blanc → vert gardée.
+Faits au lot A : `reporting/charte.py` et les polices ; pas encore : les maquettes en « maquette
+d'architecte » et l'arrivée de caméra.
 
 ### three.js : ce qui sert le persona
 
@@ -333,7 +334,7 @@ mise à jour dans `docs/exemples/`.
 | Lot | Contenu | Validation |
 |---|---|---|
 | 0 | **Fait le 29 octobre** : captures et PDF pour 12 MW à Chilly-Mazarin, courbe d'exemple HTA, un seul nom, bandeau d'aide sur fond | relecture README et PLAN, `essentiel` sur les exemples |
-| A | `reporting/charte.py` ; polices embarquées ; PDF et graphiques sur la charte ; carte sur la charte en r128 | rendu identique sur deux postes ; PDF sans caractère remplacé |
+| A | **Fait le 30 octobre** : `reporting/charte.py` ; polices embarquées ; PDF et graphiques sur la charte ; carte sur la charte en r128 | polices chargées par le navigateur et non par le poste ; PDF sans caractère remplacé |
 | B | Prototype puis passage à three.js r186 (`WebGLRenderer`, `BatchedMesh` pour les maquettes) | carte sans requête réseau ; 60 images/s sur la métropole |
 | C | « Raccorder » selon la puissance : anneaux des domaines de tension, zones RTE en colonnes datées | 1, 12, 30 et 50 MW à Chilly-Mazarin et Dunkerque : gestionnaire conforme à `seuils_raccordement` |
 | D | `compare` épinglé sur la carte ; export d'image ; fiche sans WebGL | `compare` à 3 sites |
@@ -501,6 +502,7 @@ source ne fixe un nombre d'entretiens clients.
 | 29 oct. | Cohérence (lot 0) : exemples du README refaits sur l'exemple de référence ; captures prises par Chrome sans interface (`--headless=new`, rendu WebGL logiciel SwiftShader), la vue « Territoire » par un appel à `setLens` ajouté à une copie de la page, jamais au gabarit ; courbe d'exemple tirée de `profils_charge_reels` (industrie > 250 kVA) et mise à l'échelle d'une pointe de 12 MW, dite comme telle, à la place de la courbe de bureau. Au-delà de 36 kVA, `--courbe` ne chiffre pas l'énergie heure par heure (aucun prix horaire public, décision du 12 octobre) : la ligne renvoie au prix de la tranche et à l'acheminement sur la courbe |
 | 29 oct. | Voisinage du site (15) : API Géorisques à la demande, coupée par `--sans-risques`, en plus du rapport à l'adresse et indépendante de lui (l'un peut répondre sans l'autre). Rayons choisis par l'outil, aucun texte n'en fixe : argiles au point, cavités et sols pollués à 500 m (filtre de l'API, sans distance : SIS, SUP et instructions n'ont qu'un polygone), installations classées à 1 km, Seveso à 5 km ; seules les installations sous autorisation ou enregistrement « en exploitation avec titre » sont retenues (« Non ICPE » et « Autres régimes » n'ont ni titre ni état) ; un ancien site CASIAS n'est pas un sol pollué avéré. Le critère « risques » du verdict reste réglé par les plans de prévention (un Seveso seuil haut impose un PPRT, déjà compté) : le voisinage complète son détail (Seveso le plus proche, SIS) sans changer son état |
 | 29 oct. | Prochaines étapes en trois lots (A maintenant, B en attente, C incubateur) ; une étape terminée quitte « Suite » et ne reste que dans « État » et les décisions |
+| 30 oct. | Carte, lot A : direction « le relevé » sur fond papier clair (`#F4F1EA`), encre `#14202B`, vert `#2E7D5B`, orange `#C2571A`, dans `reporting/charte.py`, seule source des couleurs de la carte (variables CSS injectées, lues par la scène), du PDF et des graphiques ; Tempo garde ses couleurs. Spectral (titres) et Inter (texte, chiffres), licence OFL, depuis le dépôt Google Fonts, réduites au latin par fontTools, en base64 dans la page (`font-src data:`) et enregistrées dans reportlab et matplotlib ; la table de remplacement des glyphes du PDF disparaît. L'échelle de note rouge → blanc → vert du 26 octobre est gardée ; anneau des zones RTE et lien vers la zone à l'encre, plus en cyan additif (invisible sur papier) |
 
 ## Écarté
 

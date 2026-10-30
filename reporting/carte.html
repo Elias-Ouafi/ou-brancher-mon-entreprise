@@ -4,23 +4,25 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Où brancher mon entreprise</title>
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src data:">
 <style>
 /* Plein écran : carte 3D au fond, adresse en haut, verdict ou fiche en bas à gauche, lentilles en bas à droite */
+/*__CHARTE__*/
+/* Charte de reporting/charte.py : papier clair, encre bleu nuit, vert pour le favorable, orange pour « à vérifier » */
 :root {
-  --ink: #0d1a26;
-  --panel: #142334;
-  --panel-2: #1c3047;
-  --gold: #d6b26a;
-  --gold-dim: #8a7145;
-  --parch: #efe4c8;
-  --parch-dim: #b9ad90;
-  --good: #6fbf73;
-  --warn: #e3b341;
-  --bad: #d9573f;
-  --f-display: "Trajan Pro", "Palatino Linotype", Georgia, serif;
-  --f-body: "Segoe UI", system-ui, sans-serif;
-  color-scheme: dark;
+  --ink: var(--papier);
+  --panel: color-mix(in srgb, var(--papier) 70%, white);
+  --panel-2: var(--encart);
+  --gold: var(--encre);
+  --gold-dim: var(--filet);
+  --parch: var(--encre);
+  --parch-dim: var(--discret);
+  --good: var(--vert);
+  --warn: var(--orange);
+  --bad: #a8321f;
+  --f-display: var(--f-titre);
+  --f-body: var(--f-texte);
+  color-scheme: light;
 }
 html, body { height: 100%; margin: 0; }
 [hidden] { display: none !important; }
@@ -30,13 +32,13 @@ body { background: var(--ink); color: var(--parch); font-family: var(--f-body); 
 .vignette { position: fixed; inset: 0; pointer-events: none;
   background: radial-gradient(ellipse at 50% 45%, transparent 55%, color-mix(in srgb, var(--ink) 85%, transparent) 100%); }
 .frame { background: linear-gradient(180deg, var(--panel-2), var(--panel)); border: 1px solid var(--gold-dim);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 18%, transparent), 0 8px 28px color-mix(in srgb, var(--ink) 70%, transparent); }
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--encre) 14%, transparent); }
 button { font: inherit; }
 
 .topbar { position: fixed; top: 0; left: 0; right: 0; z-index: 5; display: flex; align-items: center; gap: 18px;
   padding: calc(8px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px));
   border-width: 0 0 1px; overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
-.brand { font-family: var(--f-display); font-weight: 700; letter-spacing: .08em; color: var(--gold); font-size: 15px; text-transform: uppercase; }
+.brand { font-family: var(--f-display); font-weight: 700; letter-spacing: .04em; color: var(--gold); font-size: 15px; text-transform: uppercase; }
 .res { overflow: hidden; text-overflow: ellipsis; font-weight: 700; }
 .sep { width: 1px; height: 22px; background: var(--gold-dim); opacity: .6; flex: none; }
 .chip { margin-left: auto; font-size: 12px; color: var(--parch-dim); border: 1px solid var(--gold-dim); padding: 2px 8px; border-radius: 10px; }
@@ -44,7 +46,7 @@ button { font: inherit; }
 .city { position: fixed; z-index: 4; left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   width: 340px; max-width: calc(100vw - 32px); border-radius: 4px; overflow: hidden; }
 .city header { padding: 10px 14px 9px; border-bottom: 1px solid var(--gold-dim); position: relative;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--rc, var(--gold)) 55%, var(--panel)), var(--panel-2)); }
+  background: linear-gradient(90deg, color-mix(in srgb, var(--rc, var(--gold)) 30%, var(--panel)), var(--panel-2)); }
 .city h2 { margin: 0; font-family: var(--f-display); font-size: 20px; letter-spacing: .04em; text-wrap: balance; padding-right: 24px; }
 .city .sub { font-size: 13px; opacity: .85; }
 .city .close { position: absolute; right: 8px; top: 8px; background: none; border: 0; color: var(--parch); font-size: 18px; cursor: pointer; line-height: 1; padding: 4px; }
@@ -55,7 +57,7 @@ button { font: inherit; }
 .y .k { font-size: 13.5px; color: var(--parch-dim); }
 .y .v { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
 .y .v small { font-weight: 400; color: var(--parch-dim); }
-.pill { display: inline-block; font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 1px 7px; border-radius: 9px; margin-left: 6px; }
+.pill { display: inline-block; white-space: nowrap; font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 1px 7px; border-radius: 9px; margin-left: 6px; }
 .pill.good { background: color-mix(in srgb, var(--good) 25%, transparent); color: var(--good); }
 .pill.bad { background: color-mix(in srgb, var(--bad) 25%, transparent); color: var(--bad); }
 .pill.warn { background: color-mix(in srgb, var(--warn) 22%, transparent); color: var(--warn); }
@@ -73,7 +75,7 @@ button { font: inherit; }
 .vues { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; max-width: 300px; }
 .vues button { background: var(--panel); color: var(--parch); border: 1px solid var(--gold-dim); border-radius: 12px; padding: 3px 10px; font-size: 12.5px; cursor: pointer; }
 .vues button:hover, .vues button:focus-visible { border-color: var(--gold); outline: none; }
-.vues button[aria-pressed="true"] { border-color: var(--gold); color: var(--gold); }
+.vues button[aria-pressed="true"] { border-color: var(--vert); color: var(--vert); }
 .legend { width: 280px; max-width: calc(100vw - 32px); padding: 10px 12px; border-radius: 4px; font-size: 12.5px; color: var(--parch-dim); }
 .legend h3 { margin: 0 0 6px; font-family: var(--f-display); font-size: 13px; letter-spacing: .08em; color: var(--gold); text-transform: uppercase; }
 .legend .bar { height: 10px; border-radius: 2px; margin: 4px 0 3px; border: 1px solid var(--gold-dim); }
@@ -90,8 +92,8 @@ button { font: inherit; }
   background: radial-gradient(circle at 35% 30%, var(--panel-2), var(--ink)); border: 2px solid var(--gold-dim); transition: border-color .2s, transform .2s; }
 .lens svg { width: 24px; height: 24px; }
 .lens:hover .disc { transform: translateY(-2px); }
-.lens[aria-pressed="true"] { color: var(--gold); }
-.lens[aria-pressed="true"] .disc { border-color: var(--gold); box-shadow: 0 0 14px color-mix(in srgb, var(--gold) 55%, transparent); }
+.lens[aria-pressed="true"] { color: var(--vert); }
+.lens[aria-pressed="true"] .disc { border-color: var(--vert); box-shadow: 0 0 0 3px color-mix(in srgb, var(--vert) 20%, transparent); }
 .lens:focus-visible { outline: none; }
 .lens:focus-visible .disc { outline: 2px solid var(--parch); outline-offset: 2px; }
 
@@ -104,7 +106,7 @@ button { font: inherit; }
 .banner .pr { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 11px; color: var(--ink); background: var(--gold); }
 .banner.p2 .pr { background: var(--parch-dim); }
 .banner .by { color: var(--parch-dim); font-variant-numeric: tabular-nums; }
-.banner.cible { border-color: var(--parch); box-shadow: 0 0 12px color-mix(in srgb, var(--gold) 60%, transparent); }
+.banner.cible { border-color: var(--vert); box-shadow: 0 0 0 3px color-mix(in srgb, var(--vert) 22%, transparent); }
 .banner.adresse { border-color: var(--bad); padding: 3px 10px; font-weight: 700; max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
 .tip { position: fixed; z-index: 6; pointer-events: none; padding: 6px 10px; border-radius: 3px; font-size: 13px; max-width: 260px; }
 .tip b { font-family: var(--f-display); font-size: 13.5px; letter-spacing: .03em; }
@@ -162,6 +164,7 @@ const REGION_COLORS = { "11": "#f2cf4a", "24": "#c0663f", "27": "#8e5fc2", "28":
 const MEDITERRANEE = new Set(["06", "11", "13", "30", "34", "66", "83", "84", "2A", "2B"]);
 
 const col = h => new THREE.Color(h).convertSRGBToLinear();
+const CHARTE = n => getComputedStyle(document.documentElement).getPropertyValue("--" + n).trim();
 const DEP = Object.fromEntries(DATA.departements.map(d => [d.c, d]));
 const GR = DATA.grilles, R = DATA.rayonScene, HW = Math.sqrt(3) * R, DZ = 1.5 * R, PS = R / 1.5;
 const centre = (g, c, r) => [GR[g].x0 + c * HW + (r & 1) * HW / 2, GR[g].z0 + r * DZ];
@@ -206,7 +209,7 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 host.appendChild(renderer.domElement);
-const scene = new THREE.Scene(); scene.background = col("#0d1a26"); scene.fog = new THREE.Fog(col("#0d1a26"), 120, 280);
+const scene = new THREE.Scene(); scene.background = col(CHARTE("papier")); scene.fog = new THREE.Fog(col(CHARTE("papier")), 120, 280);
 const camera = new THREE.PerspectiveCamera(42, 1, .5, 600);
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; controls.dampingFactor = .08; controls.screenSpacePanning = false;
@@ -217,7 +220,7 @@ scene.add(new THREE.HemisphereLight(col("#d7e6ff"), col("#4a3b2a"), .7));
 const sun = new THREE.DirectionalLight(col("#ffe4bd"), 1.05); sun.position.set(-45, 90, 35); sun.target.position.set(-45, 0, 0); scene.add(sun.target);
 sun.castShadow = true; Object.assign(sun.shadow.camera, { left: -130, right: 130, top: 90, bottom: -90, near: 10, far: 260 });
 sun.shadow.mapSize.set(4096, 4096); sun.shadow.bias = -.0008; scene.add(sun);
-const seabed = new THREE.Mesh(new THREE.PlaneGeometry(900, 900), new THREE.MeshStandardMaterial({ color: col("#16406e"), roughness: .9 }));
+const seabed = new THREE.Mesh(new THREE.PlaneGeometry(900, 900), new THREE.MeshStandardMaterial({ color: col(CHARTE("mer")), roughness: .9 }));
 seabed.rotation.x = -Math.PI / 2; seabed.position.y = -.05; seabed.receiveShadow = true; scene.add(seabed);
 // Soleil et fond marin suivent la carte affichée
 const soleil = (x, z) => { sun.position.set(x - 45, 90, z + 35); sun.target.position.set(x, 0, z); seabed.position.x = x; seabed.position.z = z; };
@@ -236,13 +239,13 @@ land.forEach((_, i) => writeTile(i));
 const waterMesh = new THREE.InstancedMesh(hexGeo, new THREE.MeshStandardMaterial({ roughness: .35, metalness: .1, flatShading: true }), water.length);
 waterMesh.receiveShadow = true; scene.add(waterMesh);
 water.forEach((t, i) => { const d = t.dist, h = d <= 1 ? .26 : d <= 3 ? .18 : .1; dummy.position.set(t.x, 0, t.z); dummy.scale.set(1, h, 1); dummy.updateMatrix(); waterMesh.setMatrixAt(i, dummy.matrix);
-  const c = col(d <= 1 ? "#4f9fd6" : d <= 3 ? "#2f78b8" : "#1d5690"); c.offsetHSL(0, 0, (hash(t.r, t.c) - .5) * .03); waterMesh.setColorAt(i, c); });
+  const c = col(CHARTE("mer")).offsetHSL(0, 0, d <= 1 ? .06 : d <= 3 ? .02 : -.02); c.offsetHSL(0, 0, (hash(t.r, t.c) - .5) * .03); waterMesh.setColorAt(i, c); });
 
-// Pays voisins en brouillard parchemin, comme les terres inexplorées
+// Pays voisins en gris papier, hors de la lecture
 const fogMesh = new THREE.InstancedMesh(hexGeo, new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true }), Math.max(fog.length, 1));
 fogMesh.count = fog.length; fogMesh.receiveShadow = true; scene.add(fogMesh);
 fog.forEach((t, i) => { dummy.position.set(t.x, 0, t.z); dummy.scale.set(1, .42 + hash(t.c, t.r) * .08, 1); dummy.updateMatrix(); fogMesh.setMatrixAt(i, dummy.matrix);
-  const c = col("#b8a57a"); c.offsetHSL(0, 0, (hash(t.r, t.c) - .5) * .05); fogMesh.setColorAt(i, c); });
+  const c = col(CHARTE("filet")); c.offsetHSL(0, 0, (hash(t.r, t.c) - .5) * .05); fogMesh.setColorAt(i, c); });
 
 // Montagnes selon l'altitude maximale : le relief pèse sur l'accès et les travaux
 const mountains = new THREE.Group(); scene.add(mountains);
@@ -275,7 +278,7 @@ class Band {
 const regionBand = new Band(1, .025), depBand = new Band(.28, .02), selBand = new Band(1, .05), hoverBand = new Band(.9, .06);
 const rE = [], dE = [];
 for (const t of land) for (let k = 0; k < 6; k++) { const n = nb(t, k);
-  if (!n || !n.land) rE.push({ i: t.i, k, w: .12 * PS, c: col("#e3d3a0") });
+  if (!n || !n.land) rE.push({ i: t.i, k, w: .12 * PS, c: col(CHARTE("papier")) });
   else if (n.reg !== t.reg) rE.push({ i: t.i, k, w: .3 * PS, c: col("#26323b") });
   else if (n.dep !== t.dep) dE.push({ i: t.i, k, w: .06 * PS, c: col("#ffffff") }); }
 regionBand.set(rE); depBand.set(dE);
@@ -287,7 +290,7 @@ const VERDICT = DATA.adresse && DATA.adresse.verdict;
 const followers = [];
 const markers = { sites: new THREE.Group(), zones: new THREE.Group(), liens: new THREE.Group() }; scene.add(markers.sites, markers.zones, markers.liens);
 const depTiles = {}; for (const t of land) (depTiles[t.dep] ||= []).push(t);
-const ringMat = new THREE.MeshBasicMaterial({ color: col("#7fe3ff"), transparent: true, opacity: .8, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false });
+const ringMat = new THREE.MeshBasicMaterial({ color: col(CHARTE("encre")), transparent: true, opacity: .8, side: THREE.DoubleSide, depthWrite: false });
 const zoneObjs = DATA.zones.map(z => ({ z, t: caseDe(z.case) })).filter(o => o.t && o.t.land);
 for (const { t } of zoneObjs) { const m = new THREE.Mesh(new THREE.RingGeometry(R * .9, R * 1.12, 6), ringMat.clone()); m.rotation.x = -Math.PI / 2; m.rotation.z = Math.PI / 6;
   m.position.set(t.x, 0, t.z); m.userData = { i: t.i, dy: .08, ring: true }; markers.zones.add(m); followers.push(m); }
@@ -304,8 +307,8 @@ const lienVers = (t, couleur, dh = 1.3) => { if (!adresseTile || !t) return; con
 // Une zone RTE peut compter plusieurs pôles : on relie le plus proche de l'adresse
 const ecart = o => Math.hypot(o.t.x - adresseTile.x, o.t.z - adresseTile.z);
 const zoneCible = VERDICT && adresseTile && zoneObjs.filter(o => o.z.n === VERDICT.zone).sort((a, b) => ecart(a) - ecart(b))[0], siteCible = VERDICT && DATA.sites.find(s => s.id === VERDICT.site);
-if (zoneCible) lienVers(zoneCible.t, "#7fe3ff");
-if (siteCible) lienVers(caseDe(siteCible.case), "#f1c75b", .5);
+if (zoneCible) lienVers(zoneCible.t, CHARTE("encre"));
+if (siteCible) lienVers(caseDe(siteCible.case), "#a07a22", .5);
 
 // Pôles de production en maquettes : la plus puissante d'une carte couvre les deux tiers de la case
 const FILIERES = {
@@ -442,7 +445,7 @@ if (adresseTile) addLabel(esc(DATA.adresse.libelle), "banner adresse", { g: adre
 const ramp = (stops, s) => { s = Math.max(0, Math.min(1, s)); const n = stops.length - 1, k = Math.min(n - 1, Math.floor(s * n)); return col(stops[k]).lerp(col(stops[k + 1]), s * n - k); };
 // Seule la vue de décision porte des fausses couleurs : rouge défavorable, blanc neutre, vert favorable
 const NOTE = ["#c0392b", "#e8a59a", "#f2f2ee", "#9fd19a", "#2e8b3e"];
-const TEINTES = [["#2f78b8", "mer"], ["#5f8f3e", "plaines et forêts"], ["#b0a35f", "garrigue"], ["#41632f", "forêts et collines"], ["#8f8c82", "montagne"], ["#f1f3f4", "neige"]];
+const TEINTES = [[CHARTE("mer"), "mer"], ["#5f8f3e", "plaines et forêts"], ["#b0a35f", "garrigue"], ["#41632f", "forêts et collines"], ["#8f8c82", "montagne"], ["#f1f3f4", "neige"]];
 // Note de chaque case, de -1 (défavorable) à +1 (favorable) : zone RTE prioritaire et site clé en main proches,
 // postes 400 kV, contraintes RTE prévues au-delà de la médiane (4 par département), carbone, équilibre régional et relief
 const enCases = (a, b) => Math.hypot(a.x - b.x, a.z - b.z) / HW;
@@ -459,7 +462,7 @@ for (const t of land) { const d = DEP[t.dep] || {}, r = [];
 const avis = n => n > .15 ? "favorable" : n < -.15 ? "défavorable" : "neutre";
 const LENS = {
   raccordement: { tile: t => [ramp(NOTE, (t.note + 1) / 2), t.baseH], show: ["sites", "zones", "liens", "production", "fret"],
-    legend: `<h3>Note des cases</h3><div class="bar" style="background:linear-gradient(90deg,${NOTE.join(",")})"></div><div class="ticks"><span>défavorable</span><span>neutre</span><span>favorable</span></div><p>Vert : zone de raccordement prioritaire RTE ou site clé en main à proximité, poste 400 kV dans le département. Rouge : contraintes RTE prévues, relief, électricité carbonée, région importatrice. Indicatif : seule une étude Enedis ou RTE fait foi.</p><p>Anneau bleu et bannière : zone prioritaire RTE (SDDR 2025). Hangar au drapeau doré : site clé en main France 2030. Maquettes : centrales d'au moins 200 MW (20 MW en Corse et outre-mer) ; ports (socle bleu), aéroports (socle gris-bleu) et chantiers rail-route (socle violet) au-delà d'un seuil de fret, détaillés dans la vue Territoire. Épingle rouge : votre adresse, reliée à la zone RTE utile et au site le plus proche.</p>` },
+    legend: `<h3>Note des cases</h3><div class="bar" style="background:linear-gradient(90deg,${NOTE.join(",")})"></div><div class="ticks"><span>défavorable</span><span>neutre</span><span>favorable</span></div><p>Vert : zone de raccordement prioritaire RTE ou site clé en main à proximité, poste 400 kV dans le département. Rouge : contraintes RTE prévues, relief, électricité carbonée, région importatrice. Indicatif : seule une étude Enedis ou RTE fait foi.</p><p>Anneau sombre et bannière : zone prioritaire RTE (SDDR 2025). Hangar au drapeau doré : site clé en main France 2030. Maquettes : centrales d'au moins 200 MW (20 MW en Corse et outre-mer) ; ports (socle bleu), aéroports (socle gris-bleu) et chantiers rail-route (socle violet) au-delà d'un seuil de fret, détaillés dans la vue Territoire. Épingle rouge : votre adresse, reliée à la zone RTE utile et au site le plus proche.</p>` },
   // Paysage réel : couleurs naturelles et relief IGN, sans note ; l'électricité du territoire passe par l'encart
   territoire: { tile: t => [t.biome, t.baseH], show: ["mountains", "production", "fret"],
     legend: () => `<h3>Territoire</h3><div class="teintes">${TEINTES.map(([c, n]) => `<span><i style="background:${c}"></i>${n}</span>`).join("")}</div><p>Couleurs naturelles, hauteur selon l'altitude moyenne (IGN).</p>${legendeElectricite()}${legendeProduction()}${legendeFret()}` },
@@ -493,9 +496,9 @@ function setLens(name) { lens = name; const L = LENS[name];
 // Verdict de l'adresse, ou fiche du département cliqué
 const ICON = {
   factory: '<svg viewBox="0 0 24 24"><path d="M3 21V11l5 3v-3l5 3v-3l5 3V4h3v17H3Z" fill="#e3892b"/></svg>',
-  pylon: '<svg viewBox="0 0 24 24"><path d="M12 2 7 22h2.2l1-4h3.6l1 4H17L12 2Zm-1.2 13 1.2-5 1.2 5h-2.4ZM5 7h14M6.5 11h11" stroke="#c9d1d6" stroke-width="1.7" fill="none"/></svg>',
+  pylon: '<svg viewBox="0 0 24 24"><path d="M12 2 7 22h2.2l1-4h3.6l1 4H17L12 2Zm-1.2 13 1.2-5 1.2 5h-2.4ZM5 7h14M6.5 11h11" stroke="#5b6670" stroke-width="1.7" fill="none"/></svg>',
   scale: '<svg viewBox="0 0 24 24"><path d="M12 3v17M6 20h12M4 7h16M4 7l-2.5 6h5L4 7Zm16 0-2.5 6h5L20 7Z" stroke="#58c4e6" stroke-width="1.7" fill="none"/></svg>',
-  euro: '<svg viewBox="0 0 24 24"><path d="M17.5 6.5A7 7 0 1 0 17.5 17.5M4 10.5h9M4 13.5h9" stroke="#d6b26a" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>',
+  euro: '<svg viewBox="0 0 24 24"><path d="M17.5 6.5A7 7 0 1 0 17.5 17.5M4 10.5h9M4 13.5h9" stroke="#8a6d2f" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>',
   leaf: '<svg viewBox="0 0 24 24"><path d="M4 20C4 10 10 4 20 4c0 10-6 16-16 16Z" fill="#6fbf73"/></svg>',
 };
 const PILL = { ok: ["good", "ok"], attention: ["warn", "à vérifier"], inconnu: ["neutre", "inconnu"], info: ["neutre", "info"] };
@@ -511,9 +514,9 @@ function showVerdict() { if (!VERDICT) return ficheVide(); selBand.set([]); city
     return `<div class="critere"><span class="k">${esc(c.nom)}<span class="pill ${cls}">${mot}</span></span><span class="v">${esc(c.valeur)}</span><span class="d">${esc(c.detail)}</span></div>`; }).join("")}</div>${LIMITE}`; }
 function showDep(code) { const d = DEP[code]; if (!d) return;
   const ts = depTiles[code] || [];
-  selBand.set(ringOf(ts, .26 * PS, col("#f6d27a")));
+  selBand.set(ringOf(ts, .26 * PS, col(CHARTE("encre"))));
   const eqPill = d.tc == null ? "" : d.tc >= 1 ? '<span class="pill good">excédent</span>' : '<span class="pill bad">importe</span>';
-  cityEl.style.setProperty("--rc", REGION_COLORS[d.r] || "#d6b26a");
+  cityEl.style.setProperty("--rc", REGION_COLORS[d.r] || CHARTE("encart"));
   cityEl.innerHTML = `<header><h2>${esc(d.n)}</h2><div class="sub">${esc(d.c)} · ${esc(d.rn)}</div><button class="close" aria-label="Fermer la fiche">×</button></header>
   <div class="yields">
     <div class="y">${ICON.factory}<span class="k">Conso. industrielle ${d.an || ""}</span><span class="v">${fmt(d.gwh)} GWh <small>${d.rk ? "rang " + d.rk + "/" + d.nc : ""}</small></span></div>
@@ -560,7 +563,7 @@ const detailFret = p => p.m === "port" ? `${fmt(p.v / 1e6, 1)} Mt de marchandise
   : `${fmt(p.ml / 1000, 1)} km de voies de manutention${p.eng ? " · " + esc(p.eng) : ""}</div><div>Capacité, pas un tonnage : aucun n'est publié`;
 const pickSite = () => { if (!markers.sites.visible) return null; const h = ray.intersectObject(markers.sites, true)[0]; return h ? h.object.userData.site : null; };
 renderer.domElement.addEventListener("pointermove", e => { if (e.pointerType !== "mouse") return; const i = pick(e);
-  if (i !== hovered) { hovered = i; hoverBand.set(i < 0 ? [] : ringOf([land[i]], .16 * PS, col("#ffffff"))); renderer.domElement.style.cursor = i < 0 ? "" : "pointer"; }
+  if (i !== hovered) { hovered = i; hoverBand.set(i < 0 ? [] : ringOf([land[i]], .16 * PS, col(CHARTE("discret")))); renderer.domElement.style.cursor = i < 0 ? "" : "pointer"; }
   const hub = pickHub(), fret = !hub && pickFret(), site = !hub && !fret && pickSite();
   if (fret) { tip.innerHTML = `<b>${esc(fret.n)}</b><div>${esc(NOM_FRET[fret.m])}</div><div>${detailFret(fret)}</div>`; tip.hidden = false;
     tip.style.left = Math.min(innerWidth - 270, e.clientX + 16) + "px"; tip.style.top = (e.clientY + 18) + "px"; return; }
