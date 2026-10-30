@@ -19,7 +19,7 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-from reporting import charts
+from reporting import charte, charts
 from reporting.data import Creneau, RapportMensuel
 from reporting.formats import NBSP, ligne_ecowatt, nom_mois
 from reporting.formats import co2 as _co2
@@ -31,40 +31,40 @@ from reporting.formats import nombre as _nombre
 from reporting.formats import plage as _plage
 from reporting.formats import prix as _prix
 
-ENCRE = colors.HexColor("#1F2933")
-DISCRET = colors.HexColor("#5F6B76")
-FILET = colors.HexColor("#D9DEE3")
-FOND = colors.HexColor("#F3F5F7")
-ACCENT = colors.HexColor("#2F6DB5")
-ALERTE = colors.HexColor("#D0312D")
-TEMPO = {
-    "bleu": colors.HexColor("#2F6DB5"),
-    "blanc": colors.HexColor("#B8BEC6"),
-    "rouge": colors.HexColor("#D0312D"),
-}
+charte.enregistrer_reportlab()
+TEXTE = charte.nom_reportlab(charte.TEXTE)
+TEXTE_GRAS = charte.nom_reportlab(charte.TEXTE, gras=True)
+TITRE_GRAS = charte.nom_reportlab(charte.TITRE, gras=True)
+ENCRE = colors.HexColor(charte.ENCRE)
+DISCRET = colors.HexColor(charte.DISCRET)
+FILET = colors.HexColor(charte.FILET)
+FOND = colors.HexColor(charte.ENCART)
+ACCENT = colors.HexColor(charte.VERT)
+ALERTE = colors.HexColor(charte.ORANGE)
+TEMPO = {nom: colors.HexColor(teinte) for nom, teinte in charte.TEMPO.items()}
 
 LARGEUR = A4[0] - 36 * mm
 
 _base = getSampleStyleSheet()
 STYLES = {
-    "titre": ParagraphStyle("titre", parent=_base["Title"], fontSize=20, leading=24,
-                            textColor=ENCRE, alignment=TA_LEFT, spaceAfter=2),
-    "sous_titre": ParagraphStyle("sous_titre", parent=_base["Normal"], fontSize=11,
-                                 textColor=DISCRET, spaceAfter=10),
-    "h1": ParagraphStyle("h1", parent=_base["Heading2"], fontSize=14, textColor=ENCRE,
-                         spaceBefore=10, spaceAfter=6),
-    "h2": ParagraphStyle("h2", parent=_base["Heading3"], fontSize=11, textColor=ENCRE,
-                         spaceBefore=8, spaceAfter=4),
-    "texte": ParagraphStyle("texte", parent=_base["Normal"], fontSize=9.5, leading=13,
-                            textColor=ENCRE, spaceAfter=6),
-    "note": ParagraphStyle("note", parent=_base["Normal"], fontSize=8, leading=11,
-                           textColor=DISCRET, spaceAfter=4),
-    "kpi_valeur": ParagraphStyle("kpi_valeur", parent=_base["Normal"], fontSize=14,
-                                 leading=17, textColor=ENCRE, fontName="Helvetica-Bold"),
-    "kpi_libelle": ParagraphStyle("kpi_libelle", parent=_base["Normal"], fontSize=8,
-                                  leading=10, textColor=DISCRET),
-    "cellule": ParagraphStyle("cellule", parent=_base["Normal"], fontSize=8.5, leading=11,
-                              textColor=ENCRE),
+    "titre": ParagraphStyle("titre", parent=_base["Title"], fontName=TITRE_GRAS, fontSize=20,
+                            leading=24, textColor=ENCRE, alignment=TA_LEFT, spaceAfter=2),
+    "sous_titre": ParagraphStyle("sous_titre", parent=_base["Normal"], fontName=TEXTE,
+                                 fontSize=11, textColor=DISCRET, spaceAfter=10),
+    "h1": ParagraphStyle("h1", parent=_base["Heading2"], fontName=TITRE_GRAS, fontSize=14,
+                         textColor=ENCRE, spaceBefore=10, spaceAfter=6),
+    "h2": ParagraphStyle("h2", parent=_base["Heading3"], fontName=TITRE_GRAS, fontSize=11,
+                         textColor=ENCRE, spaceBefore=8, spaceAfter=4),
+    "texte": ParagraphStyle("texte", parent=_base["Normal"], fontName=TEXTE, fontSize=9.5,
+                            leading=13, textColor=ENCRE, spaceAfter=6),
+    "note": ParagraphStyle("note", parent=_base["Normal"], fontName=TEXTE, fontSize=8,
+                           leading=11, textColor=DISCRET, spaceAfter=4),
+    "kpi_valeur": ParagraphStyle("kpi_valeur", parent=_base["Normal"], fontName=TEXTE_GRAS,
+                                 fontSize=14, leading=17, textColor=ENCRE),
+    "kpi_libelle": ParagraphStyle("kpi_libelle", parent=_base["Normal"], fontName=TEXTE,
+                                  fontSize=8, leading=10, textColor=DISCRET),
+    "cellule": ParagraphStyle("cellule", parent=_base["Normal"], fontName=TEXTE, fontSize=8.5,
+                              leading=11, textColor=ENCRE),
 }  # fmt: skip
 
 CO2 = "CO<sub>2</sub>"
@@ -86,7 +86,7 @@ def _tableau(entetes: list[str], lignes: list[list], largeurs: list[float]) -> T
     table.setStyle(
         TableStyle(
             [
-                ("FONT", (0, 0), (-1, 0), "Helvetica-Bold", 8.5),
+                ("FONT", (0, 0), (-1, 0), TEXTE_GRAS, 8.5),
                 ("TEXTCOLOR", (0, 0), (-1, 0), DISCRET),
                 ("LINEBELOW", (0, 0), (-1, 0), 0.8, ENCRE),
                 ("LINEBELOW", (0, 1), (-1, -1), 0.4, FILET),
@@ -114,7 +114,7 @@ def _kpis(cartes: list[tuple[str, str]], par_ligne: int = 3) -> Table:
             [
                 ("BACKGROUND", (0, 0), (-1, -1), FOND),
                 ("BOX", (0, 0), (-1, -1), 0.4, FILET),
-                ("INNERGRID", (0, 0), (-1, -1), 0.4, colors.white),
+                ("INNERGRID", (0, 0), (-1, -1), 0.4, colors.HexColor(charte.PAPIER)),
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
                 ("TOPPADDING", (0, 0), (-1, -1), 6),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
@@ -427,7 +427,7 @@ def _methodologie(rapport: RapportMensuel) -> list:
 def _pied_de_page(titre: str):
     def dessiner(canvas, document) -> None:
         canvas.saveState()
-        canvas.setFont("Helvetica", 7.5)
+        canvas.setFont(TEXTE, 7.5)
         canvas.setFillColor(DISCRET)
         canvas.drawString(18 * mm, 10 * mm, titre)
         canvas.drawRightString(A4[0] - 18 * mm, 10 * mm, f"page {document.page}")
