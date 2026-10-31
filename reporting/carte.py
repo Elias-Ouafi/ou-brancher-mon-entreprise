@@ -277,6 +277,14 @@ def placer_adresse(html: str, adresse: dict[str, Any] | None) -> str:
     return html
 
 
+# Reprend l'épingle d'une ancienne carte dans une carte refaite
+def reprendre_adresse(ancienne: str, nouvelle: str) -> str:
+    ligne = _LIGNE_ADRESSE.search(ancienne)
+    if ligne is None:
+        return nouvelle
+    return _LIGNE_ADRESSE.sub(lambda _: ligne.group(0), nouvelle, count=1)
+
+
 # GeoJSON du bronze, téléchargé à la première utilisation ; `None` si injoignable
 def _geojson(jeu: str, url: str, settings: Settings) -> Path | None:
     path = dernier_geojson(jeu, settings)
@@ -298,7 +306,7 @@ def _grilles(settings: Settings) -> list[Grille]:
     )
 
 
-def _chemin(settings: Settings, output: Path | None) -> Path:
+def chemin(settings: Settings, output: Path | None) -> Path:
     return output or Path(settings.reports_dir) / "carte.html"
 
 
@@ -324,14 +332,14 @@ def generer_carte(
             grilles, altitudes, gold, territoire=territoire, verdict_adresse=verdict_adresse
         )
     )
-    path = _chemin(settings, output)
+    path = chemin(settings, output)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(html, encoding="utf-8")
     return path
 
 
 # Plus ancienne que le warehouse, le gabarit ou les contours, la carte est refaite
-def _carte_a_jour(path: Path, settings: Settings) -> bool:
+def carte_a_jour(path: Path, settings: Settings) -> bool:
     if not path.exists() or MARQUEUR_ADRESSE not in path.read_text(encoding="utf-8"):
         return False
     sources = [Path(settings.duckdb_path), GABARIT, *(VENDOR / nom for nom in SCRIPTS)]
@@ -350,8 +358,8 @@ def mettre_a_jour_carte(
     output: Path | None = None,
 ) -> Path:
     settings = settings or get_settings()
-    path = _chemin(settings, output)
-    if not _carte_a_jour(path, settings):
+    path = chemin(settings, output)
+    if not carte_a_jour(path, settings):
         return generer_carte(
             settings=settings, territoire=territoire, verdict_adresse=verdict_adresse, output=path
         )
