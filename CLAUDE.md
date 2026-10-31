@@ -19,7 +19,7 @@ en sort pour devenir une ligne de « État » (skill `cloturer-etape`).
 `python .claude/scripts/verifier.py` joue dans l'ordre ce que la CI joue, puis l'essai réel :
 
 1. `ruff check .` et `ruff format --check .`
-2. `pytest` (569 tests sans réseau, dont un `dbt build` sur base synthétique)
+2. `pytest` (572 tests sans réseau, dont un `dbt build` sur base synthétique)
 3. essai réel : `essentiel` à Chilly-Mazarin, 12 MW et 70 000 MWh (warehouse et réseau requis)
 
 `--rapide` saute pytest, `--sans-essai` saute l'essai réel. Une étape du plan n'est cochée qu'après
