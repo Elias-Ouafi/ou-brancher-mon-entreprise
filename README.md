@@ -1,5 +1,16 @@
 # Où brancher mon entreprise
 
+> **Dire en une commande si un projet de 1 à 50 MW peut se brancher à une adresse française, qui
+> le raccordera, dans quel délai et à quel coût, à partir des seules données publiques.**
+
+**Pourquoi maintenant** : plus de 200 projets industriels, près de 33 GW, attendent un raccordement
+au réseau haute tension, près de trois fois la consommation actuelle de l'industrie française
+([RTE, 3 juillet 2026](https://www.rte-france.com/actualites/2026-07-03-reussir-electrification-france)).
+D'ici fin 2026, la file d'attente passe de « premier arrivé » à « premier prêt, premier servi » :
+choisir tôt un site raccordable devient un avantage (même source). Et la carte des capacités en
+soutirage de RTE est attendue au 1er janvier 2027 (délibération CRE 2026-173) : l'outil l'intégrera
+dès sa publication, à côté de ce qu'il rassemble déjà.
+
 **Une adresse française en entrée ; en sortie, la réponse à « puis-je brancher mon entreprise
 ici ? »** : qui raccorde et à quelle échéance, les risques de la commune, le carbone du réseau, la
 facture et le terrain prêt le plus proche. Données publiques uniquement, chaque chiffre avec sa
@@ -50,6 +61,18 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e . dbt-duckdb matplotlib reportlab pytest pytest-httpx ruff
 Copy-Item .env.example .env
 ```
+
+**Pour voir l'outil sans rien charger** (une démonstration pour un jury, par exemple) :
+
+```powershell
+.\.venv\Scripts\python.exe -m ingestion.cli demo
+```
+
+La commande construit une seule fois, dans `data/demo/`, la base synthétique des tests (une minute
+environ, sans réseau), puis répond `essentiel` pour un hub de recharge fictif de 2 MW place
+Bellecour à Lyon et ouvre la carte. Les lancements suivants prennent environ deux secondes. **Les
+chiffres sont fictifs** et la sortie le dit en première ligne ; seule la carte télécharge les
+contours des départements et le relief. Pour de vraies réponses, passez à l'étape 2.
 
 **2. Charger les données publiques** (deux minutes environ) :
 
@@ -111,6 +134,7 @@ Toutes s'écrivent `.\.venv\Scripts\python.exe -m ingestion.cli <commande>`.
 | `diagnose --adresse "…" [--puissance MW] [--conso MWh] [--activite data-center\|irve\|industrie\|logistique] [--courbe CSV] [--ca €] [--va €] [--surface m²] [--format pdf\|md\|json]` | Diagnostic complet : industrie locale, réseau, raccordement (dont la qualité de fourniture du département), prix, acheminement, carbone, risques et sismicité, voisinage (argiles, cavités à 500 m, Seveso à 5 km, installations classées à 1 km, sols pollués à 500 m), foncier (zone d'urbanisme, friches à moins de 10 km, zones d'activité à moins de 5 km, prix des locaux), eau (arrêtés de restriction du jour), desserte (temps vers le fret, autoroute), bâtiment et productible solaire, puis le verdict « brancher ici ? » critère par critère ; `--sans-risques` coupe tous les appels à la demande (Géorisques, urbanisme, eau, solaire, desserte, zones d'activité) |
 | `compare --adresse "A" --adresse "B" … [mêmes options que diagnose]` | 2 à 6 adresses côte à côte, sans classement, avec le prix des locaux et le verdict « brancher ici ? » de chacune ; `texte`, `md`, `csv`, `json` |
 | `carte [--adresse "…"] [--puissance MW] [--reconstruire]` | Carte 3D hors ligne (`data/reports/carte.html`) |
+| `demo [--sans-ouvrir]` | Démonstration sans `refresh` : `essentiel` et la carte sur la base synthétique des tests (`data/demo/`), chiffres fictifs dits comme tels |
 | `europe --adresse "…" [--conso MWh]` | Hors de France, dans l'UE : prix moyen du pays et carbone de sa production, comparés à la France à tranche égale (moyennes nationales) |
 | `refresh [--months 180]` | Met à jour toutes les sources, puis `dbt build` |
 | `tempo --month 2026-09` | Charge le calendrier Tempo du mois depuis l'API RTE (compte RTE requis, hors `refresh`) |

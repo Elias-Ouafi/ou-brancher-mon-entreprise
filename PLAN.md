@@ -1,6 +1,6 @@
 # Plan du projet
 
-> Mis à jour le 30 octobre 2026. Périmètre : la France (métropole, Corse, outre-mer), en ligne de
+> Mis à jour le 31 octobre 2026. Périmètre : la France (métropole, Corse, outre-mer), en ligne de
 > commande, en local et à la demande.
 
 Ce fichier porte l'état du projet, les étapes qui restent, les recherches qui les justifient et
@@ -95,6 +95,8 @@ voisinage du site (argiles, cavités, Seveso, installations classées, sols poll
 | Voisinage du site (étape 15, 29 octobre), à la demande par l'API Géorisques : argiles à l'adresse, cavités à moins de 500 m, établissements Seveso en exploitation à moins de 5 km (distance), installations classées sous autorisation ou enregistrement à moins de 1 km, sols pollués à moins de 500 m (SIS, SUP, sites en instruction, CASIAS) ; à Chilly-Mazarin : argiles fortes, SMCA (Seveso seuil bas) à 4,8 km, 2 installations classées, 11 anciens sites CASIAS | `GeorisquesClient.voisinage`, `completer_voisinage`, `lignes_voisinage` |
 | Charte commune (lot A de la refonte de la carte, 30 octobre) : papier clair et encre bleu nuit, vert pour le favorable, orange pour « à vérifier », Spectral et Inter embarquées (OFL) dans la carte, le PDF et les graphiques ; le PDF garde ₂, ≥ et → au lieu de les remplacer | `reporting/charte.py`, `reporting/polices/` |
 | Sortie réduite à la réponse (journal sous `--verbose`) ; avant tout chargement, la commande `refresh` à lancer | `ingestion/cli.py` |
+| Phrase de mission et « pourquoi maintenant » en tête du README (étape 21, 31 octobre) : 33 GW en attente de raccordement, file « premier prêt, premier servi », carte RTE du 1er janvier 2027 | `README.md` |
+| Démonstration sans `refresh` (étape 25, 31 octobre) : `demo` construit une fois la base synthétique des tests dans `data/demo/` (une minute environ, sans réseau), répond `essentiel` pour un hub de recharge fictif de 2 MW à Lyon, chiffres dits fictifs en première ligne, et ouvre la carte ; environ 2 s ensuite | `ingestion/demo.py`, `demo` |
 
 **À surveiller** :
 - **Géorisques** : l'API, coupée du 24 au 28 octobre, répond de nouveau. Le 29 octobre au soir,
@@ -127,9 +129,9 @@ n'est cochée qu'après ruff, pytest (dont `dbt build`) et un essai réel sur un
 (`python .claude/scripts/verifier.py`). Trois lots : A, à prendre maintenant ; B, en attente d'une
 source, d'une date ou d'une décision ; C, présenter le projet à un incubateur.
 
-**Ordre conseillé** : C21 (phrase de mission, sans code) ; C25 (démonstration rejouable, que les
-exemples du 29 octobre préparent) ; le lot A dans l'ordre ; puis les entretiens C23 **avant** les pistes nouvelles, que leurs
-réponses peuvent réordonner.
+**Ordre conseillé** : C21 et C25 faites le 31 octobre ; les décisions C26 et C28 et les entretiens
+C23, qui attendent le porteur du projet ; le lot A dans l'ordre ; les entretiens **avant** les
+pistes nouvelles, que leurs réponses peuvent réordonner.
 
 ### Lot A : à prendre maintenant
 
@@ -177,20 +179,22 @@ Rien à coder tant que la condition n'est pas levée.
 ### Lot C : présenter le projet à un incubateur
 
 Recherche du 29 octobre, détail dans « Ce que demandent les incubateurs ». Étapes surtout hors
-code ; seules 21 et 25 touchent au dépôt et suivent la règle des trois vérifications. Le dossier,
-le pitch et le Lean Canvas restent hors du dépôt (documentation limitée à README et PLAN) ; seules
-leurs conclusions reviennent ici.
+code ; seules 21 et 25 touchent au dépôt (faites le 31 octobre, voir « État »). Le dossier, le
+pitch et le Lean Canvas restent hors du dépôt (documentation limitée à README et PLAN) : une page
+privée du porteur du projet les rassemble depuis le 31 octobre. Seules leurs conclusions reviennent
+ici.
 
-| Ordre | Étape | Ce que l'incubateur demande | Application à l'outil |
+| Ordre | Étape | Où on en est (31 octobre) | Ce qui reste |
 |---|---|---|---|
-| 1 | **21** Phrase de mission et « pourquoi maintenant » en tête du README | Une phrase de mission, pas une liste de fonctions ; problème, solution, pourquoi maintenant (plan Sequoia) | Une phrase du type « dire en une commande si un projet de 1 à 50 MW peut se brancher à une adresse, quand et à quel coût » ; « pourquoi maintenant » appuyé sur des sources P : 33 GW en file d'attente (RTE, juillet 2026), file « premier prêt, premier servi » d'ici fin 2026, carte des capacités en soutirage attendue le 1er janvier 2027 |
-| 2 | **22** Lean Canvas en neuf blocs, chaque bloc écrit comme une hypothèse à tester | Format recommandé par Bpifrance Création pour les projets qui avancent par itération | Segments à départager : porteurs de data centers, opérateurs de recharge poids lourds, industriels, foncières logistiques, agences de développement économique ; les trois problèmes du persona (puissance et délai, foncier constructible, coût complet) ; indicateurs chiffrés ; avantage : tout est sourcé, daté et reproductible en local |
-| 3 | **23** Preuve du besoin : entretiens avec des porteurs de projets avant tout nouveau développement | « Comment savez-vous que les gens ont besoin de ce que vous faites ? » (question de candidature YC, relayée) ; le bloc « problème » se fonde sur des entretiens | Grille de questions tirée des manques du lot A (capacité réelle, pièces de maturité, chaleur fatale, eau) ; nombre d'entretiens à fixer, aucune source lue n'en donne ; noter pour chaque entretien le critère qui a décidé ou bloqué un site. Les réponses peuvent réordonner les lots A et B |
-| 4 | **24** Traction mesurée sans télémétrie | Chiffres concrets : utilisateurs, croissance, état du prototype | L'outil reste local : aucune collecte d'usage. Traction comptée à la main : essais réels avec un porteur de projet, retours écrits, issues et étoiles GitHub, adresses de recette couvertes (11 aujourd'hui) |
-| 5 | **25** Démonstration rejouable sans `refresh` de 180 mois | Station F demande une vidéo de présentation ; YC une vidéo des fondateurs ; MVP existant exigé (Station F) | Un mode démonstration sur la base synthétique des tests (`medallion_db`), dit comme tel dans la sortie, pour qu'un jury lance `essentiel` et la carte en quelques minutes ; vidéo de 1 à 2 min sur l'exemple de référence, hors dépôt |
-| 6 | **26** Modèle économique à décider | Bloc « revenus » du Lean Canvas et section « business model » du plan Sequoia | Pistes à trancher : outil libre (MIT) et études sur mesure, offre aux collectivités et agences de développement, licence d'usage. À vérifier d'abord : la réutilisation commerciale de chaque source (Licence Ouverte : permise ; ODbL des chantiers SNCF Réseau et de Nominatim : partage à l'identique des données dérivées) |
-| 7 | **27** Concurrence et alternatives | Concurrents directs et indirects, et comment les battre (plan Sequoia) | Tableau des alternatives : Caparéseau, France Foncier +, sites clés en main France 2030, Yottar (aucune source publique), cabinets de conseil en implantation, étude exploratoire de raccordement de RTE ou Enedis ; ce que chacun donne ou non par rapport à l'outil |
-| 8 | **28** Choix du programme et calendrier (relevé à la main, aucune planification) | Chaque programme a son thème, ses critères et ses dates | GreenTech Innovation et Station F Founders correspondent au sujet (transition écologique, projet tech avec MVP) ; vérifier les règlements en vigueur avant de candidater, les pages lues datent de 2018 à 2026 |
+| 1 | **26** Modèle économique | Trois pistes posées : outil libre (MIT, déjà le cas) et études sur mesure ; offre aux collectivités et agences de développement ; licence d'usage ou service en ligne, contraire à la décision « local, à la demande ». Réutilisation commerciale relevée source par source : Licence Ouverte 2.0 (ODRÉ, Enedis, EDF SEI, BAN, Géorisques, IGN, Etalab, Cartofriches, SDES, DGAC) et CC BY 4.0 (Ember, PVGIS, catalogue du JRC lu) la permettent en citant la source ; DVF interdit la réidentification des personnes ; ODbL (SNCF Réseau, Nominatim) impose le partage à l'identique d'une base dérivée diffusée | **Décision du porteur.** Avant de vendre : confirmation écrite de l'ADEME pour la Base Carbone (Licence Ouverte selon Datagir, relayé), conditions du portail RTE (Tempo, Ecowatt) et de VigiEau non trouvées |
+| 2 | **23** Entretiens avec des porteurs de projets, avant tout nouveau développement | Grille de huit questions (dernière recherche de site, critère décisif et bloquant, raccordement et étude exploratoire, pièces de maturité, eau et chaleur fatale, consommation par MW, coût de la recherche, démonstration sur un de leurs sites) et tableau de relevé prêts | **Les mener.** Nombre à fixer (aucune source n'en donne ; proposition de travail : 5 par segment, 20 au total) ; reporter les réponses dans le Lean Canvas ; elles peuvent réordonner les lots A et B |
+| 3 | **28** Choix du programme (relevé à la main, aucune planification) | GreenTech Innovation : édition 2026 close le 19 janvier 2026 (ouverte le 24 novembre 2025), appel 2027 pas publié au 31 octobre ; MVP et business plan demandés jusqu'ici. Station F Founders : 25 entreprises au plus par promotion, calendrier non confirmé (relayé). F/ai écarté (start-up natives de l'IA) | **Choix du porteur** ; relever à la main la page de GreenTech Innovation dès mi-novembre (si le calendrier se répète, à confirmer) et vérifier si une entreprise immatriculée est exigée ; lire la FAQ de Station F |
+| 4 | **22** Lean Canvas | Neuf blocs écrits en hypothèses, chacun avec son test | Le reprendre après les entretiens |
+| 5 | **24** Traction sans télémétrie | Relevé du 31 octobre : 11 adresses de recette, 63 pull requests fusionnées, 0 étoile, 0 issue, 0 essai réel avec un porteur | Tenir à la main essais réels et retours écrits |
+| 6 | **27** Concurrence et alternatives | Premier tableau : Caparéseau (production seulement avant 2027), cartographie et simulateur de raccordement d'Enedis (capacités BT et HTA, document de 2023 relayé, à recouper avec le portail client), étude exploratoire, sites clés en main et France Foncier +, sites « fast track » de l'État (26 sites, relayé), cabinets et agences, Yottar (aucune source). Aucun outil public trouvé ne rassemble raccordement, foncier, coût complet, carbone et risques à l'adresse | Compléter avec les alternatives citées en entretien |
+
+Vidéo de démonstration de 1 à 2 minutes, hors dépôt, sur l'exemple de référence réel : à tourner
+par le porteur (plan en cinq temps dans la page du dossier).
 
 ### Échéances à guetter
 
@@ -503,6 +507,7 @@ source ne fixe un nombre d'entretiens clients.
 | 29 oct. | Voisinage du site (15) : API Géorisques à la demande, coupée par `--sans-risques`, en plus du rapport à l'adresse et indépendante de lui (l'un peut répondre sans l'autre). Rayons choisis par l'outil, aucun texte n'en fixe : argiles au point, cavités et sols pollués à 500 m (filtre de l'API, sans distance : SIS, SUP et instructions n'ont qu'un polygone), installations classées à 1 km, Seveso à 5 km ; seules les installations sous autorisation ou enregistrement « en exploitation avec titre » sont retenues (« Non ICPE » et « Autres régimes » n'ont ni titre ni état) ; un ancien site CASIAS n'est pas un sol pollué avéré. Le critère « risques » du verdict reste réglé par les plans de prévention (un Seveso seuil haut impose un PPRT, déjà compté) : le voisinage complète son détail (Seveso le plus proche, SIS) sans changer son état |
 | 29 oct. | Prochaines étapes en trois lots (A maintenant, B en attente, C incubateur) ; une étape terminée quitte « Suite » et ne reste que dans « État » et les décisions |
 | 30 oct. | Carte, lot A : direction « le relevé » sur fond papier clair (`#F4F1EA`), encre `#14202B`, vert `#2E7D5B`, orange `#C2571A`, dans `reporting/charte.py`, seule source des couleurs de la carte (variables CSS injectées, lues par la scène), du PDF et des graphiques ; Tempo garde ses couleurs. Spectral (titres) et Inter (texte, chiffres), licence OFL, depuis le dépôt Google Fonts, réduites au latin par fontTools, en base64 dans la page (`font-src data:`) et enregistrées dans reportlab et matplotlib ; la table de remplacement des glyphes du PDF disparaît. L'échelle de note rouge → blanc → vert du 26 octobre est gardée ; anneau des zones RTE et lien vers la zone à l'encre, plus en cyan additif (invisible sur papier) |
+| 31 oct. | Démonstration (25) : `demo` réutilise tel quel le jeu synthétique des tests (`ingestion/tests/medallion.py`), sans copie à tenir à jour ; base construite une fois dans `data/demo/`, effacée si la construction échoue. Projet fictif de 2 MW et 15 000 MWh à Lyon plutôt que l'exemple de référence : la base synthétique n'a ni Chilly-Mazarin ni la tranche IF. Aucun géocodage (adresse fixe) ni appel à la demande ; seule la carte télécharge contours et relief, et la commande réussit sans elle. La ligne « plus de 45 jours, relancer refresh » reste : l'avertissement de première ligne dit que la base est fictive. Lot C : le dossier (Lean Canvas, grille d'entretiens, traction, modèle économique, concurrence, programmes) vit hors du dépôt, dans une page privée du porteur ; seules ses conclusions sont dans « Suite » |
 
 ## Écarté
 

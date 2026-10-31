@@ -54,7 +54,7 @@ from ingestion.pipeline import (
 logger = logging.getLogger("ingestion")
 
 # Commandes qui répondent à une question : seule la réponse s'affiche, sans journal technique
-QUESTIONS = frozenset({"essentiel", "diagnose", "compare", "carte", "europe", "geocode"})
+QUESTIONS = frozenset({"essentiel", "diagnose", "compare", "carte", "demo", "europe", "geocode"})
 
 COMMANDE_REFRESH = "python -m ingestion.cli refresh --months 180"
 
@@ -361,6 +361,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="refait toute la carte, même si ses données n'ont pas changé",
     )
 
+    demo = subparsers.add_parser(
+        "demo", help="démonstration sans refresh : essentiel et carte sur une base synthétique"
+    )
+    demo.add_argument(
+        "--sans-ouvrir", action="store_true", help="écrit la carte sans ouvrir le navigateur"
+    )
+
     europe = subparsers.add_parser(
         "europe", help="prix et carbone moyens d'un pays de l'UE, face à la France"
     )
@@ -616,6 +623,25 @@ def main(argv: list[str] | None = None) -> int:
             _signaler(f"Carte : {path}")
             if not args.sans_ouvrir:
                 webbrowser.open(path.resolve().as_uri())
+        case "demo":
+            import webbrowser
+
+            from ingestion import demo
+
+            if not demo.settings_demo().duckdb_path.exists():
+                _signaler("Préparation de la base de démonstration (une seule fois, 2 min environ)")
+            try:
+                settings_demo = demo.preparer_base()
+                diagnostic = lire_diagnostic(demo.TERRITOIRE, **demo.PROJET, settings=settings_demo)
+            except ECHECS_PREVUS as error:
+                return _echec(error)
+            diagnostic = avec_risques_locaux(diagnostic, settings=settings_demo)
+            print(demo.AVERTISSEMENT, end="\n\n")
+            print(formater_essentiel(diagnostic))
+            _placer_sur_carte(diagnostic, settings_demo)
+            carte_demo = settings_demo.reports_dir / "carte.html"
+            if carte_demo.exists() and not args.sans_ouvrir:
+                webbrowser.open(carte_demo.resolve().as_uri())
         case "europe":
             from ingestion.europe import formater_europe, lire_pays, localiser
 
