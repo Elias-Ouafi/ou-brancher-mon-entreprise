@@ -2537,6 +2537,21 @@ def completer_eau(diagnostic: Diagnostic, *, settings: Settings | None = None) -
     return replace(diagnostic, eau=eau)
 
 
+# Tous les appels à la demande de `diagnose` ; aucun ne fait échouer le diagnostic
+def completer_en_ligne(diagnostic: Diagnostic, *, settings: Settings | None = None) -> Diagnostic:
+    for completer in (
+        completer_risques,
+        completer_voisinage,
+        completer_urbanisme,
+        completer_eau,
+        completer_solaire,
+        completer_acces_routier,
+        completer_zones_activite,
+    ):
+        diagnostic = completer(diagnostic, settings=settings)
+    return diagnostic
+
+
 def formater_diagnostic(diagnostic: Diagnostic) -> str:
     lignes = [f"DIAGNOSTIC D'IMPLANTATION — {diagnostic.territoire.adresse}"]
     lignes += entete(diagnostic)

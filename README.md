@@ -84,8 +84,27 @@ Rien ne se met à jour tout seul : relancez `refresh` quand vous voulez des donn
 réponse affiche la date des données utilisées. Une question posée avant ce premier chargement, ou
 après un `refresh` interrompu, rappelle la commande à lancer.
 
-**3. Poser la question** pour votre adresse, avec la puissance du projet en MW et la consommation
-annuelle en MWh si vous les connaissez :
+**3. Ouvrir l'application**, qui fait tout depuis la carte, sans ligne de commande :
+
+```powershell
+.\.venv\Scripts\python.exe -m ingestion.cli app
+```
+
+Le navigateur s'ouvre sur `http://127.0.0.1:8770/`. Le parcours :
+1. saisir l'adresse du site en haut ;
+2. dans « Projet », indiquer la puissance, la consommation, l'activité, et si besoin la surface,
+   le chiffre d'affaires et la valeur ajoutée ; cocher « Diagnostic complet » pour interroger
+   aussi Géorisques, l'urbanisme, VigiEau, PVGIS et la desserte ;
+3. « Analyser » : la carte se recharge sur l'adresse avec le verdict « Brancher ici ? » ; une
+   adresse ambiguë propose les communes possibles ;
+4. « Lire le diagnostic », puis télécharger le rapport en PDF, Markdown ou JSON. Une copie reste
+   dans `data/reports/`, et le panneau donne la commande qui refait le même rapport.
+
+Le serveur n'écoute que sur la machine (127.0.0.1) et s'arrête par Ctrl+C. `--port` change le
+port.
+
+**Ou poser la question en ligne de commande** pour votre adresse, avec la puissance du projet en
+MW et la consommation annuelle en MWh si vous les connaissez :
 
 ```powershell
 .\.venv\Scripts\python.exe -m ingestion.cli essentiel --adresse "3 allée des peupliers 91380 Chilly-Mazarin" --puissance 12 --conso 70000
@@ -133,6 +152,7 @@ Toutes s'écrivent `.\.venv\Scripts\python.exe -m ingestion.cli <commande>`.
 | `essentiel --adresse "…" [--puissance MW] [--conso MWh] [--activite data-center\|irve\|industrie\|logistique] [--courbe CSV] [--ca €] [--va €] [--surface m²] [--format json]` | Réponse courte : prix, carbone, prix de vente des locaux d'activité (DVF) et verdict « brancher ici ? » ; avec `--puissance` et `--conso` au-delà de 36 kVA, la part acheminement (TURPE 7) de la facture ; `--courbe` lit l'export Enedis, `--ca` donne la part de la facture dans le chiffre d'affaires, `--va` l'électro-intensité fiscale (taux réduit d'accise dès 0,5 % de la valeur ajoutée), `--activite` le profil de charge (journée type mesurée par Enedis pour l'industrie, puissance constante sinon) et le régime d'accise de l'activité ; avec `--va` ou `--activite`, l'accise au tarif réduit de la loi de finances 2026 face au tarif normal (10 €/MWh au-delà du premier GWh pour un data center, 5,5, 3 ou 0,5 €/MWh selon le palier d'électro-intensité pour l'industrie), sous conditions |
 | `diagnose --adresse "…" [--puissance MW] [--conso MWh] [--activite data-center\|irve\|industrie\|logistique] [--courbe CSV] [--ca €] [--va €] [--surface m²] [--format pdf\|md\|json]` | Diagnostic complet : industrie locale, réseau, raccordement (dont la qualité de fourniture du département), prix, acheminement, carbone, risques et sismicité, voisinage (argiles, cavités à 500 m, Seveso à 5 km, installations classées à 1 km, sols pollués à 500 m), foncier (zone d'urbanisme, friches à moins de 10 km, zones d'activité à moins de 5 km, prix des locaux), eau (arrêtés de restriction du jour), desserte (temps vers le fret, autoroute), bâtiment et productible solaire, puis le verdict « brancher ici ? » critère par critère ; `--sans-risques` coupe tous les appels à la demande (Géorisques, urbanisme, eau, solaire, desserte, zones d'activité) |
 | `compare --adresse "A" --adresse "B" … [mêmes options que diagnose]` | 2 à 6 adresses côte à côte, sans classement, avec le prix des locaux et le verdict « brancher ici ? » de chacune ; `texte`, `md`, `csv`, `json` |
+| `app [--port 8770] [--sans-ouvrir]` | Application locale dans le navigateur : adresse et projet, verdict sur la carte, diagnostic, rapport PDF, Markdown ou JSON |
 | `carte [--adresse "…"] [--puissance MW] [--reconstruire]` | Carte 3D hors ligne (`data/reports/carte.html`) |
 | `demo [--sans-ouvrir]` | Démonstration sans `refresh` : `essentiel` et la carte sur la base synthétique des tests (`data/demo/`), chiffres fictifs dits comme tels |
 | `europe --adresse "…" [--conso MWh]` | Hors de France, dans l'UE : prix moyen du pays et carbone de sa production, comparés à la France à tranche égale (moyennes nationales) |
@@ -157,7 +177,8 @@ selon la proximité d'une zone prioritaire RTE et d'un site clé en main France 
 (anneau et bannière avec l'année de capacité), sites clés en main (maquette de hangar au drapeau doré), centrales en maquettes et adresse reliée
 à la zone RTE utile et au site le plus proche. Seule cette vue porte des fausses couleurs.
 « Territoire » montre le paysage réel : mer en bleu, plaines et forêts en vert, garrigue, montagnes
-grises et sommets enneigés, hauteur selon l'altitude IGN. Son encart donne le carbone du réseau
+grises et sommets enneigés, hauteur selon l'altitude IGN. Des bosquets y poussent : feuillus en plaine,
+conifères en altitude, oliviers en garrigue, jamais sur une case qui porte une maquette. Son encart donne le carbone du réseau
 (pastille « décarbonée » sous 100 g/kWh) et le prix moyen HTVA des entreprises, identique partout,
 de la plus petite à la plus grosse tranche de consommation. Elle porte aussi les pôles de production
 d'au moins 200 MW sur le continent et 20 MW en Corse et outre-mer (registre national), en maquettes
