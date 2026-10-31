@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Où brancher mon entreprise</title>
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src data:">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src data:; connect-src 'self'">
 <style>
 /* Plein écran : carte 3D au fond, adresse en haut, verdict ou fiche en bas à gauche, lentilles en bas à droite */
 /*__CHARTE__*/
@@ -29,11 +29,25 @@ html, body { height: 100%; margin: 0; }
 body { background: var(--ink); color: var(--parch); font-family: var(--f-body); font-size: 15px; overflow: hidden; }
 #scene { position: fixed; inset: 0; }
 #scene canvas { display: block; touch-action: none; }
+/* Touches solarpunk : lumière dorée qui entre par le haut, panneaux aux angles doux, feuillage en ornement */
 .vignette { position: fixed; inset: 0; pointer-events: none;
-  background: radial-gradient(ellipse at 50% 45%, transparent 55%, color-mix(in srgb, var(--ink) 85%, transparent) 100%); }
+  background: radial-gradient(circle at 8% -6%, color-mix(in srgb, var(--soleil) 24%, transparent), transparent 38%),
+    radial-gradient(ellipse at 50% 45%, transparent 55%, color-mix(in srgb, var(--ink) 85%, transparent) 100%); }
 .frame { background: linear-gradient(180deg, var(--panel-2), var(--panel)); border: 1px solid var(--gold-dim);
   box-shadow: 0 6px 20px color-mix(in srgb, var(--encre) 14%, transparent); }
+.city, .legend, .projet, .dossier, .tip { border-radius: 14px; }
 button { font: inherit; }
+.feuillage { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 40'%3E%3Cpath d='M0 34C30 34 44 20 70 22s34-14 50-18' fill='none' stroke='%236E9F4E' stroke-width='1.4' opacity='.55'/%3E%3Cpath d='M38 26c-2-7 3-12 10-12-1 7-4 11-10 12Zm30-3c1-7 7-10 13-9-2 6-6 9-13 9Zm24-11c3-6 9-7 14-5-3 5-8 7-14 5Z' fill='%236E9F4E' opacity='.45'/%3E%3C/svg%3E");
+  background-color: var(--panel); background-repeat: no-repeat; background-position: right 8px bottom 2px; background-size: 120px 40px; }
+.soleil { width: 18px; height: 18px; flex: none; }
+.btn { border: 1px solid var(--gold-dim); background: var(--panel); color: var(--parch); border-radius: 999px; padding: 5px 14px; font-size: 13px; cursor: pointer; }
+.btn:hover, .btn:focus-visible { border-color: var(--feuille); outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--soleil) 22%, transparent); }
+.btn.primaire { background: var(--vert); border-color: var(--vert); color: var(--papier); font-weight: 600; }
+.btn.primaire:hover, .btn.primaire:focus-visible { background: color-mix(in srgb, var(--vert) 85%, var(--soleil)); }
+.btn[disabled] { opacity: .55; cursor: progress; }
+@keyframes tourne { to { transform: rotate(360deg); } }
+.attente .soleil { animation: tourne 3s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .attente .soleil { animation: none; } }
 
 .topbar { position: fixed; top: 0; left: 0; right: 0; z-index: 5; display: flex; align-items: center; gap: 18px;
   padding: calc(8px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px));
@@ -42,9 +56,38 @@ button { font: inherit; }
 .res { overflow: hidden; text-overflow: ellipsis; font-weight: 700; }
 .sep { width: 1px; height: 22px; background: var(--gold-dim); opacity: .6; flex: none; }
 .chip { margin-left: auto; font-size: 12px; color: var(--parch-dim); border: 1px solid var(--gold-dim); padding: 2px 8px; border-radius: 10px; }
+.brand { display: inline-flex; align-items: center; gap: 8px; }
+.recherche { display: flex; align-items: center; gap: 8px; flex: 1 1 420px; min-width: 0; }
+.recherche input { flex: 1; min-width: 0; font: inherit; font-size: 14px; color: var(--parch); background: var(--papier); border: 1px solid var(--gold-dim); border-radius: 999px; padding: 6px 14px; }
+.recherche input:focus-visible { outline: none; border-color: var(--feuille); box-shadow: 0 0 0 3px color-mix(in srgb, var(--feuille) 22%, transparent); }
+body.app .topbar { flex-wrap: wrap; white-space: normal; overflow: visible; row-gap: 8px; }
+body.app .hint { top: calc(var(--haut, 60px) + 8px); }
+.projet { position: fixed; z-index: 6; top: calc(var(--haut, 52px) + 8px); left: max(16px, env(safe-area-inset-left, 0px)); width: 360px; max-width: calc(100vw - 32px);
+  padding: 12px 14px 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+.projet h3, .projet .large { grid-column: 1 / -1; }
+.projet h3 { margin: 0; font-family: var(--f-display); font-size: 17px; }
+.projet label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--parch-dim); }
+.projet input, .projet select { font: inherit; font-size: 14px; color: var(--parch); background: var(--papier); border: 1px solid var(--gold-dim); border-radius: 8px; padding: 5px 8px; }
+.projet input:focus-visible, .projet select:focus-visible { outline: none; border-color: var(--feuille); }
+.projet .case { flex-direction: row; align-items: flex-start; gap: 8px; color: var(--parch); font-size: 13px; line-height: 1.35; }
+.projet .case input { margin-top: 2px; }
+.projet p { margin: 0; font-size: 12px; color: var(--parch-dim); line-height: 1.4; }
+.etat { position: fixed; z-index: 6; top: calc(var(--haut, 52px) + 8px); left: 50%; transform: translateX(-50%); max-width: min(560px, calc(100vw - 32px));
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 14px; font-size: 13.5px; }
+.etat.erreur { border-color: var(--orange); }
+.etat .candidat { font-size: 12.5px; padding: 3px 10px; }
+.actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 14px; background: var(--panel); border-top: 1px solid var(--gold-dim); }
+.actions .note { flex-basis: 100%; font-size: 12px; color: var(--parch-dim); }
+.dossier { position: fixed; z-index: 7; top: calc(var(--haut, 52px) + 8px); right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  width: min(640px, calc(100vw - 32px)); display: flex; flex-direction: column; overflow: hidden; }
+.dossier header { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--gold-dim); }
+.dossier h2 { margin: 0; font-family: var(--f-display); font-size: 19px; flex: 1; }
+.dossier pre { margin: 0; padding: 12px 14px; overflow: auto; flex: 1; white-space: pre-wrap; font: 13px/1.5 var(--f-body); background: var(--panel); }
+.dossier footer { padding: 8px 14px; font-size: 12px; color: var(--parch-dim); border-top: 1px solid var(--gold-dim); overflow-wrap: anywhere; }
+.dossier footer code { font-size: 11.5px; }
 
 .city { position: fixed; z-index: 4; left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-  width: 340px; max-width: calc(100vw - 32px); border-radius: 4px; overflow: hidden; }
+  width: 340px; max-width: calc(100vw - 32px); max-height: calc(100vh - var(--haut, 52px) - 32px); overflow-y: auto; }
 .city header { padding: 10px 14px 9px; border-bottom: 1px solid var(--gold-dim); position: relative;
   background: linear-gradient(90deg, color-mix(in srgb, var(--rc, var(--gold)) 30%, var(--panel)), var(--panel-2)); }
 .city h2 { margin: 0; font-family: var(--f-display); font-size: 20px; letter-spacing: .04em; text-wrap: balance; padding-right: 24px; }
@@ -76,7 +119,7 @@ button { font: inherit; }
 .vues button { background: var(--panel); color: var(--parch); border: 1px solid var(--gold-dim); border-radius: 12px; padding: 3px 10px; font-size: 12.5px; cursor: pointer; }
 .vues button:hover, .vues button:focus-visible { border-color: var(--gold); outline: none; }
 .vues button[aria-pressed="true"] { border-color: var(--vert); color: var(--vert); }
-.legend { width: 280px; max-width: calc(100vw - 32px); padding: 10px 12px; border-radius: 4px; font-size: 12.5px; color: var(--parch-dim); }
+.legend { width: 280px; max-width: calc(100vw - 32px); max-height: calc(100vh - var(--haut, 52px) - 170px); overflow-y: auto; padding: 10px 12px; border-radius: 4px; font-size: 12.5px; color: var(--parch-dim); }
 .legend h3 { margin: 0 0 6px; font-family: var(--f-display); font-size: 13px; letter-spacing: .08em; color: var(--gold); text-transform: uppercase; }
 .legend .bar { height: 10px; border-radius: 2px; margin: 4px 0 3px; border: 1px solid var(--gold-dim); }
 .legend .ticks { display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; color: var(--parch); }
@@ -107,7 +150,7 @@ button { font: inherit; }
 .banner.p2 .pr { background: var(--parch-dim); }
 .banner .by { color: var(--parch-dim); font-variant-numeric: tabular-nums; }
 .banner.cible { border-color: var(--vert); box-shadow: 0 0 0 3px color-mix(in srgb, var(--vert) 22%, transparent); }
-.banner.adresse { border-color: var(--bad); padding: 3px 10px; font-weight: 700; max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+.banner.adresse { border-color: var(--soleil); box-shadow: 0 0 0 3px color-mix(in srgb, var(--soleil) 25%, transparent); padding: 3px 10px; font-weight: 700; max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
 .tip { position: fixed; z-index: 6; pointer-events: none; padding: 6px 10px; border-radius: 3px; font-size: 13px; max-width: 260px; }
 .tip b { font-family: var(--f-display); font-size: 13.5px; letter-spacing: .03em; }
 .tip div { color: var(--parch-dim); }
@@ -119,6 +162,7 @@ button { font: inherit; }
   .city { bottom: calc(100px + env(safe-area-inset-bottom, 0px)); width: auto; right: max(16px, env(safe-area-inset-right, 0px)); max-height: 55vh; overflow-y: auto; }
   .city .y { padding: 5px 12px; }
   .legend, .hint, .chip { display: none; }
+  body.app .topbar .sep { display: none; }
   .lenses { left: max(16px, env(safe-area-inset-left, 0px)); align-items: center; }
   .vues { justify-content: center; max-width: none; }
   .rlabel { font-size: 10px; letter-spacing: .14em; }
@@ -132,11 +176,33 @@ button { font: inherit; }
 <div id="labels"></div>
 
 <div class="topbar frame">
-  <span class="brand">Où brancher mon entreprise</span>
+  <span class="brand"><svg class="soleil" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="#D9971E"/><path d="M12 1.8v3M12 19.2v3M1.8 12h3M19.2 12h3M4.8 4.8l2.1 2.1M17.1 17.1l2.1 2.1M4.8 19.2l2.1-2.1M17.1 6.9l2.1-2.1" stroke="#D9971E" stroke-width="1.8" stroke-linecap="round"/><path d="M12 16.5c0-3 1.6-4.6 4.2-4.8-.2 2.9-1.8 4.6-4.2 4.8Z" fill="#6E9F4E"/></svg>Où brancher mon entreprise</span>
   <span class="sep"></span>
-  <span class="res" id="adr">Aucune adresse : lancer essentiel ou carte --adresse</span>
+  <span class="res" id="adr">Aucune adresse : lancer python -m ingestion.cli app, puis choisir une adresse</span>
+  <form class="recherche" id="recherche" hidden>
+    <input id="q" name="adresse" aria-label="Adresse du site" type="search" autocomplete="street-address" placeholder="Adresse du site, par exemple 3 allée des Peupliers 91380 Chilly-Mazarin" required>
+    <button class="btn" type="button" id="ouvrirProjet" aria-expanded="false" aria-controls="projet">Projet</button>
+    <button class="btn primaire" type="submit" id="analyser">Analyser</button>
+  </form>
   <span class="chip" id="genere"></span>
 </div>
+<form class="projet frame feuillage" id="projet" hidden>
+  <h3>Votre projet</h3>
+  <label>Puissance (MW)<input id="puissance_mw" inputmode="decimal" placeholder="12"></label>
+  <label>Consommation (MWh/an)<input id="conso_mwh" inputmode="decimal" placeholder="70 000"></label>
+  <label class="large">Activité<select id="activite"><option value="">Non précisée</option><option value="data-center">Data center</option><option value="irve">Bornes de recharge</option><option value="industrie">Industrie</option><option value="logistique">Logistique</option></select></label>
+  <label>Surface (m²)<input id="surface_m2" inputmode="decimal" placeholder="coût d'achat"></label>
+  <label>Chiffre d'affaires (€)<input id="ca_eur" inputmode="decimal"></label>
+  <label class="large">Valeur ajoutée (€)<input id="va_eur" inputmode="decimal" placeholder="électro-intensité, accise réduite"></label>
+  <label class="case large"><input type="checkbox" id="complet">Diagnostic complet : interroge aussi Géorisques, l'urbanisme, VigiEau, PVGIS et la desserte (20 s environ, réseau requis)</label>
+  <p class="large">Laissez vide ce que vous ne connaissez pas : l'outil dit « non disponible » plutôt que de deviner. Le chiffre d'affaires et la valeur ajoutée demandent la consommation.</p>
+</form>
+<div class="etat frame" id="etat" role="status" hidden></div>
+<section class="dossier frame" id="dossier" aria-label="Diagnostic" hidden>
+  <header class="feuillage"><h2 id="dossierTitre">Diagnostic</h2><button class="btn" type="button" id="relancerComplet" hidden>Diagnostic complet</button><button class="btn" type="button" data-format="pdf">PDF</button><button class="btn" type="button" id="fermerDossier" aria-label="Fermer le diagnostic">×</button></header>
+  <pre id="dossierTexte"></pre>
+  <footer id="dossierPied"></footer>
+</section>
 <div class="hint">Glisser pour se déplacer · clic droit pour pivoter · molette pour zoomer · cliquer sur une case</div>
 
 <aside class="city frame" id="city" aria-live="polite"></aside>
@@ -155,6 +221,8 @@ button { font: inherit; }
 <script>
 const DATA = /*__DONNEES__*/null;
 DATA.adresse = /*__ADRESSE__*/null;
+// Vrai seulement quand `app` sert la page : en file://, la carte reste en lecture seule
+const APP = /*__APP__*/false;
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const fmt = (v, d = 0) => v == null ? "n.d." : Number(v).toLocaleString("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d });
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
@@ -216,8 +284,8 @@ controls.enableDamping = true; controls.dampingFactor = .08; controls.screenSpac
 controls.minDistance = 10; controls.maxDistance = 190; controls.minPolarAngle = .3; controls.maxPolarAngle = 1.08;
 controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
 controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE };
-scene.add(new THREE.HemisphereLight(col("#d7e6ff"), col("#4a3b2a"), .7));
-const sun = new THREE.DirectionalLight(col("#ffe4bd"), 1.05); sun.position.set(-45, 90, 35); sun.target.position.set(-45, 0, 0); scene.add(sun.target);
+scene.add(new THREE.HemisphereLight(col("#e4efd6"), col("#4a3b2a"), .72));
+const sun = new THREE.DirectionalLight(col("#ffd9a3"), 1.1); sun.position.set(-45, 90, 35); sun.target.position.set(-45, 0, 0); scene.add(sun.target);
 sun.castShadow = true; Object.assign(sun.shadow.camera, { left: -130, right: 130, top: 90, bottom: -90, near: 10, far: 260 });
 sun.shadow.mapSize.set(4096, 4096); sun.shadow.bias = -.0008; scene.add(sun);
 const seabed = new THREE.Mesh(new THREE.PlaneGeometry(900, 900), new THREE.MeshStandardMaterial({ color: col(CHARTE("mer")), roughness: .9 }));
@@ -295,10 +363,14 @@ const zoneObjs = DATA.zones.map(z => ({ z, t: caseDe(z.case) })).filter(o => o.t
 for (const { t } of zoneObjs) { const m = new THREE.Mesh(new THREE.RingGeometry(R * .9, R * 1.12, 6), ringMat.clone()); m.rotation.x = -Math.PI / 2; m.rotation.z = Math.PI / 6;
   m.position.set(t.x, 0, t.z); m.userData = { i: t.i, dy: .08, ring: true }; markers.zones.add(m); followers.push(m); }
 const adresseTile = DATA.adresse ? caseDe(DATA.adresse.case) : null;
-if (adresseTile) { const g = new THREE.Group(), rouge = new THREE.MeshStandardMaterial({ color: col("#d9573f"), emissive: col("#5a160c"), roughness: .4 });
-  const tige = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, 2.2 * PS, 6), rouge); tige.position.y = 1.1 * PS; g.add(tige);
-  const tete = new THREE.Mesh(new THREE.SphereGeometry(.32 * PS, 12, 10), rouge); tete.position.y = 2.3 * PS; g.add(tete);
-  g.children.forEach(m => m.castShadow = true); g.position.set(adresseTile.x, 0, adresseTile.z); g.userData = { i: adresseTile.i }; scene.add(g); followers.push(g); }
+if (adresseTile) { const g = new THREE.Group(), tigeMat = new THREE.MeshStandardMaterial({ color: col(CHARTE("feuille")), roughness: .6 });
+  const soleilMat = new THREE.MeshStandardMaterial({ color: col(CHARTE("soleil")), emissive: col(CHARTE("soleil")), emissiveIntensity: .55, roughness: .35 });
+  const tige = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, 2.2 * PS, 6), tigeMat); tige.position.y = 1.1 * PS; g.add(tige);
+  const feuille = new THREE.Mesh(new THREE.SphereGeometry(.2 * PS, 8, 6), tigeMat); feuille.scale.set(1.4, .35, .7); feuille.position.set(.18 * PS, 1.2 * PS, 0); feuille.rotation.z = .5; g.add(feuille);
+  const tete = new THREE.Mesh(new THREE.SphereGeometry(.32 * PS, 16, 12), soleilMat); tete.position.y = 2.3 * PS; g.add(tete);
+  const halo = new THREE.Mesh(new THREE.RingGeometry(.42 * PS, .5 * PS, 24), new THREE.MeshBasicMaterial({ color: col(CHARTE("soleil")), transparent: true, opacity: .6, side: THREE.DoubleSide, depthWrite: false }));
+  halo.position.y = 2.3 * PS; g.add(halo); g.userData.halo = halo;
+  g.children.forEach(m => m.castShadow = m !== halo); g.position.set(adresseTile.x, 0, adresseTile.z); g.userData = { i: adresseTile.i }; scene.add(g); followers.push(g); }
 // Arc lumineux de l'adresse vers la zone RTE utile et vers le site clé en main le plus proche
 const lienVers = (t, couleur, dh = 1.3) => { if (!adresseTile || !t) return; const a = adresseTile, ha = a.baseH + 2.3 * PS, hb = t.baseH + dh * PS;
   const haut = Math.max(ha, hb) + 1.5 * PS + Math.hypot(t.x - a.x, t.z - a.z) * .25;
@@ -308,7 +380,7 @@ const lienVers = (t, couleur, dh = 1.3) => { if (!adresseTile || !t) return; con
 const ecart = o => Math.hypot(o.t.x - adresseTile.x, o.t.z - adresseTile.z);
 const zoneCible = VERDICT && adresseTile && zoneObjs.filter(o => o.z.n === VERDICT.zone).sort((a, b) => ecart(a) - ecart(b))[0], siteCible = VERDICT && DATA.sites.find(s => s.id === VERDICT.site);
 if (zoneCible) lienVers(zoneCible.t, CHARTE("encre"));
-if (siteCible) lienVers(caseDe(siteCible.case), "#a07a22", .5);
+if (siteCible) lienVers(caseDe(siteCible.case), CHARTE("soleil"), .5);
 
 // Pôles de production en maquettes : la plus puissante d'une carte couvre les deux tiers de la case
 const FILIERES = {
@@ -417,14 +489,30 @@ for (const p of DATA.fret || []) { const t = caseDe(p.case); if (!t || !t.land) 
   g.userData = { i: t.i }; g.traverse(o => o.userData.fret = p); markers.fret.add(g); followers.push(g); fretObjs.push({ p, t }); }
 
 // Site clé en main en maquette posée sur sa case : dalle viabilisée, hangar, bureaux, mât au drapeau doré
-const SITE = { dalle: mat("#cdc6b0"), murs: mat("#b9c2c8"), toit: mat("#5f6b73"), bureaux: mat("#e9e4d6"), mat: mat("#d8d4cb"), or: mat("#f1c75b", { emissive: col("#7a5410"), emissiveIntensity: .6 }) };
+const SITE = { dalle: mat("#cdc6b0"), murs: mat("#b9c2c8"), toit: mat("#6E9F4E"), pv: mat("#2f5f8f", { metalness: .35, roughness: .4 }), bureaux: mat("#e9e4d6"), mat: mat("#d8d4cb"), or: mat("#f1c75b", { emissive: col("#7a5410"), emissiveIntensity: .6 }) };
 for (const s of DATA.sites) { const t = caseDe(s.case); if (!t || !t.land) continue; const { d, x, z } = place(t), g = new THREE.Group(), e = d * .8;
   g.add(piece(socleGeo, SITE.or, 0, 0, 0), piece(boite, SITE.dalle, 0, .035, 0, .8, .02, .6),
     piece(boite, SITE.murs, -.1, .055, .04, .44, .16, .3), piece(boite, SITE.toit, -.1, .215, .04, .46, .03, .32),
+    ...[-.24, -.1, .04].map(x => { const p = piece(boite, SITE.pv, x, .245, .04, .12, .015, .26); p.rotation.z = -.35; return p; }),
     piece(boite, SITE.bureaux, .22, .055, -.14, .16, .12, .14), piece(cyl, SITE.mat, .3, .055, .18, .02, .42, .02), piece(boite, SITE.or, .37, .38, .18, .14, .08, .01));
   g.children[0].castShadow = false; g.scale.set(e, e, e);
   g.position.set(x, 0, z); g.rotation.y = hash(t.r, t.c) * .8 - .4;
   g.userData = { i: t.i }; g.traverse(o => o.userData.site = s); markers.sites.add(g); followers.push(g); }
+
+// Bosquets de la vue Territoire : feuillus en plaine, conifères en altitude, oliviers en garrigue ;
+// aucun sur une case qui porte une maquette, pour ne rien masquer
+markers.vegetation = new THREE.Group(); scene.add(markers.vegetation);
+const troncs = [], feuillus = [], coniferes = [];
+for (const t of land) { if (nCase[t.i] || t.alt > 1700) continue;
+  const n = t.alt > 300 ? 3 : MEDITERRANEE.has(t.dep) ? 1 : 2, haut = t.alt > 900;
+  for (let j = 0; j < n; j++) { if (hash(t.c * 3 + j, t.r) < .35) continue;
+    const a = hash(t.r + j, t.c) * 6.283, d = (.25 + .45 * hash(t.c, t.r + j)) * R, x = t.x + Math.cos(a) * d, z = t.z + Math.sin(a) * d;
+    const s = (.42 + .2 * hash(j, t.c + t.r)) * PS, y = t.baseH;
+    const teinte = col(haut ? "#2f5530" : MEDITERRANEE.has(t.dep) ? "#7d8c45" : "#3f6f35").offsetHSL(0, 0, (hash(x, z) - .5) * .08);
+    troncs.push({ x, y, z, sx: s * .18, sy: s * .8 });
+    if (haut) coniferes.push({ x, y: y + s * .35, z, sx: s * .6, sy: s * 1.5, c: teinte });
+    else feuillus.push({ x, y: y + s * .95, z, sx: s * .75, sy: s * .7, c: teinte }); } }
+instanced(cyl, "#6b4f2a", troncs, markers.vegetation); instanced(cone, null, coniferes, markers.vegetation); instanced(bulle, null, feuillus, markers.vegetation);
 
 // Étiquettes et bannières projetées en HTML
 const labelsEl = document.getElementById("labels"), labels = [];
@@ -462,9 +550,9 @@ for (const t of land) { const d = DEP[t.dep] || {}, r = [];
 const avis = n => n > .15 ? "favorable" : n < -.15 ? "défavorable" : "neutre";
 const LENS = {
   raccordement: { tile: t => [ramp(NOTE, (t.note + 1) / 2), t.baseH], show: ["sites", "zones", "liens", "production", "fret"],
-    legend: `<h3>Note des cases</h3><div class="bar" style="background:linear-gradient(90deg,${NOTE.join(",")})"></div><div class="ticks"><span>défavorable</span><span>neutre</span><span>favorable</span></div><p>Vert : zone de raccordement prioritaire RTE ou site clé en main à proximité, poste 400 kV dans le département. Rouge : contraintes RTE prévues, relief, électricité carbonée, région importatrice. Indicatif : seule une étude Enedis ou RTE fait foi.</p><p>Anneau sombre et bannière : zone prioritaire RTE (SDDR 2025). Hangar au drapeau doré : site clé en main France 2030. Maquettes : centrales d'au moins 200 MW (20 MW en Corse et outre-mer) ; ports (socle bleu), aéroports (socle gris-bleu) et chantiers rail-route (socle violet) au-delà d'un seuil de fret, détaillés dans la vue Territoire. Épingle rouge : votre adresse, reliée à la zone RTE utile et au site le plus proche.</p>` },
+    legend: `<h3>Note des cases</h3><div class="bar" style="background:linear-gradient(90deg,${NOTE.join(",")})"></div><div class="ticks"><span>défavorable</span><span>neutre</span><span>favorable</span></div><p>Vert : zone de raccordement prioritaire RTE ou site clé en main à proximité, poste 400 kV dans le département. Rouge : contraintes RTE prévues, relief, électricité carbonée, région importatrice. Indicatif : seule une étude Enedis ou RTE fait foi.</p><p>Anneau sombre et bannière : zone prioritaire RTE (SDDR 2025). Hangar au drapeau doré : site clé en main France 2030. Maquettes : centrales d'au moins 200 MW (20 MW en Corse et outre-mer) ; ports (socle bleu), aéroports (socle gris-bleu) et chantiers rail-route (socle violet) au-delà d'un seuil de fret, détaillés dans la vue Territoire. Épingle au soleil : votre adresse, reliée à la zone RTE utile et au site le plus proche.</p>` },
   // Paysage réel : couleurs naturelles et relief IGN, sans note ; l'électricité du territoire passe par l'encart
-  territoire: { tile: t => [t.biome, t.baseH], show: ["mountains", "production", "fret"],
+  territoire: { tile: t => [t.biome, t.baseH], show: ["mountains", "vegetation", "production", "fret"],
     legend: () => `<h3>Territoire</h3><div class="teintes">${TEINTES.map(([c, n]) => `<span><i style="background:${c}"></i>${n}</span>`).join("")}</div><p>Couleurs naturelles, hauteur selon l'altitude moyenne (IGN).</p>${legendeElectricite()}${legendeProduction()}${legendeFret()}` },
 };
 // Carbone et prix moyen de la carte affichée : le prix est le même partout, seule la consommation le fait varier
@@ -506,12 +594,15 @@ const LIMITE = '<div class="limit"><b>Limite :</b> la capacité de raccordement 
 const cityEl = document.getElementById("city");
 const ficheVide = () => { selBand.set([]); cityEl.style.removeProperty("--rc");
   const ts = land.filter(t => t.g === carte), deps = new Set(ts.map(t => t.dep)).size;
-  cityEl.innerHTML = `<header><h2>${esc(nomCarte(carte))}</h2><div class="sub">${ts.length} cases · ${deps} département${deps > 1 ? "s" : ""}</div></header><div class="vide">Cliquez sur une case pour afficher les indicateurs de son département. Changez de carte ou de lentille en bas à droite (touches 1 et 2 pour les lentilles).</div>`; };
+  cityEl.innerHTML = `<header><h2>${esc(nomCarte(carte))}</h2><div class="sub">${ts.length} cases · ${deps} département${deps > 1 ? "s" : ""}</div></header><div class="vide">${APP ? "Saisissez l'adresse du site en haut, réglez le projet si besoin, puis Analyser. " : "Pour choisir une adresse depuis la carte : python -m ingestion.cli app. "}Cliquez sur une case pour afficher les indicateurs de son département. Changez de carte ou de lentille en bas à droite (touches 1 et 2 pour les lentilles).</div>`; };
 function showVerdict() { if (!VERDICT) return ficheVide(); selBand.set([]); cityEl.style.removeProperty("--rc");
   cityEl.innerHTML = `<header><h2>Brancher ici ?</h2><div class="sub">${esc(DATA.adresse.libelle)}</div></header>
   <div class="verdict">${esc(VERDICT.phrase)}</div>
   <div class="yields">${VERDICT.criteres.map(c => { const [cls, mot] = PILL[c.etat] || PILL.info;
-    return `<div class="critere"><span class="k">${esc(c.nom)}<span class="pill ${cls}">${mot}</span></span><span class="v">${esc(c.valeur)}</span><span class="d">${esc(c.detail)}</span></div>`; }).join("")}</div>${LIMITE}`; }
+    return `<div class="critere"><span class="k">${esc(c.nom)}<span class="pill ${cls}">${mot}</span></span><span class="v">${esc(c.valeur)}</span><span class="d">${esc(c.detail)}</span></div>`; }).join("")}</div>${actions()}${LIMITE}`; }
+// Après le verdict : lire le diagnostic, puis l'emporter en PDF, Markdown ou JSON
+const actions = () => APP ? `<div class="actions"><button class="btn primaire" type="button" data-action="lire">Lire le diagnostic</button><button class="btn" type="button" data-format="pdf">PDF</button><button class="btn" type="button" data-format="md">Markdown</button><button class="btn" type="button" data-format="json">JSON</button><span class="note">Le rapport reprend le projet saisi${projetCourant().complet ? ", diagnostic complet" : " ; cochez « Diagnostic complet » dans Projet pour les risques à l'adresse, l'urbanisme, l'eau et le solaire"}.</span></div>`
+  : `<div class="actions"><span class="note">Rapport complet : python -m ingestion.cli diagnose --adresse "${esc(DATA.adresse.libelle)}", ou l'application (python -m ingestion.cli app).</span></div>`;
 function showDep(code) { const d = DEP[code]; if (!d) return;
   const ts = depTiles[code] || [];
   selBand.set(ringOf(ts, .26 * PS, col(CHARTE("encre"))));
@@ -578,11 +669,78 @@ renderer.domElement.addEventListener("pointerleave", () => { tip.hidden = true; 
 renderer.domElement.addEventListener("pointerdown", e => { down = [e.clientX, e.clientY]; vol = null; });
 renderer.domElement.addEventListener("pointerup", e => { if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 6 || e.button !== 0) return; const i = pick(e); if (i >= 0) showDep(land[i].dep); });
 document.querySelectorAll(".lens").forEach(b => b.onclick = () => setLens(b.dataset.lens));
-addEventListener("keydown", e => { const k = { "1": "raccordement", "2": "territoire" }[e.key]; if (k) setLens(k); });
+// Les touches 1 et 2 ne changent pas de lentille pendant la saisie d'un champ
+addEventListener("keydown", e => { if (e.key === "Escape") return fermer(); if (e.target.closest && e.target.closest("input, select, textarea")) return;
+  const k = { "1": "raccordement", "2": "territoire" }[e.key]; if (k) setLens(k); });
+
+// Application locale : la page parle au serveur de `app`, qui géocode, diagnostique, épingle et rend le rapport
+const memoire = {
+  lire() { try { return JSON.parse(sessionStorage.getItem("brancher") || "null"); } catch { return null; } },
+  ecrire(v) { try { sessionStorage.setItem("brancher", JSON.stringify(v)); } catch { /* stockage refusé : rien à garder */ } } };
+const CHAMPS = ["puissance_mw", "conso_mwh", "activite", "surface_m2", "ca_eur", "va_eur"];
+const $ = id => document.getElementById(id);
+const etatEl = $("etat"), projetEl = $("projet"), dossierEl = $("dossier");
+const SOLEIL_SVG = '<svg class="soleil" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="#D9971E"/><path d="M12 1.8v3M12 19.2v3M1.8 12h3M19.2 12h3M4.8 4.8l2.1 2.1M17.1 17.1l2.1 2.1M4.8 19.2l2.1-2.1M17.1 6.9l2.1-2.1" stroke="#D9971E" stroke-width="1.8" stroke-linecap="round"/></svg>';
+function etat(message, genre) { etatEl.hidden = !message; etatEl.className = "etat frame" + (genre ? " " + genre : "");
+  etatEl.innerHTML = message ? (genre === "attente" ? SOLEIL_SVG : "") + `<span>${esc(message)}</span>` : ""; }
+const projetSaisi = () => { const p = { adresse: $("q").value.trim(), complet: $("complet").checked }; for (const k of CHAMPS) p[k] = $(k).value.trim(); return p; };
+const remplir = p => { if (!p) return; $("q").value = p.adresse || ""; $("complet").checked = !!p.complet; for (const k of CHAMPS) $(k).value = p[k] || ""; };
+// Le projet du rapport : celui de la dernière analyse, ou l'adresse épinglée par la ligne de commande
+const derniere = () => { const m = memoire.lire(); return m && m.projet && DATA.adresse && m.adresse === DATA.adresse.libelle ? m : null; };
+const projetCourant = () => (derniere() || {}).projet || (DATA.adresse ? { adresse: DATA.adresse.libelle } : projetSaisi());
+const appeler = (chemin, corps) => fetch(chemin, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corps) });
+const HORS_LIGNE = "Le serveur de l'application ne répond pas : relancer python -m ingestion.cli app.";
+const occupe = oui => document.querySelectorAll("#analyser, [data-format], [data-action]").forEach(b => b.disabled = oui);
+async function analyser(projet, lireApres = false) {
+  if (!projet.adresse) { etat("Saisissez l'adresse du site.", "erreur"); $("q").focus(); return; }
+  occupe(true); etat(projet.complet ? "Diagnostic complet en cours (20 s environ)…" : "Analyse en cours…", "attente");
+  try { const r = await appeler("/api/analyse", projet), j = await r.json();
+    if (r.status === 409) { etatEl.hidden = false; etatEl.className = "etat frame erreur";
+      etatEl.innerHTML = `<span>${esc(j.erreur)}</span>` + j.candidats.map(c => `<button class="btn candidat" type="button">${esc(c)}</button>`).join("");
+      etatEl.querySelectorAll(".candidat").forEach((b, k) => b.onclick = () => { $("q").value = j.candidats[k]; analyser(projetSaisi()); }); return; }
+    if (!r.ok) { etat(j.erreur || "Analyse impossible.", "erreur"); return; }
+    memoire.ecrire({ projet, adresse: j.adresse, texte: j.texte, commande: j.commande, lireApres });
+    etat("Verdict prêt : la carte se recharge sur l'adresse.", "attente"); location.reload();
+  } catch (e) { etat(HORS_LIGNE, "erreur"); }
+  finally { occupe(false); } }
+async function telecharger(format) {
+  const projet = projetCourant(); occupe(true); etat(`Préparation du ${format === "md" ? "Markdown" : format.toUpperCase()}…`, "attente");
+  try { const r = await appeler("/api/rapport", { ...projet, format });
+    if (!r.ok) { const j = await r.json(); etat(j.erreur || "Rapport impossible.", "erreur"); return; }
+    const nom = ((r.headers.get("Content-Disposition") || "").match(/filename="([^"]+)"/) || [])[1] || "diagnostic." + format;
+    const lien = document.createElement("a"); lien.href = URL.createObjectURL(await r.blob()); lien.download = nom;
+    document.body.appendChild(lien); lien.click(); lien.remove(); setTimeout(() => URL.revokeObjectURL(lien.href), 5000);
+    etat(`${nom} téléchargé (copie dans data/reports).`);
+  } catch (e) { etat(HORS_LIGNE, "erreur"); }
+  finally { occupe(false); } }
+// Le diagnostic de la dernière analyse ; une adresse épinglée par la ligne de commande est d'abord analysée
+function lireDiagnostic() { const m = derniere();
+  if (!m) { remplir({ adresse: DATA.adresse ? DATA.adresse.libelle : "" }); return analyser(projetSaisi()); }
+  $("dossierTitre").textContent = m.projet.complet ? "Diagnostic complet" : "L'essentiel";
+  $("dossierTexte").textContent = m.texte;
+  $("dossierPied").innerHTML = `Même rapport en ligne de commande : <code>${esc(m.commande)}</code>`;
+  $("relancerComplet").hidden = !!m.projet.complet;
+  dossierEl.hidden = false; }
+function basculerProjet(ouvert) { projetEl.hidden = !ouvert; $("ouvrirProjet").setAttribute("aria-expanded", ouvert); }
+function fermer() { if (!dossierEl.hidden) dossierEl.hidden = true; else if (!projetEl.hidden) basculerProjet(false); }
+if (APP) {
+  document.body.classList.add("app"); $("recherche").hidden = false; $("adr").hidden = true;
+  remplir((derniere() || {}).projet || (DATA.adresse ? { adresse: DATA.adresse.libelle } : (memoire.lire() || {}).projet));
+  const lancer = e => { e.preventDefault(); basculerProjet(false); analyser(projetSaisi()); };
+  $("recherche").onsubmit = lancer; projetEl.onsubmit = lancer;
+  $("ouvrirProjet").onclick = () => basculerProjet(projetEl.hidden);
+  $("fermerDossier").onclick = () => dossierEl.hidden = true;
+  $("relancerComplet").onclick = () => { dossierEl.hidden = true; remplir({ ...derniere().projet, complet: true }); analyser(projetSaisi(), true); };
+  document.addEventListener("click", e => { const b = e.target.closest("[data-format], [data-action]"); if (!b || b.disabled) return;
+    if (b.dataset.format) telecharger(b.dataset.format); else lireDiagnostic(); });
+  if (!DATA.adresse) $("q").focus();
+  else if ((memoire.lire() || {}).lireApres && derniere()) { memoire.ecrire({ ...memoire.lire(), lireApres: false }); lireDiagnostic(); }
+}
 
 // Boucle de rendu
 const v3 = new THREE.Vector3(), tmpC = new THREE.Color();
-function resize() { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
+const barre = document.querySelector(".topbar");
+function resize() { document.documentElement.style.setProperty("--haut", barre.offsetHeight + "px"); renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
 addEventListener("resize", resize); resize();
 function tick(ms) {
   const t = ms / 1000;
@@ -594,6 +752,7 @@ function tick(ms) {
     [regionBand, depBand, selBand, hoverBand].forEach(b => b.update()); animating = moving; }
   for (const g of followers) { const u = g.userData; g.position.y = curH[u.i] + (u.dy || 0);
     if (u.rotor && !REDUCED) u.rotor.rotation.z = t * 1.6 + u.ph;
+    if (u.halo) { u.halo.quaternion.copy(camera.quaternion); if (!REDUCED) { const k = 1 + .18 * Math.sin(t * 2.2); u.halo.scale.set(k, k, k); } }
     if (u.ring && !REDUCED) { const s = 1 + ((t * .6) % 1) * .35; g.scale.set(s, s, s); g.material.opacity = .85 * (1 - (t * .6) % 1); } }
   if (vol) { const k = Math.min(1, (ms - vol.t0) / vol.d), e = k * k * (3 - 2 * k);
     controls.target.lerpVectors(vol.fromT, vol.toT, e); camera.position.lerpVectors(vol.fromP, vol.toP, e); if (k >= 1) vol = null; }
