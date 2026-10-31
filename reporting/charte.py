@@ -15,6 +15,10 @@ MER = "#9DB0BC"
 VERT = "#2E7D5B"
 ORANGE = "#C2571A"
 GRIS = "#C9CCC8"
+# Touches solarpunk de l'application (demande du 31 octobre) : lumière dorée et feuillage, sur
+# la carte seulement ; le PDF reste sur la sobriété du relevé
+SOLEIL = "#D9971E"
+FEUILLE = "#6E9F4E"
 # Tempo garde ses couleurs : ce sont les noms des jours, pas une note
 TEMPO = {"bleu": "#2F6DB5", "blanc": "#B8BEC6", "rouge": "#D0312D"}
 
@@ -79,6 +83,8 @@ def css() -> str:
         "vert": VERT,
         "orange": ORANGE,
         "gris": GRIS,
+        "soleil": SOLEIL,
+        "feuille": FEUILLE,
         "f-titre": f'"{TITRE}", Georgia, serif',
         "f-texte": f'"{TEXTE}", system-ui, sans-serif',
     }

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import logging
 import sys
@@ -16,13 +17,7 @@ from ingestion.diagnostic import (
     DiagnosticIndisponibleError,
     DonneesAbsentesError,
     avec_risques_locaux,
-    completer_acces_routier,
-    completer_eau,
-    completer_risques,
-    completer_solaire,
-    completer_urbanisme,
-    completer_voisinage,
-    completer_zones_activite,
+    completer_en_ligne,
     essentiel_en_dict,
     formater_diagnostic,
     formater_essentiel,
@@ -54,7 +49,7 @@ from ingestion.pipeline import (
 logger = logging.getLogger("ingestion")
 
 # Commandes qui répondent à une question : seule la réponse s'affiche, sans journal technique
-QUESTIONS = frozenset({"essentiel", "diagnose", "compare", "carte", "europe", "geocode"})
+QUESTIONS = frozenset({"app", "essentiel", "diagnose", "compare", "carte", "europe", "geocode"})
 
 COMMANDE_REFRESH = "python -m ingestion.cli refresh --months 180"
 
@@ -361,6 +356,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="refait toute la carte, même si ses données n'ont pas changé",
     )
 
+    app = subparsers.add_parser(
+        "app", help="application locale dans le navigateur : adresse, verdict, diagnostic, PDF"
+    )
+    app.add_argument("--port", type=int, default=8770, help="port local (défaut : 8770)")
+    app.add_argument(
+        "--sans-ouvrir", action="store_true", help="lance le serveur sans ouvrir le navigateur"
+    )
+
     europe = subparsers.add_parser(
         "europe", help="prix et carbone moyens d'un pays de l'UE, face à la France"
     )
@@ -518,13 +521,7 @@ def main(argv: list[str] | None = None) -> int:
             except ECHECS_PREVUS as error:
                 return _echec(error)
             if not args.sans_risques:
-                diagnostic = completer_risques(diagnostic, settings=settings)
-                diagnostic = completer_voisinage(diagnostic, settings=settings)
-                diagnostic = completer_urbanisme(diagnostic, settings=settings)
-                diagnostic = completer_eau(diagnostic, settings=settings)
-                diagnostic = completer_solaire(diagnostic, settings=settings)
-                diagnostic = completer_acces_routier(diagnostic, settings=settings)
-                diagnostic = completer_zones_activite(diagnostic, settings=settings)
+                diagnostic = completer_en_ligne(diagnostic, settings=settings)
             if args.format == "texte":
                 print(formater_diagnostic(diagnostic))
             elif args.format == "json" and not args.output:
@@ -565,13 +562,7 @@ def main(argv: list[str] | None = None) -> int:
                     logger.error("comparaison impossible pour %r", adresse)
                     return _echec(error)
                 if not args.sans_risques:
-                    diagnostic = completer_risques(diagnostic, settings=settings)
-                    diagnostic = completer_voisinage(diagnostic, settings=settings)
-                    diagnostic = completer_urbanisme(diagnostic, settings=settings)
-                    diagnostic = completer_eau(diagnostic, settings=settings)
-                    diagnostic = completer_solaire(diagnostic, settings=settings)
-                    diagnostic = completer_acces_routier(diagnostic, settings=settings)
-                    diagnostic = completer_zones_activite(diagnostic, settings=settings)
+                    diagnostic = completer_en_ligne(diagnostic, settings=settings)
                 diagnostics.append(diagnostic)
             rendus = {
                 "texte": comparaison.formater_comparaison,
@@ -616,6 +607,21 @@ def main(argv: list[str] | None = None) -> int:
             _signaler(f"Carte : {path}")
             if not args.sans_ouvrir:
                 webbrowser.open(path.resolve().as_uri())
+        case "app":
+            import webbrowser
+
+            from reporting.app import creer_serveur, url
+
+            try:
+                serveur = creer_serveur(settings, port=args.port)
+            except OSError as error:
+                logger.error("port %d indisponible : %s (choisir --port)", args.port, error)
+                return 1
+            _signaler(f"Application : {url(serveur)} (Ctrl+C pour l'arrêter)")
+            if not args.sans_ouvrir:
+                webbrowser.open(url(serveur))
+            with serveur, contextlib.suppress(KeyboardInterrupt):
+                serveur.serve_forever()
         case "europe":
             from ingestion.europe import formater_europe, lire_pays, localiser
 
