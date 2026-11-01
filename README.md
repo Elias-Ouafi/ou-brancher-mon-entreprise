@@ -28,7 +28,7 @@ les villes : l'outil n'y apporte rien de décisif.
 l'exploitant, que l'outil chiffre sans les vérifier), le loyer des locaux, la consommation d'un projet déduite de sa seule puissance. Il dit « non
 disponible » plutôt que de deviner.
 
-![Carte 3D, vue Raccorder : cases notées du rouge au vert ; dans la fiche « Brancher ici ? », la tuile de l'adresse à gauche du résumé, pour un data center de 12 MW à Chilly-Mazarin](docs/exemples/carte_chilly_raccorder.png)
+![Carte 3D, vue Raccorder : cases notées du rouge au vert ; au centre, le bâtiment de l'adresse ; dans la fiche « Brancher ici ? », sa tuile, le carbone et le prix en jauges, pour un data center de 12 MW à Chilly-Mazarin](docs/exemples/carte_chilly_raccorder.png)
 
 ![Carte 3D, vue Territoire : relief et couleurs réelles, carbone, prix, production et fret dans l'encart](docs/exemples/carte_chilly_territoire.png)
 
@@ -39,9 +39,9 @@ disponible » plutôt que de deviner.
 --activite data-center`, le 29 octobre 2026, captures refaites le 1er novembre). En haut, la vue « Raccorder » (touche 1) : les cases
 sont notées du rouge au vert, l'adresse est reliée à la zone prioritaire RTE Sud Île-de-France
 (capacité en 2030) et au site clé en main de Massy ; la fiche donne le verdict : raccordement en
-HTA chez Enedis, carbone sous le seuil de 100 g, facture d'environ 5,3 M€ HTVA par an dont une
-accise réduite possible d'environ 1,1 M€ de moins, foncier avec un site clé en main à 5 km ; seul
-le plan de prévention des inondations de l'Yvette reste à vérifier. En bas, la vue « Territoire »
+HTA chez Enedis, carbone sous le seuil de 100 g, facture d'environ 5,3 M€ HTVA par an (un clic
+ajoute l'accise réduite possible, environ 1,1 M€ de moins), foncier avec un site clé en main à
+5 km ; seul le plan de prévention des inondations de l'Yvette reste à vérifier. En bas, la vue « Territoire »
 (touche 2) : paysage réel, carbone et prix moyen par région, production et fret. En dessous, le
 monde (touche 0), d'où la carte plonge vers l'adresse. Diagnostic complet, avec la même tuile :
 [en PDF](docs/exemples/implantation_chilly.pdf).*
