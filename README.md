@@ -3,6 +3,10 @@
 > **Dire en une commande si un projet de 1 à 50 MW peut se brancher à une adresse française, qui
 > le raccordera, dans quel délai et à quel coût, à partir des seules données publiques.**
 
+![Animation de la carte 3D : du monde, la vue plonge vers une adresse de Chilly-Mazarin, le verdict « Brancher ici ? » s'affiche et la terre reverdit autour du site](docs/exemples/carte_demo.gif)
+
+*L'exemple de référence, un data center de 12 MW et 70 000 MWh par an, détaillé plus bas.*
+
 **Pourquoi maintenant** : plus de 200 projets industriels, près de 33 GW, attendent un raccordement
 au réseau haute tension, près de trois fois la consommation actuelle de l'industrie française
 ([RTE, 3 juillet 2026](https://www.rte-france.com/actualites/2026-07-03-reussir-electrification-france)).
