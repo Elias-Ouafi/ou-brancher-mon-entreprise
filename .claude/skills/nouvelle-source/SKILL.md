@@ -17,7 +17,8 @@ Modèle à suivre : le commit `242e88d` (DVF, étape 12), `git show 242e88d`.
    la demande, sans stockage**, pour ce qui dépend du point et change sans prévenir (zone
    d'urbanisme, arrêtés sur l'eau, itinéraires). Modèle à la demande : `ingestion/eau.py` (client
    httpx, erreur propre `…Error`, `completer_…` dans `ingestion/diagnostic.py` qui journalise
-   l'échec sans bloquer, coupé par `--sans-risques`). Noter le choix en décision datée dans PLAN.
+   l'échec sans bloquer, ajouté à `completer_en_ligne` que partagent `diagnose`, `compare` et
+   `app`, coupé par `--sans-risques`). Noter le choix en décision datée dans PLAN.
 
 ## Fichiers à toucher, dans l'ordre
 

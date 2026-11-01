@@ -1,7 +1,7 @@
 # Plan du projet
 
-> Mis à jour le 31 octobre 2026. Périmètre : la France (métropole, Corse, outre-mer), en ligne de
-> commande, en local et à la demande.
+> Mis à jour le 1er novembre 2026. Périmètre : la France (métropole, Corse, outre-mer), en ligne de
+> commande ou dans l'application locale, à la demande.
 
 Ce fichier porte l'état du projet, les étapes qui restent, les recherches qui les justifient et
 les décisions en vigueur ; le [README](README.md) dit comment s'en servir. Sections, dans l'ordre :
@@ -143,6 +143,7 @@ Les sources existent ; il reste à lire un texte, à tester une API ou à finir 
 | 1 | **17** TURPE 7 HTB (grille HTB 1 à 3 faite le 29 octobre) | Calendrier horosaisonnier HTB (supposé identique à la HTA), composante d'injection-soutirage, alimentations de secours | Au-delà de 40 MW, l'acheminement est chiffré sur une hypothèse | Délibération CRE 2025-77 et 2026-104 (annexe 2) |
 | 2 | **16** Bâtiment et solaire (emprise BD TOPO et productible PVGIS faits le 29 octobre) | Obligations de solarisation des parkings et toitures de la loi APER, échéances reportées par la loi du 26 novembre 2025 ; structure des toitures | Autoconsommation d'un entrepôt ou d'un hub de recharge ; obligation légale du site | Texte de la loi du 26 novembre 2025 ; licence de la BDNB |
 | 3 | **20** Eau (arrêtés VigiEau faits le 29 octobre) | Tension sur la ressource : débits (Hub'Eau hydrométrie) ou niveaux de nappe (Hub'Eau piézométrie) rapportés à une référence publiée ; les volumes BNPE ne disent pas la disponibilité | Refroidissement des data centers ; procédés industriels | Référence officielle de tension (seuils, débits d'étiage) et licence ; maille |
+| 4 | **29** Main-d'œuvre qualifiée (à faire) | Une ligne d'information dans `diagnose` et `compare`, sans effet sur le verdict : **nombre de diplômés du supérieur à moins de 45 min en voiture** ([base Diplômes-Formation 2023](https://www.insee.fr/fr/statistiques/9006527), Insee, sommée sur les communes de l'[isochrone de la Géoplateforme](https://geoservices.ign.fr/node/1612)), repli sur la [zone d'emploi](https://www.insee.fr/fr/information/4652957) si l'appel échoue ; en regard, les projets de recrutement et leur difficulté pour les métiers techniques du bassin d'emploi ([BMO](https://www.data.gouv.fr/datasets/561fa564c751df4f2acdbb48), France Travail) ; limite au seed `limites_methodologiques`, Mayotte « non disponible » | Exploiter un site demande des électriciens et techniciens CVC autant que des ingénieurs ; un stock accessible dit plus qu'une part, et la région est trop vaste pour un trajet quotidien | Dictionnaire du fichier : champ de 15 ans ou plus non scolarisés, retraités compris (corrigé par l'Insee le 21 juillet 2026) ; présence du diplôme dans le [fichier détail par zone d'emploi](https://www.insee.fr/fr/statistiques/9004788) pour se limiter aux actifs ; 45 min est une hypothèse, à contrôler sur les [flux domicile-travail](https://www.insee.fr/fr/statistiques/8582949) ; familles de métiers BMO à retenir ; profil voiture de l'isochrone |
 
 Fins d'étapes closes, gardées en limite plutôt qu'en étape : l'étape 18 est terminée (le tarif
 réduit des secteurs exposés à la concurrence internationale, fixés par arrêté, n'est pas
@@ -150,8 +151,8 @@ identifié par l'outil) ; l'échangeur autoroutier de
 l'étape 13 n'est pas identifiable dans la BD TOPO (bretelles sans classement) et la Géoplateforme
 n'a pas de profil poids lourd ; l'étape 14 (urbanisme, friches, zones d'activité) est terminée.
 
-**Manques repérés et pistes** (recherche du 29 octobre ; à trier après les entretiens C23, rien
-n'est décidé) :
+**Manques repérés et pistes** (recherche du 29 octobre, imagerie ajoutée le 1er novembre ; à trier
+après les entretiens C23, rien n'est décidé) :
 
 | Manque | Piste | Condition |
 |---|---|---|
@@ -160,9 +161,14 @@ n'est décidé) :
 | Débouché de la chaleur fatale, condition de l'accise réduite des data centers (L312-70) | Réseaux de chaleur à proximité | Jeu national des réseaux de chaleur : producteur et licence à vérifier |
 | Zones « prêtes à raccorder » de RTE (ports de Dunkerque, du Havre, de Fos et cinq zones moyennes) | Une couche de plus dans « Raccorder » | Périmètres publiés par RTE |
 | Maturité du projet pour la file « premier prêt, premier servi » | Pièces d'un dossier de raccordement (autorisations, maîtrise du foncier) en liste de vérification | Relecture de la procédure RTE de 2026 et de la délibération CRE 2026-32 |
-| Artificialisation (zéro artificialisation nette) de la commune | Ligne « enveloppe restante » du guide de la DGE | Portail de l'artificialisation des sols (Cerema), licence |
+| Artificialisation (zéro artificialisation nette) de la commune | Ligne « enveloppe restante » du guide de la DGE ; couverture, usage et artificialisation à l'adresse par [OCS GE](https://www.data.gouv.fr/datasets/ocs-ge) (IGN, Licence Ouverte 2.0), à prendre en premier | Portail de l'artificialisation des sols (Cerema), licence ; OCS GE : pas de couche nationale trouvée en WFS, téléchargement par département ou WMTS, tuiles non testées |
+| Friches déclaratives, aucune vue récente du site | Image datée du site dans le rapport, à la demande et sans stockage : [ORTHO-SAT](https://www.data.gouv.fr/datasets/ortho-sat/informations) (IGN, Pléiades et SPOT 6/7, Licence Ouverte 2.0), puis [BD ORTHO](https://www.data.gouv.fr/datasets/bd-ortho-r) (aérien, 20 cm) si plus fine | Tuiles Pléiades 2025 et SPOT 2014 servies sans compte le 1er novembre (HTTP 200, images non regardées) ; couverture annuelle de Pléiades à vérifier ; avant toute vente, confirmation écrite de l'IGN (la fiche dit aussi SPOT « accessible librement aux acteurs institutionnels ») |
+| Mouvements du sol, en plus des argiles et des cavités | [EGMS Ortho](https://land.copernicus.eu/en/products/european-ground-motion-service) (Copernicus, radar Sentinel-1, grille de 100 m, [accès libre, source à citer](https://land.copernicus.eu/en/data-policy)) | Accès programmatique : téléchargement annoncé par l'Explorer seulement ; usage commercial non cité par le texte |
+| Inondation à l'adresse quand le rapport Géorisques ne répond pas | Inondations observées : [GFM](https://extwiki.eodc.eu/GFM/PDD/Introduction) et [Rapid Mapping](https://mapping.emergency.copernicus.eu/terms-and-conditions/) (Copernicus, Sentinel-1), dites observées au passage du satellite : une absence ne prouve pas l'absence de risque | Licence de GFM non lue ; usage commercial de Rapid Mapping non cité par le texte |
+| Pente et bâti fin d'un terrain | Dérivés du [LiDAR HD](https://www.data.gouv.fr/datasets/nuages-de-points-lidar-hd) (IGN, Licence Ouverte 2.0) | Dalles de 0,5 à 2 Go chacune : à limiter à la demande ; couverture à l'adresse à vérifier |
+| Refroidissement des data centers | Température de surface [Landsat Level-2](https://catalog.data.gov/dataset/landsat-level-2-surface-temperature-collection-2) (USGS, 30 m), repère seulement : température du sol, pas de l'air | Politique de données de l'USGS à lire (domaine public selon ses pages) ; méthode de lecture à sourcer |
 | Besoin de recharge poids lourds au dépôt | Situer l'adresse dans une zone logistique à fort besoin de puissance (étude Enedis de décembre 2025) | Maille des zones logistiques (SDES), licence |
-| Version 2 de l'étude du 28 octobre | Photovoltaïque existant (OpenPVMapper, CC-BY, ~75 % de précision), bassin d'emploi (isochrone et flux domicile-travail INSEE), détection de changement sur l'ortho | Licences du LiDAR HD et de l'OCS GE |
+| Version 2 de l'étude du 28 octobre | Photovoltaïque existant (OpenPVMapper, CC-BY, ~75 % de précision), bassin d'emploi (passé à l'étape 29), détection de changement sur l'ortho | Licences du LiDAR HD et de l'OCS GE : Licence Ouverte 2.0 selon data.gouv.fr (lu le 1er novembre) ; OpenPVMapper reste une prépublication sans producteur officiel, hors de la règle du 25 octobre |
 | Version 3 de l'étude du 28 octobre | Projections climatiques (DRIAS, Explore2) | Licence de DRIAS ; date de la carte RGA 2026 |
 
 ### Lot B : en attente
@@ -175,6 +181,7 @@ Rien à coder tant que la condition n'est pas levée.
 | **Carte** Refonte (lots B à F, voir plus bas) | Une carte lisible imprimée, qui montre ce que la puissance demandée change | Lots 0 et A faits (29 et 30 octobre) ; suite : lot B, prototype three.js r186 hors ligne |
 | **S** Ambiance sonore de la tuile (demande du 29 octobre) : un son discret qui rappelle le facteur le plus marquant de la case (par exemple un bourdonnement électrique si le nucléaire domine), aucun s'il n'y a pas de facteur dominant | Rendre la carte plus parlante sans texte de plus ; le son n'est jamais une information en soi | Lot A de la carte fait le 30 octobre. Prérequis restants : règle du facteur dominant écrite à partir des critères déjà calculés, « aucun » possible ; sons libres de droits (CC0 ou domaine public, licence et auteur notés dans le dépôt) ; lecture après un geste de l'utilisateur, volume bas, bouton de coupure, sans effet sur le rapport imprimé ; vérification par le skill `essai-carte` |
 | **8** Repère de prix au-delà de 150 000 MWh/an, après la fin de l'ARENH | Un projet de 20 MW constant dépasse la dernière tranche Eurostat (IG, sans borne) | Une source officielle et ouverte d'un prix à terme ; le classement pondéré dans `compare` reste écarté (décision du 15 octobre) |
+| **30** Modèle prédictif d'implantation (demande du 1er novembre, cadrage plus bas) : par zone d'emploi, probabilité d'implantations nouvelles à 3 ans, apprise sur l'historique | Signaler tôt les territoires qui montent, en complément des faits à l'adresse ; il dira où les projets vont, pas où ils seraient rentables ni si la puissance est disponible | Données fiabilisées (critères à écrire) ; entretiens C23 ; décision du porteur face à « comparaison sans classement » (15 octobre) ; historique de la capacité en soutirage, absent à ce jour |
 | **6** Extension internationale, voir plus bas | En dernier (décision du 25 octobre) | Jeton ENTSO-E et contours des zones de prix |
 
 ### Lot C : présenter le projet à un incubateur
@@ -405,7 +412,7 @@ GreenTech Innovation non publié ; aucun incubateur spécialisé énergie et dat
 (EDF Pulse Incubation accompagne des projets climat, sans lien établi avec le raccordement) ; aucune
 source ne fixe un nombre d'entretiens clients.
 
-## Ce que les études ont établi (9 au 28 octobre)
+## Ce que les études ont établi (9 octobre au 1er novembre)
 
 - **Les besoins des entreprises**, dans l'ordre : de la puissance disponible à une date connue
   (premier critère des gros projets ; zones RTE P1 dès fin 2028, P2 dès 2029) ; du foncier
@@ -438,6 +445,47 @@ source ne fixe un nombre d'entretiens clients.
   des loyers d'activité par commune (la carte des loyers du ministère et de l'ANIL ne couvre que le
   logement ; Cushman & Wakefield, Geolocaux et Ayming sont privés) ; DVF (DGFiP) est la seule
   source officielle des prix de l'immobilier d'activité, d'où le prix de vente seul.
+- **Imagerie satellite ouverte (étude du 1er novembre, pistes dans le lot A)** : aucune image ne dit
+  la capacité de raccordement ; elle peut renforcer le foncier, l'artificialisation et les risques.
+  Les produits déjà dérivés passent avant les images brutes, qui demandent une chaîne de traitement.
+  Ordre proposé : OCS GE, ORTHO-SAT à la demande, puis EGMS. Hors de France (étape 6) :
+  [HRL Imperméabilisation](https://land.copernicus.eu/en/products/high-resolution-layer-imperviousness)
+  et [GHS-BUILT-S](https://registry.opendata.aws/ghs-built-s/) (CC BY 4.0) à la place d'OCS GE.
+  [Sentinel-1 et 2](https://ewds.climate.copernicus.eu/licences/ec-sentinel) bruts seulement si aucun
+  produit dérivé ne répond ([12 To sur 30 jours](https://documentation.dataspace.copernicus.eu/Quotas.html),
+  compte requis pour ces quotas). Non retenus : Dinamis (utilisateurs non commerciaux, charte lue en
+  extrait), OSO ([fiche sans fichier](https://www.data.gouv.fr/datasets/cartographie-de-loccupation-du-sol-oso),
+  licence à confirmer auprès de Theia), SPOT World Heritage (licence contradictoire selon les pages,
+  pas d'image récente), ESA WorldCover (2020 et 2021 seulement dans les résultats trouvés).
+- **Main-d'œuvre qualifiée (étude du 1er novembre, étape 29)** : aucune source officielle française
+  ne fixe de métrique ni de temps de trajet ; le décompte par temps de route et niveau de diplôme
+  est une pratique de profils d'attractivité britanniques
+  ([Cheshire West, 45 min](https://www.cheshirewestandchester.gov.uk/asset-library/statistics/labour-market-profiles/Labour-Market-Overview-Chester-2020.pdf),
+  extrait de recherche, PDF non lu). Écartés comme métrique principale : la part de diplômés (une
+  petite commune très diplômée pèse autant qu'un grand bassin), les
+  [cadres des fonctions métropolitaines](https://www.insee.fr/fr/statistiques/1893116) (emplois
+  « stratégiques », loin des métiers d'exploitation). La métrique compte des résidents, pas des
+  candidats disponibles : ni concurrence entre employeurs, ni spécialité du diplôme. Réutilisation
+  commerciale permise, en citant la source : [Insee](https://www.insee.fr/fr/information/2008466)
+  (Licence Ouverte 2.0), BMO (Licence Ouverte). Besoin des data centers en électriciens et
+  techniciens CVC : [communiqué de Data4](https://data4group.com/wp-content/uploads/2024/11/D4FDCstudy_France-Best-Place-to-build-AI-ready-DC.pdf)
+  et offres d'emploi, sans chiffre public français.
+- **Modèle prédictif (cadrage du 1er novembre, étape 30, rien de décidé)** : « le plus intéressant »
+  n'est pas observable ; la cible mesurable est l'implantation constatée. Cible candidate : surface
+  de locaux non résidentiels autorisée à 3 ans ([Sitadel](https://www.data.gouv.fr/datasets/689c42fa521ccf80ce954f83/),
+  depuis 2013, Licence Ouverte ; champs de surface et de destination à vérifier), recoupée avec les
+  créations d'établissements ([Sirene](https://www.insee.fr/fr/information/3591226), historique
+  depuis 1973). Maille : [306 zones d'emploi](https://www.insee.fr/fr/information/4652957), soit
+  environ 3 000 lignes zone × année : un modèle simple et explicable, à comparer d'abord à la simple
+  reconduction de la tendance passée, qu'il doit battre. Contrôle sur le passé par blocs de temps et
+  d'espace : une séparation aléatoire
+  [surestime les scores](https://meetingorganizer.copernicus.org/EGU23/EGU23-16096.html) et les
+  [fuites d'information](https://arxiv.org/abs/2207.07048) sont le premier risque ; chaque variable
+  doit être connue à sa date (zones RTE du SDDR 2025 et sites clés en main exclus des années
+  antérieures). Limites : ce qui a été construit n'était pas forcément un bon choix (les projets
+  abandonnés manquent) ; capacité de raccordement sans historique ; file d'attente changée fin 2026,
+  donc un passé peu représentatif ; trop peu de data centers pour les apprendre seuls (huit raccordés
+  à RTE, chiffre relayé). Une méthode publiée propre à ce sujet n'a pas été trouvée.
 
 ## Décisions en vigueur
 
@@ -518,11 +566,11 @@ source ne fixe un nombre d'entretiens clients.
 | Prix « à l'adresse » | Péréquation : identique partout |
 | Carbone régional en métropole | Un seul réseau continental, pas de facteur régional opposable |
 | Capacité de raccordement chiffrée, distance au poste RTE | Absentes de l'open data |
-| Distance aux postes sources et aux lignes | Coordonnées retirées par RTE et EDF en 2026 (sécurité publique) ; jeu Enedis seulement local |
+| Distance aux postes sources et aux lignes, y compris par détection sur images | Coordonnées retirées par RTE et EDF en 2026 (sécurité publique), qu'une détection contournerait ; jeu Enedis seulement local |
 | Zonage sismique national publié par wpd (data.gouv.fr, 2018) | Producteur non officiel (un développeur éolien) : le décret et planseisme.fr font foi |
 | Loyer des locaux d'activité, y compris estimé par un rendement brut | Aucune source officielle et ouverte ; l'hypothèse de rendement n'a pas de source (28 oct.) |
 | Classement pondéré des sites dans `compare` | Contraire à la comparaison sans classement (15 oct.) |
 | Ports fluviaux parmi les pôles de fret | Pas de maille port dans les données VNF du SDES |
 | Persona des bureaux | Pour quelques dizaines de MWh, le prix est le même partout et le raccordement rarement un sujet (28 oct.) |
 | Spark pour silver et gold | dbt-duckdb suffit à ce volume |
-| Site web, exécution planifiée, Airflow | Hors périmètre : ligne de commande, en local |
+| Site web en ligne, exécution planifiée, Airflow | Hors périmètre : ligne de commande ou application sur 127.0.0.1, lancées à la main |
