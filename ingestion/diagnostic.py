@@ -122,7 +122,7 @@ from gold.profils_charge_reels
 where profil = $profil
 """
 
-# Domaines chiffrés par la grille TURPE HTA-BT ; le tarif bleu inclut déjà l'acheminement
+# Domaines chiffrés par les grilles TURPE HTA-BT et HTB ; le tarif bleu inclut déjà l'acheminement
 DOMAINES_TURPE = {"bt_sup36": "BT > 36 kVA", "hta": "HTA", "htb1": "HTB 1"}
 
 _COUT_SQL = """
@@ -758,7 +758,7 @@ class Diagnostic:
     # Entreprises raccordées à Enedis (dernière année publiée), dans la commune et à l'adresse
     entreprises_commune: EntreprisesCommune | None = None
     entreprises_adresse: EntreprisesAdresse | None = None
-    # Part acheminement (TURPE HTA-BT), avec `--puissance` et `--conso` au-delà de 36 kVA
+    # Part acheminement (TURPE HTA-BT ou HTB), avec `--puissance` et `--conso` au-delà de 36 kVA
     acheminement: Acheminement | None = None
     # Qualité de fourniture du département ; `None` hors Enedis ou si la source n'est pas chargée
     continuite: Continuite | None = None
@@ -910,6 +910,7 @@ def lire_diagnostic(
                     conso_mwh=conso_mwh,
                     points=None if courbe is None else courbe.points,
                     journee_type=journee_type,
+                    code_region=territoire.code_insee_region,
                 )
                 if seuil is not None and seuil.domaine_turpe in DOMAINES_TURPE and conso_mwh
                 else None
