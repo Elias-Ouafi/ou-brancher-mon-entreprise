@@ -4,14 +4,44 @@ from datetime import datetime
 from pathlib import Path
 from xml.sax.saxutils import escape
 
+from reportlab.graphics.shapes import Circle, Drawing
+from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
-from reportlab.platypus import KeepTogether, Paragraph, SimpleDocTemplate, Spacer
+from reportlab.platypus import KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-from ingestion.diagnostic import Diagnostic, entete, essentiel, sections
-from reporting import implantation_charts
+from ingestion.config import Settings
+from ingestion.diagnostic import Diagnostic, entete, essentiel, phrase_verdict, sections, verdict
+from reporting import charte, implantation_charts
+from reporting.carte import resume_adresse
 from reporting.implantation import GRAPHIQUES, SOURCES, Comparaisons, pied_de_page, texte_compact
-from reporting.pdf import ALERTE, STYLES, _encadre, _image, _kpis, _pied_de_page
+from reporting.pdf import (
+    ACCENT,
+    ALERTE,
+    DISCRET,
+    FILET,
+    FOND,
+    LARGEUR,
+    STYLES,
+    _encadre,
+    _image,
+    _kpis,
+    _pied_de_page,
+)
+from reporting.tuile import Tuile, dessin_tuile, legende, lire_tuile
+
+TEINTES_ETAT = {
+    "ok": ACCENT,
+    "attention": ALERTE,
+    "info": colors.HexColor(charte.SOLEIL),
+    "inconnu": DISCRET,
+}
+LARGEUR_TUILE = 58 * mm
+NOTE_TUILE = (
+    "Tuile de la carte, large de {km} km : illustration de ce que porte la case, pas un"
+    " plan du site. Pôles du registre national (ODRÉ) d'au moins 200 MW, 20 MW en Corse et"
+    " outre-mer ; fret SDES, DGAC et SNCF Réseau ; relief IGN."
+)
 
 
 def _pdf(texte: str) -> str:
@@ -65,6 +95,98 @@ def _synthese(d: Diagnostic) -> list:
     return [_kpis(cartes, par_ligne=2), Spacer(1, 8)]
 
 
+def _pastille(etat: str) -> Drawing:
+    dessin = Drawing(7, 7)
+    dessin.add(Circle(3.5, 3.5, 2.8, fillColor=TEINTES_ETAT.get(etat, DISCRET), strokeColor=None))
+    return dessin
+
+
+# Même lecture que l'encart de la carte : la tuile à gauche, le résumé à droite
+def _carte_adresse(diagnostic: Diagnostic, tuile: Tuile | None) -> list:
+    largeur_info = LARGEUR - (LARGEUR_TUILE if tuile else 0)
+    lignes = [
+        [
+            _pastille(ligne["etat"]),
+            Paragraph(_pdf(ligne["nom"]), STYLES["cellule_discrete"]),
+            Paragraph(f"<b>{_pdf(ligne['valeur'])}</b>", STYLES["cellule_droite"]),
+        ]
+        for ligne in resume_adresse(diagnostic)
+    ]
+    tableau = Table(
+        lignes, colWidths=[12, largeur_info * 0.34, largeur_info - 12 - largeur_info * 0.34 - 20]
+    )
+    tableau.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("LINEBELOW", (0, 0), (-1, -2), 0.35, FILET),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ]
+        )
+    )
+    info = [
+        Paragraph("Brancher ici ?", STYLES["h1_serre"]),
+        Paragraph(_pdf(phrase_verdict(verdict(diagnostic))), STYLES["texte"]),
+        tableau,
+    ]
+    if tuile is None:
+        cellules, largeurs = [[info]], [LARGEUR]
+    else:
+        gauche = [dessin_tuile(tuile, LARGEUR_TUILE - 8, LARGEUR_TUILE - 8)]
+        gauche += [Paragraph(ligne, STYLES["cellule_note"]) for ligne in legende(tuile)]
+        cellules, largeurs = [[gauche, info]], [LARGEUR_TUILE, largeur_info]
+    carte = Table(cellules, colWidths=largeurs, hAlign="LEFT", cornerRadii=[8, 8, 8, 8])
+    carte.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), FOND),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+                ("TOPPADDING", (0, 0), (-1, -1), 8),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+            ]
+        )
+    )
+    blocs: list = [carte]
+    if tuile is not None:
+        km = _nombre(tuile.rayon_km * 2, 1 if tuile.rayon_km < 5 else 0)
+        blocs += [Spacer(1, 3), Paragraph(NOTE_TUILE.format(km=km), STYLES["note"])]
+    return [*blocs, Spacer(1, 8)]
+
+
+# Touche solarpunk : un filet vert, un soleil et une branche en tête de première page
+def _ornement(canvas, _document) -> None:
+    canvas.saveState()
+    haut, droite = A4[1] - 8 * mm, A4[0] - 18 * mm
+    canvas.setStrokeColor(colors.HexColor(charte.FEUILLE))
+    canvas.setFillColor(colors.HexColor(charte.FEUILLE))
+    canvas.setLineWidth(0.8)
+    canvas.line(18 * mm, haut, droite - 62, haut)
+    canvas.bezier(
+        droite - 62, haut, droite - 44, haut, droite - 34, haut + 7, droite - 14, haut + 9
+    )
+    for x, y, dx, dy in ((-44, 2, 9, 7), (-34, 5, 10, 4), (-24, 7, 7, 8)):
+        chemin = canvas.beginPath()
+        chemin.moveTo(droite + x, haut + y)
+        chemin.curveTo(
+            droite + x + dx * 0.2, haut + y + dy, droite + x + dx, haut + y + dy,
+            droite + x + dx, haut + y + dy,
+        )  # fmt: skip
+        chemin.curveTo(
+            droite + x + dx, haut + y + dy * 0.3, droite + x + dx * 0.6, haut + y,
+            droite + x, haut + y,
+        )  # fmt: skip
+        canvas.drawPath(chemin, stroke=0, fill=1)
+    canvas.setFillColor(colors.HexColor(charte.SOLEIL))
+    canvas.setStrokeColor(colors.HexColor(charte.SOLEIL))
+    canvas.circle(droite - 4, haut + 9, 3.6, stroke=0, fill=1)
+    canvas.restoreState()
+
+
 def rendre(
     diagnostic: Diagnostic,
     comparaisons: Comparaisons,
@@ -72,6 +194,7 @@ def rendre(
     *,
     now: datetime,
     commande: str | None = None,
+    settings: Settings | None = None,
 ) -> Path:
     titre = "Diagnostic d'implantation électrique"
     document = SimpleDocTemplate(
@@ -89,6 +212,8 @@ def rendre(
         Paragraph(titre, STYLES["titre"]),
         Paragraph(_pdf(diagnostic.territoire.adresse), STYLES["sous_titre"]),
     ]
+    tuile = lire_tuile(diagnostic.territoire, settings) if settings else None
+    blocs += _carte_adresse(diagnostic, tuile)
     blocs += [Paragraph(_pdf(ligne), STYLES["texte"]) for ligne in entete(diagnostic)]
     blocs.append(
         Paragraph(
@@ -103,7 +228,7 @@ def rendre(
     blocs.append(Paragraph(_pdf(resume.titre), STYLES["h1"]))
     blocs += [Paragraph(f"<b>{_pdf(c)}</b>", STYLES["texte"]) for _, c in resume.elements]
     blocs.append(Spacer(1, 6))
-    blocs += _synthese(diagnostic)
+    blocs.append(KeepTogether(_synthese(diagnostic)))
 
     for numero, section in enumerate(sections(diagnostic), start=1):
         contenu: list = [Paragraph(_pdf(section.titre), STYLES["h1"])]
@@ -128,5 +253,10 @@ def rendre(
         Paragraph(_pdf(ligne), STYLES["note"]) for ligne in pied_de_page(diagnostic, commande)
     ]
     pied = _pied_de_page(f"{titre} — {diagnostic.territoire.commune}")
-    document.build(blocs, onFirstPage=pied, onLaterPages=pied)
+
+    def premiere_page(canvas, doc) -> None:
+        _ornement(canvas, doc)
+        pied(canvas, doc)
+
+    document.build(blocs, onFirstPage=premiere_page, onLaterPages=pied)
     return chemin

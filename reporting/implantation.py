@@ -172,7 +172,12 @@ def generer_rapport_implantation(
             from reporting import implantation_pdf
 
             implantation_pdf.rendre(
-                diagnostic, comparaisons, chemin, now=genere_le, commande=commande
+                diagnostic,
+                comparaisons,
+                chemin,
+                now=genere_le,
+                commande=commande,
+                settings=settings,
             )
     logger.info(
         "rapport d'implantation genere format=%s commune=%s path=%s",
