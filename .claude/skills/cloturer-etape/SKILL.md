@@ -12,7 +12,8 @@ description: Clore une étape du plan : vérification complète (ruff, pytest, e
 2. **PLAN.md** : ligne dans le tableau « État », étape retirée de « Suite », décision datée dans
    « Décisions en vigueur » si un choix a été fait, « À surveiller » si une source a une limite
    nouvelle. Date du jour en tête du fichier.
-3. **README.md** : commandes, sources et licences, nombre de tests si la suite a changé.
+3. **README.md** : commandes, sources et licences. Si la suite a changé, nombre de tests dans
+   README et CLAUDE.md.
 4. **Git** : branche depuis `main` à jour, commit en français (titre court, corps qui dit l'étape
    et le pourquoi), push, PR vers `main`. Ne jamais pousser sur `main`.
 5. Rapporter : ce qui est vérifié, ce qui ne l'est pas, le lien de la PR.

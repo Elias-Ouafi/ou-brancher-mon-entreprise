@@ -14,7 +14,8 @@ dès sa publication, à côté de ce qu'il rassemble déjà.
 **Une adresse française en entrée ; en sortie, la réponse à « puis-je brancher mon entreprise
 ici ? »** : qui raccorde et à quelle échéance, les risques de la commune, le carbone du réseau, la
 facture et le terrain prêt le plus proche. Données publiques uniquement, chaque chiffre avec sa
-source et sa limite. Ligne de commande, en local. État et suite du projet : [PLAN.md](PLAN.md).
+source et sa limite. Ligne de commande ou application dans le navigateur, en local. État et suite
+du projet : [PLAN.md](PLAN.md).
 
 **Pour qui** : les projets de **1 à 50 MW** (data centers, hubs de bornes de recharge, sites
 industriels et logistiques), pour qui la puissance disponible, son délai et le coût de l'électricité
@@ -153,13 +154,18 @@ Toutes s'écrivent `.\.venv\Scripts\python.exe -m ingestion.cli <commande>`.
 | `diagnose --adresse "…" [--puissance MW] [--conso MWh] [--activite data-center\|irve\|industrie\|logistique] [--courbe CSV] [--ca €] [--va €] [--surface m²] [--format pdf\|md\|json]` | Diagnostic complet : industrie locale, réseau, raccordement (dont la qualité de fourniture du département), prix, acheminement, carbone, risques et sismicité, voisinage (argiles, cavités à 500 m, Seveso à 5 km, installations classées à 1 km, sols pollués à 500 m), foncier (zone d'urbanisme, friches à moins de 10 km, zones d'activité à moins de 5 km, prix des locaux), eau (arrêtés de restriction du jour), desserte (temps vers le fret, autoroute), bâtiment et productible solaire, puis le verdict « brancher ici ? » critère par critère ; `--sans-risques` coupe tous les appels à la demande (Géorisques, urbanisme, eau, solaire, desserte, zones d'activité) |
 | `compare --adresse "A" --adresse "B" … [mêmes options que diagnose]` | 2 à 6 adresses côte à côte, sans classement, avec le prix des locaux et le verdict « brancher ici ? » de chacune ; `texte`, `md`, `csv`, `json` |
 | `app [--port 8770] [--sans-ouvrir]` | Application locale dans le navigateur : adresse et projet, verdict sur la carte, diagnostic, rapport PDF, Markdown ou JSON |
-| `carte [--adresse "…"] [--puissance MW] [--reconstruire]` | Carte 3D hors ligne (`data/reports/carte.html`) |
+| `carte [--adresse "…"] [--puissance MW] [--reconstruire] [--sans-ouvrir] [--output FICHIER]` | Carte 3D hors ligne (`data/reports/carte.html` par défaut) |
 | `demo [--sans-ouvrir]` | Démonstration sans `refresh` : `essentiel` et la carte sur la base synthétique des tests (`data/demo/`), chiffres fictifs dits comme tels |
 | `europe --adresse "…" [--conso MWh]` | Hors de France, dans l'UE : prix moyen du pays et carbone de sa production, comparés à la France à tranche égale (moyennes nationales) |
 | `refresh [--months 180]` | Met à jour toutes les sources, puis `dbt build` |
 | `tempo --month 2026-09` | Charge le calendrier Tempo du mois depuis l'API RTE (compte RTE requis, hors `refresh`) |
 | `ecowatt` | Relève le signal Ecowatt du jour à J+3 (API RTE, compte Ecowatt requis, hors `refresh`) ; le rapport mensuel compte les jours orange et rouges relevés |
 | `report --month 2026-09` | Rapport mensuel carbone et créneaux Tempo, après `tempo` pour le même mois ; prix Tempo connus depuis le 1er février 2026 |
+
+Pour l'entretien des données, sans besoin au quotidien : `geocode` résout une adresse ; `freshness` et `coverage` contrôlent le retard et la complétude d'un
+jeu ; `extract`, `load`, `ingest` et `consolidate` extraient, chargent ou relisent un jeu ; `prix`
+charge les prix Eurostat. `--help` après une commande donne ses options, dont `--output` pour
+choisir le fichier et `--sans-graphiques` pour un rapport sans images.
 
 Les commandes qui répondent à une question (`essentiel`, `diagnose`, `compare`, `carte`, `europe`)
 n'affichent que la réponse, les alertes et le chemin des fichiers écrits ; `--verbose`, avant ou
@@ -205,7 +211,7 @@ flowchart LR
     S -->|dbt| G["Gold : prix, carbone, risques, diagnostic"]
     SEEDS[("Seeds : ADEME, tarifs, référentiels, limites")] --> G
     GEO[("Contours Etalab · relief IGN · Natural Earth")] -->|"ingestion/ (Python)"| B
-    G --> CLI(["essentiel · diagnose · compare · carte · europe"])
+    G --> CLI(["essentiel · diagnose · compare · carte · app · europe"])
     BAN[("À la demande : BAN · Géorisques · API Carto · BD TOPO · itinéraire IGN · VigiEau · PVGIS")] --> CLI
 ```
 
@@ -266,11 +272,13 @@ flowchart LR
 ## Tests
 
 ```powershell
-.\.venv\Scripts\python.exe -m ruff check . ; .\.venv\Scripts\python.exe -m pytest
+.\.venv\Scripts\python.exe .claude/scripts/verifier.py
 ```
 
-551 tests sans réseau, dont un `dbt build` complet sur une base synthétique qui reproduit les
-pièges des sources, plus les tests de données dbt. La CI GitHub Actions les joue à chaque PR.
+Le script joue `ruff`, `pytest`, puis un essai réel à Chilly-Mazarin (warehouse et réseau requis) ;
+`--rapide` saute `pytest`, `--sans-essai` saute l'essai réel. 572 tests sans réseau, dont un
+`dbt build` complet sur une base synthétique qui reproduit les pièges des sources, plus les tests de
+données dbt. La CI GitHub Actions joue `ruff` et `pytest` à chaque PR.
 
 ## Sources et licence
 
