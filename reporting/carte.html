@@ -163,6 +163,7 @@ button.hero:hover, button.mini:hover, button.hero:focus-visible, button.mini:foc
 .chiffre { display: block; font-family: var(--f-display); font-weight: 700; font-size: 30px; line-height: 1.15; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .chiffre.fourchette { font-size: 22px; line-height: 1.57; }
 .chiffre small { font-family: var(--f-body); font-weight: 400; font-size: 11.5px; color: var(--parch-dim); margin-left: 4px; }
+.annuel { display: block; font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .jauge { display: block; position: relative; height: 6px; border-radius: 3px; margin: 5px 0 3px; }
 .jauge i { position: absolute; top: -3px; width: 4px; height: 12px; border-radius: 2px; background: var(--encre); box-shadow: 0 0 0 2px var(--panel); transform: translateX(-50%); }
 .graduations { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--parch-dim); font-variant-numeric: tabular-nums; }
@@ -703,10 +704,10 @@ function heroCarbone(g, seuil = 100, detail) { if (g == null) return cliquable("
   const co2 = DATA.departements.map(d => d.co2).filter(v => v != null), max = Math.max(seuil * 2, g, ...co2), pos = g <= seuil ? g / seuil * .5 : .5 + (g - seuil) / (max - seuil) * .5;
   return cliquable("hero", detail, `<span class="k">${ICON.leaf}Électricité${g <= seuil ? '<span class="pill good">décarbonée</span>' : '<span class="pill bad">carbonée</span>'}</span><span class="chiffre">${fmt(g)}<small>gCO₂e/kWh</small></span><span class="jauge" style="background:linear-gradient(90deg,var(--good) 44%,var(--warn) 56%,var(--bad))"><i style="left:${pos * 100}%"></i></span><span class="graduations"><span>0</span><span>seuil ${fmt(seuil)}</span><span>${fmt(max)}</span></span>`); }
 // Le prix se lit entre les tranches de consommation d'Eurostat : il dépend du volume, pas du lieu
-function heroPrix(e, detail) { const min = PRIX.length ? Math.min(...PRIX.map(p => p.e)) : null, max = PRIX.length ? Math.max(...PRIX.map(p => p.e)) : null, ampleur = max - min || 1;
+function heroPrix(e, detail, annuel) { const min = PRIX.length ? Math.min(...PRIX.map(p => p.e)) : null, max = PRIX.length ? Math.max(...PRIX.map(p => p.e)) : null, ampleur = max - min || 1;
   const chiffre = e != null ? `<span class="chiffre">${fmt(e, 2)}<small>€/kWh HTVA</small></span>` : `<span class="chiffre fourchette">${min == null ? "n.d." : `${fmt(min, 2)} à ${fmt(max, 2)}`}<small>€/kWh HTVA</small></span>`;
   const repere = e != null ? `<i style="left:${Math.max(0, Math.min(1, (e - min) / ampleur)) * 100}%"></i>` : "";
-  return cliquable("hero", detail, `<span class="k">${ICON.euro}Prix moyen</span>${chiffre}${min == null ? "" : `<span class="jauge" style="background:linear-gradient(90deg,var(--good),var(--soleil),var(--warn))">${repere}</span><span class="graduations"><span>${fmt(min, 2)}</span><span>selon la conso.</span><span>${fmt(max, 2)}</span></span>`}`); }
+  return cliquable("hero", detail, `<span class="k">${ICON.euro}Prix moyen</span>${chiffre}${annuel ? `<span class="annuel">${esc(annuel)}</span>` : ""}${min == null ? "" : `<span class="jauge" style="background:linear-gradient(90deg,var(--good),var(--soleil),var(--warn))">${repere}</span><span class="graduations"><span>${fmt(min, 2)}</span><span>selon la conso.</span><span>${fmt(max, 2)}</span></span>`}`); }
 const mini = (nom, valeur, etat, detail) => cliquable(`mini ${esc(etat)}`, detail, `<span class="s ${esc(etat)}" aria-label="${esc((PILL[etat] || PILL.info)[1])}">${SYMBOLE[etat] || "i"}</span><span><span class="k">${esc(nom)}</span><span class="v">${valeur}</span></span>`);
 const PILL = { ok: ["good", "favorable"], attention: ["warn", "à vérifier"], inconnu: ["neutre", "non évalué"], info: ["neutre", "pour information"] };
 const cityEl = document.getElementById("city");
@@ -729,7 +730,7 @@ function showVerdict(enAttente = false) { if (!VERDICT) return ficheVide(); selB
     .map(l => mini(l.nom, esc(l.valeur.replace(" dans la commune", "")), l.etat, criteres[l.nom] && criteres[l.nom].detail)).join("");
   cityEl.innerHTML = `<header class="tete ${general}"><span class="sceau">${SYMBOLE[general]}</span><div><h2>Brancher ici ?</h2><div class="reponse">${esc(VERDICT.phrase)}</div></div></header>
   <div class="tuile-corps"><div class="tuile-gauche"><div class="tuile-place" id="tuilePlace"></div>${adresseTile ? contenuCase(adresseTile) : ""}</div>
-  <div class="tuile-info${enAttente ? " attente" : ""}" id="tuileInfo"><div class="heros">${heroCarbone(VERDICT.carbone && VERDICT.carbone.g, VERDICT.carbone && VERDICT.carbone.seuil, plein(criteres.Carbone))}${heroPrix(VERDICT.prix && VERDICT.prix.eur_kwh, plein(criteres.Facture))}</div>
+  <div class="tuile-info${enAttente ? " attente" : ""}" id="tuileInfo"><div class="heros">${heroCarbone(VERDICT.carbone && VERDICT.carbone.g, VERDICT.carbone && VERDICT.carbone.seuil, plein(criteres.Carbone))}${heroPrix(VERDICT.prix && VERDICT.prix.eur_kwh, plein(criteres.Facture), criteres.Facture && criteres.Facture.valeur.includes("par an") ? criteres.Facture.valeur : null)}</div>
   <div class="minis">${lignes}</div><div class="detail" hidden></div></div></div>${actions()}${sources(esc(LIMITE), noteRapport(), esc(FRAICHEUR))}`;
   if (adresseTile && !enAttente) montrerTuile(adresseTile); }
 // Après le verdict : lire le diagnostic, puis l'emporter en PDF, Markdown ou JSON
@@ -774,7 +775,7 @@ if (MONDE.length) { const b = document.createElement("button"); b.textContent = 
 GR.forEach((g, gi) => { if (!tiles.some(t => t.g === gi && t.land)) return; const b = document.createElement("button");
   b.dataset.carte = gi; b.textContent = nomCarte(gi); b.onclick = () => montrerCarte(gi); boutons.appendChild(b); });
 // Arrivée sur l'adresse : la caméra plonge, la case se soulève, puis sa tuile sort vers l'encart
-const vueAdresse = (immediat, duree = 1100) => { suivreCarte(adresseTile.g); showVerdict(true); allerA(adresseTile.x, adresseTile.z + (innerWidth <= 760 ? 7 : 0), 26, immediat, { duree, apres: sortirTuile }); }; // Sur téléphone, l'encart couvre le bas : le bâtiment reste au-dessus
+const vueAdresse = (immediat, duree = 1100) => { suivreCarte(adresseTile.g); showVerdict(true); allerA(adresseTile.x, adresseTile.z + (innerWidth <= 1320 ? 7 : 0), 26, immediat, { duree, apres: sortirTuile }); }; // Sur écran étroit, l'encart couvre le centre : le bâtiment reste au-dessus
 if (adresseTile) { const b = document.createElement("button"); b.textContent = "Adresse"; b.onclick = () => vueAdresse(); boutons.appendChild(b); }
 soleil(emprises[0].x, emprises[0].z);
 
