@@ -22,9 +22,12 @@ from ingestion.extract_geo import (
 )
 from ingestion.geocode import AdresseIntrouvableError
 from ingestion.hexagones import (
+    PAYS_ETUDIES,
     RAYON_SCENE,
     construire_grilles,
+    construire_monde,
     lire_contours,
+    lire_pays,
     lire_terres,
     points_terrestres,
 )
@@ -106,8 +109,63 @@ def test_collectivites_hors_carte_et_une_carte_par_territoire(grilles: list) -> 
     metropole, guadeloupe = grilles
     assert [g.code for g in grilles] == [None, "971"]
     largeur = math.sqrt(3) * RAYON_SCENE
-    # Assez loin pour que le brouillard de la scène cache la carte voisine
-    assert guadeloupe.scene_x0 - (metropole.scene_x0 + metropole.colonnes * largeur) > 300
+    # À sa place sur le monde : la Guadeloupe à l'ouest et au sud de la métropole
+    assert guadeloupe.scene_x0 + guadeloupe.colonnes * largeur < metropole.scene_x0
+    assert guadeloupe.scene_z0 > metropole.scene_z0
+
+
+def _pays(code: str, nom: str, anneaux: list) -> dict:
+    return {
+        "type": "Feature",
+        "properties": {"ADM0_A3": code, "NAME_FR": nom, "NAME": nom},
+        "geometry": {"type": "Polygon", "coordinates": anneaux},
+    }
+
+
+@pytest.fixture
+def pays(tmp_path: Path) -> Path:
+    path = tmp_path / "pays.geojson"
+    features = [
+        _pays("FRA", "France", _carre(4.0, 45.0, 1.0)),
+        _pays("BRA", "Brésil", _carre(-60.0, -20.0, 15.0)),
+        _pays("SGP", "Singapour", _carre(103.8, 1.2, 0.2)),
+        _pays("ATA", "Antarctique", _carre(-60.0, -80.0, 20.0)),
+    ]
+    path.write_text(json.dumps({"type": "FeatureCollection", "features": features}), "utf-8")
+    return path
+
+
+def test_monde_en_tuiles_ternes_sauf_pays_etudies(pays: Path, grilles: list) -> None:
+    monde = construire_monde(lire_pays(pays), grilles)
+    codes = {t.pays for t in monde.tuiles}
+    # Pas d'Antarctique ; un micro-État garde sa tuile ; la France est couverte par sa grille fine
+    assert codes == {"BRA", "SGP"}
+    assert monde.rayon_scene > RAYON_SCENE
+    donnees = carte._monde_en_donnees(monde)
+    assert "FRA" in PAYS_ETUDIES
+    assert {p["n"]: p["e"] for p in donnees["pays"]} == {
+        "Brésil": False,
+        "France": True,
+        "Singapour": False,
+    }
+    bresil = next(i for i, p in enumerate(donnees["pays"]) if p["n"] == "Brésil")
+    assert all(t[0] < grilles[0].scene_x0 for t in donnees["cases"] if t[2] == bresil)
+
+
+def test_encarts_voisins_sans_chevauchement(tmp_path: Path) -> None:
+    path = tmp_path / "antilles.geojson"
+    antilles = {
+        "type": "FeatureCollection",
+        "features": [
+            _feature("01", "Ain", "84", _carre(4.0, 45.0, 1.0)),
+            _feature("971", "Guadeloupe", "01", _carre(-61.6, 16.0, 0.4)),
+            _feature("972", "Martinique", "02", _carre(-61.2, 14.4, 0.4)),
+        ],
+    }
+    path.write_text(json.dumps(antilles), encoding="utf-8")
+    _, guadeloupe, martinique = construire_grilles(lire_contours(path), rayon_km=10)
+    hauteur = 1.5 * RAYON_SCENE
+    assert martinique.scene_z0 >= guadeloupe.scene_z0 + guadeloupe.lignes * hauteur
 
 
 def test_un_encart_compte_environ_70_cases(grilles: list) -> None:
@@ -285,6 +343,8 @@ def test_essentiel_place_l_adresse_sur_la_carte(
     assert appels[0]["territoire"] == territoire()
     verdict_adresse = appels[0]["verdict_adresse"]
     assert verdict_adresse["criteres"][0]["etat"] == "attention"
+    # Les jauges de l'encart lisent des nombres ; sans donnée, elles affichent « n.d. »
+    assert {"carbone", "prix"} <= set(verdict_adresse)
     assert verdict_adresse["phrase"].startswith("À vérifier avant de s'engager : raccordement")
     assert cli.main(["essentiel", "--adresse", "Lyon", "--sans-carte"]) == 0
     assert len(appels) == 1

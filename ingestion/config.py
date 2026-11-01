@@ -88,6 +88,12 @@ class Settings(BaseSettings):
         "ne_50m_land.geojson"
     )
 
+    # Pays du monde de Natural Earth (domaine public) : tuiles ternes autour des pays étudiés
+    pays_url: str = (
+        "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/"
+        "ne_50m_admin_0_countries.geojson"
+    )
+
     # Centre de chaque commune (geo.api.gouv.fr, Etalab), sans clé : place les pôles de production
     geo_communes_url: str = "https://geo.api.gouv.fr/communes"
 
