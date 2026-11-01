@@ -1,6 +1,6 @@
 [project]
 name = "ou-brancher-mon-entreprise"
-version = "0.1.0"
+version = "0.2.0"
 description = "Diagnostic d'implantation electrique par adresse : reseau, prix et risques, d'apres les donnees publiques (RTE, ODRE, Eurostat, Georisques)"
 readme = "README.md"
 license = "MIT"
