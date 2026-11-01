@@ -4,19 +4,20 @@ import base64
 from functools import cache
 from pathlib import Path
 
-# Direction « le relevé » (PLAN, refonte de la carte) : papier clair et encre bleu nuit, un seul
+# Direction « le relevé » (PLAN, refonte de la carte) : papier clair et encre vert nuit, un seul
 # accent vert pour ce qui est favorable et sourcé, orange brûlé pour « à vérifier »
 PAPIER = "#F4F1EA"
 ENCART = "#EBE6DA"
-ENCRE = "#14202B"
-DISCRET = "#5B6670"
+ENCRE = "#13281F"
+DISCRET = "#526A5D"
 FILET = "#D6D0C2"
 MER = "#9DB0BC"
 VERT = "#2E7D5B"
 ORANGE = "#C2571A"
 GRIS = "#C9CCC8"
-# Touches solarpunk de l'application (demande du 31 octobre) : lumière dorée et feuillage, sur
-# la carte seulement ; le PDF reste sur la sobriété du relevé
+# Touches solarpunk (demandes du 31 octobre et du 1er novembre) : lumière dorée, feuillage et titres
+# verts, sur la carte et le PDF ; le contraste du texte reste au-dessus de 4,5 sur le papier
+TITRE_VERT = "#1F5B45"
 SOLEIL = "#D9971E"
 FEUILLE = "#6E9F4E"
 # Tempo garde ses couleurs : ce sont les noms des jours, pas une note
@@ -83,6 +84,7 @@ def css() -> str:
         "vert": VERT,
         "orange": ORANGE,
         "gris": GRIS,
+        "titre-vert": TITRE_VERT,
         "soleil": SOLEIL,
         "feuille": FEUILLE,
         "f-titre": f'"{TITRE}", Georgia, serif',

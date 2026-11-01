@@ -6,14 +6,14 @@
 <title>Où brancher mon entreprise</title>
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src data:; connect-src 'self'">
 <style>
-/* Plein écran : carte 3D au fond, adresse en haut, verdict ou fiche en bas à gauche, lentilles en bas à droite */
+/* Plein écran : carte 3D au fond, verdict ou fiche en bas à gauche, lentilles en bas à droite */
 /*__CHARTE__*/
 /* Charte de reporting/charte.py : papier clair, encre bleu nuit, vert pour le favorable, orange pour « à vérifier » */
 :root {
   --ink: var(--papier);
   --panel: color-mix(in srgb, var(--papier) 70%, white);
   --panel-2: var(--encart);
-  --gold: var(--encre);
+  --gold: var(--titre-vert);
   --gold-dim: var(--filet);
   --parch: var(--encre);
   --parch-dim: var(--discret);
@@ -49,19 +49,15 @@ button { font: inherit; }
 .attente .soleil { animation: tourne 3s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .attente .soleil { animation: none; } }
 
-.topbar { position: fixed; top: 0; left: 0; right: 0; z-index: 5; display: flex; align-items: center; gap: 18px;
-  padding: calc(8px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px));
-  border-width: 0 0 1px; overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
-.brand { font-family: var(--f-display); font-weight: 700; letter-spacing: .04em; color: var(--gold); font-size: 15px; text-transform: uppercase; }
-.res { overflow: hidden; text-overflow: ellipsis; font-weight: 700; }
-.sep { width: 1px; height: 22px; background: var(--gold-dim); opacity: .6; flex: none; }
-.chip { margin-left: auto; font-size: 12px; color: var(--parch-dim); border: 1px solid var(--gold-dim); padding: 2px 8px; border-radius: 10px; }
+/* Pas de bandeau : la marque flotte sur la carte, la recherche n'apparaît que dans l'application */
+.topbar { position: fixed; top: 0; left: 0; right: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; pointer-events: none;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); }
+.topbar > * { pointer-events: auto; }
+.brand { font-family: var(--f-display); font-weight: 700; letter-spacing: .04em; color: var(--gold); font-size: 14px; text-transform: uppercase; text-shadow: 0 0 8px var(--papier), 0 0 2px var(--papier); pointer-events: none; }
 .brand { display: inline-flex; align-items: center; gap: 8px; }
-.recherche { display: flex; align-items: center; gap: 8px; flex: 1 1 420px; min-width: 0; }
+.recherche { display: flex; align-items: center; gap: 8px; flex: 0 1 620px; min-width: 0; }
 .recherche input { flex: 1; min-width: 0; font: inherit; font-size: 14px; color: var(--parch); background: var(--papier); border: 1px solid var(--gold-dim); border-radius: 999px; padding: 6px 14px; }
 .recherche input:focus-visible { outline: none; border-color: var(--feuille); box-shadow: 0 0 0 3px color-mix(in srgb, var(--feuille) 22%, transparent); }
-body.app .topbar { flex-wrap: wrap; white-space: normal; overflow: visible; row-gap: 8px; }
-body.app .hint { top: calc(var(--haut, 60px) + 8px); }
 .projet { position: fixed; z-index: 6; top: calc(var(--haut, 52px) + 8px); left: max(16px, env(safe-area-inset-left, 0px)); width: 360px; max-width: calc(100vw - 32px);
   padding: 12px 14px 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
 .projet h3, .projet .large { grid-column: 1 / -1; }
@@ -77,7 +73,6 @@ body.app .hint { top: calc(var(--haut, 60px) + 8px); }
 .etat.erreur { border-color: var(--orange); }
 .etat .candidat { font-size: 12.5px; padding: 3px 10px; }
 .actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 14px; background: var(--panel); border-top: 1px solid var(--gold-dim); }
-.actions .note { flex-basis: 100%; font-size: 12px; color: var(--parch-dim); }
 .dossier { position: fixed; z-index: 7; top: calc(var(--haut, 52px) + 8px); right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   width: min(640px, calc(100vw - 32px)); display: flex; flex-direction: column; overflow: hidden; }
 .dossier header { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--gold-dim); }
@@ -105,13 +100,19 @@ body.app .hint { top: calc(var(--haut, 60px) + 8px); }
 .pill.bad { background: color-mix(in srgb, var(--bad) 25%, transparent); color: var(--bad); }
 .pill.warn { background: color-mix(in srgb, var(--warn) 22%, transparent); color: var(--warn); }
 .pill.neutre { background: color-mix(in srgb, var(--parch-dim) 20%, transparent); color: var(--parch-dim); }
-.verdict { padding: 10px 14px; font-size: 14px; line-height: 1.4; background: var(--panel); }
-.critere { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 7px 14px; background: var(--panel); }
-.critere .k { font-size: 13.5px; color: var(--parch-dim); }
-.critere .v { font-weight: 700; text-align: right; }
-.critere .d { grid-column: 1 / -1; font-size: 12.5px; color: var(--parch-dim); line-height: 1.35; }
-.limit { padding: 8px 14px 10px; font-size: 12.5px; color: var(--parch-dim); background: var(--ink); border-top: 1px solid var(--gold-dim); }
-.limit b { color: var(--gold); font-weight: 500; }
+.city header.tete { display: flex; align-items: center; gap: 12px; }
+.city header.tete.ok { --rc: var(--good); }
+.city header.tete.attention { --rc: var(--warn); }
+.city header.tete.inconnu { --rc: var(--parch-dim); }
+.sceau { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 18px; color: var(--papier); background: var(--rc); }
+.reponse { font-size: 14.5px; font-weight: 600; line-height: 1.3; }
+.plus { border-top: 1px solid var(--gold-dim); font-size: 12px; color: var(--parch-dim); }
+.plus summary { padding: 6px 14px; cursor: pointer; }
+.plus summary:hover { color: var(--parch); }
+.plus p { margin: 0; padding: 0 14px 7px; line-height: 1.4; overflow-wrap: anywhere; }
+.legend .plus { margin: 8px -12px -10px; }
+.legend .plus summary { padding: 6px 12px; }
+.legend .plus p { padding: 0 12px 7px; margin: 0; }
 
 .lenses { position: fixed; z-index: 4; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
@@ -119,7 +120,7 @@ body.app .hint { top: calc(var(--haut, 60px) + 8px); }
 .vues button { background: var(--panel); color: var(--parch); border: 1px solid var(--gold-dim); border-radius: 12px; padding: 3px 10px; font-size: 12.5px; cursor: pointer; }
 .vues button:hover, .vues button:focus-visible { border-color: var(--gold); outline: none; }
 .vues button[aria-pressed="true"] { border-color: var(--vert); color: var(--vert); }
-.legend { width: 280px; max-width: calc(100vw - 32px); max-height: calc(100vh - var(--haut, 52px) - 170px); overflow-y: auto; padding: 10px 12px; border-radius: 4px; font-size: 12.5px; color: var(--parch-dim); }
+.legend { width: 280px; max-width: calc(100vw - 32px); max-height: calc(100vh - var(--haut, 52px) - 240px); overflow-y: auto; padding: 10px 12px; border-radius: 4px; font-size: 12.5px; color: var(--parch-dim); }
 .legend h3 { margin: 0 0 6px; font-family: var(--f-display); font-size: 13px; letter-spacing: .08em; color: var(--gold); text-transform: uppercase; }
 .legend .bar { height: 10px; border-radius: 2px; margin: 4px 0 3px; border: 1px solid var(--gold-dim); }
 .legend .ticks { display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; color: var(--parch); }
@@ -140,6 +141,45 @@ body.app .hint { top: calc(var(--haut, 60px) + 8px); }
 .lens:focus-visible { outline: none; }
 .lens:focus-visible .disc { outline: 2px solid var(--parch); outline-offset: 2px; }
 
+/* Encart : la tuile à gauche ; à droite ce qui décide d'un coup d'œil, le détail à la demande */
+.city.avec-tuile { width: 640px; }
+.tuile-corps { display: grid; grid-template-columns: 236px 1fr; background: var(--panel); }
+.tuile-gauche { display: flex; flex-direction: column; border-right: 1px solid var(--gold-dim);
+  background: radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--soleil) 20%, var(--panel)), var(--panel) 72%); }
+.tuile-place { height: 236px; }
+.tuile-contenu { padding: 0 12px 10px; font-size: 12px; line-height: 1.35; color: var(--parch-dim); text-align: center; }
+.tuile-contenu b { color: var(--parch); font-weight: 600; }
+.tuile-contenu div + div { margin-top: 2px; }
+.tuile-info { min-width: 0; padding: 10px; display: grid; gap: 8px; align-content: start; transition: opacity .5s ease .5s; }
+.tuile-info.attente { opacity: 0; transition: none; }
+.heros, .minis { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.hero, .mini { font: inherit; color: inherit; text-align: left; min-width: 0; background: var(--panel-2); border: 1px solid var(--gold-dim); }
+button.hero, button.mini { cursor: pointer; }
+button.hero:hover, button.mini:hover, button.hero:focus-visible, button.mini:focus-visible, [aria-expanded="true"] { border-color: var(--feuille); outline: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--feuille) 22%, transparent); }
+.hero { display: block; padding: 8px 10px; border-radius: 12px; }
+.hero .k { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--parch-dim); }
+.hero .k svg { width: 14px; height: 14px; flex: none; }
+.hero .k .pill { margin-left: auto; font-size: 10px; }
+.chiffre { display: block; font-family: var(--f-display); font-weight: 700; font-size: 30px; line-height: 1.15; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.chiffre.fourchette { font-size: 22px; line-height: 1.57; }
+.chiffre small { font-family: var(--f-body); font-weight: 400; font-size: 11.5px; color: var(--parch-dim); margin-left: 4px; }
+.annuel { display: block; font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.jauge { display: block; position: relative; height: 6px; border-radius: 3px; margin: 5px 0 3px; }
+.jauge i { position: absolute; top: -3px; width: 4px; height: 12px; border-radius: 2px; background: var(--encre); box-shadow: 0 0 0 2px var(--panel); transform: translateX(-50%); }
+.graduations { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--parch-dim); font-variant-numeric: tabular-nums; }
+.mini { display: flex; align-items: flex-start; gap: 8px; padding: 7px 9px; border-radius: 10px; }
+.mini .s { flex: none; width: 18px; height: 18px; margin-top: 1px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: var(--papier); background: var(--parch-dim); }
+.mini .s.ok { background: var(--good); }
+.mini .s.attention { background: var(--warn); }
+.mini .s.info { background: var(--soleil); }
+.mini .k { display: block; font-size: 11.5px; color: var(--parch-dim); }
+.mini .v { display: block; font-size: 13px; font-weight: 700; line-height: 1.22; font-variant-numeric: tabular-nums; }
+.mini.attention { background: color-mix(in srgb, var(--warn) 10%, var(--panel)); border-color: color-mix(in srgb, var(--warn) 55%, var(--gold-dim)); }
+.detail { padding: 8px 10px; border-radius: 10px; background: var(--panel-2); font-size: 12.5px; line-height: 1.4; }
+#tuile3d { position: fixed; z-index: 5; pointer-events: none; display: block; will-change: transform; filter: drop-shadow(0 8px 14px color-mix(in srgb, var(--encre) 28%, transparent)); }
+.legend .teintes i.monde { border-radius: 2px; }
+.rlabel.pays { letter-spacing: .1em; font-size: 12px; }
+
 #labels { position: fixed; inset: 0; pointer-events: none; z-index: 2; overflow: hidden; }
 .rlabel { position: absolute; transform: translate(-50%, -50%); font-family: var(--f-display); font-weight: 700; font-size: 13px; letter-spacing: .22em;
   text-transform: uppercase; color: var(--parch); text-align: center; line-height: 1.15; text-shadow: 0 1px 3px var(--ink), 0 0 10px var(--ink); opacity: .9; width: max-content; max-width: 170px; }
@@ -154,17 +194,29 @@ body.app .hint { top: calc(var(--haut, 60px) + 8px); }
 .tip { position: fixed; z-index: 6; pointer-events: none; padding: 6px 10px; border-radius: 3px; font-size: 13px; max-width: 260px; }
 .tip b { font-family: var(--f-display); font-size: 13.5px; letter-spacing: .03em; }
 .tip div { color: var(--parch-dim); }
-.hint { position: fixed; z-index: 3; top: calc(52px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); font-size: 12.5px; color: var(--parch);
-  background: color-mix(in srgb, var(--ink) 78%, transparent); padding: 3px 12px; border-radius: 12px; white-space: nowrap; }
+.hint { position: fixed; z-index: 3; top: calc(12px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); font-size: 12px; color: var(--parch-dim);
+  background: color-mix(in srgb, var(--ink) 78%, transparent); padding: 3px 12px; border-radius: 12px; white-space: nowrap; transition: opacity .6s; }
+.hint.vu { opacity: 0; }
 .erreur { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; font-size: 16px; }
 
+/* Entre le téléphone et le grand écran, l'encart passe devant : la légende et l'aide cèdent la place */
+@media (max-width: 1040px) {
+  .city { z-index: 5; }
+  .legend, .hint { display: none; }
+}
 @media (max-width: 760px) {
-  .city { bottom: calc(100px + env(safe-area-inset-bottom, 0px)); width: auto; right: max(16px, env(safe-area-inset-right, 0px)); max-height: 55vh; overflow-y: auto; }
+  .city { bottom: calc(132px + env(safe-area-inset-bottom, 0px)); width: auto; right: max(16px, env(safe-area-inset-right, 0px)); max-height: 55vh; overflow-y: auto; }
   .city .y { padding: 5px 12px; }
-  .legend, .hint, .chip { display: none; }
-  body.app .topbar .sep { display: none; }
+  .city.avec-tuile { width: auto; }
+  .tuile-corps { grid-template-columns: 1fr; }
+  .tuile-gauche { border-right: 0; }
+  .tuile-place { height: 136px; }
+  .tuile-contenu { padding: 0 8px 4px; font-size: 11px; }
+  .chiffre { font-size: 24px; }
+  .chiffre.fourchette { font-size: 17px; line-height: 1.65; }
   .lenses { left: max(16px, env(safe-area-inset-left, 0px)); align-items: center; }
-  .vues { justify-content: center; max-width: none; }
+  .vues { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; max-width: 100%; scrollbar-width: none; }
+  .vues button { flex: none; }
   .rlabel { font-size: 10px; letter-spacing: .14em; }
 }
 @media (max-height: 640px) and (min-width: 761px) { .legend p { display: none; } }
@@ -175,16 +227,14 @@ body.app .hint { top: calc(var(--haut, 60px) + 8px); }
 <div class="vignette"></div>
 <div id="labels"></div>
 
-<div class="topbar frame">
+<div class="topbar">
   <span class="brand"><svg class="soleil" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="#D9971E"/><path d="M12 1.8v3M12 19.2v3M1.8 12h3M19.2 12h3M4.8 4.8l2.1 2.1M17.1 17.1l2.1 2.1M4.8 19.2l2.1-2.1M17.1 6.9l2.1-2.1" stroke="#D9971E" stroke-width="1.8" stroke-linecap="round"/><path d="M12 16.5c0-3 1.6-4.6 4.2-4.8-.2 2.9-1.8 4.6-4.2 4.8Z" fill="#6E9F4E"/></svg>Où brancher mon entreprise</span>
-  <span class="sep"></span>
-  <span class="res" id="adr">Aucune adresse : lancer python -m ingestion.cli app, puis choisir une adresse</span>
+  <button class="btn" type="button" id="autreAdresse" hidden>Autre adresse</button>
   <form class="recherche" id="recherche" hidden>
     <input id="q" name="adresse" aria-label="Adresse du site" type="search" autocomplete="street-address" placeholder="Adresse du site, par exemple 3 allée des Peupliers 91380 Chilly-Mazarin" required>
     <button class="btn" type="button" id="ouvrirProjet" aria-expanded="false" aria-controls="projet">Projet</button>
     <button class="btn primaire" type="submit" id="analyser">Analyser</button>
   </form>
-  <span class="chip" id="genere"></span>
 </div>
 <form class="projet frame feuillage" id="projet" hidden>
   <h3>Votre projet</h3>
@@ -203,9 +253,10 @@ body.app .hint { top: calc(var(--haut, 60px) + 8px); }
   <pre id="dossierTexte"></pre>
   <footer id="dossierPied"></footer>
 </section>
-<div class="hint">Glisser pour se déplacer · clic droit pour pivoter · molette pour zoomer · cliquer sur une case</div>
+<div class="hint">Glisser pour se déplacer · clic droit pour pivoter · molette pour zoomer jusqu'au monde · cliquer sur une case</div>
 
 <aside class="city frame" id="city" aria-live="polite"></aside>
+<canvas id="tuile3d" hidden aria-hidden="true"></canvas>
 
 <div class="lenses">
   <div class="vues" id="cartes" role="group" aria-label="Carte affichée"></div>
@@ -236,6 +287,7 @@ const CHARTE = n => getComputedStyle(document.documentElement).getPropertyValue(
 const DEP = Object.fromEntries(DATA.departements.map(d => [d.c, d]));
 const GR = DATA.grilles, R = DATA.rayonScene, HW = Math.sqrt(3) * R, DZ = 1.5 * R, PS = R / 1.5;
 const centre = (g, c, r) => [GR[g].x0 + c * HW + (r & 1) * HW / 2, GR[g].z0 + r * DZ];
+const moyenne = (ts, k) => ts.reduce((a, t) => a + t[k], 0) / Math.max(1, ts.length);
 const hash = (a, b) => { const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return s - Math.floor(s); };
 
 // Cases et voisinage
@@ -249,11 +301,14 @@ for (const row of DATA.cases) {
 const tileAt = (g, c, r) => { const i = grid.get(g + "," + c + "," + r); return i == null ? null : tiles[i]; };
 const nb = (t, k) => { const a = (30 + 60 * k) * Math.PI / 180, x = t.x + HW * Math.sin(a), z = t.z + HW * Math.cos(a);
   const r = Math.round((z - GR[t.g].z0) / DZ); return tileAt(t.g, Math.round((x - GR[t.g].x0 - (r & 1) * HW / 2) / HW), r); };
-const land = tiles.filter(t => t.land), fog = tiles.filter(t => t.fog), water = tiles.filter(t => !t.land && !t.fog);
+const land = tiles.filter(t => t.land), fog = tiles.filter(t => t.fog), sea = tiles.filter(t => !t.land && !t.fog);
 for (const t of land) { const d = DEP[t.dep]; t.reg = d ? d.r : "00"; }
 for (const t of tiles) t.dist = t.land || t.fog ? 0 : 99;
 let front = land.concat(fog);
 for (let step = 1; step < 7 && front.length; step++) { const nx = []; for (const t of front) for (let k = 0; k < 6; k++) { const n = nb(t, k); if (n && n.dist > step) { n.dist = step; nx.push(n); } } front = nx; }
+
+// Seule la mer du rivage garde ses cases : au large, la grille ne dessine pas de rectangle sur le monde
+const water = sea.filter(t => t.dist <= 3);
 
 // Relief réel : hauteur selon l'altitude moyenne, exagérée par une racine carrée
 const hauteur = alt => .45 + 2.6 * Math.sqrt(Math.max(alt, 0) / 4000);
@@ -277,22 +332,25 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 host.appendChild(renderer.domElement);
+const DISTANCE_MONDE = 2100, SEUIL_MONDE = 320;
 const scene = new THREE.Scene(); scene.background = col(CHARTE("papier")); scene.fog = new THREE.Fog(col(CHARTE("papier")), 120, 280);
 const camera = new THREE.PerspectiveCamera(42, 1, .5, 600);
+// Du monde à la case : plans de coupe et brouillard suivent la distance, sinon le relief scintille de loin
+const cadrer = d => { const near = Math.max(.5, d / 60), far = Math.max(600, d * 6); if (camera.near !== near || camera.far !== far) { camera.near = near; camera.far = far; camera.updateProjectionMatrix(); } scene.fog.near = d * 1.6; scene.fog.far = d * 6; };
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; controls.dampingFactor = .08; controls.screenSpacePanning = false;
-controls.minDistance = 10; controls.maxDistance = 190; controls.minPolarAngle = .3; controls.maxPolarAngle = 1.08;
+controls.minDistance = 10; controls.maxDistance = DISTANCE_MONDE * 1.25; controls.minPolarAngle = .3; controls.maxPolarAngle = 1.08;
 controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
 controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE };
 scene.add(new THREE.HemisphereLight(col("#e4efd6"), col("#4a3b2a"), .72));
 const sun = new THREE.DirectionalLight(col("#ffd9a3"), 1.1); sun.position.set(-45, 90, 35); sun.target.position.set(-45, 0, 0); scene.add(sun.target);
 sun.castShadow = true; Object.assign(sun.shadow.camera, { left: -130, right: 130, top: 90, bottom: -90, near: 10, far: 260 });
 sun.shadow.mapSize.set(4096, 4096); sun.shadow.bias = -.0008; scene.add(sun);
-const seabed = new THREE.Mesh(new THREE.PlaneGeometry(900, 900), new THREE.MeshStandardMaterial({ color: col(CHARTE("mer")), roughness: .9 }));
+const seabed = new THREE.Mesh(new THREE.PlaneGeometry(16000, 16000), new THREE.MeshStandardMaterial({ color: col(CHARTE("mer")), roughness: .9 }));
 seabed.rotation.x = -Math.PI / 2; seabed.position.y = -.05; seabed.receiveShadow = true; scene.add(seabed);
-// Soleil et fond marin suivent la carte affichée
-const soleil = (x, z) => { sun.position.set(x - 45, 90, z + 35); sun.target.position.set(x, 0, z); seabed.position.x = x; seabed.position.z = z; };
-// Métropole et Corse forment une carte, chaque département d'outre-mer la sienne
+// Le soleil et ses ombres suivent la carte affichée
+const soleil = (x, z) => { sun.position.set(x - 45, 90, z + 35); sun.target.position.set(x, 0, z); };
+// Métropole et Corse forment une carte, chaque département d'outre-mer la sienne, posée à sa place sur le monde
 let carte = 0;
 const nomCarte = gi => GR[gi].code ? GR[gi].nom : "Métropole et Corse";
 
@@ -309,11 +367,20 @@ waterMesh.receiveShadow = true; scene.add(waterMesh);
 water.forEach((t, i) => { const d = t.dist, h = d <= 1 ? .26 : d <= 3 ? .18 : .1; dummy.position.set(t.x, 0, t.z); dummy.scale.set(1, h, 1); dummy.updateMatrix(); waterMesh.setMatrixAt(i, dummy.matrix);
   const c = col(CHARTE("mer")).offsetHSL(0, 0, d <= 1 ? .06 : d <= 3 ? .02 : -.02); c.offsetHSL(0, 0, (hash(t.r, t.c) - .5) * .03); waterMesh.setColorAt(i, c); });
 
-// Pays voisins en gris papier, hors de la lecture
+// Pays voisins en gris papier, hors de la lecture ; plus sombre que le filet, que la lumière dorée brûlerait en jaune.
+// Le monde, lui, y virait au sable : son gris tire vers le bleu pour rester neutre à l'écran
+const TERNE = "#A5A79F", TERNE_MONDE = "#97A3AA";
 const fogMesh = new THREE.InstancedMesh(hexGeo, new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true }), Math.max(fog.length, 1));
 fogMesh.count = fog.length; fogMesh.receiveShadow = true; scene.add(fogMesh);
 fog.forEach((t, i) => { dummy.position.set(t.x, 0, t.z); dummy.scale.set(1, .42 + hash(t.c, t.r) * .08, 1); dummy.updateMatrix(); fogMesh.setMatrixAt(i, dummy.matrix);
-  const c = col(CHARTE("filet")); c.offsetHSL(0, 0, (hash(t.r, t.c) - .5) * .05); fogMesh.setColorAt(i, c); });
+  const c = col(TERNE); c.offsetHSL(0, 0, (hash(t.r, t.c) - .5) * .04); fogMesh.setColorAt(i, c); });
+
+// Le monde en tuiles grossières : ternes hors des pays étudiés, sans détail ni donnée
+const MONDE = DATA.monde ? DATA.monde.cases.map(([x, z, p]) => ({ x, z, pays: DATA.monde.pays[p] })) : [];
+const mondeMesh = new THREE.InstancedMesh(hexGeo, new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true }), Math.max(MONDE.length, 1));
+mondeMesh.count = MONDE.length; scene.add(mondeMesh);
+if (MONDE.length) { const k = DATA.monde.rayon / R; MONDE.forEach((t, i) => { dummy.position.set(t.x, 0, t.z); dummy.scale.set(k, .3 + hash(t.x, t.z) * .08, k); dummy.updateMatrix(); mondeMesh.setMatrixAt(i, dummy.matrix);
+  const c = col(t.pays.e ? CHARTE("feuille") : TERNE_MONDE); c.offsetHSL(0, 0, (hash(t.z, t.x) - .5) * .04); mondeMesh.setColorAt(i, c); }); }
 
 // Montagnes selon l'altitude maximale : le relief pèse sur l'accès et les travaux
 const mountains = new THREE.Group(); scene.add(mountains);
@@ -343,7 +410,7 @@ class Band {
     const g = this.mesh.geometry; g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); g.setAttribute("color", new THREE.BufferAttribute(cl, 3)); g.setIndex(idx); this.update(); }
   update() { const p = this.mesh.geometry.attributes.position; if (!p || !this.hex.length) return; for (let v = 0; v < this.hex.length; v++) p.array[v * 3 + 1] = curH[this.hex[v]] + this.yOff; p.needsUpdate = true; this.mesh.geometry.computeBoundingSphere(); }
 }
-const regionBand = new Band(1, .025), depBand = new Band(.28, .02), selBand = new Band(1, .05), hoverBand = new Band(.9, .06);
+const regionBand = new Band(1, .025), depBand = new Band(.28, .02), selBand = new Band(1, .05), hoverBand = new Band(.9, .06), adresseBand = new Band(1, .055);
 const rE = [], dE = [];
 for (const t of land) for (let k = 0; k < 6; k++) { const n = nb(t, k);
   if (!n || !n.land) rE.push({ i: t.i, k, w: .12 * PS, c: col(CHARTE("papier")) });
@@ -363,24 +430,14 @@ const zoneObjs = DATA.zones.map(z => ({ z, t: caseDe(z.case) })).filter(o => o.t
 for (const { t } of zoneObjs) { const m = new THREE.Mesh(new THREE.RingGeometry(R * .9, R * 1.12, 6), ringMat.clone()); m.rotation.x = -Math.PI / 2; m.rotation.z = Math.PI / 6;
   m.position.set(t.x, 0, t.z); m.userData = { i: t.i, dy: .08, ring: true }; markers.zones.add(m); followers.push(m); }
 const adresseTile = DATA.adresse ? caseDe(DATA.adresse.case) : null;
-if (adresseTile) { const g = new THREE.Group(), tigeMat = new THREE.MeshStandardMaterial({ color: col(CHARTE("feuille")), roughness: .6 });
-  const soleilMat = new THREE.MeshStandardMaterial({ color: col(CHARTE("soleil")), emissive: col(CHARTE("soleil")), emissiveIntensity: .55, roughness: .35 });
-  const tige = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, 2.2 * PS, 6), tigeMat); tige.position.y = 1.1 * PS; g.add(tige);
-  const feuille = new THREE.Mesh(new THREE.SphereGeometry(.2 * PS, 8, 6), tigeMat); feuille.scale.set(1.4, .35, .7); feuille.position.set(.18 * PS, 1.2 * PS, 0); feuille.rotation.z = .5; g.add(feuille);
-  const tete = new THREE.Mesh(new THREE.SphereGeometry(.32 * PS, 16, 12), soleilMat); tete.position.y = 2.3 * PS; g.add(tete);
-  const halo = new THREE.Mesh(new THREE.RingGeometry(.42 * PS, .5 * PS, 24), new THREE.MeshBasicMaterial({ color: col(CHARTE("soleil")), transparent: true, opacity: .6, side: THREE.DoubleSide, depthWrite: false }));
-  halo.position.y = 2.3 * PS; g.add(halo); g.userData.halo = halo;
-  g.children.forEach(m => m.castShadow = m !== halo); g.position.set(adresseTile.x, 0, adresseTile.z); g.userData = { i: adresseTile.i }; scene.add(g); followers.push(g); }
 // Arc lumineux de l'adresse vers la zone RTE utile et vers le site clé en main le plus proche
-const lienVers = (t, couleur, dh = 1.3) => { if (!adresseTile || !t) return; const a = adresseTile, ha = a.baseH + 2.3 * PS, hb = t.baseH + dh * PS;
+const lienVers = (t, couleur, dh = 1.3) => { if (!adresseTile || !t) return; const a = batimentAdresse ? batimentAdresse.position : adresseTile, ha = adresseTile.baseH + 1.1 * PS + hautBatiment, hb = t.baseH + dh * PS;
   const haut = Math.max(ha, hb) + 1.5 * PS + Math.hypot(t.x - a.x, t.z - a.z) * .25;
   const courbe = new THREE.QuadraticBezierCurve3(new THREE.Vector3(a.x, ha, a.z), new THREE.Vector3((a.x + t.x) / 2, haut, (a.z + t.z) / 2), new THREE.Vector3(t.x, hb, t.z));
   markers.liens.add(new THREE.Mesh(new THREE.TubeGeometry(courbe, 48, .09 * PS, 6), new THREE.MeshBasicMaterial({ color: col(couleur) }))); };
 // Une zone RTE peut compter plusieurs pôles : on relie le plus proche de l'adresse
 const ecart = o => Math.hypot(o.t.x - adresseTile.x, o.t.z - adresseTile.z);
 const zoneCible = VERDICT && adresseTile && zoneObjs.filter(o => o.z.n === VERDICT.zone).sort((a, b) => ecart(a) - ecart(b))[0], siteCible = VERDICT && DATA.sites.find(s => s.id === VERDICT.site);
-if (zoneCible) lienVers(zoneCible.t, CHARTE("encre"));
-if (siteCible) lienVers(caseDe(siteCible.case), CHARTE("soleil"), .5);
 
 // Pôles de production en maquettes : la plus puissante d'une carte couvre les deux tiers de la case
 const FILIERES = {
@@ -427,7 +484,7 @@ const MAQUETTES = {
   "Eolien": g => { const m = mat(FILIERES["Eolien"]); g.add(piece(cyl, m, 0, 0, 0, .07, .95, .07), piece(boite, m, 0, .92, -.03, .08, .07, .16));
     const rotor = new THREE.Group(); rotor.position.set(0, .95, .06);
     for (let k = 0; k < 3; k++) { const pale = piece(boite, m, 0, 0, 0, .06, .42, .03); pale.rotation.z = k * 2 * Math.PI / 3; rotor.add(pale); }
-    g.add(rotor); g.userData.rotor = rotor; },
+    rotor.name = "rotor"; g.add(rotor); g.userData.rotor = rotor; },
   "Solaire": g => { const m = mat("#3c6fa0", { metalness: .3 }); for (const x of [-.27, 0, .27]) { const p = piece(boite, m, x, .1, 0, .22, .03, .5); p.rotation.x = -.5; g.add(p); } },
   "Bioénergies": g => { g.add(piece(dome, mat(FILIERES["Bioénergies"]), -.05, 0, 0, .8, .9, .8), piece(cyl, mat("#8b877c"), .32, 0, 0, .1, .7, .1)); },
 };
@@ -437,6 +494,8 @@ const autre = (g, f) => g.add(piece(cone, mat(FILIERES[f] || "#7fe3ff"), 0, 0, 0
 const D_MAX = 2 / 3 * HW * .97;
 const MAX_MW = {}, nCase = {}; for (const p of DATA.production) { const t = caseDe(p.case); if (!t) continue; MAX_MW[t.g] = Math.max(MAX_MW[t.g] || 0, p.mw); if (t.land) nCase[t.i] = (nCase[t.i] || 0) + 1; }
 for (const s of [...DATA.sites, ...(DATA.fret || [])]) { const t = caseDe(s.case); if (t && t.land) nCase[t.i] = (nCase[t.i] || 0) + 1; }
+// Le bâtiment de l'adresse prend sa place sur la case, à côté de ce qu'elle porte déjà
+if (adresseTile && adresseTile.land) nCase[adresseTile.i] = (nCase[adresseTile.i] || 0) + 1;
 // Pôles, pôles de fret et sites clés en main d'une case se partagent les deux tiers, côte à côte sur un cercle
 const parCase = {}, prodObjs = [];
 const place = t => { const n = nCase[t.i], k = parCase[t.i] = (parCase[t.i] || 0) + 1, sin = Math.sin(Math.PI / n);
@@ -499,6 +558,36 @@ for (const s of DATA.sites) { const t = caseDe(s.case); if (!t || !t.land) conti
   g.position.set(x, 0, z); g.rotation.y = hash(t.r, t.c) * .8 - .4;
   g.userData = { i: t.i }; g.traverse(o => o.userData.site = s); markers.sites.add(g); followers.push(g); }
 
+// Pollen et pétales qui flottent autour de l'adresse : seule cette case vit en continu
+const pointDoux = (() => { const cv = document.createElement("canvas"); cv.width = cv.height = 32; const c = cv.getContext("2d"), g = c.createRadialGradient(16, 16, 0, 16, 16, 16); g.addColorStop(0, "rgba(255,255,255,1)"); g.addColorStop(.45, "rgba(255,255,255,.75)"); g.addColorStop(1, "rgba(255,255,255,0)"); c.fillStyle = g; c.fillRect(0, 0, 32, 32); return new THREE.CanvasTexture(cv); })();
+function nuagePollen(n, rayon, haut, taille) { const pos = [], cl = [], TEINTES_POLLEN = ["#fff6c9", "#ffe27a", "#ffc4d6", "#ffffff", "#c9f2a6"].map(col);
+  for (let k = 0; k < n; k++) { const a = hash(k, 1) * 6.283, d = Math.sqrt(hash(k, 2)) * rayon; pos.push(Math.sin(a) * d, hash(k, 3) * haut, Math.cos(a) * d); TEINTES_POLLEN[k % 5].toArray(cl, k * 3); }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute("color", new THREE.Float32BufferAttribute(cl, 3));
+  return new THREE.Points(geo, new THREE.PointsMaterial({ size: taille, map: pointDoux, vertexColors: true, transparent: true, depthWrite: false, opacity: .95 })); }
+
+// L'entreprise du visiteur : la seule maquette à liseré doré, immeuble vitré et aile basse, qu'on repère sans qu'elle écrase la carte
+let batimentAdresse = null, hautBatiment = 0;
+if (adresseTile && adresseTile.land) { const t = adresseTile, or = col(CHARTE("soleil")), { d, x, z } = place(t), g = batimentAdresse = new THREE.Group(), e = Math.max(d * 1.2, R * .92);
+  const beton = mat("#f3efe4"), verre = mat("#3f7396", { metalness: .45, roughness: .22 }), dore = mat(CHARTE("soleil"), { emissive: or, emissiveIntensity: .5 }), jardin = mat(CHARTE("feuille")), dalle = mat("#ded9ca");
+  g.add(piece(socleGeo, dore, 0, 0, 0), piece(boite, dalle, 0, .035, 0, .84, .015, .66));
+  const etages = 8, pas = .118, tx = -.16, tz = -.1;
+  for (let k = 0; k < etages; k++) g.add(piece(boite, verre, tx, .05 + k * pas, tz, .34, pas - .02, .3), piece(boite, beton, tx, .05 + (k + 1) * pas - .02, tz, .37, .02, .33));
+  const sommet = .05 + etages * pas;
+  g.add(piece(boite, dore, tx, sommet, tz, .39, .03, .35), piece(boite, beton, tx + .05, sommet + .03, tz - .02, .13, .05, .1));
+  // Aile basse : bandeau de fenêtres, toit planté et panneaux solaires, auvent doré sur l'entrée
+  g.add(piece(boite, beton, .17, .05, .08, .44, .17, .36), piece(boite, verre, .17, .1, .08, .45, .055, .37), piece(boite, jardin, .17, .22, .08, .4, .012, .32));
+  for (const px of [.06, .17, .28]) { const p = piece(boite, SITE.pv, px, .24, .08, .09, .012, .22); p.rotation.z = -.3; g.add(p); }
+  g.add(piece(boite, dore, .17, .15, .28, .18, .014, .08));
+  for (const m of g.children) m.castShadow = m !== g.children[0];
+  g.scale.set(e, e, e); g.position.set(x, 0, z); g.userData = { i: t.i }; scene.add(g); followers.push(g); hautBatiment = sommet * e;
+  // Anneau doré qui pulse sur la case et liseré autour d'elle : la lecture se fait de loin
+  const onde = new THREE.Mesh(new THREE.RingGeometry(R * .9, R * 1.12, 6), new THREE.MeshBasicMaterial({ color: or, transparent: true, opacity: .8, side: THREE.DoubleSide, depthWrite: false }));
+  onde.rotation.x = -Math.PI / 2; onde.rotation.z = Math.PI / 6; onde.position.set(t.x, 0, t.z); onde.userData = { i: t.i, dy: .09, ring: true }; scene.add(onde); followers.push(onde);
+  adresseBand.set(ringOf([t], .2 * PS, or));
+  const pollen = nuagePollen(70, R * 1.5, R * 2.1, .17); pollen.position.set(t.x, 0, t.z); pollen.userData = { i: t.i, pollen: true }; scene.add(pollen); followers.push(pollen); }
+if (zoneCible) lienVers(zoneCible.t, CHARTE("encre"));
+if (siteCible) lienVers(caseDe(siteCible.case), CHARTE("soleil"), .5);
+
 // Bosquets de la vue Territoire : feuillus en plaine, conifères en altitude, oliviers en garrigue ;
 // aucun sur une case qui porte une maquette, pour ne rien masquer
 markers.vegetation = new THREE.Group(); scene.add(markers.vegetation);
@@ -529,10 +618,15 @@ for (const os of Object.values(parCarte)) for (const { p, t } of os.slice(0, 6))
   addLabel(`<span>${esc(p.n)}</span><span class="by">${fmt(p.mw)} MW</span>`, "banner prod", { g: t.g, i: t.i, x: t.x, z: t.z, y: 2.4 * PS }, ["territoire"]);
 if (adresseTile) addLabel(esc(DATA.adresse.libelle), "banner adresse", { g: adresseTile.g, i: adresseTile.i, x: adresseTile.x, z: adresseTile.z, y: 3.6 * PS }, ["raccordement", "territoire"]);
 
+// À l'échelle du monde, seuls les territoires étudiés se nomment
+const etiquettesMonde = GR.map((g, gi) => { const ts = land.filter(t => t.g === gi); if (!ts.length) return null; const el = document.createElement("div");
+  el.className = "rlabel pays"; el.textContent = g.code ? g.nom : "France"; labelsEl.appendChild(el);
+  const zs = ts.map(t => t.z); return { el, gi, x: moyenne(ts, "x"), z: gi && !(gi % 2) ? Math.max(...zs) + 26 : Math.min(...zs) - 26 }; }).filter(Boolean);
+
 // Lentilles
 const ramp = (stops, s) => { s = Math.max(0, Math.min(1, s)); const n = stops.length - 1, k = Math.min(n - 1, Math.floor(s * n)); return col(stops[k]).lerp(col(stops[k + 1]), s * n - k); };
 // Seule la vue de décision porte des fausses couleurs : rouge défavorable, blanc neutre, vert favorable
-const NOTE = ["#c0392b", "#e8a59a", "#f2f2ee", "#9fd19a", "#2e8b3e"];
+const NOTE = ["#c0392b", "#e8a59a", "#f4edd8", "#8fd07f", "#1f9a4a"];
 const TEINTES = [[CHARTE("mer"), "mer"], ["#5f8f3e", "plaines et forêts"], ["#b0a35f", "garrigue"], ["#41632f", "forêts et collines"], ["#8f8c82", "montagne"], ["#f1f3f4", "neige"]];
 // Note de chaque case, de -1 (défavorable) à +1 (favorable) : zone RTE prioritaire et site clé en main proches,
 // postes 400 kV, contraintes RTE prévues au-delà de la médiane (4 par département), carbone, équilibre régional et relief
@@ -550,7 +644,7 @@ for (const t of land) { const d = DEP[t.dep] || {}, r = [];
 const avis = n => n > .15 ? "favorable" : n < -.15 ? "défavorable" : "neutre";
 const LENS = {
   raccordement: { tile: t => [ramp(NOTE, (t.note + 1) / 2), t.baseH], show: ["sites", "zones", "liens", "production", "fret"],
-    legend: `<h3>Note des cases</h3><div class="bar" style="background:linear-gradient(90deg,${NOTE.join(",")})"></div><div class="ticks"><span>défavorable</span><span>neutre</span><span>favorable</span></div><p>Vert : zone de raccordement prioritaire RTE ou site clé en main à proximité, poste 400 kV dans le département. Rouge : contraintes RTE prévues, relief, électricité carbonée, région importatrice. Indicatif : seule une étude Enedis ou RTE fait foi.</p><p>Anneau sombre et bannière : zone prioritaire RTE (SDDR 2025). Hangar au drapeau doré : site clé en main France 2030. Maquettes : centrales d'au moins 200 MW (20 MW en Corse et outre-mer) ; ports (socle bleu), aéroports (socle gris-bleu) et chantiers rail-route (socle violet) au-delà d'un seuil de fret, détaillés dans la vue Territoire. Épingle au soleil : votre adresse, reliée à la zone RTE utile et au site le plus proche.</p>` },
+    legend: `<h3>Note des cases</h3><div class="bar" style="background:linear-gradient(90deg,${NOTE.join(",")})"></div><div class="ticks"><span>défavorable</span><span>neutre</span><span>favorable</span></div><div class="teintes" style="margin-top:6px"><span><i style="background:${CHARTE("soleil")}"></i>votre site</span><span><i style="background:${CHARTE("encre")}"></i>zone RTE</span><span><i style="background:#f1c75b"></i>site clé en main</span></div><p>Vert : zone de raccordement prioritaire RTE ou site clé en main à proximité, poste 400 kV dans le département. Rouge : contraintes RTE prévues, relief, électricité carbonée, région importatrice. Indicatif : seule une étude Enedis ou RTE fait foi.</p><p>Anneau sombre et bannière : zone prioritaire RTE (SDDR 2025). Hangar au drapeau doré : site clé en main France 2030. Maquettes : centrales d'au moins 200 MW (20 MW en Corse et outre-mer) ; ports (socle bleu), aéroports (socle gris-bleu) et chantiers rail-route (socle violet) au-delà d'un seuil de fret, détaillés dans la vue Territoire. Bâtiment au liseré doré : votre adresse, reliée à la zone RTE utile et au site le plus proche.</p>` },
   // Paysage réel : couleurs naturelles et relief IGN, sans note ; l'électricité du territoire passe par l'encart
   territoire: { tile: t => [t.biome, t.baseH], show: ["mountains", "vegetation", "production", "fret"],
     legend: () => `<h3>Territoire</h3><div class="teintes">${TEINTES.map(([c, n]) => `<span><i style="background:${c}"></i>${n}</span>`).join("")}</div><p>Couleurs naturelles, hauteur selon l'altitude moyenne (IGN).</p>${legendeElectricite()}${legendeProduction()}${legendeFret()}` },
@@ -573,13 +667,23 @@ function legendeFret() { const ps = fretObjs.filter(o => o.t.g === carte).map(o 
   const lignes = Object.keys(FRET).map(m => [m, ps.filter(p => p.m === m)]).filter(([, l]) => l.length)
     .map(([m, l]) => `<span><i style="background:${FRET[m]}"></i>${esc(NOM_FRET[m])}</span><span>${l.length}</span>`).join("");
   return `<h3>Fret</h3>${lignes ? `<div class="filieres">${lignes}</div>` : "<p>Aucun pôle de fret au-dessus du seuil sur cette carte.</p>"}<p>Ports d'au moins ${zni ? "0,5" : "5"} Mt de marchandises par an hors tare (SDES${zni ? "" : " ; 0,5 Mt en Corse"}), aéroports d'au moins ${zni ? "3 000" : "20 000"} t de fret et de poste (DGAC${zni ? "" : " ; 3 000 t en Corse"}), dernière année publiée. Chantiers rail-route de SNCF Réseau (liste de 2022) d'au moins 2 km de voies de manutention : repère de capacité, aucun tonnage n'étant publié. HAROPA (Le Havre, Rouen, Paris) est publié d'un bloc et placé au Havre ; ports et aéroports au centre de leur commune.</p>`; }
-let lens = "raccordement", animating = true;
+let lens = "raccordement", animating = true, vueMonde = false, tuileLevee = null;
+const legendeMonde = () => `<h3>Le monde en tuiles</h3><div class="teintes"><span><i class="monde" style="background:${NOTE[4]}"></i>pays étudié : données, relief, maquettes</span><span><i class="monde" style="background:${TERNE_MONDE}"></i>autre pays : pas encore de données</span></div><p>Étudiés aujourd'hui : France métropolitaine, Corse et les cinq départements d'outre-mer, agrandis à leur place. Les collectivités d'outre-mer n'ont pas de données et restent ternes. Contours des pays : Natural Earth (domaine public), frontières de fait. Une tuile ≈ ${fmt(2 * (DATA.monde ? DATA.monde.rayon * 10 : 0))} km.</p>`;
+// La légende se lit en couleurs et en repères ; ses explications restent à un clic
+const majLegende = () => { const L = LENS[lens], el = document.getElementById("legend"); el.innerHTML = vueMonde && DATA.monde ? legendeMonde() : typeof L.legend === "function" ? L.legend() : L.legend;
+  const textes = [...el.querySelectorAll("p")]; if (!textes.length) return; const d = document.createElement("details"); d.className = "plus"; d.innerHTML = "<summary>Comment lire cette légende</summary>"; d.append(...textes); el.append(d); };
+// La terre part sèche et reverdit par vagues depuis l'adresse, à la manière de Terra Nil : les vraies couleurs arrivent au passage du front
+const depart = new Float64Array(land.length), passe = new Uint8Array(land.length).fill(1), VITESSE_VAGUE = 18; let vagueLancee = false;
+function lancerVague(x, z) { vagueLancee = true; if (REDUCED) return; const t = performance.now() / 1000;
+  land.forEach((c, i) => { depart[i] = t + Math.hypot(c.x - x, c.z - z) / VITESSE_VAGUE; passe[i] = 0; }); animating = true; }
+function secherTerre() { if (REDUCED) return; depart.fill(Infinity);
+  land.forEach((c, i) => { const s = col("#cdb68c").offsetHSL(0, 0, (hash(c.r, c.c) - .5) * .05); s.toArray(curC, i * 3); landMesh.setColorAt(i, s); }); landMesh.instanceColor.needsUpdate = true; }
 function setLens(name) { lens = name; const L = LENS[name];
-  land.forEach((t, i) => { const [c, h] = L.tile(t); c.toArray(tgtC, i * 3); tgtH[i] = h; if (REDUCED) { curH[i] = h; c.toArray(curC, i * 3); } });
+  land.forEach((t, i) => { const [c, h0] = L.tile(t), h = t === tuileLevee ? h0 + 1.1 * PS : h0; c.toArray(tgtC, i * 3); tgtH[i] = h; if (REDUCED) { curH[i] = h; c.toArray(curC, i * 3); } });
   mountains.visible = L.show.includes("mountains");
   for (const [k, g] of Object.entries(markers)) g.visible = L.show.includes(k);
   document.querySelectorAll(".lens").forEach(b => b.setAttribute("aria-pressed", b.dataset.lens === name));
-  document.getElementById("legend").innerHTML = typeof L.legend === "function" ? L.legend() : L.legend; animating = true; }
+  majLegende(); animating = true; if (vagueLancee) lancerVague(controls.target.x, controls.target.z); }
 
 // Verdict de l'adresse, ou fiche du département cliqué
 const ICON = {
@@ -589,61 +693,95 @@ const ICON = {
   euro: '<svg viewBox="0 0 24 24"><path d="M17.5 6.5A7 7 0 1 0 17.5 17.5M4 10.5h9M4 13.5h9" stroke="#8a6d2f" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>',
   leaf: '<svg viewBox="0 0 24 24"><path d="M4 20C4 10 10 4 20 4c0 10-6 16-16 16Z" fill="#6fbf73"/></svg>',
 };
-const PILL = { ok: ["good", "ok"], attention: ["warn", "à vérifier"], inconnu: ["neutre", "inconnu"], info: ["neutre", "info"] };
-const LIMITE = '<div class="limit"><b>Limite :</b> la capacité de raccordement n\'est pas publique ; seule une étude Enedis ou RTE fait foi.</div>';
+const SYMBOLE = { ok: "✓", attention: "!", inconnu: "?", info: "i" };
+const LIMITE = "La capacité de raccordement n'est pas publique : seule une étude Enedis ou RTE fait foi.";
+const FRAICHEUR = `Carte générée le ${new Date(DATA.genereLe).toLocaleDateString("fr-FR")}. ${DATA.donnees || "Relief IGN, contours Etalab, indicateurs du gold."}`;
+const sources = (...lignes) => `<details class="plus"><summary>Sources et limites</summary>${lignes.filter(Boolean).map(l => `<p>${l}</p>`).join("")}</details>`;
+// Carte chiffrée : un bouton quand un détail existe, qui s'ouvre sous la grille
+const cliquable = (cls, detail, contenu) => detail ? `<button class="${cls}" type="button" aria-expanded="false" data-detail="${esc(detail)}">${contenu}</button>` : `<div class="${cls}">${contenu}</div>`;
+// Le seuil de décarbonation est au milieu de la jauge : l'échelle est dilatée sous le seuil, où se joue la lecture
+function heroCarbone(g, seuil = 100, detail) { if (g == null) return cliquable("hero", detail, `<span class="k">${ICON.leaf}Électricité</span><span class="chiffre">n.d.</span>`);
+  const co2 = DATA.departements.map(d => d.co2).filter(v => v != null), max = Math.max(seuil * 2, g, ...co2), pos = g <= seuil ? g / seuil * .5 : .5 + (g - seuil) / (max - seuil) * .5;
+  return cliquable("hero", detail, `<span class="k">${ICON.leaf}Électricité${g <= seuil ? '<span class="pill good">décarbonée</span>' : '<span class="pill bad">carbonée</span>'}</span><span class="chiffre">${fmt(g)}<small>gCO₂e/kWh</small></span><span class="jauge" style="background:linear-gradient(90deg,var(--good) 44%,var(--warn) 56%,var(--bad))"><i style="left:${pos * 100}%"></i></span><span class="graduations"><span>0</span><span>seuil ${fmt(seuil)}</span><span>${fmt(max)}</span></span>`); }
+// Le prix se lit entre les tranches de consommation d'Eurostat : il dépend du volume, pas du lieu
+function heroPrix(e, detail, annuel) { const min = PRIX.length ? Math.min(...PRIX.map(p => p.e)) : null, max = PRIX.length ? Math.max(...PRIX.map(p => p.e)) : null, ampleur = max - min || 1;
+  const chiffre = e != null ? `<span class="chiffre">${fmt(e, 2)}<small>€/kWh HTVA</small></span>` : `<span class="chiffre fourchette">${min == null ? "n.d." : `${fmt(min, 2)} à ${fmt(max, 2)}`}<small>€/kWh HTVA</small></span>`;
+  const repere = e != null ? `<i style="left:${Math.max(0, Math.min(1, (e - min) / ampleur)) * 100}%"></i>` : "";
+  return cliquable("hero", detail, `<span class="k">${ICON.euro}Prix moyen</span>${chiffre}${annuel ? `<span class="annuel">${esc(annuel)}</span>` : ""}${min == null ? "" : `<span class="jauge" style="background:linear-gradient(90deg,var(--good),var(--soleil),var(--warn))">${repere}</span><span class="graduations"><span>${fmt(min, 2)}</span><span>selon la conso.</span><span>${fmt(max, 2)}</span></span>`}`); }
+const mini = (nom, valeur, etat, detail) => cliquable(`mini ${esc(etat)}`, detail, `<span class="s ${esc(etat)}" aria-label="${esc((PILL[etat] || PILL.info)[1])}">${SYMBOLE[etat] || "i"}</span><span><span class="k">${esc(nom)}</span><span class="v">${valeur}</span></span>`);
+const PILL = { ok: ["good", "favorable"], attention: ["warn", "à vérifier"], inconnu: ["neutre", "non évalué"], info: ["neutre", "pour information"] };
 const cityEl = document.getElementById("city");
-const ficheVide = () => { selBand.set([]); cityEl.style.removeProperty("--rc");
+const ficheVide = () => { selBand.set([]); cityEl.style.removeProperty("--rc"); cityEl.classList.remove("avec-tuile"); cacherTuile();
   const ts = land.filter(t => t.g === carte), deps = new Set(ts.map(t => t.dep)).size;
   cityEl.innerHTML = `<header><h2>${esc(nomCarte(carte))}</h2><div class="sub">${ts.length} cases · ${deps} département${deps > 1 ? "s" : ""}</div></header><div class="vide">${APP ? "Saisissez l'adresse du site en haut, réglez le projet si besoin, puis Analyser. " : "Pour choisir une adresse depuis la carte : python -m ingestion.cli app. "}Cliquez sur une case pour afficher les indicateurs de son département. Changez de carte ou de lentille en bas à droite (touches 1 et 2 pour les lentilles).</div>`; };
-function showVerdict() { if (!VERDICT) return ficheVide(); selBand.set([]); cityEl.style.removeProperty("--rc");
-  cityEl.innerHTML = `<header><h2>Brancher ici ?</h2><div class="sub">${esc(DATA.adresse.libelle)}</div></header>
-  <div class="verdict">${esc(VERDICT.phrase)}</div>
-  <div class="yields">${VERDICT.criteres.map(c => { const [cls, mot] = PILL[c.etat] || PILL.info;
-    return `<div class="critere"><span class="k">${esc(c.nom)}<span class="pill ${cls}">${mot}</span></span><span class="v">${esc(c.valeur)}</span><span class="d">${esc(c.detail)}</span></div>`; }).join("")}</div>${actions()}${LIMITE}`; }
+// Ce que porte la case, en noms courts : la maquette se lit, le nom la confirme
+const contenuCase = t => { const l = [
+  ...prodObjs.filter(o => o.t === t).map(o => `<b>${esc(nomFiliere(o.p.f))}</b> · ${esc(o.p.n)}, ${fmt(o.p.mw)} MW`),
+  ...fretObjs.filter(o => o.t === t).map(o => `<b>${esc(NOM_FRET[o.p.m])}</b> · ${esc(o.p.n)}`),
+  ...DATA.sites.filter(s => caseDe(s.case) === t).map(s => `<b>Site clé en main</b> · ${esc(s.n)}`),
+  ...zoneObjs.filter(o => o.t === t).map(o => `<b>Zone RTE ${esc(o.z.pr)}</b> · ${esc(o.z.n)}`) ];
+  const relief = t.altMax >= 1000 ? `jusqu'à ${fmt(t.altMax)} m` : `${fmt(t.alt)} m d'altitude`;
+  return `<div class="tuile-contenu">${l.map(x => `<div>${x}</div>`).join("")}<div>${relief} · case ≈ ${fmt(GR[t.g].rayonKm * 2, GR[t.g].rayonKm < 5 ? 1 : 0)} km</div></div>`; };
+function showVerdict(enAttente = false) { if (!VERDICT) return ficheVide(); selBand.set([]); cityEl.style.removeProperty("--rc"); cityEl.classList.add("avec-tuile"); if (enAttente) cacherTuile();
+  const criteres = Object.fromEntries(VERDICT.criteres.map(c => [c.nom, c])), general = VERDICT.criteres.some(c => c.etat === "attention") ? "attention" : VERDICT.criteres.some(c => c.etat === "inconnu") ? "inconnu" : "ok";
+  const plein = c => c && `${c.valeur}. ${c.detail}`;
+  const lignes = (VERDICT.resume || VERDICT.criteres).filter(l => !["Électricité", "Facture", "Carbone"].includes(l.nom))
+    // « dans la commune » reste dans le détail : la carte garde le mot qui décide
+    .map(l => mini(l.nom, esc(l.valeur.replace(" dans la commune", "")), l.etat, criteres[l.nom] && criteres[l.nom].detail)).join("");
+  cityEl.innerHTML = `<header class="tete ${general}"><span class="sceau">${SYMBOLE[general]}</span><div><h2>Brancher ici ?</h2><div class="reponse">${esc(VERDICT.phrase)}</div></div></header>
+  <div class="tuile-corps"><div class="tuile-gauche"><div class="tuile-place" id="tuilePlace"></div>${adresseTile ? contenuCase(adresseTile) : ""}</div>
+  <div class="tuile-info${enAttente ? " attente" : ""}" id="tuileInfo"><div class="heros">${heroCarbone(VERDICT.carbone && VERDICT.carbone.g, VERDICT.carbone && VERDICT.carbone.seuil, plein(criteres.Carbone))}${heroPrix(VERDICT.prix && VERDICT.prix.eur_kwh, plein(criteres.Facture), criteres.Facture && criteres.Facture.valeur.includes("par an") ? criteres.Facture.valeur : null)}</div>
+  <div class="minis">${lignes}</div><div class="detail" hidden></div></div></div>${actions()}${sources(esc(LIMITE), noteRapport(), esc(FRAICHEUR))}`;
+  if (adresseTile && !enAttente) montrerTuile(adresseTile); }
 // Après le verdict : lire le diagnostic, puis l'emporter en PDF, Markdown ou JSON
-const actions = () => APP ? `<div class="actions"><button class="btn primaire" type="button" data-action="lire">Lire le diagnostic</button><button class="btn" type="button" data-format="pdf">PDF</button><button class="btn" type="button" data-format="md">Markdown</button><button class="btn" type="button" data-format="json">JSON</button><span class="note">Le rapport reprend le projet saisi${projetCourant().complet ? ", diagnostic complet" : " ; cochez « Diagnostic complet » dans Projet pour les risques à l'adresse, l'urbanisme, l'eau et le solaire"}.</span></div>`
-  : `<div class="actions"><span class="note">Rapport complet : python -m ingestion.cli diagnose --adresse "${esc(DATA.adresse.libelle)}", ou l'application (python -m ingestion.cli app).</span></div>`;
-function showDep(code) { const d = DEP[code]; if (!d) return;
-  const ts = depTiles[code] || [];
+const actions = () => APP ? `<div class="actions"><button class="btn primaire" type="button" data-action="lire">Lire le diagnostic</button><button class="btn" type="button" data-format="pdf">PDF</button><button class="btn" type="button" data-format="md">Markdown</button><button class="btn" type="button" data-format="json">JSON</button></div>` : "";
+const noteRapport = () => APP ? `Le rapport reprend le projet saisi${projetCourant().complet ? ", diagnostic complet" : " ; cochez « Diagnostic complet » dans Projet pour les risques à l'adresse, l'urbanisme, l'eau et le solaire"}.`
+  : `Rapport complet : python -m ingestion.cli diagnose --adresse "${esc(DATA.adresse.libelle)}", ou l'application (python -m ingestion.cli app).`;
+cityEl.addEventListener("click", e => { const b = e.target.closest("[data-detail]"); if (!b) return; const zone = cityEl.querySelector(".detail"), ouvert = b.getAttribute("aria-expanded") === "true";
+  cityEl.querySelectorAll("[data-detail]").forEach(x => x.setAttribute("aria-expanded", "false")); zone.hidden = ouvert; if (!ouvert) { zone.textContent = b.dataset.detail; b.setAttribute("aria-expanded", "true"); } });
+function showDep(code, tuile) { const d = DEP[code]; if (!d) return;
+  const ts = depTiles[code] || []; cityEl.classList.toggle("avec-tuile", !!tuile); cacherTuile();
   selBand.set(ringOf(ts, .26 * PS, col(CHARTE("encre"))));
-  const eqPill = d.tc == null ? "" : d.tc >= 1 ? '<span class="pill good">excédent</span>' : '<span class="pill bad">importe</span>';
+  const equilibre = d.tc == null ? "inconnu" : d.tc >= 1 ? "ok" : "attention";
   cityEl.style.setProperty("--rc", REGION_COLORS[d.r] || CHARTE("encart"));
   cityEl.innerHTML = `<header><h2>${esc(d.n)}</h2><div class="sub">${esc(d.c)} · ${esc(d.rn)}</div><button class="close" aria-label="Fermer la fiche">×</button></header>
-  <div class="yields">
-    <div class="y">${ICON.factory}<span class="k">Conso. industrielle ${d.an || ""}</span><span class="v">${fmt(d.gwh)} GWh <small>${d.rk ? "rang " + d.rk + "/" + d.nc : ""}</small></span></div>
-    <div class="y">${ICON.pylon}<span class="k">Postes RTE</span><span class="v">${fmt(d.p)} <small>dont ${fmt(d.p3)} en 400 kV${d.pp ? ", " + d.pp + " en projet" : ""}</small></span></div>
-    <div class="y">${ICON.scale}<span class="k">Couverture régionale</span><span class="v">${d.tc == null ? "n.d." : fmt(d.tc * 100) + " %"}${eqPill}</span></div>
-    <div class="y">${ICON.leaf}<span class="k">Carbone du réseau</span><span class="v">${fmt(d.co2, 1)} <small>g/kWh</small>${pillCo2(d.co2)}</span></div>
-    <div class="y">${ICON.euro}<span class="k">Prix moyen HTVA</span><span class="v">${fourchettePrix()} <small>selon la conso.</small></span></div>
-  </div>${LIMITE}`;
-  cityEl.querySelector(".close").onclick = VERDICT ? showVerdict : ficheVide; }
-
-// Barre du haut : l'adresse étudiée et la fraîcheur des données
-if (DATA.adresse) document.getElementById("adr").textContent = DATA.adresse.libelle;
-document.getElementById("genere").textContent = `Généré le ${new Date(DATA.genereLe).toLocaleDateString("fr-FR")} · ${DATA.donnees || "relief IGN, contours Etalab, indicateurs du gold"}`;
+  <div class="${tuile ? "tuile-corps" : ""}">${tuile ? `<div class="tuile-gauche"><div class="tuile-place" id="tuilePlace"></div>${contenuCase(tuile)}</div>` : ""}<div class="tuile-info"><div class="heros">${heroCarbone(d.co2)}${heroPrix(null)}</div>
+  <div class="minis">${mini(`Conso. industrielle ${d.an || ""}`, `${fmt(d.gwh)} GWh`, "info", d.rk ? `Rang ${d.rk} sur ${d.nc} départements.` : "")}${mini("Postes RTE", fmt(d.p), "info", `Dont ${fmt(d.p3)} en 400 kV${d.pp ? ", " + d.pp + " en projet" : ""}.`)}${mini("Couverture régionale", d.tc == null ? "n.d." : fmt(d.tc * 100) + " %", equilibre, d.tc == null ? "" : d.tc >= 1 ? "La région produit plus qu'elle ne consomme." : "La région importe une partie de son électricité.")}</div><div class="detail" hidden></div></div></div>${sources(esc(LIMITE), esc(FRAICHEUR))}`;
+  cityEl.querySelector(".close").onclick = () => VERDICT ? showVerdict() : ficheVide();
+  if (tuile) montrerTuile(tuile); }
 
 // Caméra : une carte à la fois, assez loin des autres pour que le brouillard les cache
 let vol = null, bounds = null;
-function allerA(x, z, dist, immediat) { const off = new THREE.Vector3(-.05, .75, .66).normalize().multiplyScalar(dist), toT = new THREE.Vector3(x, 0, z), toP = toT.clone().add(off);
-  if (immediat) { vol = null; controls.target.copy(toT); camera.position.copy(toP); return; }
-  vol = { t0: performance.now(), d: REDUCED ? 1 : 900, fromT: controls.target.clone(), toT, fromP: camera.position.clone(), toP }; }
-const moyenne = (ts, k) => ts.reduce((a, t) => a + t[k], 0) / Math.max(1, ts.length);
+function allerA(x, z, dist, immediat, { duree = 900, apres = null, axe = [-.05, .75, .66] } = {}) { const off = new THREE.Vector3(...axe).normalize(), toT = new THREE.Vector3(x, 0, z);
+  if (immediat) { vol = null; controls.target.copy(toT); camera.position.copy(toT).addScaledVector(off, dist); if (apres) apres(); return; }
+  const dep = camera.position.clone().sub(controls.target), d0 = dep.length();
+  vol = { t0: performance.now(), d: REDUCED ? 1 : duree, fromT: controls.target.clone(), toT, fromA: dep.normalize(), toA: off, d0, d1: dist, apres }; }
+const AXE_MONDE = [0, .93, .37];
+const montrerMonde = immediat => { if (!MONDE.length) return montrerCarte(0, immediat); allerA(mondeCentre.x, mondeCentre.z, DISTANCE_MONDE, immediat, { duree: 1400, axe: AXE_MONDE }); };
 const boutons = document.getElementById("cartes");
-function montrerCarte(gi, immediat) { carte = gi; const ts = tiles.filter(t => t.g === gi), terre = ts.filter(t => t.land);
-  bounds = { x0: Math.min(...ts.map(t => t.x)), x1: Math.max(...ts.map(t => t.x)), z0: Math.min(...ts.map(t => t.z)), z1: Math.max(...ts.map(t => t.z)) };
-  const cx = moyenne(terre, "x"), cz = moyenne(terre, "z"), etendue = Math.max(bounds.x1 - bounds.x0, bounds.z1 - bounds.z0);
-  soleil(cx, cz); allerA(cx, cz + (gi ? 0 : 4), Math.max(30, etendue * 1.2), immediat);
+// La carte se parcourt d'un bout à l'autre : le déplacement s'arrête au bord du monde
+const etendue = [...tiles, ...MONDE];
+bounds = { x0: Math.min(...etendue.map(t => t.x)), x1: Math.max(...etendue.map(t => t.x)), z0: Math.min(...etendue.map(t => t.z)), z1: Math.max(...etendue.map(t => t.z)) };
+const mondeCentre = { x: (bounds.x0 + bounds.x1) / 2, z: (bounds.z0 + bounds.z1) / 2 };
+const emprises = GR.map((_, gi) => { const ts = tiles.filter(t => t.g === gi); return { x: moyenne(ts, "x"), z: moyenne(ts, "z"), x0: Math.min(...ts.map(t => t.x)), x1: Math.max(...ts.map(t => t.x)), z0: Math.min(...ts.map(t => t.z)), z1: Math.max(...ts.map(t => t.z)) }; });
+function suivreCarte(gi) { if (gi === carte) return; carte = gi; soleil(emprises[gi].x, emprises[gi].z);
   boutons.querySelectorAll("[data-carte]").forEach(b => b.setAttribute("aria-pressed", +b.dataset.carte === gi));
   if (cityEl.querySelector(".vide")) ficheVide();
-  if (lens === "territoire") setLens("territoire"); }
+  majLegende(); }
+function montrerCarte(gi, immediat) { const e = emprises[gi], terre = tiles.filter(t => t.g === gi && t.land), taille = Math.max(e.x1 - e.x0, e.z1 - e.z0);
+  suivreCarte(gi); soleil(e.x, e.z); boutons.querySelectorAll("[data-carte]").forEach(b => b.setAttribute("aria-pressed", +b.dataset.carte === gi));
+  allerA(moyenne(terre, "x"), moyenne(terre, "z") + (gi ? 0 : 4), Math.max(30, taille * 1.2), immediat); }
+if (MONDE.length) { const b = document.createElement("button"); b.textContent = "Monde"; b.onclick = () => montrerMonde(); boutons.appendChild(b); }
 GR.forEach((g, gi) => { if (!tiles.some(t => t.g === gi && t.land)) return; const b = document.createElement("button");
   b.dataset.carte = gi; b.textContent = nomCarte(gi); b.onclick = () => montrerCarte(gi); boutons.appendChild(b); });
-const vueAdresse = immediat => { if (carte !== adresseTile.g) montrerCarte(adresseTile.g, true); allerA(adresseTile.x, adresseTile.z, 26, immediat); };
-if (adresseTile) { const b = document.createElement("button"); b.textContent = "Adresse"; b.onclick = () => { vueAdresse(); showVerdict(); }; boutons.appendChild(b); }
-montrerCarte(adresseTile ? adresseTile.g : 0, true);
+// Arrivée sur l'adresse : la caméra plonge, la case se soulève, puis sa tuile sort vers l'encart
+const vueAdresse = (immediat, duree = 1100) => { suivreCarte(adresseTile.g); showVerdict(true); allerA(adresseTile.x, adresseTile.z + (innerWidth <= 1320 ? 7 : 0), 26, immediat, { duree, apres: sortirTuile }); }; // Sur écran étroit, l'encart couvre le centre : le bâtiment reste au-dessus
+if (adresseTile) { const b = document.createElement("button"); b.textContent = "Adresse"; b.onclick = () => vueAdresse(); boutons.appendChild(b); }
+soleil(emprises[0].x, emprises[0].z);
 
 // Survol et sélection
 const ray = new THREE.Raycaster(), mouse = new THREE.Vector2(), tip = document.getElementById("tip"); let hovered = -1, down = null;
+const pickMonde = () => { const h = MONDE.length && ray.intersectObject(mondeMesh)[0]; return h ? MONDE[h.instanceId] : null; };
 const lensLine = (t, d) => lens === "raccordement" ? `Raccordement ${avis(t.note)}${t.raisons.length ? " : " + t.raisons.join(", ") : ""}` : !d ? "" : `Électricité ${d.co2 == null ? "n.d." : (d.co2 <= 100 ? "décarbonée" : "carbonée") + " (" + fmt(d.co2) + " g/kWh)"} · couverture régionale ${d.tc == null ? "n.d." : fmt(d.tc * 100) + " %"} · ${fmt(d.gwh)} GWh industriels`;
 function pick(e) { const b = renderer.domElement.getBoundingClientRect(); mouse.set((e.clientX - b.left) / b.width * 2 - 1, -(e.clientY - b.top) / b.height * 2 + 1); ray.setFromCamera(mouse, camera); const h = ray.intersectObject(landMesh)[0]; return h ? h.instanceId : -1; }
 const pickHub = () => { if (!markers.production.visible) return null; const h = ray.intersectObject(markers.production, true)[0]; return h ? h.object.userData.hub : null; };
@@ -662,16 +800,22 @@ renderer.domElement.addEventListener("pointermove", e => { if (e.pointerType !==
     tip.style.left = Math.min(innerWidth - 270, e.clientX + 16) + "px"; tip.style.top = (e.clientY + 18) + "px"; return; }
   if (hub) { tip.innerHTML = `<b>${esc(hub.n)}</b><div>${esc(nomFiliere(hub.f))} · ${fmt(hub.mw)} MW en service</div><div>${hub.gwh ? fmt(hub.gwh) + " GWh produits sur 12 mois · " : ""}${hub.ni} installation${hub.ni > 1 ? "s" : ""}</div>`; tip.hidden = false;
     tip.style.left = Math.min(innerWidth - 270, e.clientX + 16) + "px"; tip.style.top = (e.clientY + 18) + "px"; return; }
+  const pays = i < 0 && pickMonde();
+  if (pays) { tip.innerHTML = `<b>${esc(pays.pays.n)}</b><div>${pays.pays.e ? "Pays étudié" : "Pas encore de données"}</div>`; tip.hidden = false;
+    tip.style.left = Math.min(innerWidth - 270, e.clientX + 16) + "px"; tip.style.top = (e.clientY + 18) + "px"; return; }
   if (i < 0) { tip.hidden = true; return; } const t = land[i], d = DEP[t.dep];
   tip.innerHTML = `<b>${esc(d ? d.n : t.dep)} (${esc(t.dep)})</b><div>${esc(lensLine(t, d))}</div><div>Altitude moyenne ${fmt(t.alt)} m</div>`; tip.hidden = false;
   tip.style.left = Math.min(innerWidth - 270, e.clientX + 16) + "px"; tip.style.top = (e.clientY + 18) + "px"; });
 renderer.domElement.addEventListener("pointerleave", () => { tip.hidden = true; hovered = -1; hoverBand.set([]); });
-renderer.domElement.addEventListener("pointerdown", e => { down = [e.clientX, e.clientY]; vol = null; });
-renderer.domElement.addEventListener("pointerup", e => { if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 6 || e.button !== 0) return; const i = pick(e); if (i >= 0) showDep(land[i].dep); });
+// Reprendre la main pendant un vol : la tuile sort quand même
+renderer.domElement.addEventListener("pointerdown", e => { document.querySelector(".hint").classList.add("vu"); down = [e.clientX, e.clientY]; if (vol) { const f = vol.apres; vol = null; if (f) f(); } });
+renderer.domElement.addEventListener("pointerup", e => { if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 6 || e.button !== 0) return; const i = pick(e); if (i < 0) return;
+  if (vueMonde) return montrerCarte(land[i].g);
+  if (land[i] === adresseTile && VERDICT) return showVerdict(); showDep(land[i].dep, land[i]); });
 document.querySelectorAll(".lens").forEach(b => b.onclick = () => setLens(b.dataset.lens));
 // Les touches 1 et 2 ne changent pas de lentille pendant la saisie d'un champ
 addEventListener("keydown", e => { if (e.key === "Escape") return fermer(); if (e.target.closest && e.target.closest("input, select, textarea")) return;
-  const k = { "1": "raccordement", "2": "territoire" }[e.key]; if (k) setLens(k); });
+  const k = { "1": "raccordement", "2": "territoire" }[e.key]; if (k) setLens(k); if (e.key === "0") montrerMonde(); });
 
 // Application locale : la page parle au serveur de `app`, qui géocode, diagnostique, épingle et rend le rapport
 const memoire = {
@@ -722,9 +866,11 @@ function lireDiagnostic() { const m = derniere();
   $("relancerComplet").hidden = !!m.projet.complet;
   dossierEl.hidden = false; }
 function basculerProjet(ouvert) { projetEl.hidden = !ouvert; $("ouvrirProjet").setAttribute("aria-expanded", ouvert); }
-function fermer() { if (!dossierEl.hidden) dossierEl.hidden = true; else if (!projetEl.hidden) basculerProjet(false); }
+const replierRecherche = () => { if (!APP || !DATA.adresse) return; $("recherche").hidden = true; $("autreAdresse").hidden = false; };
+function fermer() { if (!dossierEl.hidden) dossierEl.hidden = true; else if (!projetEl.hidden) basculerProjet(false); else replierRecherche(); }
 if (APP) {
-  document.body.classList.add("app"); $("recherche").hidden = false; $("adr").hidden = true;
+  document.body.classList.add("app"); $("recherche").hidden = false; replierRecherche();
+  $("autreAdresse").onclick = () => { $("autreAdresse").hidden = true; $("recherche").hidden = false; $("q").focus(); $("q").select(); };
   remplir((derniere() || {}).projet || (DATA.adresse ? { adresse: DATA.adresse.libelle } : (memoire.lire() || {}).projet));
   const lancer = e => { e.preventDefault(); basculerProjet(false); analyser(projetSaisi()); };
   $("recherche").onsubmit = lancer; projetEl.onsubmit = lancer;
@@ -737,36 +883,160 @@ if (APP) {
   else if ((memoire.lire() || {}).lireApres && derniere()) { memoire.ecrire({ ...memoire.lire(), lireApres: false }); lireDiagnostic(); }
 }
 
+const v3 = new THREE.Vector3();
+// La tuile de l'encart : un îlot détaillé calculé pour cette seule case à l'ouverture, jamais pour toute la carte.
+// Le décor (parcelles, chemin, arbres) est figuratif ; couleur, relief et maquettes viennent des données de la case
+const tuile3d = { el: $("tuile3d"), renderer: null, scene: new THREE.Scene(), camera: new THREE.PerspectiveCamera(26, 1, .1, 200), groupe: null, jetables: [], decor: null, rotor: [], taille: 0, active: false };
+tuile3d.scene.add(new THREE.HemisphereLight(col("#f2f5e4"), col("#6a5a42"), .8));
+const soleilTuile = new THREE.DirectionalLight(col("#ffe0ad"), 1.25); soleilTuile.position.set(-3 * R, 6 * R, 3.4 * R); soleilTuile.castShadow = true; soleilTuile.shadow.mapSize.set(1536, 1536); soleilTuile.shadow.bias = -.0006;
+Object.assign(soleilTuile.shadow.camera, { left: -2 * R, right: 2 * R, top: 2.4 * R, bottom: -2.4 * R, near: .1, far: 14 * R }); tuile3d.scene.add(soleilTuile, soleilTuile.target);
+const copie = g => { const c = new THREE.Group(); c.position.copy(g.position); c.rotation.copy(g.rotation); c.scale.copy(g.scale); for (const o of g.children) c.add(o.clone()); return c; };
+function cacherTuile() { tuile3d.el.hidden = true; tuile3d.active = false; }
+const bruit = (x, z) => { const xi = Math.floor(x), zi = Math.floor(z), u = x - xi, v = z - zi, a = u * u * (3 - 2 * u), b = v * v * (3 - 2 * v);
+  return (hash(xi, zi) * (1 - a) + hash(xi + 1, zi) * a) * (1 - b) + (hash(xi, zi + 1) * (1 - a) + hash(xi + 1, zi + 1) * a) * b; };
+const ondule = (x, z) => bruit(x, z) * .6 + bruit(x * 2.1 + 7, z * 2.1 + 3) * .28 + bruit(x * 4.3 + 1, z * 4.3 + 9) * .12;
+const lisse = (a, b, x) => { const k = Math.max(0, Math.min(1, (x - a) / (b - a))); return k * k * (3 - 2 * k); };
+// 1 sur le bord de l'hexagone, dont les sommets sont sur l'axe z comme ceux des cases
+const horsHex = (x, z) => Math.max(...[30, 90, 150].map(a => Math.abs(x * Math.sin(a * Math.PI / 180) + z * Math.cos(a * Math.PI / 180)))) / (R * Math.cos(Math.PI / 6));
+const srgb = c => "#" + c.clone().convertLinearToSRGB().getHexString();
+// Le sol peint : parcelles en plaine, roche en altitude, dalles sous les maquettes et un chemin qui les dessert
+function solTuile(t, dalles, chemin) { const N = 1024, cv = document.createElement("canvas"); cv.width = cv.height = N; const c = cv.getContext("2d"), px = v => (v + R) / (2 * R) * N, pas = N / (2 * R); let n = 0, alea = () => hash(t.c + ++n * .37, t.r + n * .11);
+  // Verts plus francs que sur la carte : le rendu peint de Terra Nil, à l'échelle de la seule tuile
+  const vive = t.biome.clone().offsetHSL(0, .14, .035); c.fillStyle = srgb(vive); c.fillRect(0, 0, N, N);
+  if (t.alt < 600) { const cote = .46 * R * pas; c.save(); c.translate(N / 2, N / 2); c.rotate(alea() * 1.2);
+    for (let i = -4; i <= 4; i++) for (let j = -4; j <= 4; j++) { const v = alea(), teinte = vive.clone(); if (t.alt < 300 && !MEDITERRANEE.has(t.dep) && v < .22) teinte.lerp(col("#d3bf6b"), .75); else teinte.offsetHSL((alea() - .5) * .04, (alea() - .5) * .12, (v - .5) * .13);
+      c.fillStyle = srgb(teinte); c.fillRect(i * cote, j * cote, cote, cote * (.8 + alea() * .4));
+      // Sillons : la matière qui manquait à une face unie
+      c.strokeStyle = "rgba(40,50,20,.07)"; c.lineWidth = 2; for (let k = 1; k < 8; k++) { c.beginPath(); c.moveTo(i * cote + k * cote / 8, j * cote); c.lineTo(i * cote + k * cote / 8, j * cote + cote); c.stroke(); }
+      c.strokeStyle = "rgba(38,66,28,.55)"; c.lineWidth = 3.5; c.strokeRect(i * cote, j * cote, cote, cote); }
+    c.restore(); }
+  for (let k = 0; k < 5200; k++) { c.fillStyle = alea() < .5 ? "rgba(255,250,210,.05)" : "rgba(22,40,18,.07)"; c.beginPath(); c.arc(alea() * N, alea() * N, 1 + alea() * 7, 0, 7); c.fill(); }
+  // Touches de pinceau, puis fleurs en massifs là où le bruit le veut
+  c.lineCap = "round"; for (let k = 0; k < 1500; k++) { const x = alea() * N, y = alea() * N, a = alea() * 6.283, l = 8 + alea() * 26; c.strokeStyle = srgb(vive.clone().offsetHSL((alea() - .5) * .05, 0, (alea() - .5) * .16)); c.globalAlpha = .35; c.lineWidth = 2 + alea() * 5; c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + Math.cos(a) * l, y + Math.sin(a) * l, x + Math.cos(a + .6) * l * 1.5, y + Math.sin(a + .6) * l * 1.5); c.stroke(); }
+  c.globalAlpha = 1; const FLEURS = ["#f6d44a", "#f58fb0", "#ffffff", "#b58df0", "#f28a3c"];
+  if (t.altMax < 2300) for (let k = 0; k < 2200; k++) { const x = alea() * N, y = alea() * N; if (bruit(x / 90 + t.c, y / 90 + t.r) < .6) continue; c.fillStyle = FLEURS[Math.floor(bruit(x / 140 + t.r, y / 140 + t.c) * 9) % 5]; c.beginPath(); c.arc(x, y, 1.6 + alea() * 2.6, 0, 7); c.fill(); }
+  if (t.alt >= 900) for (let k = 0; k < 90; k++) { const x = alea() * N, y = alea() * N, r = 12 + alea() * 46, g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, t.alt >= 1600 && alea() < .35 ? "rgba(244,246,247,.75)" : "rgba(130,125,115,.5)"); g.addColorStop(1, "rgba(130,125,115,0)"); c.fillStyle = g; c.fillRect(x - r, y - r, 2 * r, 2 * r); }
+  const trait = (couleur, l) => { c.strokeStyle = couleur; c.lineWidth = l * pas; c.lineCap = c.lineJoin = "round"; c.beginPath(); chemin.forEach((p, k) => c[k ? "lineTo" : "moveTo"](px(p.x), px(p.z))); c.stroke(); };
+  trait("#8c806a", .085 * R); trait("#d9cfb6", .06 * R);
+  for (const d of dalles) { c.fillStyle = "rgba(60,50,35,.25)"; c.beginPath(); c.arc(px(d.x), px(d.z), (d.r + .03 * R) * pas, 0, 7); c.fill(); c.fillStyle = "#dcd7c8"; c.beginPath(); c.arc(px(d.x), px(d.z), d.r * pas, 0, 7); c.fill(); }
+  const tex = new THREE.CanvasTexture(cv); tex.encoding = THREE.sRGBEncoding; tex.anisotropy = 4; return tex; }
+// Dessous en îlot : terre, argile puis roche qui s'effile, facettes irrégulières sur les six côtés
+function flancsTuile(t, H, herbe) { const parCote = 14, n = 6 * parCote, pos = [], cl = [], tourne = k => { const a = Math.floor(k / parCote) * Math.PI / 3, b = a + Math.PI / 3, u = (k % parCote) / parCote; return [Math.sin(a) * (1 - u) + Math.sin(b) * u, Math.cos(a) * (1 - u) + Math.cos(b) * u]; };
+  const NIVEAUX = [[H, 1, herbe], [H - .1 * R, 1, col("#5e4a31")], [H - .34 * R, .97, col("#8a6a45")], [H * .52, .8, col("#a39585")], [H * .24, .52, col("#7f776c")], [0, .14, col("#655f57")]];
+  const point = (l, k) => { const [y, e] = NIVEAUX[l], [sx, sz] = tourne(k % n), s = t.c * 3 + t.r + l * 5, jeu = l ? (bruit(k % n * .55 + s, l * 3.1) - .5) : 0; return new THREE.Vector3(sx * R * e * (1 + jeu * .16 * Math.min(l, 2)), y + jeu * .13 * R * (l < 5 ? 1 : 0), sz * R * e * (1 + jeu * .16 * Math.min(l, 2))); };
+  const tri = (a, b, c, couleur, nuance) => { for (const p of [a, b, c]) pos.push(p.x, p.y, p.z); const q = couleur.clone().offsetHSL(0, 0, (nuance - .5) * .07); for (let k = 0; k < 3; k++) cl.push(q.r, q.g, q.b); };
+  for (let l = 0; l < NIVEAUX.length - 1; l++) for (let k = 0; k < n; k++) { const a = point(l, k), b = point(l, k + 1), c = point(l + 1, k), d = point(l + 1, k + 1), teinte = NIVEAUX[l + 1][2]; tri(a, c, b, teinte, hash(k, l)); tri(b, c, d, teinte, hash(l, k)); }
+  const pointe = new THREE.Vector3(0, -.18 * R, 0); for (let k = 0; k < n; k++) tri(point(5, k), pointe, point(5, k + 1), NIVEAUX[5][2], hash(k, 9));
+  const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute("color", new THREE.Float32BufferAttribute(cl, 3)); geo.computeVertexNormals(); return geo; }
+const SOL_SEC = col("#d3b98b"), SOL_VIF = new THREE.Color(1, 1, 1), matricePousse = new THREE.Object3D();
+function animerPousse(age) { const ressort = u => { const k = Math.min(1, u); return k <= 0 ? 0 : 1 + 2.2 * Math.pow(k - 1, 3) + 1.2 * Math.pow(k - 1, 2); };
+  tuile3d.plateau.material.color.copy(SOL_SEC).lerp(SOL_VIF, Math.min(1, age / 1.1));
+  for (const [m, liste] of tuile3d.pousse) { liste.forEach((o, n) => { const s = ressort((age - .15 - Math.hypot(o.x, o.z) / R * .75) / .65);
+      matricePousse.position.set(o.x, o.sol + (o.y - o.sol) * s, o.z); matricePousse.rotation.set(0, o.ry || 0, 0); matricePousse.scale.set(o.sx * s + 1e-4, o.sy * s + 1e-4, o.sx * s + 1e-4); matricePousse.updateMatrix(); m.setMatrixAt(n, matricePousse.matrix); }); m.instanceMatrix.needsUpdate = true; }
+  if (age > 2.2) tuile3d.fini = true; }
+function montrerTuile(t) {
+  if (!tuile3d.renderer) { tuile3d.renderer = new THREE.WebGLRenderer({ canvas: tuile3d.el, antialias: true, alpha: true }); tuile3d.renderer.outputEncoding = THREE.sRGBEncoding; tuile3d.renderer.setClearColor(0, 0); tuile3d.renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); tuile3d.renderer.shadowMap.enabled = true; tuile3d.renderer.shadowMap.type = THREE.PCFSoftShadowMap; }
+  if (tuile3d.groupe) { tuile3d.scene.remove(tuile3d.groupe); tuile3d.jetables.forEach(o => o.dispose()); tuile3d.jetables = []; tuile3d.decor.traverse(o => { if (o.material) o.material.dispose(); }); }
+  const g = tuile3d.groupe = new THREE.Group(), decor = tuile3d.decor = new THREE.Group(), H = R * 1.05 + t.baseH * .2; g.add(decor);
+  // Maquettes un peu agrandies : sur la tuile seule, elles ne masquent plus rien
+  const portees = [markers.production, markers.fret, markers.sites].flatMap(grp => grp.children.filter(o => o.userData.i === t.i)); if (t === adresseTile && batimentAdresse) portees.push(batimentAdresse);
+  const k = portees.length > 1 ? 1.2 : 1.45, dalles = portees.map(o => ({ x: o.position.x - t.x, z: o.position.z - t.z, r: o.scale.x * k * .5 }));
+  for (const o of portees) { const c = copie(o); c.position.set(o.position.x - t.x, H, o.position.z - t.z); c.scale.multiplyScalar(k); c.traverse(m => { if (m.isMesh && m !== c.children[0]) m.castShadow = true; }); g.add(c); }
+  // Chemin d'une dalle au bord, ou d'un bord à l'autre sur une case vide
+  const angle = hash(t.r, t.c) * 6.283, bord = a => ({ x: Math.sin(a) * R, z: Math.cos(a) * R }), dep = dalles[0] || bord(angle + Math.PI), fin = bord(angle), mi = { x: (dep.x + fin.x) / 2 + (hash(t.c, 3) - .5) * R * .7, z: (dep.z + fin.z) / 2 + (hash(t.r, 5) - .5) * R * .7 };
+  const chemin = Array.from({ length: 21 }, (_, n) => { const u = n / 20, v = 1 - u; return { x: v * v * dep.x + 2 * u * v * mi.x + u * u * fin.x, z: v * v * dep.z + 2 * u * v * mi.z + u * u * fin.z }; });
+  // Relief qui s'efface au bord et sous les dalles : les maquettes restent posées et les flancs raccordés
+  const ampleur = R * (.13 + .55 * Math.min(1, t.alt / 1800)), sol = (x, z) => { const a = lisse(.8, 1, horsHex(x, z)), b = Math.min(1, ...dalles.map(d => lisse(d.r, d.r * 1.45, Math.hypot(x - d.x, z - d.z)))); return H + ampleur * (ondule(x / R * 1.7 + t.c, z / R * 1.7 + t.r) - .42) * (1 - a) * b; };
+  const dessus = new THREE.PlaneGeometry(2 * R, 2 * R, 84, 84); dessus.rotateX(-Math.PI / 2); const p = dessus.attributes.position, uv = dessus.attributes.uv;
+  for (let n = 0; n < p.count; n++) { let x = p.getX(n), z = p.getZ(n); const s = horsHex(x, z); if (s > 1) { x /= s; z /= s; } p.setXYZ(n, x, sol(x, z), z); uv.setXY(n, x / (2 * R) + .5, .5 - z / (2 * R)); }
+  dessus.computeVertexNormals();
+  const peinture = solTuile(t, dalles, chemin), plateau = new THREE.Mesh(dessus, new THREE.MeshStandardMaterial({ map: peinture, roughness: .95 })); plateau.receiveShadow = true; decor.add(plateau);
+  const flancs = new THREE.Mesh(flancsTuile(t, H, t.biome), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .95, flatShading: true, side: THREE.DoubleSide })); decor.add(flancs); tuile3d.jetables.push(dessus, peinture, flancs.geometry);
+  // Arbres et rochers plantés sur le relief, hors des dalles et du chemin
+  const troncs2 = [], feuilles = [], sapins = [], cailloux = [], libre = (x, z) => horsHex(x, z) < .93 && dalles.every(d => Math.hypot(x - d.x, z - d.z) > d.r * 1.08) && chemin.every(q => Math.hypot(x - q.x, z - q.z) > .09 * R);
+  const haut = t.alt > 900, garrigue = MEDITERRANEE.has(t.dep);
+  for (let n = 0, poses = 0; n < 260 && poses < (t.alt > 1700 ? 12 : garrigue ? 22 : 46); n++) { const a = hash(n * .73 + t.c, t.r) * 6.283, d = Math.sqrt(hash(t.c, n * 1.31 + t.r)) * R, x = Math.sin(a) * d, z = Math.cos(a) * d;
+    // Bosquets plutôt que semis régulier
+    if (!libre(x, z) || bruit(x / R * 2.4 + t.r, z / R * 2.4 + t.c) < .42) continue; poses++;
+    const y = sol(x, z), s = (.13 + hash(n, t.r) * .11) * R, teinte = col(haut ? "#2c6a3a" : garrigue ? "#8f9f42" : hash(n, 7) < .3 ? "#7fb23c" : "#3f8a3f").offsetHSL(0, 0, (hash(x, z) - .5) * .09);
+    troncs2.push({ x, y, z, sol: y, sx: s * .16, sy: s * .9 });
+    if (haut || (!garrigue && hash(n, 11) < .16)) for (const [dy, e, l] of [[.45, .62, 1], [.95, .48, .9], [1.4, .32, .8]]) sapins.push({ x, y: y + s * dy, sol: y, z, sx: s * e, sy: s * l * 1.05, ry: hash(n, dy), c: teinte.clone().offsetHSL(0, 0, dy * .02) });
+    else { feuilles.push({ x, y: y + s * 1.1, sol: y, z, sx: s * .72, sy: s * .68, ry: hash(n, 2) * 6, c: teinte }); feuilles.push({ x: x + s * .3, y: y + s * .95, sol: y, z: z - s * .22, sx: s * .48, sy: s * .46, ry: hash(n, 3) * 6, c: teinte.clone().offsetHSL(0, 0, .035) }); } }
+  for (let n = 0; n < (t.alt >= 600 ? 26 : 7); n++) { const a = hash(n, t.c) * 6.283, d = Math.sqrt(hash(t.r, n)) * R * .9, x = Math.sin(a) * d, z = Math.cos(a) * d; if (!libre(x, z)) continue; const s = (.035 + hash(n, 4) * .06) * R; cailloux.push({ x, y: sol(x, z) + s * .15, z, sx: s, sy: s * .7, ry: hash(n, 5) * 6, c: col("#8b877c").offsetHSL(0, 0, (hash(n, 6) - .5) * .1) }); }
+  // Les arbres poussent depuis le centre à l'ouverture, le sol sec reverdit sous eux
+  tuile3d.pousse = [[instanced(cyl, "#6b4f2a", troncs2, decor), troncs2], [instanced(cone, null, sapins, decor), sapins], [instanced(bulle, null, feuilles, decor), feuilles]]; instanced(bulle, null, cailloux, decor);
+  tuile3d.plateau = plateau; tuile3d.t0 = performance.now() / 1000; tuile3d.fini = REDUCED; if (!REDUCED) animerPousse(0);
+  const pollen = tuile3d.pollen = nuagePollen(46, R * .95, R * .95, .07); pollen.position.y = H + .05; decor.add(pollen); tuile3d.jetables.push(pollen.geometry);
+  for (const { t: z } of zoneObjs) if (z === t) { const a = new THREE.Mesh(new THREE.RingGeometry(R * .86, R * .98, 6), new THREE.MeshBasicMaterial({ color: col(CHARTE("encre")), side: THREE.DoubleSide })); a.rotation.x = -Math.PI / 2; a.rotation.z = Math.PI / 6; a.position.y = H + .02; decor.add(a); tuile3d.jetables.push(a.geometry); }
+  const prochains = (l, geo, couleur) => { for (const o of l) { if (Math.hypot(o.x - t.x, o.z - t.z) > R) continue; const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: o.c || col(couleur), roughness: .8, flatShading: true })); m.position.set(o.x - t.x, o.y - t.baseH + H, o.z - t.z); m.rotation.y = o.ry || 0; m.scale.set(o.sx, o.sy, o.sx); m.castShadow = true; decor.add(m); } };
+  prochains(rocks, coneGeo, "#8b877c"); prochains(snows, coneGeo, "#f1f3f4");
+  tuile3d.rotor = []; g.traverse(o => { if (o.name === "rotor") tuile3d.rotor.push(o); });
+  tuile3d.scene.add(g); g.rotation.y = 0; soleilTuile.target.position.set(0, H * .7, 0);
+  const boite3 = new THREE.Box3().setFromObject(g), c = boite3.getCenter(new THREE.Vector3()), r = boite3.getBoundingSphere(new THREE.Sphere()).radius;
+  tuile3d.camera.position.set(c.x, c.y + r * 2.2, c.z + r * 3.3); tuile3d.camera.lookAt(c); tuile3d.camera.far = r * 12; tuile3d.camera.updateProjectionMatrix();
+  tuile3d.el.hidden = false; tuile3d.active = true; tuile3d.taille = 0; tuile3d.el.style.transition = "none"; tuile3d.el.style.transform = "none"; tuile3d.el.style.opacity = 1; }
+// Le canevas suit sa place dans l'encart ; il reste hors de l'encart pour pouvoir y voler depuis la carte
+function animerTuile(t) { if (!tuile3d.active) return; const place = $("tuilePlace"); if (!place) return cacherTuile();
+  const b = place.getBoundingClientRect(), n = Math.round(Math.min(b.width, b.height));
+  if (n !== tuile3d.taille) { tuile3d.taille = n; tuile3d.renderer.setSize(n, n, false); tuile3d.el.style.width = tuile3d.el.style.height = n + "px"; }
+  tuile3d.el.style.left = b.left + (b.width - n) / 2 + "px"; tuile3d.el.style.top = b.top + (b.height - n) / 2 + "px";
+  // Le canevas ne dépasse pas de l'encart quand celui-ci défile
+  const cadre = cityEl.getBoundingClientRect(); tuile3d.el.style.clipPath = `inset(${Math.max(0, cadre.top - b.top)}px 0 ${Math.max(0, b.bottom - cadre.bottom)}px 0)`;
+  if (!REDUCED) { tuile3d.groupe.rotation.y = t * .22; for (const o of tuile3d.rotor) o.rotation.z = t * 1.6; tuile3d.pollen.rotation.y = -t * .5; tuile3d.pollen.material.opacity = .65 + .3 * Math.sin(t * 1.3); if (!tuile3d.fini) animerPousse(performance.now() / 1000 - tuile3d.t0); }
+  tuile3d.renderer.render(tuile3d.scene, tuile3d.camera); }
+// Effet de zoom : le canevas part de la case à l'écran et vient se ranger à gauche du résumé
+function sortirTuile() { if (!adresseTile) return; if (tuileLevee !== adresseTile) { tuileLevee = adresseTile; setLens(lens); lancerVague(adresseTile.x, adresseTile.z); }
+  const info = $("tuileInfo"); if (!VERDICT || !info) return;
+  montrerTuile(adresseTile); animerTuile(0); const b = tuile3d.el.getBoundingClientRect();
+  v3.set(adresseTile.x, adresseTile.baseH, adresseTile.z).project(camera);
+  const cx = (v3.x + 1) / 2 * innerWidth, cy = (1 - v3.y) / 2 * innerHeight;
+  info.classList.remove("attente");
+  if (REDUCED) return;
+  tuile3d.el.style.transform = `translate(${cx - b.left - b.width / 2}px, ${cy - b.top - b.height / 2}px) scale(.16)`; tuile3d.el.style.opacity = .4; tuile3d.el.getBoundingClientRect();
+  tuile3d.el.style.transition = "transform 1s cubic-bezier(.2,.8,.2,1), opacity .4s"; tuile3d.el.style.transform = "none"; tuile3d.el.style.opacity = 1; }
+
 // Boucle de rendu
-const v3 = new THREE.Vector3(), tmpC = new THREE.Color();
+const tmpC = new THREE.Color();
 const barre = document.querySelector(".topbar");
-function resize() { document.documentElement.style.setProperty("--haut", barre.offsetHeight + "px"); renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
+function resize() { document.documentElement.style.setProperty("--haut", barre.offsetHeight + "px"); renderer.setSize(innerWidth, innerHeight); tuile3d.taille = 0; camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
 addEventListener("resize", resize); resize();
 function tick(ms) {
   const t = ms / 1000;
   if (animating) { let moving = false;
-    for (let i = 0; i < land.length; i++) { const dh = tgtH[i] - curH[i]; if (Math.abs(dh) > .003) { curH[i] += dh * .12; moving = true; } else curH[i] = tgtH[i];
+    for (let i = 0; i < land.length; i++) { if (t < depart[i]) { moving = true; continue; }
+      // La case saute au passage du front, ses maquettes avec elle
+      if (!passe[i]) { passe[i] = 1; curH[i] += .42 * PS; }
+      const dh = tgtH[i] - curH[i]; if (Math.abs(dh) > .003) { curH[i] += dh * .12; moving = true; } else curH[i] = tgtH[i];
       for (let j = 0; j < 3; j++) { const q = i * 3 + j, dc = tgtC[q] - curC[q]; if (Math.abs(dc) > .002) { curC[q] += dc * .14; moving = true; } else curC[q] = tgtC[q]; }
       writeTile(i); tmpC.fromArray(curC, i * 3); landMesh.setColorAt(i, tmpC); }
     landMesh.instanceMatrix.needsUpdate = true; landMesh.instanceColor.needsUpdate = true;
-    [regionBand, depBand, selBand, hoverBand].forEach(b => b.update()); animating = moving; }
+    [regionBand, depBand, selBand, hoverBand, adresseBand].forEach(b => b.update()); animating = moving; }
   for (const g of followers) { const u = g.userData; g.position.y = curH[u.i] + (u.dy || 0);
     if (u.rotor && !REDUCED) u.rotor.rotation.z = t * 1.6 + u.ph;
-    if (u.halo) { u.halo.quaternion.copy(camera.quaternion); if (!REDUCED) { const k = 1 + .18 * Math.sin(t * 2.2); u.halo.scale.set(k, k, k); } }
+    if (u.pollen && !REDUCED) { g.rotation.y = t * .16; g.position.y += .14 * Math.sin(t * .9); }
     if (u.ring && !REDUCED) { const s = 1 + ((t * .6) % 1) * .35; g.scale.set(s, s, s); g.material.opacity = .85 * (1 - (t * .6) % 1); } }
-  if (vol) { const k = Math.min(1, (ms - vol.t0) / vol.d), e = k * k * (3 - 2 * k);
-    controls.target.lerpVectors(vol.fromT, vol.toT, e); camera.position.lerpVectors(vol.fromP, vol.toP, e); if (k >= 1) vol = null; }
+  if (vol) { const k = Math.min(1, (ms - vol.t0) / vol.d), e = k * k * (3 - 2 * k), a = vol.fromA.clone().lerp(vol.toA, e).normalize();
+    // Distance géométrique : du monde à la case, la plongée garde la même allure à l'œil
+    controls.target.lerpVectors(vol.fromT, vol.toT, e); camera.position.copy(controls.target).addScaledVector(a, vol.d0 * Math.pow(vol.d1 / vol.d0, e));
+    if (k >= 1) { const f = vol.apres; vol = null; if (f) f(); } }
   const tg = controls.target; tg.x = Math.max(bounds.x0, Math.min(bounds.x1, tg.x)); tg.z = Math.max(bounds.z0, Math.min(bounds.z1, tg.z));
-  controls.update(); renderer.render(scene, camera);
-  for (const L of labels) { if (L.g !== carte || !L.lenses.includes(lens)) { L.el.hidden = true; continue; }
+  controls.update(); const dist = camera.position.distanceTo(tg); cadrer(dist); renderer.render(scene, camera);
+  const monde = dist > SEUIL_MONDE; if (monde !== vueMonde) { vueMonde = monde; majLegende(); }
+  if (!monde) { const gi = emprises.findIndex(e => tg.x >= e.x0 && tg.x <= e.x1 && tg.z >= e.z0 && tg.z <= e.z1); if (gi >= 0) suivreCarte(gi); }
+  for (const E of etiquettesMonde) { E.el.hidden = !monde || !MONDE.length; if (E.el.hidden) continue; v3.set(E.x, 2, E.z).project(camera); E.el.style.left = (v3.x + 1) / 2 * innerWidth + "px"; E.el.style.top = (1 - v3.y) / 2 * innerHeight + "px"; }
+  animerTuile(t);
+  for (const L of labels) { if (monde || L.g !== carte || !L.lenses.includes(lens)) { L.el.hidden = true; continue; }
     v3.set(L.x, (L.i != null ? curH[L.i] : 1) + L.y, L.z).project(camera);
     if (v3.z > 1 || Math.abs(v3.x) > 1.1 || Math.abs(v3.y) > 1.1) { L.el.hidden = true; continue; }
     L.el.hidden = false; L.el.style.left = (v3.x + 1) / 2 * innerWidth + "px"; L.el.style.top = (1 - v3.y) / 2 * innerHeight + "px"; }
   requestAnimationFrame(tick);
 }
-setLens("raccordement");
-if (VERDICT) showVerdict(); else if (DATA.adresse && DEP[DATA.adresse.departement]) showDep(DATA.adresse.departement); else ficheVide();
-if (adresseTile) vueAdresse(true);
+setLens("raccordement"); secherTerre();
+// Ouverture sur le monde ; avec une adresse, plongée jusqu'à sa case
+montrerMonde(true); cadrer(DISTANCE_MONDE);
+if (!adresseTile) { ficheVide(); setTimeout(() => lancerVague(mondeCentre.x, mondeCentre.z), 400); }
+else if (!VERDICT) showDep(DATA.adresse.departement, adresseTile);
+if (adresseTile) { if (REDUCED) vueAdresse(true); else { if (VERDICT) showVerdict(true); setTimeout(() => VERDICT ? vueAdresse(false, 2400) : allerA(adresseTile.x, adresseTile.z, 26, false, { duree: 2400, apres: sortirTuile }), 700); } }
 requestAnimationFrame(tick);
 </script>
 </body>

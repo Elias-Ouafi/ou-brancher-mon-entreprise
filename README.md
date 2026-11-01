@@ -28,20 +28,23 @@ les villes : l'outil n'y apporte rien de décisif.
 l'exploitant, que l'outil chiffre sans les vérifier), le loyer des locaux, la consommation d'un projet déduite de sa seule puissance. Il dit « non
 disponible » plutôt que de deviner.
 
-![Carte 3D, vue Raccorder : cases notées du rouge au vert, verdict « Brancher ici ? » pour un data center de 12 MW à Chilly-Mazarin](docs/exemples/carte_chilly_raccorder.png)
+![Carte 3D, vue Raccorder : cases notées du rouge au vert ; au centre, le bâtiment de l'adresse ; dans la fiche « Brancher ici ? », sa tuile, le carbone et le prix en jauges, pour un data center de 12 MW à Chilly-Mazarin](docs/exemples/carte_chilly_raccorder.png)
 
 ![Carte 3D, vue Territoire : relief et couleurs réelles, carbone, prix, production et fret dans l'encart](docs/exemples/carte_chilly_territoire.png)
 
+![Le monde en tuiles : la France et ses départements d'outre-mer en couleur, les autres pays ternes](docs/exemples/carte_monde.png)
+
 *La carte générée pour l'exemple de référence : un data center de 12 MW et 70 000 MWh par an au
 « 3 allée des Peupliers, 91380 Chilly-Mazarin » (`essentiel --puissance 12 --conso 70000
---activite data-center`, le 29 octobre 2026, captures refaites sur la charte claire le 30 octobre). En haut, la vue « Raccorder » (touche 1) : les cases
+--activite data-center`, le 29 octobre 2026, captures refaites le 1er novembre). En haut, la vue « Raccorder » (touche 1) : les cases
 sont notées du rouge au vert, l'adresse est reliée à la zone prioritaire RTE Sud Île-de-France
 (capacité en 2030) et au site clé en main de Massy ; la fiche donne le verdict : raccordement en
-HTA chez Enedis, carbone sous le seuil de 100 g, facture d'environ 5,3 M€ HTVA par an dont une
-accise réduite possible d'environ 1,1 M€ de moins, foncier avec un site clé en main à 5 km ; seul
-le plan de prévention des inondations de l'Yvette reste à vérifier. En bas, la vue « Territoire »
-(touche 2) : paysage réel, carbone et prix moyen par région, production et fret. Diagnostic
-complet : [en PDF](docs/exemples/implantation_chilly.pdf).*
+HTA chez Enedis, carbone sous le seuil de 100 g, facture d'environ 5,3 M€ HTVA par an (un clic
+ajoute l'accise réduite possible, environ 1,1 M€ de moins), foncier avec un site clé en main à
+5 km ; seul le plan de prévention des inondations de l'Yvette reste à vérifier. En bas, la vue « Territoire »
+(touche 2) : paysage réel, carbone et prix moyen par région, production et fret. En dessous, le
+monde (touche 0), d'où la carte plonge vers l'adresse. Diagnostic complet, avec la même tuile :
+[en PDF](docs/exemples/implantation_chilly.pdf).*
 
 ## Trois faits à connaître
 
@@ -174,9 +177,25 @@ adresse sur la carte (`--sans-carte` pour s'en passer ; `carte --sans-ouvrir` é
 lancer le navigateur). La carte n'est refaite que si le warehouse, les contours ou le gabarit sont
 plus récents qu'elle ; sinon seule l'épingle et son verdict changent.
 
-**La carte** montre un système électrique à la fois : la métropole avec la Corse, puis chacun des
-cinq départements d'outre-mer, chacun sur sa propre carte. Elle s'ouvre sur celle de l'adresse ;
-les boutons en bas à droite passent d'une carte à l'autre. Deux vues (touches 1 et 2). « Raccorder », par défaut : chaque
+**La carte** s'ouvre sur le monde en tuiles (touche 0, ou la molette en reculant) : chaque pays y
+est fait de tuiles d'environ 200 km, ternes et sans donnée, sauf les pays étudiés. Pour l'instant,
+la France : la métropole avec la Corse et les cinq départements d'outre-mer, chacun à sa place sur
+le monde et agrandi en cases fines. Les collectivités d'outre-mer (Nouvelle-Calédonie, Polynésie…)
+n'ont pas de données et restent ternes. Contours des pays : Natural Earth, frontières de fait, sans
+valeur officielle ; aucun chiffre n'en sort. Ajouter un pays : son code dans `PAYS_ETUDIES`
+(`ingestion/hexagones.py`) et sa grille de cases.
+
+Avec une adresse, la terre part sèche ; la carte plonge du monde vers sa case, où un bâtiment au
+liseré doré marque le site, puis une vague reverdit la carte depuis l'adresse et sa tuile vient se
+ranger dans la fiche. La tuile est un îlot détaillé : relief, sol peint, flancs de roche, arbres
+qui poussent, maquettes. Couleur, relief et maquettes viennent des données ; parcelles, chemin,
+arbres et fleurs sont un décor, pas un plan du site. À droite, on lit le verdict d'un coup d'œil :
+carbone et prix en jauges, puis raccordement, prix des locaux, risques et foncier, « non
+disponible » si l'indicateur manque. Un clic sur une carte chiffrée ouvre son détail ; « Sources et
+limites » se déplie sous la fiche. Le PDF porte une tuile dessinée en vectoriel
+(`reporting/tuile.py`). Un clic sur une case fait sortir sa tuile à côté de la fiche du
+département. Les boutons en bas à droite
+passent d'une carte à l'autre. Deux vues (touches 1 et 2). « Raccorder », par défaut : chaque
 case de 24 km est notée du rouge (défavorable) au vert (favorable) en passant par le blanc (neutre),
 selon la proximité d'une zone prioritaire RTE et d'un site clé en main France 2030, les postes
 400 kV, les contraintes RTE prévues, le relief, le carbone et l'équilibre régional ; zones RTE
@@ -260,7 +279,7 @@ flowchart LR
   bloquer le reste du diagnostic.
 - **Prix des locaux** : les ventes de locaux d'activité des cinq dernières années publiées (DVF, un fichier de ~100 Mo par année, lu en flux) donnent la médiane au m² par commune, le département en repli sous 5 ventes ; DVF ne sépare pas les bureaux des commerces et entrepôts, ne contient aucun loyer et ignore l'Alsace, la Moselle et Mayotte.
 - **Charte** : couleurs et polices de la carte, du PDF et des graphiques viennent d'un seul module,
-  `reporting/charte.py` (papier clair, encre bleu nuit, vert pour le favorable, orange pour « à
+  `reporting/charte.py` (papier clair, encre vert nuit, titres verts, vert pour le favorable, orange pour « à
   vérifier » ; Spectral pour les titres, Inter pour le texte et les chiffres). Les polices,
   versionnées dans `reporting/polices/`, sont tirées des fichiers Google Fonts par fontTools,
   réduites au latin et aux symboles des sorties (₂, ≥, →) ; Inter est un instantané de la police
@@ -277,7 +296,7 @@ flowchart LR
 ```
 
 Le script joue `ruff`, `pytest`, puis un essai réel à Chilly-Mazarin (warehouse et réseau requis) ;
-`--rapide` saute `pytest`, `--sans-essai` saute l'essai réel. 599 tests sans réseau, dont un
+`--rapide` saute `pytest`, `--sans-essai` saute l'essai réel. 605 tests sans réseau, dont un
 `dbt build` complet sur une base synthétique qui reproduit les pièges des sources, plus les tests de
 données dbt. La CI GitHub Actions joue `ruff` et `pytest` à chaque PR.
 
@@ -288,7 +307,7 @@ données dbt. La CI GitHub Actions joue `ruff` et `pytest` à chaque PR.
 [Base Adresse Nationale](https://adresse.data.gouv.fr) · [Géorisques, GASPAR, zonage sismique, installations classées et sols pollués](https://www.georisques.gouv.fr) · [Géoportail de l'urbanisme (API Carto)](https://apicarto.ign.fr) ·
 [contours Etalab](https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/) ·
 [altimétrie IGN](https://geoservices.ign.fr/documentation/services/services-geoplateforme/altimetrie) ·
-[Natural Earth](https://www.naturalearthdata.com) ·
+[Natural Earth](https://www.naturalearthdata.com) (terres et pays, domaine public) ·
 [sites clés en main France 2030](https://www.data.gouv.fr/datasets/les-sites-cles-en-main-france-2030) ·
 [consommation des entreprises par adresse d'Enedis](https://opendata.enedis.fr/datasets/consommation-annuelle-entreprise-par-adresse) ·
 [continuité d'alimentation d'Enedis](https://opendata.enedis.fr/datasets/indicateur-continuite-dalimentation) ·

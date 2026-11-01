@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 CONTOURS_JEU = "contours_departements"
 TERRES_JEU = "terres_emergees"
+PAYS_JEU = "pays_monde"
 RELIEF_JEU = "relief_ign"
 
 ELEVATION_PATH = "/1.0/calcul/alti/rest/elevation.json"
@@ -203,6 +204,7 @@ def run_geo_ingestion(*, settings: Settings | None = None, run_id: str = "manual
     settings = settings or get_settings()
     contours = telecharger_geojson(CONTOURS_JEU, settings.contours_url, settings=settings)
     terres = telecharger_geojson(TERRES_JEU, settings.terres_url, settings=settings)
+    telecharger_geojson(PAYS_JEU, settings.pays_url, settings=settings)
     grilles = construire_grilles(lire_contours(contours), terres=lire_terres(terres))
     points = points_terrestres(grilles)
     completer_altitudes(points, settings=settings, run_id=run_id)

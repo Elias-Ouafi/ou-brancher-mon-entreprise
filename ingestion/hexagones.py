@@ -24,8 +24,13 @@ DEPARTEMENTS_OUTRE_MER = ("971", "972", "973", "974", "976")
 CASES_PAR_ENCART = 70
 MARGE_METROPOLE, MARGE_ENCART = 3, 2
 
-# Écart entre deux cartes dans la scène : au-delà du brouillard, une seule carte se voit à la fois
-ECART_CARTES = 600.0
+# Pays dont l'outil a les données : pour en ajouter un, son code ADM0_A3 ici et sa grille fine
+PAYS_ETUDIES = frozenset({"FRA"})
+# Une tuile du monde couvre environ 70 cases de la métropole : assez fin pour reconnaître un pays,
+# assez léger pour la page. L'Antarctique n'est pas un pays et étirerait la carte vers le sud.
+RAYON_MONDE_KM = 100.0
+PAYS_HORS_MONDE = frozenset({"ATA"})
+LAT_MIN_MONDE, LAT_MAX_MONDE = -56.0, 78.0
 
 # Échantillons par case : le centre puis six points à 60 % du rayon
 FRACTION_ECHANTILLON = 0.6
@@ -65,6 +70,31 @@ class Projection:
         return x / self._kx + self.lon0, -z / KM_PAR_DEGRE_LAT + self.lat0
 
 
+# Mercator calée sur la projection de la métropole : même x, z presque égal sur la France, si bien
+# que la grille fine s'y pose sans raccord, et une forme du monde familière
+@dataclass(frozen=True, slots=True)
+class Mercator:
+    lon0: float
+    lat0: float
+
+    @property
+    def _k(self) -> float:
+        return KM_PAR_DEGRE_LON * math.cos(math.radians(self.lat0))
+
+    @staticmethod
+    def _y(lat: float) -> float:
+        lat = max(LAT_MIN_MONDE, min(LAT_MAX_MONDE, lat))
+        return math.degrees(math.log(math.tan(math.pi / 4 + math.radians(lat) / 2)))
+
+    def km(self, lon: float, lat: float) -> tuple[float, float]:
+        return (lon - self.lon0) * self._k, -(self._y(lat) - self._y(self.lat0)) * self._k
+
+    def geo(self, x: float, z: float) -> tuple[float, float]:
+        y = self._y(self.lat0) - z / self._k
+        lat = math.degrees(2 * math.atan(math.exp(math.radians(y))) - math.pi / 2)
+        return x / self._k + self.lon0, lat
+
+
 @dataclass(slots=True)
 class Case:
     c: int
@@ -81,7 +111,7 @@ class Case:
 class Grille:
     nom: str
     code: str | None
-    projection: Projection
+    projection: Projection | Mercator
     rayon_km: float
     x0_km: float
     z0_km: float
@@ -146,6 +176,20 @@ def lire_contours(path: Path) -> list[Departement]:
 
 def lire_terres(path: Path) -> list[Anneau]:
     return [anneau for feature in _lire_geojson(path) for anneau in _anneaux(feature["geometry"])]
+
+
+# ADM0_A3 et non ISO_A3 : Natural Earth laisse -99 à l'ISO de la France et de quelques autres
+def lire_pays(path: Path) -> list[Departement]:
+    return [
+        Departement(
+            code=feature["properties"]["ADM0_A3"],
+            nom=feature["properties"].get("NAME_FR") or feature["properties"]["NAME"],
+            region="",
+            anneaux=_anneaux(feature["geometry"]),
+        )
+        for feature in _lire_geojson(path)
+        if feature["properties"]["ADM0_A3"] not in PAYS_HORS_MONDE
+    ]
 
 
 def _aire(anneau: list[tuple[float, float]]) -> float:
@@ -214,7 +258,7 @@ def _grille(
     departements: list[Departement],
     rayon_km: float,
     marge: int,
-    projection: Projection | None = None,
+    projection: Projection | Mercator | None = None,
     terres: list[Anneau] | None = None,
 ) -> Grille:
     if projection is None:
@@ -343,11 +387,77 @@ def construire_grilles(
         )
 
     grilles += encarts
-    # Chaque carte centrée sur son propre point, loin des autres
-    for i, g in enumerate(grilles):
-        g.scene_x0 = i * ECART_CARTES - (g.colonnes - 1) * largeur_s / 2
-        g.scene_z0 = -(g.lignes - 1) * hauteur_s / 2
+    grille.scene_x0 = -(grille.colonnes - 1) * largeur_s / 2
+    grille.scene_z0 = -(grille.lignes - 1) * hauteur_s / 2
+    # Chaque encart à sa place sur le monde, agrandi : deux encarts voisins (Antilles) s'écartent
+    # vers le sud plutôt que de se chevaucher
+    places: list[Grille] = []
+    for encart in encarts:
+        x, z = _scene_monde(grille, *MERCATOR.km(encart.projection.lon0, encart.projection.lat0))
+        encart.scene_x0 = x - (encart.colonnes - 1) * largeur_s / 2
+        encart.scene_z0 = z - (encart.lignes - 1) * hauteur_s / 2
+        for autre in places:
+            x0, z0, x1, z1 = _emprise(autre)
+            ex0, ez0, ex1, ez1 = _emprise(encart)
+            if ex0 < x1 and x0 < ex1 and ez0 < z1 and z0 < ez1:
+                encart.scene_z0 += z1 - ez0 + hauteur_s
+        places.append(encart)
     return grilles
+
+
+MERCATOR = Mercator(LON0_METROPOLE, LAT0_METROPOLE)
+
+
+# Un point du monde, en km Mercator, dans la scène : même échelle que la métropole, posée au centre
+def _scene_monde(metropole: Grille, x: float, z: float) -> tuple[float, float]:
+    return (
+        metropole.scene_x0 + (x - metropole.x0_km) * metropole.echelle,
+        metropole.scene_z0 + (z - metropole.z0_km) * metropole.echelle,
+    )
+
+
+def _emprise(g: Grille) -> tuple[float, float, float, float]:
+    largeur_s, hauteur_s = math.sqrt(3) * RAYON_SCENE, 1.5 * RAYON_SCENE
+    return (
+        g.scene_x0,
+        g.scene_z0,
+        g.scene_x0 + g.colonnes * largeur_s,
+        g.scene_z0 + g.lignes * hauteur_s,
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class TuileMonde:
+    x: float
+    z: float
+    pays: str
+
+
+@dataclass(frozen=True, slots=True)
+class Monde:
+    rayon_scene: float
+    # Code ADM0_A3 → nom français
+    pays: dict[str, str]
+    tuiles: list[TuileMonde]
+
+
+# Tuiles grossières du monde entier ; celles que couvre une grille fine lui cèdent la place
+def construire_monde(pays: list[Departement], grilles: list[Grille]) -> Monde:
+    monde = _grille("Monde", None, pays, RAYON_MONDE_KM, 0, MERCATOR)
+    metropole = grilles[0]
+    emprises = [_emprise(g) for g in grilles]
+    tuiles = []
+    for case in monde.cases:
+        if not case.departement:
+            continue
+        x, z = _scene_monde(metropole, *monde.centre_km(case.c, case.r))
+        if not any(x0 <= x <= x1 and z0 <= z <= z1 for x0, z0, x1, z1 in emprises):
+            tuiles.append(TuileMonde(x, z, case.departement))
+    return Monde(
+        rayon_scene=RAYON_MONDE_KM * metropole.echelle,
+        pays={p.code: p.nom for p in pays},
+        tuiles=tuiles,
+    )
 
 
 def points_terrestres(grilles: list[Grille]) -> list[tuple[float, float]]:
