@@ -1,6 +1,6 @@
 ---
 name: essai-carte
-description: Générer la carte 3D pour une adresse et la vérifier dans le navigateur intégré (rendu, console, deux vues). À utiliser après toute modification de reporting/carte.py, reporting/carte.html, ingestion/hexagones.py ou des modèles gold qu'affiche la carte.
+description: Générer la carte 3D pour une adresse et la vérifier dans le navigateur intégré (rendu, console, deux vues). À utiliser après toute modification de reporting/carte.py, reporting/carte.html, reporting/charte.py, reporting/app.py, ingestion/hexagones.py ou des modèles gold qu'affiche la carte.
 ---
 
 # Essayer la carte
@@ -14,3 +14,5 @@ description: Générer la carte 3D pour une adresse et la vérifier dans le navi
    de l'adresse avec sa fiche « Brancher ici ? », la vue « Territoire » (touche 2) en couleurs
    réelles, les boutons de système électrique en bas à droite.
 4. Capture d'écran comme preuve ; signaler tout écart avec les décisions « Carte » de PLAN.md.
+5. Si `reporting/app.py` a changé : `preview_start` avec la configuration `app`, puis une analyse
+   depuis la page, jusqu'au verdict épinglé et au rapport.
