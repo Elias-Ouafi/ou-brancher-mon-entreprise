@@ -240,7 +240,8 @@ flowchart LR
   le domaine de tension : puissance souscrite, énergie répartie par classe temporelle (pointe,
   heures pleines et creuses, saison haute ou basse) sur la courbe de charge ou, à défaut, sur
   toutes les heures de l'année, version courte, moyenne ou longue utilisation retenue au moindre coût
-  (`ingestion/turpe.py`).
+  (`ingestion/turpe.py`). La HTB a son propre calendrier (délibération CRE 2025-77) : week-ends et
+  jours fériés creux, plages changées au 1er janvier 2027, Nouvelle-Aquitaine et Occitanie à part.
 - **Fiabilité** : géocodage BAN sur cinq candidats, adresse refusée si trop approximative ou
   ambiguë ; consommation Enedis cherchée à l'adresse seulement quand la BAN la trouve au numéro
   près (clé « numéro + voie » sans accents ni ponctuation, « 13 bis » = « 13 B ») ; date des données affichée partout, avec alerte au-delà de 45 jours ; risques en repli
@@ -276,7 +277,7 @@ flowchart LR
 ```
 
 Le script joue `ruff`, `pytest`, puis un essai réel à Chilly-Mazarin (warehouse et réseau requis) ;
-`--rapide` saute `pytest`, `--sans-essai` saute l'essai réel. 572 tests sans réseau, dont un
+`--rapide` saute `pytest`, `--sans-essai` saute l'essai réel. 599 tests sans réseau, dont un
 `dbt build` complet sur une base synthétique qui reproduit les pièges des sources, plus les tests de
 données dbt. La CI GitHub Actions joue `ruff` et `pytest` à chaque PR.
 
