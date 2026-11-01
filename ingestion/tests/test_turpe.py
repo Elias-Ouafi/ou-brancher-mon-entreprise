@@ -21,6 +21,7 @@ from ingestion.turpe import (
     PROFIL_PLAT,
     Acheminement,
     classe_temporelle,
+    classe_temporelle_htb,
     parts_energie,
     parts_profil_annee,
 )
@@ -45,6 +46,70 @@ avec_dbt = pytest.mark.skipif(DBT_BIN is None, reason="dbt non installé (uv syn
 )
 def test_time_class_follows_the_turpe_calendar(instant: datetime, classe: str) -> None:
     assert classe_temporelle(instant.replace(tzinfo=PARIS_TZ)) == classe
+
+
+# Délibération CRE 2025-77 : deux régimes séparés par le 1er janvier 2027, Nouvelle-Aquitaine (75)
+# et Occitanie (76) à part dans le second ; 11 novembre, lundi de Pâques et Pentecôte fériés
+@pytest.mark.parametrize(
+    ("instant", "region", "classe"),
+    [
+        # Jusqu'au 31 décembre 2026, partout : creuses de 23 h à 7 h
+        (datetime(2026, 12, 15, 9), "11", "pointe"),
+        (datetime(2026, 12, 15, 9), "76", "pointe"),
+        (datetime(2026, 12, 15, 7), "76", "hph"),
+        (datetime(2026, 12, 15, 6), "11", "hch"),
+        (datetime(2026, 12, 15, 22), "11", "hph"),
+        (datetime(2026, 12, 15, 23), "11", "hch"),
+        (datetime(2026, 9, 15, 13), "11", "hpb"),
+        # Week-end et jour férié : creux toute la journée, sans pointe
+        (datetime(2026, 12, 19, 9), "11", "hch"),
+        (datetime(2026, 11, 11, 12), "11", "hch"),
+        (datetime(2027, 1, 1, 9), "11", "hch"),
+        (datetime(2027, 3, 29, 12), "11", "hch"),
+        (datetime(2027, 5, 17, 12), "11", "hcb"),
+        # Dès 2027, reste du territoire : 22 h - 6 h en saison haute, 2 h - 6 h et 12 h - 16 h sinon
+        (datetime(2027, 1, 12, 10), "11", "pointe"),
+        (datetime(2027, 1, 12, 7), "11", "hph"),
+        (datetime(2027, 1, 12, 22), "11", "hch"),
+        (datetime(2027, 1, 12, 13), None, "hph"),
+        (datetime(2027, 6, 15, 13), "11", "hcb"),
+        (datetime(2027, 6, 15, 1), "11", "hpb"),
+        (datetime(2027, 6, 15, 3), "11", "hcb"),
+        # Dès 2027, Nouvelle-Aquitaine et Occitanie : creux de milieu de journée, pointe dès 7 h
+        (datetime(2027, 1, 12, 7), "76", "pointe"),
+        (datetime(2027, 1, 12, 10), "75", "hch"),
+        (datetime(2027, 1, 12, 3), "75", "hch"),
+        (datetime(2027, 1, 12, 5), "75", "hph"),
+        (datetime(2027, 3, 16, 22), "76", "hph"),
+        (datetime(2027, 6, 15, 17), "76", "hcb"),
+        (datetime(2027, 6, 15, 3), "76", "hpb"),
+    ],
+)
+def test_transmission_time_class_follows_its_own_calendar(
+    instant: datetime, region: str | None, classe: str
+) -> None:
+    assert classe_temporelle_htb(instant.replace(tzinfo=PARIS_TZ), region) == classe
+
+
+# Les deux régimes de 2027 ont autant d'heures de chaque classe : à puissance constante le coût
+# est le même partout, seul un profil variable fait apparaître la région
+@avec_dbt
+def test_transmission_cost_depends_on_the_region_only_with_a_varying_load(
+    medallion_db: Path,
+) -> None:
+    def energie(region: str, activite: str | None) -> float:
+        a = lire_diagnostic(
+            territoire("69123", code_insee_region=region),
+            puissance_mw=45,
+            conso_mwh=300_000,
+            activite=activite,
+            database=medallion_db,
+        ).acheminement
+        assert a is not None
+        return a.energie_eur
+
+    assert energie("84", None) == pytest.approx(energie("76", None))
+    assert energie("84", "industrie") != pytest.approx(energie("76", "industrie"))
 
 
 # Une année de grille, du 1er août 2026 au 31 juillet 2027 : 8 760 heures
@@ -226,5 +291,5 @@ def test_transmission_grid_is_priced_from_40_mw(medallion_db: Path) -> None:
     assert (a.domaine_turpe, a.utilisation, a.profil) == ("htb1", "longue", PROFIL_PLAT)
     assert a.gestion_comptage_eur == pytest.approx(15_857.88)
     assert a.puissance_eur == pytest.approx(1_938_600)
-    assert a.total_eur == pytest.approx(3_830_653, abs=5)
+    assert a.total_eur == pytest.approx(3_794_201, abs=5)
     assert "TURPE 7 HTB 1, longue utilisation" in formater_diagnostic(diagnostic)
