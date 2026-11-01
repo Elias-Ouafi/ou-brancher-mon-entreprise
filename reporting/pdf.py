@@ -4,7 +4,7 @@ import io
 from pathlib import Path
 
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_LEFT
+from reportlab.lib.enums import TA_LEFT, TA_RIGHT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
@@ -40,6 +40,7 @@ DISCRET = colors.HexColor(charte.DISCRET)
 FILET = colors.HexColor(charte.FILET)
 FOND = colors.HexColor(charte.ENCART)
 ACCENT = colors.HexColor(charte.VERT)
+TITRES = colors.HexColor(charte.TITRE_VERT)
 ALERTE = colors.HexColor(charte.ORANGE)
 TEMPO = {nom: colors.HexColor(teinte) for nom, teinte in charte.TEMPO.items()}
 
@@ -48,13 +49,15 @@ LARGEUR = A4[0] - 36 * mm
 _base = getSampleStyleSheet()
 STYLES = {
     "titre": ParagraphStyle("titre", parent=_base["Title"], fontName=TITRE_GRAS, fontSize=20,
-                            leading=24, textColor=ENCRE, alignment=TA_LEFT, spaceAfter=2),
+                            leading=24, textColor=TITRES, alignment=TA_LEFT, spaceAfter=2),
     "sous_titre": ParagraphStyle("sous_titre", parent=_base["Normal"], fontName=TEXTE,
                                  fontSize=11, textColor=DISCRET, spaceAfter=10),
     "h1": ParagraphStyle("h1", parent=_base["Heading2"], fontName=TITRE_GRAS, fontSize=14,
-                         textColor=ENCRE, spaceBefore=10, spaceAfter=6),
+                         textColor=TITRES, spaceBefore=10, spaceAfter=6),
+    "h1_serre": ParagraphStyle("h1_serre", parent=_base["Heading2"], fontName=TITRE_GRAS,
+                               fontSize=15, textColor=TITRES, spaceBefore=0, spaceAfter=4),
     "h2": ParagraphStyle("h2", parent=_base["Heading3"], fontName=TITRE_GRAS, fontSize=11,
-                         textColor=ENCRE, spaceBefore=8, spaceAfter=4),
+                         textColor=TITRES, spaceBefore=8, spaceAfter=4),
     "texte": ParagraphStyle("texte", parent=_base["Normal"], fontName=TEXTE, fontSize=9.5,
                             leading=13, textColor=ENCRE, spaceAfter=6),
     "note": ParagraphStyle("note", parent=_base["Normal"], fontName=TEXTE, fontSize=8,
@@ -65,6 +68,12 @@ STYLES = {
                                   fontSize=8, leading=10, textColor=DISCRET),
     "cellule": ParagraphStyle("cellule", parent=_base["Normal"], fontName=TEXTE, fontSize=8.5,
                               leading=11, textColor=ENCRE),
+    "cellule_discrete": ParagraphStyle("cellule_discrete", parent=_base["Normal"], fontName=TEXTE,
+                                       fontSize=8.5, leading=11, textColor=DISCRET),
+    "cellule_droite": ParagraphStyle("cellule_droite", parent=_base["Normal"], fontName=TEXTE,
+                                     fontSize=8.5, leading=11, textColor=ENCRE, alignment=TA_RIGHT),
+    "cellule_note": ParagraphStyle("cellule_note", parent=_base["Normal"], fontName=TEXTE,
+                                   fontSize=7.5, leading=9.5, textColor=DISCRET, spaceBefore=1),
 }  # fmt: skip
 
 CO2 = "CO<sub>2</sub>"

@@ -25,6 +25,7 @@ from ingestion.diagnostic import (
 )
 from ingestion.extract_geo import (
     CONTOURS_JEU,
+    PAYS_JEU,
     TERRES_JEU,
     completer_altitudes,
     dernier_geojson,
@@ -34,11 +35,15 @@ from ingestion.extract_geo import (
 from ingestion.extract_odre import RetryableStatusError
 from ingestion.geocode import Territoire
 from ingestion.hexagones import (
+    PAYS_ETUDIES,
     RAYON_SCENE,
     Grille,
+    Monde,
     arrondir,
     construire_grilles,
+    construire_monde,
     lire_contours,
+    lire_pays,
     lire_terres,
     points_terrestres,
 )
@@ -131,7 +136,7 @@ def lire_donnees_gold(database: Path) -> dict[str, Any]:
 
 
 # Case terrestre d'un point : encart de son département d'outre-mer, sinon métropole
-def _reperer(
+def reperer(
     grilles: list[Grille], lon: float, lat: float, departement: str | None = None
 ) -> list[int] | None:
     indice = next((i for i, g in enumerate(grilles) if g.code and g.code == departement), 0)
@@ -148,6 +153,7 @@ def construire_donnees(
     territoire: Territoire | None = None,
     verdict_adresse: dict[str, Any] | None = None,
     genere_le: datetime | None = None,
+    monde: Monde | None = None,
 ) -> dict[str, Any]:
     cases: list[list[Any]] = []
     for indice, grille in enumerate(grilles):
@@ -184,18 +190,19 @@ def construire_donnees(
             for g in grilles
         ],
         "cases": cases,
+        "monde": _monde_en_donnees(monde),
         "departements": gold["departements"],
         "sites": [
             {
                 "id": s["id"],
                 "n": s["n"],
                 "c": s["c"],
-                "case": _reperer(grilles, s["lo"], s["la"], s["c"]),
+                "case": reperer(grilles, s["lo"], s["la"], s["c"]),
             }
             for s in gold["sites"]
         ],
         "zones": [
-            {"n": z["n"], "pr": z["pr"], "a": z["a"], "case": _reperer(grilles, z["lo"], z["la"])}
+            {"n": z["n"], "pr": z["pr"], "a": z["a"], "case": reperer(grilles, z["lo"], z["la"])}
             for z in gold["zones"]
         ],
         "production": [
@@ -206,14 +213,14 @@ def construire_donnees(
                 "mw": p["mw"],
                 "gwh": p["gwh"],
                 "ni": p["ni"],
-                "case": _reperer(grilles, p["lo"], p["la"], p["c"]),
+                "case": reperer(grilles, p["lo"], p["la"], p["c"]),
             }
             for p in gold.get("production", [])
         ],
         "fret": [
             {
                 **{cle: p[cle] for cle in ("m", "n", "c", "a", "v", "evp", "vc", "ml", "eng")},
-                "case": _reperer(grilles, p["lo"], p["la"], p["c"]),
+                "case": reperer(grilles, p["lo"], p["la"], p["c"]),
             }
             for p in gold.get("fret", [])
         ],
@@ -223,6 +230,53 @@ def construire_donnees(
     }
 
 
+# Tuile du monde : [x, z, indice du pays] ; un pays non étudié n'a que son nom
+def _monde_en_donnees(monde: Monde | None) -> dict[str, Any] | None:
+    if monde is None:
+        return None
+    codes = sorted(monde.pays)
+    indices = {code: i for i, code in enumerate(codes)}
+    return {
+        "rayon": monde.rayon_scene,
+        "pays": [{"n": monde.pays[c], "e": c in PAYS_ETUDIES} for c in codes],
+        "cases": [[round(t.x, 1), round(t.z, 1), indices[t.pays]] for t in monde.tuiles],
+    }
+
+
+def _nombre(valeur: float, decimales: int = 0) -> str:
+    return f"{valeur:,.{decimales}f}".replace(",", "\u202f").replace(".", ",")
+
+
+# L'encart et le haut du PDF, en quelques mots : le détail reste dans le diagnostic
+def resume_adresse(diagnostic: Diagnostic) -> list[dict[str, str]]:
+    criteres = {c.nom: c for c in verdict(diagnostic)}
+    c = diagnostic.carbone
+    electricite = (
+        (
+            f"{'décarbonée' if c.est_decarbone else 'carbonée'}, "
+            f"{_nombre(c.intensite_acv_g_co2e_kwh, 1)} gCO₂e/kWh",
+            "ok" if c.est_decarbone else "attention",
+        )
+        if c
+        else ("non disponible", "inconnu")
+    )
+    p = diagnostic.prix_locaux
+    locaux = (
+        f"{_nombre(p.prix_m2_median)} €/m²" + (" (département)" if p.niveau != "commune" else "")
+        if p
+        else "non disponible"
+    )
+    lignes = [
+        ("Électricité", *electricite),
+        ("Raccordement", criteres["Raccordement"].valeur, criteres["Raccordement"].etat),
+        ("Facture", criteres["Facture"].valeur, criteres["Facture"].etat),
+        ("Prix des locaux", locaux, "info" if p else "inconnu"),
+        ("Risques", criteres["Risques"].valeur, criteres["Risques"].etat),
+        ("Foncier", criteres["Foncier"].valeur, criteres["Foncier"].etat),
+    ]
+    return [{"nom": nom, "valeur": valeur, "etat": etat} for nom, valeur, etat in lignes]
+
+
 def verdict_carte(diagnostic: Diagnostic) -> dict[str, Any]:
     criteres = verdict(diagnostic)
     zone = diagnostic.zone_rte
@@ -230,6 +284,12 @@ def verdict_carte(diagnostic: Diagnostic) -> dict[str, Any]:
     return {
         "phrase": phrase_verdict(criteres),
         "criteres": [asdict(c) for c in criteres],
+        "resume": resume_adresse(diagnostic),
+        # Les jauges de l'encart ont besoin des nombres, pas des phrases
+        "carbone": {"g": c.intensite_acv_g_co2e_kwh, "seuil": c.seuil_decarbone_g_co2e_kwh}
+        if (c := diagnostic.carbone)
+        else None,
+        "prix": {"eur_kwh": p.prix_reference_eur_kwh} if (p := diagnostic.prix) else None,
         "zone": zone.zone if zone and zone.distance_km <= DISTANCE_ZONE_UTILE_KM else None,
         "site": site.id_site if site else None,
     }
@@ -245,7 +305,7 @@ def construire_adresse(
     return {
         "libelle": territoire.adresse,
         "departement": territoire.code_departement,
-        "case": _reperer(
+        "case": reperer(
             grilles, territoire.longitude, territoire.latitude, territoire.code_departement
         ),
         "verdict": verdict_adresse,
@@ -306,6 +366,12 @@ def _grilles(settings: Settings) -> list[Grille]:
     )
 
 
+# Sans les pays (hors ligne au premier lancement), la France reste seule : le reste suit au refresh
+def _monde(grilles: list[Grille], settings: Settings) -> Monde | None:
+    pays = _geojson(PAYS_JEU, settings.pays_url, settings)
+    return construire_monde(lire_pays(pays), grilles) if pays else None
+
+
 def chemin(settings: Settings, output: Path | None) -> Path:
     return output or Path(settings.reports_dir) / "carte.html"
 
@@ -329,7 +395,12 @@ def generer_carte(
         altitudes = lire_altitudes(settings)
     html = rendre_html(
         construire_donnees(
-            grilles, altitudes, gold, territoire=territoire, verdict_adresse=verdict_adresse
+            grilles,
+            altitudes,
+            gold,
+            territoire=territoire,
+            verdict_adresse=verdict_adresse,
+            monde=_monde(grilles, settings),
         )
     )
     path = chemin(settings, output)
@@ -344,7 +415,8 @@ def carte_a_jour(path: Path, settings: Settings) -> bool:
         return False
     sources = [Path(settings.duckdb_path), GABARIT, *(VENDOR / nom for nom in SCRIPTS)]
     sources += [Path(charte.__file__), *(charte.police(f, g) for f, g in charte.FICHIERS)]
-    sources += [p for jeu in (CONTOURS_JEU, TERRES_JEU) if (p := dernier_geojson(jeu, settings))]
+    jeux = (CONTOURS_JEU, TERRES_JEU, PAYS_JEU)
+    sources += [p for jeu in jeux if (p := dernier_geojson(jeu, settings))]
     date_carte = path.stat().st_mtime
     return all(not p.exists() or p.stat().st_mtime <= date_carte for p in sources)
 

@@ -20,9 +20,11 @@ from ingestion.tests.conftest import FIXTURES_DIR
 from ingestion.tests.medallion import DBT_BIN
 from ingestion.tests.test_diagnostic import territoire
 from ingestion.urbanisme import ZoneUrbanisme
-from reporting import charte, implantation, implantation_charts
+from reporting import charte, implantation, implantation_charts, implantation_pdf
+from reporting.carte import resume_adresse
 from reporting.implantation import generer_rapport_implantation, lire_comparaisons, nom_fichier
 from reporting.implantation_pdf import _pdf
+from reporting.tuile import Piece, Tuile, dessin_tuile, legende, lire_tuile
 
 pytestmark = pytest.mark.skipif(DBT_BIN is None, reason="dbt non installé (uv sync --group dbt)")
 
@@ -286,3 +288,56 @@ def test_every_report_format_is_offered_by_the_command(format: str) -> None:
 def test_diagnose_rejects_unknown_format() -> None:
     with pytest.raises(SystemExit):
         cli.build_parser().parse_args(["diagnose", "--adresse", "x", "--format", "docx"])
+
+
+CENTRALE = Tuile(
+    "01", 45.8, 5.3, 12.0, 200, 300, pieces=[Piece("Nucléaire", "Saint-Vulbas", 3580.0)]
+)
+
+
+def test_tuile_dessinee_avec_ses_elements() -> None:
+    nue = Tuile("91", 48.7, 2.3, 12.0, 80, 120)
+    assert len(dessin_tuile(CENTRALE).contents) != len(dessin_tuile(nue).contents)
+    assert legende(CENTRALE) == ["<b>Nucléaire</b> · Saint-Vulbas, 3\u202f580 MW"]
+    assert legende(nue) == ["Aucun pôle au-dessus des seuils sur cette case."]
+    # Une filière sans maquette dédiée se dessine quand même
+    marine = Tuile(
+        "29", 48.0, -4.0, 12.0, 10, 20, pieces=[Piece("Energies Marines", "Ouessant", 25)]
+    )
+    assert dessin_tuile(marine).contents
+
+
+def test_tuile_absente_sans_contours(reglages: Settings) -> None:
+    assert lire_tuile(territoire("69383", "Lyon"), reglages) is None
+
+
+def test_pdf_porte_la_tuile(
+    medallion_db: Path, reglages: Settings, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    diagnostic = _lyon(medallion_db)
+    monkeypatch.setattr(implantation_pdf, "lire_tuile", lambda *_: CENTRALE)
+    avec = generer_rapport_implantation(
+        diagnostic, format="pdf", settings=reglages, output=tmp_path / "avec.pdf"
+    )
+    monkeypatch.setattr(implantation_pdf, "lire_tuile", lambda *_: None)
+    sans = generer_rapport_implantation(
+        diagnostic, format="pdf", settings=reglages, output=tmp_path / "sans.pdf"
+    )
+    assert avec.stat().st_size > sans.stat().st_size
+
+
+def test_resume_de_l_adresse_court_et_sans_chiffre_invente(medallion_db: Path) -> None:
+    diagnostic = _lyon(medallion_db)
+    lignes = {ligne["nom"]: ligne for ligne in resume_adresse(diagnostic)}
+    assert list(lignes) == [
+        "Électricité",
+        "Raccordement",
+        "Facture",
+        "Prix des locaux",
+        "Risques",
+        "Foncier",
+    ]
+    assert lignes["Électricité"]["valeur"].startswith("décarbonée")
+    sans_locaux = resume_adresse(replace(diagnostic, prix_locaux=None, carbone=None))
+    assert sans_locaux[3]["valeur"] == "non disponible"
+    assert sans_locaux[0]["valeur"] == "non disponible"
