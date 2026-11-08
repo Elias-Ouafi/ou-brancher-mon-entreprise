@@ -28,6 +28,7 @@ from ingestion.datasets import (
     SITES_PRODUCTION,
     VENTES_LOCAUX,
     ZONAGE_SISMIQUE,
+    ZONES_REPARTITION_EAUX,
     DatasetSpec,
 )
 from ingestion.extract_dvf import telecharger_ventes_locaux
@@ -46,6 +47,7 @@ from ingestion.extract_odre import ExtractionWindow, OdreClient
 from ingestion.extract_production import telecharger_centres, telecharger_sites
 from ingestion.extract_rte import DayRange, RteEcowattClient, RteTempoClient
 from ingestion.extract_sismique import telecharger_zonage
+from ingestion.extract_zre import telecharger_zones
 from ingestion.transform import PARIS_TZ, records_to_table, write_parquet
 from ingestion.warehouse import LoadResult, build_loader
 
@@ -461,6 +463,17 @@ def run_zonage_sismique_ingestion(
     settings = settings or get_settings()
     lignes = telecharger_zonage(settings=settings)
     return _charger_fichier(lignes, ZONAGE_SISMIQUE, settings, run_id, now)
+
+
+def run_zones_repartition_ingestion(
+    *,
+    settings: Settings | None = None,
+    run_id: str = "manual",
+    now: datetime | None = None,
+) -> tuple[ExtractionOutcome, LoadResult]:
+    settings = settings or get_settings()
+    lignes = telecharger_zones(settings=settings)
+    return _charger_fichier(lignes, ZONES_REPARTITION_EAUX, settings, run_id, now)
 
 
 def run_europe_ingestion(

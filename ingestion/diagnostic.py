@@ -342,6 +342,16 @@ limit 1
 """
 
 
+_ZRE_SQL = """
+select nom_zone, ressource, geometrie
+from gold.fct_zones_repartition_eaux
+where $longitude between lon_min and lon_max and $latitude between lat_min and lat_max
+order by gid
+"""
+# Code de l'environnement, R214-1, rubrique 1.3.1.0 (version du 29 août 2025) : en zone de
+# répartition des eaux, autorisation dès 8 m³/h de capacité de prélèvement, déclaration sinon
+SEUIL_AUTORISATION_ZRE_M3H = 8
+
 # Friches d'au moins 1 ha à moins de 10 km à vol d'oiseau, les plus proches d'abord
 RAYON_FRICHES_KM = 10
 NB_FRICHES_AFFICHEES = 3
@@ -395,6 +405,7 @@ SOURCES_CHARGEES: dict[str, str] = {
     "enedis_continuite_alimentation": "continuité Enedis",
     "ventes_locaux": "ventes de locaux DVF",
     "friches": "friches Cartofriches",
+    "zones_repartition_eaux": "zones de répartition des eaux",
 }
 # Au-delà, une source n'a pas été rechargée depuis plus d'un cycle mensuel de `refresh`
 AGE_MAX_JOURS = 45
@@ -639,6 +650,13 @@ class AcciseReduite:
 
 
 @dataclass(frozen=True, slots=True)
+class ZoneRepartition:
+    nom: str | None
+    # « eaux superficielles », « eaux souterraines » ou les deux : la ressource encadrée
+    ressource: str
+
+
+@dataclass(frozen=True, slots=True)
 class Friche:
     site_id: str
     nom: str
@@ -805,6 +823,8 @@ class Diagnostic:
     # `None` si Cartofriches n'est pas chargé
     nb_friches: int | None = None
     friches: list[Friche] = field(default_factory=list)
+    # Zones de répartition des eaux qui contiennent l'adresse ; `None` si elles ne sont pas chargées
+    zones_repartition: list[ZoneRepartition] | None = None
 
     @property
     def commune_a_des_sites(self) -> bool:
@@ -1030,6 +1050,18 @@ def lire_diagnostic(
                 if "friches" in chargements
                 else None
             )
+            zones_repartition = (
+                [
+                    ZoneRepartition(nom, ressource)
+                    for nom, ressource, geometrie in connection.execute(
+                        _ZRE_SQL,
+                        {"latitude": territoire.latitude, "longitude": territoire.longitude},
+                    ).fetchall()
+                    if contient(json.loads(geometrie), territoire.longitude, territoire.latitude)
+                ]
+                if "zones_repartition_eaux" in chargements
+                else None
+            )
     except duckdb.CatalogException as error:
         raise DonneesAbsentesError(
             f"couche gold incomplete : {str(error).splitlines()[0]}"
@@ -1072,6 +1104,7 @@ def lire_diagnostic(
         poles_proches=poles_proches,
         nb_friches=None if friches_proches is None else len(friches_proches),
         friches=(friches_proches or [])[:NB_FRICHES_AFFICHEES],
+        zones_repartition=zones_repartition,
         **ligne,
     )
 
@@ -1666,6 +1699,24 @@ def ligne_urbanisme(zone: ZoneUrbanisme) -> str:
     return phrase
 
 
+def ligne_zones_repartition(zones: list[ZoneRepartition]) -> str:
+    if not zones:
+        return (
+            "hors zone de répartition des eaux : aucun déficit structurel de la ressource reconnu"
+            " par arrêté à cette adresse"
+        )
+    noms = ", ".join(
+        f"{z.nom} ({z.ressource})" if z.nom else f"zone sans nom publié ({z.ressource})"
+        for z in zones
+    )
+    return (
+        "en zone de répartition des eaux, ressource reconnue insuffisante face aux besoins :"
+        f" {noms} ; un prélèvement non domestique dans la ressource visée est soumis à"
+        " autorisation dès"
+        f" {SEUIL_AUTORISATION_ZRE_M3H} m³/h, à déclaration en dessous (R214-1, rubrique 1.3.1.0)"
+    )
+
+
 def ligne_eau(eau: SituationEau) -> str:
     if not eau.zones:
         return "aucun arrêté de restriction des usages de l'eau en vigueur à cette adresse"
@@ -1934,6 +1985,13 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
             "zones": [asdict(z) for z in d.eau.zones],
             "source": "VigiEau",
         },
+        "zones_repartition_eaux": None
+        if d.zones_repartition is None
+        else {
+            "zones": [asdict(z) for z in d.zones_repartition],
+            "seuil_autorisation_m3_h": SEUIL_AUTORISATION_ZRE_M3H,
+            "source": "Sandre (référentiel ZRPE)",
+        },
         "solaire": None
         if not d.solaire_consulte or d.productible is None
         else {
@@ -1992,6 +2050,7 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
                 ("solaire", d.solaire_consulte and d.productible is not None),
                 ("zones_activite", d.nb_zones_activite is not None),
                 ("restrictions_eau", d.eau is not None),
+                ("zones_repartition_eaux", d.zones_repartition is not None),
                 ("zonage_urbanisme", d.urbanisme_consulte and d.urbanisme_erreur is None),
             )
             if present and code in d.limites
@@ -2391,6 +2450,9 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
         limite(s, "restrictions_eau")
     elif d.eau_erreur is not None:
         texte(s, f"Restrictions d'eau non consultées : {d.eau_erreur}")
+    if d.zones_repartition is not None:
+        texte(s, f"Tension sur la ressource : {ligne_zones_repartition(d.zones_repartition)}")
+        limite(s, "zones_repartition_eaux")
     s = bloc("7. Foncier, desserte et prix des locaux d'activité (DVF)")
     if d.urbanisme is not None:
         texte(s, f"Zonage d'urbanisme : {ligne_urbanisme(d.urbanisme)}")
