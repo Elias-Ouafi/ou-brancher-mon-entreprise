@@ -4,6 +4,7 @@ import json
 import logging
 import math
 from dataclasses import dataclass
+from datetime import date
 from itertools import pairwise
 from typing import Any
 
@@ -22,6 +23,39 @@ COUCHE_BATIMENT = "BDTOPO_V3:batiment"
 RAYON_BATIMENT_M = 60
 # Pertes du système (câbles, onduleur, salissures) : la valeur par défaut de PVGIS
 PERTES_PCT = 14
+
+# CCH L171-4 III (version du 28 mai 2026) : part minimale de toiture solarisée ou végétalisée
+# d'un bâtiment neuf, d'une extension ou d'une rénovation lourde, selon la date
+PARTS_TOITURE = ((date(2023, 7, 1), 30), (date(2026, 7, 1), 40), (date(2027, 7, 1), 50))
+EMPRISE_TOITURE_M2 = 500
+# L171-5 : bâtiments existants concernés au 1er janvier 2028, surface fixée par décret
+ECHEANCE_EXISTANTS = date(2028, 1, 1)
+# Usages de la BD TOPO qui recouvrent la liste de L171-4 II et L171-5 (commerce, bureaux,
+# industrie, entrepôt, équipements sportifs) ; résidentiel, agricole et religieux n'y sont pas
+USAGES_SOUMIS = frozenset({"Commercial et services", "Industriel", "Sportif"})
+# Loi APER art. 40 III (version du 28 novembre 2025) : parcs extérieurs, échéance selon la surface
+SEUIL_GRAND_PARKING_M2 = 10_000
+ECHEANCE_GRAND_PARKING = date(2026, 7, 1)
+ECHEANCE_PARKING = date(2028, 7, 1)
+# Art. 40 VI et décret n° 2025-802 : seuil propre à chaque DROM ; aucun décret pour Mayotte
+SEUIL_PARKING_M2: dict[str, int | None] = {
+    "971": 1500,
+    "972": 1500,
+    "973": 2500,
+    "974": 1000,
+    "976": None,
+}
+SEUIL_PARKING_DEFAUT_M2 = 1500
+
+
+def part_toiture(jour: date) -> tuple[int, tuple[date, int] | None]:
+    part, suivante = PARTS_TOITURE[0][1], None
+    for debut, valeur in PARTS_TOITURE:
+        if debut <= jour:
+            part = valeur
+        elif suivante is None:
+            suivante = (debut, valeur)
+    return part, suivante
 
 
 class SolaireError(ExtractionError):
