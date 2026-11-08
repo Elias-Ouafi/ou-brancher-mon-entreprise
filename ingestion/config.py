@@ -55,6 +55,9 @@ class Settings(BaseSettings):
     # Service WFS de Géorisques (zonage sismique réglementaire), répond quand l'API se tait
     zonage_sismique_url: str = "https://www.georisques.gouv.fr/services"
 
+    # Service WFS du Sandre (référentiel ZRPE), zones de répartition des eaux
+    zones_repartition_eaux_url: str = "https://services.sandre.eaufrance.fr/geo/zrpe"
+
     # Intensité carbone annuelle des pays européens (Ember, CC BY 4.0)
     ember_url: str = (
         "https://files.ember-energy.org/public-downloads/generation/outputs/"

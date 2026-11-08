@@ -316,6 +316,25 @@ sources:
                     values: ['1', '2', '3', '4', '5']
           - name: geometrie
             data_tests: [not_null]
+      - name: zones_repartition_eaux
+        description: >
+          Zones de répartition des eaux (code de l'environnement, R211-71 et R211-72), couche
+          WFS `sa:ZRE` du référentiel ZRPE du Sandre (Licence Ouverte) : zones où les
+          ressources sont structurellement insuffisantes face aux besoins. `type_zre` dit si la
+          zone vise les eaux superficielles (`ZRESup`), souterraines (`ZRESout`) ou les deux
+          (`Mixte`) ; `nom_zone` est vide pour une partie des zones ; `geometrie` est le JSON
+          des polygones en [longitude, latitude] (WGS 84), arrondis à cinq décimales.
+        columns:
+          - name: gid
+            data_tests: [unique, not_null]
+          - name: type_zre
+            data_tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: [ZRESup, ZRESout, Mixte]
+          - name: geometrie
+            data_tests: [not_null]
       - name: gaspar_risques
         description: >
           Risques majeurs recensés par commune, d'après les dossiers départementaux des

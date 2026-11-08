@@ -38,6 +38,7 @@ from ingestion.datasets import (
     SITES_PRODUCTION,
     VENTES_LOCAUX,
     ZONAGE_SISMIQUE,
+    ZONES_REPARTITION_EAUX,
     DatasetSpec,
 )
 from ingestion.pipeline import ensure_bronze_tables
@@ -414,6 +415,35 @@ def zonage_sismique() -> list[dict[str, Any]]:
             "lat_max": max(y for p in geometrie for a in p for _, y in a),
         }
         for gid, libelle, geometrie in polygones
+    ]
+
+
+# Lyon (4,85 ; 45,76) dans une zone souterraine ; une zone superficielle sans nom dont l'emprise
+# couvre Lyon sans le contenir ; Ajaccio hors de toute zone
+def zones_repartition_eaux() -> list[dict[str, Any]]:
+    zones = [
+        (
+            "1",
+            "06001",
+            "Nappe de test",
+            "ZRESout",
+            [[[[4.5, 45.5], [5.0, 45.5], [5.0, 46.0], [4.5, 46.0], [4.5, 45.5]]]],
+        ),
+        ("2", "06002", "", "ZRESup", [[[[4.0, 45.0], [6.0, 47.0], [4.0, 47.0], [4.0, 45.0]]]]),
+    ]
+    return [
+        {
+            "gid": gid,
+            "code_zone": code_zone,
+            "nom_zone": nom,
+            "type_zre": type_zre,
+            "geometrie": json.dumps(geometrie),
+            "lon_min": min(x for p in geometrie for a in p for x, _ in a),
+            "lat_min": min(y for p in geometrie for a in p for _, y in a),
+            "lon_max": max(x for p in geometrie for a in p for x, _ in a),
+            "lat_max": max(y for p in geometrie for a in p for _, y in a),
+        }
+        for gid, code_zone, nom, type_zre, geometrie in zones
     ]
 
 
@@ -795,6 +825,7 @@ def build_warehouse(tmp_path: Path, *, with_tempo: bool = True) -> Path:
     load_bronze(database, tmp_path, GASPAR_RISQUES, gaspar_risques())
     load_bronze(database, tmp_path, GASPAR_PLANS, gaspar_plans())
     load_bronze(database, tmp_path, ZONAGE_SISMIQUE, zonage_sismique())
+    load_bronze(database, tmp_path, ZONES_REPARTITION_EAUX, zones_repartition_eaux())
     load_bronze(database, tmp_path, EDF_SEI_PRODUCTION, edf_sei_production())
     load_bronze(database, tmp_path, PROFILS_CHARGE_SUP36, profils_charge_sup36())
     load_bronze(database, tmp_path, EUROSTAT_PRIX_UE, prix_ue())

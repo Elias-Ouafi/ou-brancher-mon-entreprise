@@ -27,6 +27,7 @@ from ingestion.pipeline import (
     run_production_ingestion,
     run_profils_charge_ingestion,
     run_zonage_sismique_ingestion,
+    run_zones_repartition_ingestion,
 )
 
 logger = logging.getLogger(__name__)
@@ -100,6 +101,10 @@ def run_refresh(
         (
             "zonage-sismique",
             lambda: run_zonage_sismique_ingestion(settings=settings, run_id=run_id),
+        ),
+        (
+            "zones-repartition-eaux",
+            lambda: run_zones_repartition_ingestion(settings=settings, run_id=run_id),
         ),
         ("carbone-iles", lambda: run_edf_sei_ingestion(settings=settings, run_id=run_id)),
         ("production", lambda: run_production_ingestion(settings=settings, run_id=run_id)),

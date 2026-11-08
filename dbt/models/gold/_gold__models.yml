@@ -440,6 +440,20 @@ models:
               arguments:
                 min_value: 1
                 max_value: 5
+  - name: fct_zones_repartition_eaux
+    description: >
+      Zones de répartition des eaux avec leur emprise et le type de ressource visée : le
+      diagnostic retient les zones dont l'emprise contient l'adresse, puis celles qui la
+      contiennent vraiment.
+    columns:
+      - name: gid
+        data_tests: [unique, not_null]
+      - name: ressource
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [eaux superficielles, eaux souterraines, eaux superficielles et souterraines]
   - name: fct_friches
     description: >
       Friches de Cartofriches (Cerema) d'au moins 1 ha et pas encore reconverties, avec leur

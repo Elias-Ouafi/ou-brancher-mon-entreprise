@@ -82,7 +82,7 @@ Bellecour à Lyon et ouvre la carte. Les lancements suivants prennent environ de
 chiffres sont fictifs** et la sortie le dit en première ligne ; seule la carte télécharge les
 contours des départements et le relief. Pour de vraies réponses, passez à l'étape 2.
 
-**2. Charger les données publiques** (deux minutes environ) :
+**2. Charger les données publiques** (une vingtaine de minutes : 21 le 8 novembre 2026) :
 
 ```powershell
 .\.venv\Scripts\python.exe -m ingestion.cli refresh --months 180
@@ -158,7 +158,7 @@ Toutes s'écrivent `.\.venv\Scripts\python.exe -m ingestion.cli <commande>`.
 | Commande | Effet |
 |---|---|
 | `essentiel --adresse "…" [--puissance MW] [--conso MWh] [--activite data-center\|irve\|industrie\|logistique] [--courbe CSV] [--ca €] [--va €] [--surface m²] [--format json]` | Réponse courte : prix, carbone, prix de vente des locaux d'activité (DVF) et verdict « brancher ici ? » ; avec `--puissance` et `--conso` au-delà de 36 kVA, la part acheminement (TURPE 7) de la facture ; `--courbe` lit l'export Enedis, `--ca` donne la part de la facture dans le chiffre d'affaires, `--va` l'électro-intensité fiscale (taux réduit d'accise dès 0,5 % de la valeur ajoutée), `--activite` le profil de charge (journée type mesurée par Enedis pour l'industrie, puissance constante sinon) et le régime d'accise de l'activité ; avec `--va` ou `--activite`, l'accise au tarif réduit de la loi de finances 2026 face au tarif normal (10 €/MWh au-delà du premier GWh pour un data center, 5,5, 3 ou 0,5 €/MWh selon le palier d'électro-intensité pour l'industrie), sous conditions |
-| `diagnose --adresse "…" [--puissance MW] [--conso MWh] [--activite data-center\|irve\|industrie\|logistique] [--courbe CSV] [--ca €] [--va €] [--surface m²] [--format pdf\|md\|json]` | Diagnostic complet : industrie locale, réseau, raccordement (dont la qualité de fourniture du département), prix, acheminement, carbone, risques et sismicité, voisinage (argiles, cavités à 500 m, Seveso à 5 km, installations classées à 1 km, sols pollués à 500 m), foncier (zone d'urbanisme, friches à moins de 10 km, zones d'activité à moins de 5 km, prix des locaux), eau (arrêtés de restriction du jour), desserte (temps vers le fret, autoroute), bâtiment et productible solaire, obligations de solarisation (toiture neuve ou existante, parking extérieur), puis le verdict « brancher ici ? » critère par critère ; `--sans-risques` coupe tous les appels à la demande (Géorisques, urbanisme, eau, solaire, desserte, zones d'activité) |
+| `diagnose --adresse "…" [--puissance MW] [--conso MWh] [--activite data-center\|irve\|industrie\|logistique] [--courbe CSV] [--ca €] [--va €] [--surface m²] [--format pdf\|md\|json]` | Diagnostic complet : industrie locale, réseau, raccordement (dont la qualité de fourniture du département), prix, acheminement, carbone, risques et sismicité, voisinage (argiles, cavités à 500 m, Seveso à 5 km, installations classées à 1 km, sols pollués à 500 m), foncier (zone d'urbanisme, friches à moins de 10 km, zones d'activité à moins de 5 km, prix des locaux), eau (arrêtés de restriction du jour, zone de répartition des eaux), desserte (temps vers le fret, autoroute), bâtiment et productible solaire, obligations de solarisation (toiture neuve ou existante, parking extérieur), puis le verdict « brancher ici ? » critère par critère ; `--sans-risques` coupe tous les appels à la demande (Géorisques, urbanisme, eau, solaire, desserte, zones d'activité) |
 | `compare --adresse "A" --adresse "B" … [mêmes options que diagnose]` | 2 à 6 adresses côte à côte, sans classement, avec le prix des locaux, une ligne courte par source consultée à la demande (zonage, friches, zones d'activité, accès routier, bâtiment et solaire, eau, risques ; « — » pour l'adresse qui ne l'a pas été), le parking et la toiture à solariser et le verdict « brancher ici ? » de chacune ; `texte`, `md`, `csv`, `json` |
 | `app [--port 8770] [--sans-ouvrir]` | Application locale dans le navigateur : adresse et projet, verdict sur la carte, diagnostic, rapport PDF, Markdown ou JSON |
 | `carte [--adresse "…"] [--puissance MW] [--reconstruire] [--sans-ouvrir] [--output FICHIER]` | Carte 3D hors ligne (`data/reports/carte.html` par défaut) |
@@ -229,7 +229,7 @@ raisons, celui d'un pôle sa puissance et sa production, celui d'un pôle de fre
 
 ```mermaid
 flowchart LR
-    SRC[("ODRÉ · Eurostat · RTE · Enedis · GASPAR · EDF SEI · Ember · DVF · Cartofriches · SDES · DGAC · geo.api")] -->|"ingestion/ (PySpark)"| B["Bronze : Parquet + DuckDB (MERGE)"]
+    SRC[("ODRÉ · Eurostat · RTE · Enedis · GASPAR · Sandre · EDF SEI · Ember · DVF · Cartofriches · SDES · DGAC · geo.api")] -->|"ingestion/ (PySpark)"| B["Bronze : Parquet + DuckDB (MERGE)"]
     B -->|dbt| S["Silver : nettoyé, codes INSEE"]
     S -->|dbt| G["Gold : prix, carbone, risques, diagnostic"]
     SEEDS[("Seeds : ADEME, tarifs, référentiels, limites")] --> G
@@ -300,7 +300,7 @@ flowchart LR
 ```
 
 Le script joue `ruff`, `pytest`, puis un essai réel à Chilly-Mazarin (warehouse et réseau requis) ;
-`--rapide` saute `pytest`, `--sans-essai` saute l'essai réel. 610 tests sans réseau, dont un
+`--rapide` saute `pytest`, `--sans-essai` saute l'essai réel. 614 tests sans réseau, dont un
 `dbt build` complet sur une base synthétique qui reproduit les pièges des sources, plus les tests de
 données dbt. La CI GitHub Actions joue `ruff` et `pytest` à chaque PR.
 
@@ -326,6 +326,7 @@ données dbt. La CI GitHub Actions joue `ruff` et `pytest` à chaque PR.
 [Cartofriches](https://cartofriches.cerema.fr) (Cerema, Licence Ouverte 2.0) ·
 [BD TOPO et calcul d'itinéraire de la Géoplateforme](https://geoservices.ign.fr) (IGN, Licence Ouverte) ·
 [VigiEau](https://vigieau.gouv.fr) (ministère de la Transition écologique) ·
+[zones de répartition des eaux du Sandre](https://www.sandre.eaufrance.fr/atlas/srv/api/records/e5325942-18f6-472c-973a-1f35bb207eb0) (référentiel ZRPE, Licence Ouverte) ·
 [PVGIS](https://joint-research-centre.ec.europa.eu/photovoltaic-geographical-information-system-pvgis_en) (JRC, Commission européenne) ·
 [profils de charge > 36 kVA d'Enedis](https://opendata.enedis.fr) · [API Tempo et Ecowatt de RTE](https://data.rte-france.com) ·
 [Nominatim](https://nominatim.openstreetmap.org), données © contributeurs OpenStreetMap (ODbL) ·
