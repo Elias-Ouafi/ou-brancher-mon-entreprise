@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 import re
 from dataclasses import replace
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +16,7 @@ from ingestion.diagnostic import (
     completer_solaire,
     essentiel_en_dict,
     formater_diagnostic,
+    lignes_obligations_solaires,
     lire_diagnostic,
 )
 from ingestion.solaire import (
@@ -25,6 +27,7 @@ from ingestion.solaire import (
     lire_batiments,
     lire_productible,
     lire_productible_pvgis,
+    part_toiture,
 )
 from ingestion.tests.medallion import DBT_BIN
 from ingestion.tests.test_diagnostic import territoire
@@ -150,3 +153,55 @@ def test_diagnosis_gives_the_building_and_the_yield(medallion_db: Path) -> None:
 
     sans = replace(avec, batiment=None)
     assert "aucun bâtiment de la BD TOPO à moins de 60 m" in formater_diagnostic(sans)
+
+
+def test_roof_share_follows_the_dates_of_the_code() -> None:
+    assert part_toiture(date(2026, 11, 8)) == (40, (date(2027, 7, 1), 50))
+    assert part_toiture(date(2027, 7, 1)) == (50, None)
+    assert part_toiture(date(2024, 1, 1)) == (30, (date(2026, 7, 1), 40))
+
+
+def obligations(batiment: Batiment | None, departement: str = "91") -> list[str]:
+    return lignes_obligations_solaires(
+        batiment,
+        code_departement=departement,
+        solaire_consulte=True,
+        aujourd_hui=date(2026, 11, 8),
+    )
+
+
+def test_obligations_name_the_roof_share_and_the_existing_building() -> None:
+    neuf, existant, parking = obligations(Batiment("Industriel", None, 4200.0, 9.0, True, 0.0))
+    assert "40 % de la toiture au moins, 50 % à compter du 1er juillet 2027" in neuf
+    assert "4 200 m² au sol : même obligation au 1er janvier 2028" in existant
+    assert "plus de 1 500 m²" in parking and "1er juillet 2026 dès 10 000 m²" in parking
+
+    assert (
+        "sous le seuil de 500 m²"
+        in obligations(Batiment("Industriel", None, 300.0, 6.0, True, 0))[1]
+    )
+    assert "hors de la liste" in obligations(Batiment("Résidentiel", None, 900.0, 9.0, True, 0))[1]
+    assert "usage inconnu" in obligations(Batiment("Indifférencié", None, 900.0, 9.0, True, 0))[1]
+    assert "non identifié" in obligations(None)[1]
+
+
+def test_parking_threshold_depends_on_the_overseas_department() -> None:
+    assert "plus de 1 000 m²" in obligations(None, "974")[-1]
+    assert "plus de 2 500 m²" in obligations(None, "973")[-1]
+    assert "seuil non fixé" in obligations(None, "976")[-1]
+    # Sans appel à la BD TOPO, pas de ligne sur le bâtiment existant
+    hors_ligne = lignes_obligations_solaires(None, code_departement="2A", solaire_consulte=False)
+    assert len(hors_ligne) == 2 and "plus de 1 500 m²" in hors_ligne[-1]
+
+
+@avec_dbt
+def test_diagnosis_lists_the_solar_obligations(medallion_db: Path) -> None:
+    base = lire_diagnostic(territoire("69123", "Lyon"), database=medallion_db)
+    b = Batiment("Industriel", "Industriel", 4200.0, 9.0, True, 0.0)
+    avec = replace(base, batiment=b, productible=Productible(1153.0, 38, -4), solaire_consulte=True)
+
+    texte = formater_diagnostic(avec)
+    assert "Obligation solaire : bâtiment neuf, extension ou rénovation lourde" in texte
+    assert "(CCH L171-5)" in texte and "(loi APER, art. 40" in texte
+    assert len(essentiel_en_dict(avec)["obligations_solaires"]) == 3
+    assert "Obligation solaire : bâtiment existant" not in formater_diagnostic(base)

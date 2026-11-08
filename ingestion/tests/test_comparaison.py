@@ -72,6 +72,7 @@ def test_rows_depend_on_the_address_only(medallion_db: Path) -> None:
         "Site clé en main (France 2030)",
         "Électricité décarbonée",
         "Locaux d'activité (vente DVF)",
+        "Parking à solariser (APER)",
         "Brancher ici ?",
     ]
     lyon, corse = _valeurs(tableau, "Brancher ici ?")
@@ -137,6 +138,10 @@ def test_address_independent_figures_are_given_once(medallion_db: Path) -> None:
     assert "Électricité du réseau" not in texte
     # Une adresse en Corse : les prix communs valent pour la métropole continentale
     assert "valent pour la métropole continentale" in texte
+    assert texte.count("Obligation solaire : bâtiment neuf") == 1
+    # Ajaccio garde le seuil national des parkings ; la toiture existante attend la BD TOPO
+    assert _valeurs(lignes(diagnostics), "Parking à solariser (APER)") == ["plus de 1 500 m²"] * 2
+    assert "Toiture existante (L171-5)" not in [ligne.indicateur for ligne in lignes(diagnostics)]
 
 
 @dbt_requis
