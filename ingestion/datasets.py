@@ -398,6 +398,15 @@ ZONAGE_SISMIQUE = DatasetSpec(
     description="Zonage sismique réglementaire par commune (Géorisques, décret 2010-1255)",
 )
 
+# Zones de répartition des eaux (Sandre) : même forme que le zonage sismique, une ligne par zone
+ZONES_REPARTITION_EAUX = DatasetSpec(
+    dataset_id="zones-repartition-eaux",
+    keys=(code("gid"),),
+    attributes=(code("code_zone"), label("nom_zone"), code("type_zre"), label("geometrie")),
+    measures=measures("lon_min", "lat_min", "lon_max", "lat_max"),
+    description="Zones de répartition des eaux (Sandre, code de l'environnement R211-71)",
+)
+
 # Puissance en service par commune et filière, installations d'au moins 10 MW (registre ODRÉ)
 SITES_PRODUCTION = DatasetSpec(
     dataset_id="sites-production",
@@ -569,6 +578,7 @@ BRONZE_SPECS: tuple[DatasetSpec, ...] = (
     GASPAR_RISQUES,
     GASPAR_PLANS,
     ZONAGE_SISMIQUE,
+    ZONES_REPARTITION_EAUX,
     SITES_PRODUCTION,
     COMMUNES_CENTRES,
     PORTS_FRET,
