@@ -33,12 +33,21 @@ from ingestion.georisques import (
     risques_gaspar,
 )
 from ingestion.solaire import (
+    ECHEANCE_EXISTANTS,
+    ECHEANCE_GRAND_PARKING,
+    ECHEANCE_PARKING,
+    EMPRISE_TOITURE_M2,
     PERTES_PCT,
+    SEUIL_GRAND_PARKING_M2,
+    SEUIL_PARKING_DEFAUT_M2,
+    SEUIL_PARKING_M2,
+    USAGES_SOUMIS,
     Batiment,
     Productible,
     SolaireError,
     lire_batiment,
     lire_productible_pvgis,
+    part_toiture,
 )
 from ingestion.turpe import PROFIL_ACTIVITE, PROFIL_COURBE, Acheminement, lire_acheminement
 from ingestion.urbanisme import UrbanismeError, ZoneUrbanisme, lire_zone_urbanisme
@@ -1724,6 +1733,66 @@ def ligne_solaire(batiment: Batiment | None, productible: Productible) -> str:
     )
 
 
+def _jour(j: date) -> str:
+    return f"{'1er' if j.day == 1 else j.day} {_MOIS[j.month - 1]} {j.year}"
+
+
+def lignes_obligations_solaires(
+    batiment: Batiment | None,
+    *,
+    code_departement: str,
+    solaire_consulte: bool,
+    aujourd_hui: date | None = None,
+) -> list[str]:
+    jour = aujourd_hui or date.today()
+    part, suivante = part_toiture(jour)
+    neuf = (
+        f"bâtiment neuf, extension ou rénovation lourde de plus de {EMPRISE_TOITURE_M2} m² au sol"
+        f" (industrie, entrepôt, commerce, bureaux) : énergie renouvelable ou végétalisation sur"
+        f" {part} % de la toiture au moins"
+    )
+    if suivante:
+        neuf += f", {suivante[1]} % à compter du {_jour(suivante[0])}"
+    resultat = [neuf + " (CCH L171-4)"]
+    if solaire_consulte:
+        if batiment is None:
+            resultat.append("bâtiment existant non identifié : obligation de 2028 non évaluée")
+        elif batiment.usage not in USAGES_SOUMIS:
+            qui = batiment.usage.lower() if batiment.usage else "inconnu"
+            resultat.append(
+                f"bâtiment existant d'usage {qui} selon la BD TOPO : hors de la liste de L171-5"
+                if batiment.usage and batiment.usage != "Indifférencié"
+                else "bâtiment existant d'usage inconnu : obligation de 2028 à vérifier"
+            )
+        elif batiment.emprise_m2 < EMPRISE_TOITURE_M2:
+            resultat.append(
+                f"bâtiment existant de {_nombre(batiment.emprise_m2)} m² au sol, sous le seuil de"
+                f" {EMPRISE_TOITURE_M2} m² de L171-5"
+            )
+        else:
+            resultat.append(
+                f"bâtiment existant de {_nombre(batiment.emprise_m2)} m² au sol : même obligation"
+                f" au {_jour(ECHEANCE_EXISTANTS)}, sur une surface de toiture fixée par décret"
+                " (CCH L171-5)"
+            )
+    seuil = SEUIL_PARKING_M2.get(code_departement, SEUIL_PARKING_DEFAUT_M2)
+    if seuil is None:
+        resultat.append(
+            "parc de stationnement extérieur : seuil non fixé par décret pour ce territoire"
+            " (loi APER, art. 40 VI)"
+        )
+    else:
+        resultat.append(
+            f"parc de stationnement extérieur de plus de {_nombre(seuil)} m² : ombrières"
+            " d'énergie renouvelable sur la moitié de sa surface (ou ombrières sur 35 % de"
+            " cette moitié, le reste végétalisé), au plus tard le"
+            f" {_jour(ECHEANCE_GRAND_PARKING)} dès {_nombre(SEUIL_GRAND_PARKING_M2)} m², le"
+            f" {_jour(ECHEANCE_PARKING)} en dessous (loi APER, art. 40, modifiée le 26 novembre"
+            " 2025)"
+        )
+    return resultat
+
+
 def ligne_zones_activite(nb: int, zones: list[ZoneActivite]) -> str:
     if not nb:
         return (
@@ -1872,6 +1941,9 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
             "productible": asdict(d.productible),
             "source": "BD TOPO (IGN) et PVGIS (Commission européenne)",
         },
+        "obligations_solaires": lignes_obligations_solaires(
+            d.batiment, code_departement=d.code_departement, solaire_consulte=d.solaire_consulte
+        ),
         "acces_routier": None
         if d.acces_routier is None
         else {
@@ -2337,6 +2409,13 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
         limite(s, "solaire")
     elif d.solaire_erreur is not None:
         texte(s, f"Bâtiment et solaire non évalués : {d.solaire_erreur}")
+    for obligation in lignes_obligations_solaires(
+        d.batiment,
+        code_departement=d.code_departement,
+        solaire_consulte=d.solaire_consulte,
+    ):
+        texte(s, f"Obligation solaire : {obligation}")
+    limite(s, "obligations_solaires")
     if d.acces_routier is not None:
         texte(
             s,
