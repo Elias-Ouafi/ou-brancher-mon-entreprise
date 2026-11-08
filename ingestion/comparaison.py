@@ -17,11 +17,13 @@ from ingestion.diagnostic import (
     _nombre_court,
     diagnostic_en_dict,
     ligne_chargements,
+    lignes_obligations_solaires,
     phrase_verdict,
     sections,
     verdict,
 )
 from ingestion.georisques import Exposition
+from ingestion.solaire import SEUIL_PARKING_DEFAUT_M2, SEUIL_PARKING_M2
 
 # Bornes du nombre d'adresses comparées : au-delà de six, le tableau devient illisible
 NB_ADRESSES_MIN = 2
@@ -144,6 +146,20 @@ def _locaux(d: Diagnostic) -> str:
     return ligne
 
 
+def _toiture_existante(d: Diagnostic) -> str:
+    if not d.solaire_consulte:
+        return "—"
+    # Deuxième ligne : celle du bâtiment existant, propre à l'adresse
+    return lignes_obligations_solaires(
+        d.batiment, code_departement=d.code_departement, solaire_consulte=True
+    )[1]
+
+
+def _parking(d: Diagnostic) -> str:
+    seuil = SEUIL_PARKING_M2.get(d.code_departement, SEUIL_PARKING_DEFAUT_M2)
+    return "seuil non fixé" if seuil is None else f"plus de {_nombre(seuil)} m²"
+
+
 def _brancher_ici(d: Diagnostic) -> str:
     return phrase_verdict(verdict(d))
 
@@ -173,7 +189,12 @@ def lignes(diagnostics: list[Diagnostic]) -> list[Ligne]:
         ligne("Site clé en main (France 2030)", _site, "sites_cles_en_main"),
         ligne("Électricité décarbonée", _carbone, "carbone_territoire"),
         ligne("Locaux d'activité (vente DVF)", _locaux, "prix_locaux"),
+        ligne("Parking à solariser (APER)", _parking, "obligations_solaires"),
     ]
+    if any(d.solaire_consulte for d in diagnostics):
+        resultat.append(
+            ligne("Toiture existante (L171-5)", _toiture_existante, "obligations_solaires")
+        )
     if any(d.risques is not None or d.risques_erreur is not None for d in diagnostics):
         resultat += [
             ligne("Risques naturels", lambda d: _risques(d, "naturel"), "risques_site"),
@@ -195,6 +216,11 @@ def communs(diagnostics: list[Diagnostic]) -> list[str]:
         for nature, contenu in raccordement.elements
         if nature == "texte" and (contenu.startswith("Puissance") or contenu.startswith("Préciser"))
     ]
+    # La règle des toitures neuves est nationale ; parking et bâtiment existant sont au tableau
+    neuf = lignes_obligations_solaires(
+        None, code_departement=reference.code_departement, solaire_consulte=False
+    )[0]
+    resultat.append(f"Obligation solaire : {neuf}")
     for bloc in blocs:
         if bloc.titre.startswith(("4.", "5.")):
             resultat.append(bloc.titre[3:])
