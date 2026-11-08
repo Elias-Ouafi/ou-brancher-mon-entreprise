@@ -4,6 +4,7 @@ import csv
 import io
 import json
 from dataclasses import replace
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +12,7 @@ import pytest
 from pytest_httpx import HTTPXMock
 
 from ingestion import cli
+from ingestion.acces_routier import Acces
 from ingestion.comparaison import (
     communs,
     comparaison_en_csv,
@@ -22,10 +24,14 @@ from ingestion.comparaison import (
 )
 from ingestion.config import Settings
 from ingestion.diagnostic import Diagnostic, lire_diagnostic
+from ingestion.eau import SituationEau, ZoneRestriction
 from ingestion.georisques import lire_gaspar, lire_rapport
+from ingestion.solaire import Batiment, Productible
 from ingestion.tests.conftest import FIXTURES_DIR
 from ingestion.tests.medallion import DBT_BIN
 from ingestion.tests.test_diagnostic import territoire
+from ingestion.urbanisme import ZoneUrbanisme
+from ingestion.zones_activite import ZoneActivite
 
 dbt_requis = pytest.mark.skipif(DBT_BIN is None, reason="dbt non installé (uv sync --group dbt)")
 
@@ -72,6 +78,7 @@ def test_rows_depend_on_the_address_only(medallion_db: Path) -> None:
         "Site clé en main (France 2030)",
         "Électricité décarbonée",
         "Locaux d'activité (vente DVF)",
+        "Friches (Cartofriches)",
         "Parking à solariser (APER)",
         "Brancher ici ?",
     ]
@@ -123,6 +130,53 @@ def test_unreachable_georisques_is_said_in_the_table(medallion_db: Path) -> None
         _valeurs(lignes(diagnostics), "Risques naturels")
         == ["non évalués (Géorisques injoignable)"] * 2
     )
+
+
+@dbt_requis
+def test_on_demand_sources_get_one_short_row_each(medallion_db: Path) -> None:
+    lyon, corse = _diagnostics(medallion_db)
+    lyon = replace(
+        lyon,
+        urbanisme=ZoneUrbanisme("A", "A", None, "69123_PLU", None, None),
+        urbanisme_consulte=True,
+        eau=SituationEau([ZoneRestriction("SUP", "Rhône", "crise", date(2026, 9, 30), 3, None)]),
+        nb_zones_activite=2,
+        zones_activite=[ZoneActivite("ZI Nord", 0.0, 40, contient_adresse=True)],
+        acces_routier=[
+            Acces("autoroute", "A7", 1.2, None, None),
+            Acces("port", "Lyon Édouard Herriot", 4.0, 6.5, 12),
+        ],
+        batiment=Batiment("Industriel", None, 3200, 9.0, contient_adresse=True, distance_m=0),
+        productible=Productible(1250, 36, 0),
+        solaire_consulte=True,
+    )
+    # Ajaccio : aucune source à la demande consultée, sauf l'eau, injoignable
+    corse = replace(corse, eau_erreur="coupure")
+    tableau = lignes([lyon, corse])
+
+    assert _valeurs(tableau, "Zonage d'urbanisme") == [
+        "zone agricole A : activité non permise hors STECAL",
+        "—",
+    ]
+    assert _valeurs(tableau, "Restrictions d'eau (VigiEau)") == [
+        "crise en vigueur jusqu'au 30/09/2026 ; usages très réduits ou suspendus",
+        "non consultées (VigiEau injoignable)",
+    ]
+    assert _valeurs(tableau, "Zones d'activité (BD TOPO)") == [
+        "2 à moins de 5 km ; ZI Nord (adresse dedans)",
+        "—",
+    ]
+    assert _valeurs(tableau, "Accès routier (voiture)") == [
+        "autoroute A7 à 1 km ; port à 12 min",
+        "—",
+    ]
+    assert _valeurs(tableau, "Bâtiment et solaire (PVGIS)") == [
+        "industriel, 3 200 m² au sol ; 1 250 kWh/kWc/an",
+        "—",
+    ]
+    codes = {code for code, _ in limites([lyon, corse], tableau)}
+    assert {"zonage_urbanisme", "restrictions_eau", "zones_activite", "acces_routier",
+            "solaire", "friches"} <= codes  # fmt: skip
 
 
 @dbt_requis

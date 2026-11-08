@@ -8,6 +8,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from ingestion.diagnostic import (
+    LIBELLES_ACCES,
+    RAYON_FRICHES_KM,
     Diagnostic,
     _distance,
     _euros_arrondis,
@@ -22,8 +24,10 @@ from ingestion.diagnostic import (
     sections,
     verdict,
 )
+from ingestion.eau import LIBELLES_NIVEAU
 from ingestion.georisques import Exposition
 from ingestion.solaire import SEUIL_PARKING_DEFAUT_M2, SEUIL_PARKING_M2
+from ingestion.zones_activite import RAYON_KM as RAYON_ZONES_ACTIVITE_KM
 
 # Bornes du nombre d'adresses comparées : au-delà de six, le tableau devient illisible
 NB_ADRESSES_MIN = 2
@@ -160,6 +164,92 @@ def _parking(d: Diagnostic) -> str:
     return "seuil non fixé" if seuil is None else f"plus de {_nombre(seuil)} m²"
 
 
+def _urbanisme(d: Diagnostic) -> str:
+    if d.urbanisme_erreur is not None:
+        return "non consulté (Géoportail de l'urbanisme injoignable)"
+    if not d.urbanisme_consulte:
+        return "—"
+    zone = d.urbanisme
+    if zone is None:
+        return "aucune zone numérisée à l'adresse"
+    nom = f"{zone.nom_type} {zone.libelle}".strip()
+    if zone.est_inconstructible_activite:
+        return f"{nom} : activité non permise hors STECAL"
+    return f"{nom} : destination à confirmer au règlement"
+
+
+def _eau(d: Diagnostic) -> str:
+    if d.eau_erreur is not None:
+        return "non consultées (VigiEau injoignable)"
+    if d.eau is None:
+        return "—"
+    if not d.eau.zones:
+        return "aucun arrêté en vigueur"
+    ligne = f"{LIBELLES_NIVEAU[d.eau.niveau_max]} en vigueur"
+    if fins := [z.date_fin for z in d.eau.zones if z.date_fin]:
+        ligne += f" jusqu'au {max(fins):%d/%m/%Y}"
+    return ligne + (" ; usages très réduits ou suspendus" if d.eau.est_contraignante else "")
+
+
+def _solaire(d: Diagnostic) -> str:
+    if d.solaire_erreur is not None:
+        return "non évalués (BD TOPO ou PVGIS injoignable)"
+    if not d.solaire_consulte or d.productible is None:
+        return "—"
+    b = d.batiment
+    if b is None:
+        lieu = "aucun bâtiment à moins de 60 m"
+    else:
+        qui = b.usage.lower() if b.usage else "usage inconnu"
+        position = "" if b.contient_adresse else f", à {_nombre(b.distance_m)} m"
+        lieu = f"{qui}, {_nombre(b.emprise_m2)} m² au sol{position}"
+    return f"{lieu} ; {_nombre(d.productible.kwh_par_kwc_an)} kWh/kWc/an"
+
+
+def _acces(d: Diagnostic) -> str:
+    if d.acces_routier_erreur is not None:
+        return "non évalué (calcul d'itinéraire injoignable)"
+    if d.acces_routier is None:
+        return "—"
+    morceaux = []
+    for a in d.acces_routier:
+        if a.type_acces == "autoroute":
+            morceaux.append(f"autoroute {a.nom} {_distance(a.distance_vol_km)}")
+        elif a.duree_min is None:
+            morceaux.append(f"{LIBELLES_ACCES[a.type_acces]} {_distance(a.distance_vol_km)}")
+        else:
+            morceaux.append(f"{LIBELLES_ACCES[a.type_acces]} à {_nombre(a.duree_min)} min")
+    if not any(a.type_acces == "autoroute" for a in d.acces_routier):
+        morceaux.insert(0, "pas d'autoroute à moins de 10 km")
+    return " ; ".join(morceaux)
+
+
+def _zones_activite(d: Diagnostic) -> str:
+    if d.zones_activite_erreur is not None:
+        return "non consultées (BD TOPO injoignable)"
+    if d.nb_zones_activite is None:
+        return "—"
+    rayon = f"à moins de {RAYON_ZONES_ACTIVITE_KM} km"
+    if not d.nb_zones_activite:
+        return f"aucune {rayon}"
+    proche = d.zones_activite[0]
+    lieu = "adresse dedans" if proche.contient_adresse else _distance(proche.distance_km)
+    return f"{d.nb_zones_activite} {rayon} ; {proche.nom} ({lieu})"
+
+
+def _friches(d: Diagnostic) -> str:
+    if d.nb_friches is None:
+        return "—"
+    rayon = f"de 1 ha ou plus à moins de {RAYON_FRICHES_KM} km"
+    if not d.nb_friches:
+        return f"aucune référencée {rayon}"
+    proche = d.friches[0]
+    surface = _nombre(proche.surface_m2 / 10_000, 1)
+    return (
+        f"{d.nb_friches} {rayon} ; la plus proche : {surface} ha, {_distance(proche.distance_km)}"
+    )
+
+
 def _brancher_ici(d: Diagnostic) -> str:
     return phrase_verdict(verdict(d))
 
@@ -177,6 +267,9 @@ def lignes(diagnostics: list[Diagnostic]) -> list[Ligne]:
     ) -> Ligne:
         return Ligne(indicateur, [valeur(d) for d in diagnostics], limite)
 
+    def consultee(*attributs: str) -> bool:
+        return any(getattr(d, a) is not None for d in diagnostics for a in attributs)
+
     resultat = [
         ligne("Territoire", _territoire),
         ligne("Géocodage", _geocodage),
@@ -189,12 +282,25 @@ def lignes(diagnostics: list[Diagnostic]) -> list[Ligne]:
         ligne("Site clé en main (France 2030)", _site, "sites_cles_en_main"),
         ligne("Électricité décarbonée", _carbone, "carbone_territoire"),
         ligne("Locaux d'activité (vente DVF)", _locaux, "prix_locaux"),
-        ligne("Parking à solariser (APER)", _parking, "obligations_solaires"),
     ]
+    # Une ligne par source consultée à la demande : « — » pour l'adresse qui ne l'a pas été
+    if any(d.urbanisme_consulte for d in diagnostics) or consultee("urbanisme_erreur"):
+        resultat.append(ligne("Zonage d'urbanisme", _urbanisme, "zonage_urbanisme"))
+    if consultee("nb_friches"):
+        resultat.append(ligne("Friches (Cartofriches)", _friches, "friches"))
+    if consultee("nb_zones_activite", "zones_activite_erreur"):
+        resultat.append(ligne("Zones d'activité (BD TOPO)", _zones_activite, "zones_activite"))
+    if consultee("acces_routier", "acces_routier_erreur"):
+        resultat.append(ligne("Accès routier (voiture)", _acces, "acces_routier"))
+    if any(d.solaire_consulte for d in diagnostics) or consultee("solaire_erreur"):
+        resultat.append(ligne("Bâtiment et solaire (PVGIS)", _solaire, "solaire"))
+    resultat.append(ligne("Parking à solariser (APER)", _parking, "obligations_solaires"))
     if any(d.solaire_consulte for d in diagnostics):
         resultat.append(
             ligne("Toiture existante (L171-5)", _toiture_existante, "obligations_solaires")
         )
+    if consultee("eau", "eau_erreur"):
+        resultat.append(ligne("Restrictions d'eau (VigiEau)", _eau, "restrictions_eau"))
     if any(d.risques is not None or d.risques_erreur is not None for d in diagnostics):
         resultat += [
             ligne("Risques naturels", lambda d: _risques(d, "naturel"), "risques_site"),
