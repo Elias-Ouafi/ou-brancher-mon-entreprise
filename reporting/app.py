@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import json
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
+from ingestion import comparaison
 from ingestion.config import Settings, get_settings
+from ingestion.courbe import Courbe, lire_courbe
 from ingestion.diagnostic import (
     ACTIVITES,
     Diagnostic,
@@ -18,6 +20,7 @@ from ingestion.diagnostic import (
     essentiel_en_dict,
     formater_diagnostic,
     formater_essentiel,
+    incoherence_projet,
     lire_diagnostic,
 )
 from ingestion.geocode import AdresseAmbigueError, AdresseIntrouvableError, GeocodingError, geocode
@@ -52,6 +55,8 @@ class Projet:
     va_eur: float | None = None
     # Appels à la demande de `diagnose` (Géorisques, urbanisme, eau, solaire, desserte)
     complet: bool = False
+    courbe: Courbe | None = None
+    courbe_nom: str | None = None
 
 
 def _nombre(corps: dict[str, Any], cle: str, libelle: str) -> float | None:
@@ -74,6 +79,12 @@ def lire_projet(corps: dict[str, Any]) -> Projet:
     activite = corps.get("activite") or None
     if activite is not None and activite not in ACTIVITES:
         raise ProjetInvalideError(f"activité inconnue : {activite}")
+    # Le navigateur envoie le texte du fichier : seules les métadonnées peuvent y perdre un accent
+    csv = corps.get("courbe_csv")
+    try:
+        courbe = lire_courbe(str(csv).encode("utf-8")) if csv else None
+    except ValueError as error:
+        raise ProjetInvalideError(f"courbe de charge illisible : {error}") from None
     projet = Projet(
         adresse=adresse,
         puissance_mw=_nombre(corps, "puissance_mw", "puissance"),
@@ -83,18 +94,37 @@ def lire_projet(corps: dict[str, Any]) -> Projet:
         ca_eur=_nombre(corps, "ca_eur", "chiffre d'affaires"),
         va_eur=_nombre(corps, "va_eur", "valeur ajoutée"),
         complet=bool(corps.get("complet")),
+        courbe=courbe,
+        courbe_nom=str(corps.get("courbe_nom") or "courbe.csv") if courbe else None,
     )
     # Même règle que la ligne de commande : les parts se calculent sur la consommation
-    if (projet.ca_eur or projet.va_eur) and projet.conso_mwh is None:
+    if (projet.ca_eur or projet.va_eur) and projet.conso_mwh is None and courbe is None:
         raise ProjetInvalideError(
             "chiffre d'affaires et valeur ajoutée demandent la consommation annuelle"
+            " ou la courbe de charge"
         )
+    if message := incoherence_projet(projet.puissance_mw, projet.conso_mwh):
+        raise ProjetInvalideError(message)
     return projet
 
 
+def lire_autres(corps: dict[str, Any]) -> list[str]:
+    autres = corps.get("autres") or []
+    if not isinstance(autres, list):
+        raise ProjetInvalideError("autres adresses : liste attendue")
+    autres = [a for a in (str(a).strip() for a in autres) if a]
+    if not comparaison.NB_ADRESSES_MIN <= len(autres) + 1 <= comparaison.NB_ADRESSES_MAX:
+        raise ProjetInvalideError(
+            f"comparer de {comparaison.NB_ADRESSES_MIN} à {comparaison.NB_ADRESSES_MAX} adresses"
+            f" ({len(autres) + 1} données)"
+        )
+    return autres
+
+
 # La commande équivalente, citée au pied du rapport pour le refaire sans l'application
-def commande(projet: Projet, format: str) -> str:
-    morceaux = ["python -m ingestion.cli diagnose", f'--adresse "{projet.adresse}"']
+def commande(projet: Projet, format: str, autres: list[str] | None = None) -> str:
+    morceaux = [f"python -m ingestion.cli {'compare' if autres else 'diagnose'}"]
+    morceaux += [f'--adresse "{a}"' for a in (projet.adresse, *(autres or []))]
     for option, valeur in (
         ("--puissance", projet.puissance_mw),
         ("--conso", projet.conso_mwh),
@@ -106,6 +136,8 @@ def commande(projet: Projet, format: str) -> str:
         if valeur is not None:
             texte = f"{valeur:g}" if isinstance(valeur, float) else valeur
             morceaux.append(f"{option} {texte}")
+    if projet.courbe_nom:
+        morceaux.append(f'--courbe "{projet.courbe_nom}"')
     if not projet.complet:
         morceaux.append("--sans-risques")
     morceaux.append(f"--format {format}")
@@ -121,6 +153,7 @@ def diagnostiquer(projet: Projet, settings: Settings) -> Diagnostic:
         va_eur=projet.va_eur,
         surface_m2=projet.surface_m2,
         activite=projet.activite,
+        courbe=projet.courbe,
         settings=settings,
     )
     if projet.complet:
@@ -226,17 +259,51 @@ def rapport(corps: dict[str, Any], settings: Settings) -> Reponse:
     return Reponse(HTTPStatus.OK, TYPES[format], chemin.read_bytes(), fichier=chemin.name)
 
 
+# Les diagnostics ne sont calculés qu'une fois : la page reçoit les trois fichiers à enregistrer
+def comparer(corps: dict[str, Any], settings: Settings) -> Reponse:
+    try:
+        projet = lire_projet(corps)
+        autres = lire_autres(corps)
+        diagnostics = []
+        for adresse in (projet.adresse, *autres):
+            try:
+                diagnostics.append(diagnostiquer(replace(projet, adresse=adresse), settings))
+            except AdresseAmbigueError as error:
+                raise ProjetInvalideError(
+                    f"« {adresse} » est ambiguë, préciser la commune :"
+                    f" {' ; '.join(error.candidats)}"
+                ) from None
+            except AdresseIntrouvableError as error:
+                raise ProjetInvalideError(f"« {adresse} » est introuvable ({error})") from None
+    except ECHECS_PREVUS as error:
+        return _erreur(error)
+    return _json(
+        HTTPStatus.OK,
+        {
+            "commande": commande(projet, "md", autres),
+            "fichiers": {
+                "md": comparaison.comparaison_en_markdown(diagnostics),
+                "csv": comparaison.comparaison_en_csv(diagnostics),
+                "json": comparaison.comparaison_en_json(diagnostics),
+            },
+        },
+    )
+
+
+ROUTES = {"/api/analyse": analyser, "/api/rapport": rapport, "/api/compare": comparer}
+
+
 def traiter(methode: str, chemin: str, corps: bytes, settings: Settings) -> Reponse:
     if methode == "GET" and chemin in ("/", "/index.html"):
         return page(settings)
-    if methode == "POST" and chemin in ("/api/analyse", "/api/rapport"):
+    if methode == "POST" and chemin in ROUTES:
         try:
             donnees = json.loads(corps or b"{}")
         except json.JSONDecodeError:
             return _json(HTTPStatus.BAD_REQUEST, {"erreur": "corps JSON illisible"})
         if not isinstance(donnees, dict):
             return _json(HTTPStatus.BAD_REQUEST, {"erreur": "objet JSON attendu"})
-        return (analyser if chemin == "/api/analyse" else rapport)(donnees, settings)
+        return ROUTES[chemin](donnees, settings)
     return _json(HTTPStatus.NOT_FOUND, {"erreur": f"{methode} {chemin} inconnu"})
 
 

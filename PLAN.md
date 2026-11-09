@@ -1,11 +1,11 @@
 # Plan du projet
 
-> Mis à jour le 8 novembre 2026. Périmètre : la France (métropole, Corse, outre-mer), en ligne de
+> Mis à jour le 9 novembre 2026. Périmètre : la France (métropole, Corse, outre-mer), en ligne de
 > commande ou dans l'application locale, à la demande.
 
 Ce fichier porte l'état du projet, les étapes qui restent, les recherches qui les justifient et
 les décisions en vigueur ; le [README](README.md) dit comment s'en servir. Sections, dans l'ordre :
-persona, état (ce qui existe), suite (ce qui reste, en trois lots), refonte de la carte, recherches
+persona, état (ce qui existe), suite (prochaines étapes dans l'ordre, puis trois lots), refonte de la carte, recherches
 documentaires, décisions, sujets écartés. Une étape terminée quitte « Suite » et devient une ligne
 de « État » (skill `cloturer-etape`).
 
@@ -97,9 +97,12 @@ voisinage du site (argiles, cavités, Seveso, installations classées, sols poll
 | Voisinage du site (étape 15, 29 octobre), à la demande par l'API Géorisques : argiles à l'adresse, cavités à moins de 500 m, établissements Seveso en exploitation à moins de 5 km (distance), installations classées sous autorisation ou enregistrement à moins de 1 km, sols pollués à moins de 500 m (SIS, SUP, sites en instruction, CASIAS) ; à Chilly-Mazarin : argiles fortes, SMCA (Seveso seuil bas) à 4,8 km, 2 installations classées, 11 anciens sites CASIAS | `GeorisquesClient.voisinage`, `completer_voisinage`, `lignes_voisinage` |
 | Charte commune (lot A de la refonte de la carte, 30 octobre) : papier clair et encre bleu nuit, vert pour le favorable, orange pour « à vérifier », Spectral et Inter embarquées (OFL) dans la carte, le PDF et les graphiques ; le PDF garde ₂, ≥ et → au lieu de les remplacer | `reporting/charte.py`, `reporting/polices/` |
 | Carte du monde en tuiles (1er novembre) : tous les pays en tuiles ternes, France et départements d'outre-mer en couleur et à leur place ; ouverture sur le monde, plongée vers l'adresse, tuile détaillée qui sort de la carte ; fiche en jauges et cartes chiffrées, détail et limites à la demande ; bâtiment 3D au liseré doré à la place de l'épingle, sans bandeau d'adresse ; vague de reverdissement et pousse des arbres, inspirées de Terra Nil, coupées si l'utilisateur limite les animations ; tuile dessinée en vectoriel en tête du PDF ; encre vert nuit, titres verts et ornement solarpunk jusque dans le PDF | `ingestion/hexagones.py`, `reporting/carte.html`, `reporting/tuile.py` |
-| Application locale (31 octobre) : `app` sert la carte sur 127.0.0.1 et permet tout le parcours dans le navigateur : adresse, réglages du projet, adresse ambiguë résolue par le choix d'une commune, verdict épinglé, diagnostic (essentiel ou complet), rapport PDF, Markdown ou JSON téléchargé avec la commande qui le refait. Touches solarpunk sur la carte, étendues au PDF le 1er novembre : lumière dorée, épingle au soleil, bosquets dans la vue Territoire, toitures végétalisées et solaires des sites clés en main, panneaux aux angles doux | `reporting/app.py`, `app` |
+| Application locale (31 octobre) : `app` sert la carte sur 127.0.0.1 et permet tout le parcours dans le navigateur : adresse, réglages du projet, adresse ambiguë résolue par le choix d'une commune, verdict épinglé, diagnostic (essentiel ou complet), rapport PDF, Markdown ou JSON téléchargé avec la commande qui le refait ; depuis le 9 novembre, courbe de charge Enedis déposée dans « Projet » et comparaison de 2 à 6 adresses en tableau dans le panneau (CSV, Markdown, JSON), sans épingle sur la carte. Touches solarpunk sur la carte, étendues au PDF le 1er novembre : lumière dorée, épingle au soleil, bosquets dans la vue Territoire, toitures végétalisées et solaires des sites clés en main, panneaux aux angles doux | `reporting/app.py`, `app` |
 | Sortie réduite à la réponse (journal sous `--verbose`) ; avant tout chargement, la commande `refresh` à lancer | `ingestion/cli.py` |
 | Phrase de mission et « pourquoi maintenant » en tête du README (étape 21, 31 octobre) : 33 GW en attente de raccordement, file « premier prêt, premier servi », carte RTE du 1er janvier 2027 | `README.md` |
+| Pannes des sources à la demande (T4, 9 novembre) : chacune des sept sources jouée contre huit pannes (délai dépassé, connexion coupée, 500, 404, corps vide, page de maintenance, JSON inattendu, liste vide) : le diagnostic aboutit, l'échec est dit dans sa section (pour les risques, par le repli sur l'export GASPAR), aucun critère du verdict ne change d'état ; mêmes pannes sur `diagnose`, `compare` et l'application entiers. Quatre lectures corrigées (urbanisme, bâtiment, autoroute, zones d'activité plantaient sur un JSON qui n'est pas un objet) ; un corps vide de Géorisques n'est plus lu comme « rien à signaler », sauf pour `rga` | `test_pannes.py` |
+| Matrice des cas d'usage (T3, 9 novembre) : 158 cas joués par la vraie ligne de commande sur la base synthétique, vérifiés sur des invariants : `essentiel` pour chaque activité à chaque palier de puissance (bornes de `seuils_raccordement` comprises), `diagnose` et `compare` dans tous leurs formats, les onze communes de la recette à 12 et 45 MW, chaque option, l'accise réduite selon l'activité, les projets refusés, le warehouse absent ; les quinze chaînes de chargement rejouées deux fois (rien de dupliqué, Parquet jamais écrasé) et les commandes d'entretien, `tempo`, `ecowatt`, `report` et `app` lancées par `cli.main` ; une consommation que la puissance ne permet pas (plus de 8 784 heures) est refusée en ligne de commande et dans l'application | `test_cas_usage.py`, `test_commandes.py`, `incoherence_projet` |
+| Couverture des tests mesurée (T1, 9 novembre) : `pytest --cov` en CI et dans `verifier.py`, lignes et branches, 92,8 % au relevé après T4, échec sous 91 % ; courbe de charge illisible refusée avec le numéro de la ligne fautive dans `essentiel`, `diagnose`, `compare` et l'application (T2) | `pyproject.toml` (`tool.coverage`), `ingestion/courbe.py` |
 | Démonstration sans `refresh` (étape 25, 31 octobre) : `demo` construit une fois la base synthétique des tests dans `data/demo/` (une minute environ, sans réseau), répond `essentiel` pour un hub de recharge fictif de 2 MW à Lyon, chiffres dits fictifs en première ligne, et ouvre la carte ; environ 2 s ensuite | `ingestion/demo.py`, `demo` |
 
 **À surveiller** :
@@ -109,7 +112,9 @@ voisinage du site (argiles, cavités, Seveso, installations classées, sols poll
   (`resultats_rapport_risque`) reste instable (un 200 en 11 s, puis « Server disconnected ») et
   `urllib` est toujours coupé. Le repli sur l'export GASPAR (maille commune) et sur le zonage
   sismique WFS joue ; l'inondation à l'adresse n'est donnée que quand le rapport répond. Taille de
-  page maximale de l'API : 1 000 ; `rga` répond 200 sans corps hors carte (La Réunion, Ajaccio).
+  page maximale de l'API : 1 000 ; `rga` répond 200 sans corps hors carte (La Réunion, Ajaccio) :
+  c'est le seul point dont un corps vide est accepté, vérifié le 9 novembre à Chilly-Mazarin,
+  Saint-Denis de La Réunion et Ajaccio.
   planseisme.fr ne résout plus ;
 - les facteurs ADEME de la Corse et de l'outre-mer datent de décembre 2020 : vérifié le 25
   octobre, c'est toujours le dernier millésime valide de la Base Carbone (jeu mis à jour le 3
@@ -135,12 +140,30 @@ voisinage du site (argiles, cavités, Seveso, installations classées, sols poll
 
 Les étapes gardent leur numéro d'origine (l'ordre de prise est la colonne « Ordre »). Chacune
 n'est cochée qu'après ruff, pytest (dont `dbt build`) et un essai réel sur un projet de 1 à 50 MW
-(`python .claude/scripts/verifier.py`). Trois lots : A, à prendre maintenant ; B, en attente d'une
+(`python .claude/scripts/verifier.py`). Quatre lots : A, à prendre maintenant ; T, qualité des tests ; B, en attente d'une
 source, d'une date ou d'une décision ; C, présenter le projet à un incubateur.
 
-**Ordre conseillé** : C21 et C25 faites le 31 octobre ; les décisions C26 et C28 et les entretiens
-C23, qui attendent le porteur du projet ; le lot A dans l'ordre ; les entretiens **avant** les
-pistes nouvelles, que leurs réponses peuvent réordonner.
+**État des lieux du 9 novembre** : 72 pull requests fusionnées, aucune ouverte ;
+toutes les étapes du lot A sauf la 29 sont closes ; ce qui bloque la suite n'est plus du code mais
+les décisions et entretiens du lot C et la publication RTE du 1er janvier 2027 (étape 19).
+
+### Prochaines étapes, dans l'ordre
+
+Le détail de chaque ligne est dans son lot, plus bas. « Porteur » : hors code, attend le porteur du
+projet ; « code » : se prend dans le dépôt.
+
+| Ordre | Étape | Qui | Condition ou date |
+|---|---|---|---|
+| 1 | **26** Décider du modèle économique (trois pistes posées) | Porteur | Aucune ; conditionne le dossier et le choix du programme |
+| 2 | **23** Mener les entretiens (proposition : 5 par segment, 20 au total) | Porteur | Avant toute piste nouvelle : les réponses peuvent réordonner les lots A et B |
+| 3 | **28** Relever la page de GreenTech Innovation (appel 2027) et la FAQ de Station F, puis choisir le programme | Porteur | Dès mi-novembre ; l'édition 2026 avait clos le 19 janvier |
+| 4 | **Lot T** Qualité des tests : sorties de référence (T6), essai réel élargi (T7), application simulée dans le navigateur (T5), CI sous Windows (T8) ; corriger le gestionnaire affiché en Corse et outre-mer | Code | T1 à T4 faites le 9 novembre ; T5 demande un choix du porteur ; le gestionnaire demande une source officielle |
+| 5 | **29** Main-d'œuvre qualifiée dans `diagnose` et `compare` | Code | Seule étape du lot A ; sources vérifiées le 9 novembre, trois choix du porteur avant de coder (sous le tableau du lot A) |
+| 6 | **Carte, lot B** : prototype three.js r186 hors ligne (une demi-journée), puis lots C et D | Code | Indépendant des entretiens ; le lot D épingle `compare` sur la carte |
+| 7 | **19** Capacité en soutirage de RTE ; seed `accise_electricite` de 2027 | Code | 1er janvier 2027 (publication RTE), 1er janvier et 1er février (accise) |
+| 8 | **22, 27, 24** Reprendre le Lean Canvas, compléter la concurrence, tenir la traction ; tourner la vidéo | Porteur | Après les entretiens |
+| 9 | Trier les « Manques repérés et pistes » du lot A | Porteur et code | Après les entretiens |
+| 10 | **8, 30, S, 6** Prix au-delà de 150 GWh, modèle prédictif, ambiance sonore, international | Code | Chacune sa condition (lot B) ; l'international en dernier |
 
 ### Lot A : à prendre maintenant
 
@@ -149,6 +172,44 @@ Les sources existent ; il reste à lire un texte, à tester une API ou à finir 
 | Ordre | Étape | Reste à faire | Pourquoi pour ce persona | À vérifier avant de coder |
 |---|---|---|---|---|
 | 1 | **29** Main-d'œuvre qualifiée (à faire) | Une ligne d'information dans `diagnose` et `compare`, sans effet sur le verdict : **nombre de diplômés du supérieur à moins de 45 min en voiture** ([base Diplômes-Formation 2023](https://www.insee.fr/fr/statistiques/9006527), Insee, sommée sur les communes de l'[isochrone de la Géoplateforme](https://geoservices.ign.fr/node/1612)), repli sur la [zone d'emploi](https://www.insee.fr/fr/information/4652957) si l'appel échoue ; en regard, les projets de recrutement et leur difficulté pour les métiers techniques du bassin d'emploi ([BMO](https://www.data.gouv.fr/datasets/561fa564c751df4f2acdbb48), France Travail) ; limite au seed `limites_methodologiques`, Mayotte « non disponible » | Exploiter un site demande des électriciens et techniciens CVC autant que des ingénieurs ; un stock accessible dit plus qu'une part, et la région est trop vaste pour un trajet quotidien | Dictionnaire du fichier : champ de 15 ans ou plus non scolarisés, retraités compris (corrigé par l'Insee le 21 juillet 2026) ; présence du diplôme dans le [fichier détail par zone d'emploi](https://www.insee.fr/fr/statistiques/9004788) pour se limiter aux actifs ; 45 min est une hypothèse, à contrôler sur les [flux domicile-travail](https://www.insee.fr/fr/statistiques/8582949) ; familles de métiers BMO à retenir ; profil voiture de l'isochrone |
+
+**Étape 29, sources vérifiées le 9 novembre** (fichiers réels lus, rien de codé) :
+- **Diplômes (Insee)** : `DS_RP_DIPLOMES_PRINC_2023_CSV_FR.zip` (25 Mo, CSV de 213 Mo, 3 257 982
+  lignes, séparateur « ; », millésimes 2012, 2017 et 2023) ; maille commune (34 858 communes en
+  2023, arrondissements municipaux à part sous `ARM`, Paris, Lyon et Marseille aussi en commune
+  entière) et zone d'emploi (`ZE2020`) dans le même fichier ; Guadeloupe, Martinique, Guyane et
+  La Réunion présentes, **Mayotte absente** ; un seul champ, les 15 ans ou plus (`Y_GE15`), sans
+  distinction des actifs ; diplôme du supérieur = `500T702_RP` ; à filtrer à la lecture
+  (`GEO_OBJECT`, `TIME_PERIOD`, `SEX = _T`) comme DVF. Chilly-Mazarin : 5 226 diplômés du supérieur
+  sur 14 307, et 2 817 CAP-BEP, 2 933 bacs.
+- **Isochrone (Géoplateforme)** : `data.geopf.fr/navigation/isochrone`, ressource
+  `bdtopo-valhalla`, profil `car`, 2 700 s, sens « arrivée » : polygone GeoJSON en 1 s à
+  Chilly-Mazarin, sans clé ; `bdtopo-osrm` ne fait pas d'isochrone.
+- **BMO 2026 (France Travail, Licence Ouverte)** : classeur xlsx seulement (3,8 Mo, 53 786 lignes
+  métier × bassin), colonnes `met` (projets), `xmet` (difficiles), `smet` (saisonniers) ; métiers
+  utiles présents (`C2X70` techniciens en électricité, `G1X74` froid et conditionnement d'air,
+  `G0A41`, `G1X72` maintenance). Trois pièges : la maille est le bassin d'emploi de France Travail
+  (`BE26`), pas la zone d'emploi de l'Insee, et aucune table commune → bassin n'a été trouvée sur
+  data.gouv.fr ; 43 899 lignes portent un « * » de secret statistique ; `openpyxl` n'est pas
+  installé (le classeur se lit aussi avec la bibliothèque standard).
+- **Pas encore vérifié** : le fichier détail par zone d'emploi (pour se limiter aux actifs), les
+  flux domicile-travail (pour contrôler les 45 min).
+- **Trois choix du porteur avant de coder** : compter aussi les CAP-BEP et les bacs, puisque les
+  électriciens et techniciens que l'étape veut mesurer n'ont pas tous un diplôme du supérieur ;
+  BMO au département (colonne `Dept` du fichier), au bassin si une table de passage officielle
+  est trouvée, ou écarté ; lecture du xlsx par la bibliothèque standard ou par `openpyxl`.
+
+**Application et ligne de commande** (parité relevée le 9 novembre). L'application couvre
+`essentiel`, `diagnose`, `compare`, `carte` et toutes les options de projet, `--courbe` comprise.
+Restent hors de l'application, à dessein :
+
+| Commande | Pourquoi elle reste en ligne de commande | Quand la reprendre |
+|---|---|---|
+| `compare` épinglé sur la carte (plusieurs épingles, caméra d'un site à l'autre) | Le tableau du panneau suffit à présélectionner ; les épingles demandent la refonte de la scène | Lot D de la carte |
+| `europe` | Moyennes nationales seulement, hors du diagnostic à l'adresse | Avec l'étape 6, en dernier |
+| `refresh` | Une vingtaine de minutes et un seul writer DuckDB : l'application affiche la date des données et la commande à lancer | Pas prévu |
+| `tempo`, `ecowatt`, `report` | Comptes RTE requis ; rapport mensuel hérité du persona des bureaux, sans rôle dans le choix d'un site | Pas prévu ; à retirer si les entretiens C23 confirment qu'il ne sert pas |
+| `demo` | Une commande pour un jury, sans adresse à saisir | Pas prévu |
 
 Fins d'étapes closes, gardées en limite plutôt qu'en étape : l'étape 17 est terminée (la composante
 d'injection-soutirage est une option réservée au stockage ; une alimentation de secours dépend de
@@ -181,6 +242,42 @@ après les entretiens C23, rien n'est décidé) :
 | Besoin de recharge poids lourds au dépôt | Situer l'adresse dans une zone logistique à fort besoin de puissance (étude Enedis de décembre 2025) | Maille des zones logistiques (SDES), licence |
 | Version 2 de l'étude du 28 octobre | Photovoltaïque existant (OpenPVMapper, CC-BY, ~75 % de précision), bassin d'emploi (passé à l'étape 29), détection de changement sur l'ortho | Licences du LiDAR HD et de l'OCS GE : Licence Ouverte 2.0 selon data.gouv.fr (lu le 1er novembre) ; OpenPVMapper reste une prépublication sans producteur officiel, hors de la règle du 25 octobre |
 | Version 3 de l'étude du 28 octobre | Projections climatiques (DRIAS, Explore2) | Licence de DRIAS ; date de la carte RGA 2026 |
+
+### Lot T : qualité des tests
+
+But : que chaque cas d'usage du persona soit joué par un test sans réseau, et que l'application
+soit essayée par une machine plutôt qu'à la main. Chaque étape a son critère ; aucune n'ajoute de
+tâche planifiée.
+
+**Constat du 9 novembre**, après T1 à T4 :
+- 895 tests sans réseau (4 min 34 s, contre 2 min 30 s avant le lot : à surveiller) ;
+  couverture **92,8 %** des lignes et des branches
+  d'`ingestion/` et de `reporting/`, plancher à 91 % ;
+- restent sous 90 % : `reporting/tuile.py` à 65 % (tuile vectorielle du PDF, à prendre avec T6),
+  `ingestion/pipeline.py` à 86 % ; `cli.py` est passé de 74 à 93 %, `pipeline.py` de 59 à 86 % ;
+- **défaut trouvé par la matrice, non corrigé** : en Corse et outre-mer, le verdict annonce
+  « HTA, Enedis (ou ELD) » puis « HTB, RTE » et « étude RTE indispensable », alors que la section
+  « Tension du réseau » dit que le réseau n'y est pas exploité par RTE ; le seed
+  `seuils_raccordement` ne connaît pas les zones non interconnectées. À corriger après lecture
+  d'une source officielle sur le gestionnaire de chaque territoire (test en `xfail` strict dans
+  `test_cas_usage.py`, qui échouera le jour où c'est corrigé) ;
+- le JavaScript de `reporting/carte.html` n'est exécuté par aucun test : formulaire, adresse
+  ambiguë, comparaison, courbe gardée et téléchargements ne sont vérifiés qu'à la main (skill
+  `essai-carte`) ; les tests de l'application s'arrêtent au serveur ;
+- l'essai réel de `verifier.py` ne joue qu'un cas : `essentiel`, 12 MW, Chilly-Mazarin ;
+- la CI ne tourne que sous Ubuntu alors que le poste est sous Windows (console cp1252, chemins).
+
+| Ordre | Étape | Contenu | Critère |
+|---|---|---|---|
+| T5 | Application simulée dans le navigateur | Un navigateur piloté par les tests, sur `app` lancé contre la base de démonstration, réseau coupé : adresse → verdict épinglé → diagnostic → PDF ; adresse ambiguë → choix d'une commune ; comparaison → tableau → CSV ; courbe déposée → gardée après rechargement → retirée ; serveur arrêté → message ; page ouverte en `file://` → lecture seule ; aucune erreur dans la console | Les six parcours passent en local et en CI ; **choix du porteur** : `pytest-playwright` (Microsoft, Apache 2.0, télécharge Chromium, groupe de dépendances `e2e` à part) ou rester à l'essai à la main |
+| T6 | Sorties de référence | Texte, Markdown et JSON de l'exemple de référence figés sur la base synthétique, comparés à chaque run ; PDF contrôlé sur son nombre de pages, son texte extrait et l'absence de caractère remplacé | Un changement de libellé non voulu fait échouer un test ; la mise à jour d'une référence est un geste explicite |
+| T7 | Essai réel élargi | `verifier.py` joue, en plus : `diagnose --sans-risques` à 45 MW (HTB), `compare` de deux adresses, une adresse en Corse, un appel à `/api/analyse` de l'application ; `--complet` ajoute un `diagnose` avec les sources à la demande | Moins d'une minute sans `--complet` ; chaque cas dit ce qu'il attend (domaine de tension, système électrique) |
+| T8 | CI sous Windows | Un second job `windows-latest` (Java 17, mêmes commandes) | Vert sur une PR ; les pièges d'encodage sont pris avant le poste |
+
+T1 à T4 sont faites (voir « État »). Ordre : T6, T7, en relevant le plancher de
+couverture après chacune ; T5 et T8 après le choix du porteur et une mesure du temps de CI. Hors périmètre : tests
+de charge (un seul utilisateur, en local) et tests sur les API réelles en CI (elles tombent sans
+prévenir : l'essai réel reste lancé à la main).
 
 ### Lot B : en attente
 
@@ -361,7 +458,7 @@ mise à jour dans `docs/exemples/`.
 | A | **Fait le 30 octobre** : `reporting/charte.py` ; polices embarquées ; PDF et graphiques sur la charte ; carte sur la charte en r128 | polices chargées par le navigateur et non par le poste ; PDF sans caractère remplacé |
 | B | Prototype puis passage à three.js r186 (`WebGLRenderer`, `BatchedMesh` pour les maquettes) | carte sans requête réseau ; 60 images/s sur la métropole |
 | C | « Raccorder » selon la puissance : anneaux des domaines de tension, zones RTE en colonnes datées | 1, 12, 30 et 50 MW à Chilly-Mazarin et Dunkerque : gestionnaire conforme à `seuils_raccordement` |
-| D | `compare` épinglé sur la carte ; export d'image ; fiche sans WebGL | `compare` à 3 sites |
+| D | `compare` épinglé sur la carte (le tableau est dans l'application depuis le 9 novembre) ; export d'image ; fiche sans WebGL | `compare` à 3 sites |
 | E | Relief continu et ombrage ; curseur horaire des îles | Ajaccio : 522 g vers 13 h, 681 g vers 5 h |
 | F | Couches friches, zones d'activité et desserte (déjà calculées), puis étapes 15 et 19 à leur arrivée | une adresse contrôlée à la main par couche |
 
@@ -574,6 +671,11 @@ source ne fixe un nombre d'entretiens clients.
 | 1er nov. | Monde en tuiles : Natural Earth 5.1.2 (`ne_50m_admin_0_countries`, domaine public, déjà au projet pour les terres), préféré aux limites officielles de la Banque mondiale (CC BY 4.0, mais fichiers lourds à tous les niveaux administratifs, sans adresse stable). Producteur non étatique et frontières de fait : acceptable pour un fond sans donnée, sans ligne dans `limites_methodologiques` puisqu'aucun chiffre n'en sort ; la limite est dite dans la légende et le README. Pays étudiés dans `PAYS_ETUDIES` : un code et une grille pour en ajouter un. Seuls les cinq départements d'outre-mer ont des données ; les collectivités restent ternes. Antarctique exclu. Encarts d'outre-mer à leur vraie position, décalés au sud s'ils se chevauchent, en Mercator calé sur la métropole. Tuile du PDF dessinée en vectoriel par reportlab, sans capture de la 3D ni réseau. Captures de `docs/exemples/` : Chrome sans interface avec `--force-prefers-reduced-motion` et `--virtual-time-budget`, pour ne pas saisir l'animation en cours |
 | 8 nov. | Obligations de solarisation (16, fin) : textes lus sur Légifrance le 8 novembre (CCH L171-4 dans sa version du 28 mai 2026, loi n° 2026-403 ; L171-5 à venir au 1er janvier 2028 ; loi APER art. 40 dans sa version du 28 novembre 2025, loi n° 2025-1129 ; décret n° 2025-802 pour les seuils d'outre-mer). La loi du 26 novembre 2025 n'a pas reporté les échéances des parkings : elle admet les procédés mixtes (ombrières sur 35 % de la moitié, le reste végétalisé). Règles en constantes datées dans `ingestion/solaire.py` plutôt qu'en seed : quelques dates et seuils, lus par le seul diagnostic. Usages BD TOPO soumis : « Commercial et services », « Industriel », « Sportif » ; « Indifférencié » dit inconnu. Rappel de la règle sans effet sur le verdict ni avis juridique : exonérations motivées, exclusion possible des installations classées par arrêté et cas du data center, non cité en tant que tel, dits dans la limite. Structure des toitures écartée : aucune source publique de capacité portante ; BDNB (CSTB, Licence Ouverte 2.0) non intégrée, elle ne donne qu'un matériau. `compare` : seuil du parking et bâtiment existant au tableau, règle des toitures neuves une fois sous le tableau |
 | 8 nov. | Tension sur l'eau (20, fin) : référence retenue, les zones de répartition des eaux (code de l'environnement, R211-71 : ressource structurellement insuffisante face aux besoins, désignée par arrêté du préfet coordonnateur de bassin), couche WFS `sa:ZRE` du référentiel ZRPE du Sandre (Licence Ouverte), plutôt que des débits Hub'Eau rapportés à un QMNA5 que l'outil devrait calculer lui-même (aucune référence publiée par l'API). Zonage stable et national : chargé par `refresh` en médaillon, point dans polygone en Python, comme le zonage sismique ; une seule page (118 zones), nombre contrôlé contre le total annoncé. Conséquence lue sur Légifrance : en ZRE, un prélèvement non domestique est soumis à autorisation dès 8 m³/h de capacité, à déclaration en dessous (R214-1, rubrique 1.3.1.0, version du 29 août 2025). Sans effet sur le verdict, comme VigiEau : le prélèvement d'un data center ne se déduit pas de l'adresse. Une zone souterraine vise un aquifère précis (Albien, parfois profond), dit dans la limite. `compare` n'est pas touché (lignes de l'eau confiées à une autre branche) |
+| 9 nov. | Application : `compare` et `--courbe` y entrent. La courbe est lue par le navigateur et envoyée en texte avec le projet, jamais stockée par le serveur ; gardée dans la session de l'onglet pour le rapport, oubliée si elle dépasse son quota. La comparaison calcule les diagnostics une fois et rend les trois fichiers (CSV, Markdown, JSON) avec le tableau ; une adresse ambiguë ou introuvable est nommée et tout s'arrête, comme en ligne de commande ; la carte garde l'épingle de la dernière analyse. `europe`, `refresh`, `tempo`, `ecowatt`, `report` et `demo` restent en ligne de commande (raisons dans « Suite ») |
+| 9 nov. | Tests : couverture mesurée par `pytest-cov` (lignes et branches, tests exclus), plancher dans `pyproject.toml` (`fail_under`), un point et demi sous le relevé parce que la mesure est faite sous Windows et que la CI tourne sous Ubuntu, où elle reste à relever ; il se relève à la main après chaque étape du lot T, jamais à la baisse. `verifier.py` ne mesure que la suite entière (un sous-ensemble de tests passerait sous le plancher). `cli.main` reconfigure la sortie en UTF-8 avec `errors="replace"` : sous pytest, ce flux relit la sortie des processus enfants, écrite dans la page de code de la console |
+| 9 nov. | Matrice des cas d'usage : des invariants, pas des valeurs (verdict à cinq critères, gestionnaire conforme au seed, parts de l'acheminement qui font le total, prix absent dit « non publié »). La base synthétique reste sans tranche IF, exprès : c'est elle qui joue le cas « non disponible ». Les tests qui écrivent un Parquet se passent de la fixture `no_network` (PySpark parle à sa JVM par une socket locale) et remplacent chaque extraction. Un défaut connu et pas encore corrigé s'écrit en `xfail` strict, avec sa raison |
+| 9 nov. | Projet incohérent refusé : consommation annuelle supérieure à la puissance × 8 784 heures (année bissextile), avant tout calcul, avec le plafond dans le message ; même règle dans `essentiel`, `diagnose`, `compare` et l'application |
+| 9 nov. | Pannes des sources à la demande : une réponse qui n'est pas l'objet JSON attendu est un échec de la source, dit dans sa section, jamais une trace Python ni un « rien à signaler ». Géorisques : corps vide accepté pour `rga` seulement (carte des argiles absente hors du continent), refusé pour les installations classées, les cavités et les sols pollués, où il ferait afficher zéro à tort. Une panne ne change l'état d'aucun critère du verdict |
 
 ## Écarté
 

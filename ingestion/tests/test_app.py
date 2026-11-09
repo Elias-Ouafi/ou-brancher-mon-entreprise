@@ -185,3 +185,56 @@ def test_gabarit_porte_les_marqueurs_de_l_application() -> None:
     gabarit = carte.GABARIT.read_text(encoding="utf-8")
     assert app.MARQUEUR_APP in gabarit
     assert "connect-src 'self'" in gabarit
+
+
+COURBE = "Horodate;Valeur\n2026-09-01T00:30:00+02:00;12000000\n2026-09-01T01:00:00+02:00;6000000\n"
+
+
+def test_courbe_lue_depuis_le_formulaire() -> None:
+    projet = app.lire_projet(
+        {"adresse": "a", "va_eur": "1e6", "courbe_csv": COURBE, "courbe_nom": "site.csv"}
+    )
+    assert projet.courbe is not None and projet.courbe.pas_minutes == 30
+    assert app.commande(projet, "pdf").endswith(
+        '--va 1e+06 --courbe "site.csv" --sans-risques --format pdf'
+    )
+    with pytest.raises(app.ProjetInvalideError, match="courbe de charge illisible"):
+        app.lire_projet({"adresse": "a", "courbe_csv": "Horodate;Valeur\nhier;beaucoup\n"})
+
+
+@pytest.mark.parametrize("autres", [[], [" "], ["b"] * 6, "b"])
+def test_comparaison_refusee_hors_de_2_a_6_adresses(settings: Settings, autres: object) -> None:
+    corps = json.dumps({"adresse": "a", "autres": autres}).encode()
+    reponse = app.traiter("POST", "/api/compare", corps, settings)
+    assert reponse.statut == HTTPStatus.BAD_REQUEST
+
+
+@pytest.mark.skipif(DBT_BIN is None, reason="dbt non installé")
+def test_comparaison_rend_le_tableau_et_ses_fichiers(
+    settings_app: Settings, monkeypatch: pytest.MonkeyPatch, no_network: None
+) -> None:
+    def geocoder(adresse: str, **kwargs: object) -> object:
+        if adresse == "nulle part":
+            raise AdresseAmbigueError(adresse, ["Nulle Part 01000", "Nulle Part 02000"])
+        return LYON
+
+    monkeypatch.setattr(app, "geocode", geocoder)
+    corps = {"adresse": "Lyon", "autres": ["Lyon bis", ""], "puissance_mw": 2}
+    reponse = app.traiter("POST", "/api/compare", json.dumps(corps).encode(), settings_app)
+
+    assert reponse.statut == HTTPStatus.OK
+    donnees = _json(reponse)
+    assert donnees["commande"] == (
+        'python -m ingestion.cli compare --adresse "Lyon" --adresse "Lyon bis" --puissance 2'
+        " --sans-risques --format md"
+    )
+    tableau = json.loads(donnees["fichiers"]["json"])
+    assert len(tableau["adresses"]) == 2
+    assert tableau["tableau"][-1]["indicateur"] == "Brancher ici ?"
+    assert donnees["fichiers"]["csv"].startswith("indicateur;")
+    assert donnees["fichiers"]["md"].startswith("# Comparaison de 2 adresses")
+
+    corps["autres"] = ["nulle part"]
+    reponse = app.traiter("POST", "/api/compare", json.dumps(corps).encode(), settings_app)
+    assert reponse.statut == HTTPStatus.BAD_REQUEST
+    assert "« nulle part » est ambiguë" in _json(reponse)["erreur"]

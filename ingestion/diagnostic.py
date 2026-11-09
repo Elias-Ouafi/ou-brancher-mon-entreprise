@@ -1152,6 +1152,22 @@ def _nombre(valeur: float, decimales: int = 0) -> str:
     return f"{valeur:,.{decimales}f}".replace(",", " ").replace(".", ",")
 
 
+# 8 784 heures dans une année bissextile : au-delà, la puissance ne permet pas la consommation
+HEURES_AN_MAX = 8784
+
+
+def incoherence_projet(puissance_mw: float | None, conso_mwh: float | None) -> str | None:
+    if puissance_mw is None or conso_mwh is None:
+        return None
+    plafond = puissance_mw * HEURES_AN_MAX
+    if conso_mwh <= plafond:
+        return None
+    return (
+        f"consommation de {_nombre(conso_mwh)} MWh par an impossible avec {puissance_mw:g} MW :"
+        f" au plus {_nombre(plafond)} MWh"
+    )
+
+
 def _gwh(valeur: float) -> str:
     return f"{_nombre(valeur, 1 if valeur < 100 else 0)} GWh"
 
@@ -1209,7 +1225,12 @@ def essentiel(diagnostic: Diagnostic) -> Section:
     if (va := d.part_valeur_ajoutee) is not None:
         section.elements.append(("texte", f"Part de la valeur ajoutée : {_part_va(va)}"))
     if d.activite is not None:
-        section.elements.append(("texte", f"Activité : {ligne_activite(d.activite)}"))
+        section.elements.append(
+            (
+                "texte",
+                f"Activité : {ligne_activite(d.activite, courbe_fournie=d.courbe is not None)}",
+            )
+        )
     if (accise := ligne_accise(d)) is not None:
         section.elements.append(("texte", f"Accise : {accise}"))
     if d.courbe is not None:
@@ -1301,13 +1322,15 @@ def ligne_acheminement(a: Acheminement) -> str:
     return phrase
 
 
-def ligne_activite(code: str) -> str:
+def ligne_activite(code: str, *, courbe_fournie: bool = False) -> str:
     a = ACTIVITES[code]
-    charge = (
-        "journée type mesurée par Enedis (points de plus de 250 kVA)"
-        if a.profil_charge
-        else "puissance constante, faute de courbe publiée"
-    )
+    # La courbe du site prime sur le profil de l'activité, comme dans l'acheminement
+    if courbe_fournie:
+        charge = "votre courbe de charge"
+    elif a.profil_charge:
+        charge = "journée type mesurée par Enedis (points de plus de 250 kVA)"
+    else:
+        charge = "puissance constante, faute de courbe publiée"
     return f"{a.libelle}, profil de charge : {charge}. Régime d'accise : {a.accise}."
 
 
@@ -2338,7 +2361,9 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
             texte(s, f"Part de la valeur ajoutée : {_part_va(va)}")
             limite(s, "part_valeur_ajoutee")
         if d.activite is not None:
-            texte(s, f"Activité : {ligne_activite(d.activite)}")
+            texte(
+                s, f"Activité : {ligne_activite(d.activite, courbe_fournie=d.courbe is not None)}"
+            )
         if (accise := ligne_accise(d)) is not None:
             texte(s, f"Accise : {accise}")
         if d.activite is not None:

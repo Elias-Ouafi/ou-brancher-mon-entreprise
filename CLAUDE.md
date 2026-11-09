@@ -2,7 +2,7 @@
 
 Le projet se décrit dans [README.md](README.md) (usage, architecture) et [PLAN.md](PLAN.md) (état,
 étapes, décisions en vigueur). Les lire avant toute étape ; ce fichier ne les répète pas. La
-prochaine étape se lit dans « Suite » de PLAN (lots A, B, C et ordre conseillé) ; une étape finie
+prochaine étape se lit dans « Prochaines étapes, dans l'ordre » de PLAN (détail dans les lots A, T, B, C) ; une étape finie
 en sort pour devenir une ligne de « État » (skill `cloturer-etape`).
 
 ## Environnement
@@ -19,7 +19,7 @@ en sort pour devenir une ligne de « État » (skill `cloturer-etape`).
 `python .claude/scripts/verifier.py` joue dans l'ordre ce que la CI joue, puis l'essai réel :
 
 1. `ruff check .` et `ruff format --check .`
-2. `pytest` (614 tests sans réseau, dont un `dbt build` sur base synthétique)
+2. `pytest` (895 tests sans réseau, couverture mesurée, plancher 91 %, dont un `dbt build` sur base synthétique)
 3. essai réel : `essentiel` à Chilly-Mazarin, 12 MW et 70 000 MWh (warehouse et réseau requis)
 
 `--rapide` saute pytest, `--sans-essai` saute l'essai réel. Une étape du plan n'est cochée qu'après

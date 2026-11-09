@@ -412,7 +412,10 @@ class GeorisquesClient:
 
         try:
             reponse = self._retrying(envoyer)
-            # `rga` répond 200 sans corps là où la carte des argiles n'existe pas
+            # Seul `rga` répond 200 sans corps, là où la carte des argiles n'existe pas :
+            # ailleurs, un corps vide est une panne, pas « rien à signaler »
+            if not reponse.content and path != "rga":
+                raise ValueError("reponse vide")
             payload = reponse.json() if reponse.content else {}
         except (httpx.HTTPError, RetryableStatusError, ValueError) as error:
             raise GeorisquesError(f"{path} : {type(error).__name__} {error}") from error

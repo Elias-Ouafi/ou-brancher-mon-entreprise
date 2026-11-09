@@ -52,4 +52,4 @@ jobs:
 
       # Sans reseau ni secret : API simulees, base DuckDB synthetique
       - name: Tests
-        run: uv run pytest
+        run: uv run pytest --cov
