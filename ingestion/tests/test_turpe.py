@@ -9,6 +9,7 @@ from ingestion.diagnostic import (
     essentiel_en_dict,
     formater_diagnostic,
     formater_essentiel,
+    ligne_activite,
     lire_diagnostic,
     verdict,
 )
@@ -278,6 +279,9 @@ def test_data_center_activity_stays_flat_and_names_its_excise_regime(
     assert "E16, CIBS L312-64 et L312-70" in texte
     assert "huit conditions cumulatives" in texte
     assert "puissance constante, faute de courbe publiée" in texte
+    # Une courbe fournie prime sur le profil de l'activité
+    avec_courbe = ligne_activite("data-center", courbe_fournie=True)
+    assert "profil de charge : votre courbe de charge" in avec_courbe
 
 
 # Au-delà de 40 MW : grille HTB 1 de RTE, gestion et comptage du contrat d'accès au réseau

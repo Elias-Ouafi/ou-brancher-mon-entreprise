@@ -43,7 +43,9 @@ def main() -> int:
         ("ruff format --check", ["-m", "ruff", "format", "--check", "."]),
     ]
     if not args.rapide:
-        etapes.append(("pytest", ["-m", "pytest", *args.pytest_args]))
+        # Le plancher de couverture ne vaut que pour la suite entière
+        mesure = [] if args.pytest_args else ["--cov"]
+        etapes.append(("pytest", ["-m", "pytest", *mesure, *args.pytest_args]))
     if not args.sans_essai:
         etapes.append(("essai réel : essentiel, Chilly-Mazarin 12 MW", ESSAI))
 

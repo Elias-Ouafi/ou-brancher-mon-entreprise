@@ -66,7 +66,7 @@ Il faut Python 3.12 et Java 17 (pour PySpark). Tout tourne sur votre poste, sans
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e . dbt-duckdb matplotlib reportlab pytest pytest-httpx ruff
+.\.venv\Scripts\python.exe -m pip install -e . dbt-duckdb matplotlib reportlab pytest pytest-cov pytest-httpx ruff
 Copy-Item .env.example .env
 ```
 
@@ -101,12 +101,15 @@ après un `refresh` interrompu, rappelle la commande à lancer.
 Le navigateur s'ouvre sur `http://127.0.0.1:8770/`. Le parcours :
 1. saisir l'adresse du site en haut ;
 2. dans « Projet », indiquer la puissance, la consommation, l'activité, et si besoin la surface,
-   le chiffre d'affaires et la valeur ajoutée ; cocher « Diagnostic complet » pour interroger
+   le chiffre d'affaires et la valeur ajoutée ; déposer l'export CSV de la courbe de charge Enedis
+   si vous l'avez ; cocher « Diagnostic complet » pour interroger
    aussi Géorisques, l'urbanisme, VigiEau, PVGIS et la desserte ;
 3. « Analyser » : la carte se recharge sur l'adresse avec le verdict « Brancher ici ? » ; une
    adresse ambiguë propose les communes possibles ;
 4. « Lire le diagnostic », puis télécharger le rapport en PDF, Markdown ou JSON. Une copie reste
-   dans `data/reports/`, et le panneau donne la commande qui refait le même rapport.
+   dans `data/reports/`, et le panneau donne la commande qui refait le même rapport ;
+5. pour présélectionner : dans « Projet », une à cinq autres adresses, une par ligne, puis
+   « Comparer, sans classement » ; le tableau s'enregistre en CSV, Markdown ou JSON.
 
 Le serveur n'écoute que sur la machine (127.0.0.1) et s'arrête par Ctrl+C. `--port` change le
 port.
@@ -160,7 +163,7 @@ Toutes s'écrivent `.\.venv\Scripts\python.exe -m ingestion.cli <commande>`.
 | `essentiel --adresse "…" [--puissance MW] [--conso MWh] [--activite data-center\|irve\|industrie\|logistique] [--courbe CSV] [--ca €] [--va €] [--surface m²] [--format json]` | Réponse courte : prix, carbone, prix de vente des locaux d'activité (DVF) et verdict « brancher ici ? » ; avec `--puissance` et `--conso` au-delà de 36 kVA, la part acheminement (TURPE 7) de la facture ; `--courbe` lit l'export Enedis, `--ca` donne la part de la facture dans le chiffre d'affaires, `--va` l'électro-intensité fiscale (taux réduit d'accise dès 0,5 % de la valeur ajoutée), `--activite` le profil de charge (journée type mesurée par Enedis pour l'industrie, puissance constante sinon) et le régime d'accise de l'activité ; avec `--va` ou `--activite`, l'accise au tarif réduit de la loi de finances 2026 face au tarif normal (10 €/MWh au-delà du premier GWh pour un data center, 5,5, 3 ou 0,5 €/MWh selon le palier d'électro-intensité pour l'industrie), sous conditions |
 | `diagnose --adresse "…" [--puissance MW] [--conso MWh] [--activite data-center\|irve\|industrie\|logistique] [--courbe CSV] [--ca €] [--va €] [--surface m²] [--format pdf\|md\|json]` | Diagnostic complet : industrie locale, réseau, raccordement (dont la qualité de fourniture du département), prix, acheminement, carbone, risques et sismicité, voisinage (argiles, cavités à 500 m, Seveso à 5 km, installations classées à 1 km, sols pollués à 500 m), foncier (zone d'urbanisme, friches à moins de 10 km, zones d'activité à moins de 5 km, prix des locaux), eau (arrêtés de restriction du jour, zone de répartition des eaux), desserte (temps vers le fret, autoroute), bâtiment et productible solaire, obligations de solarisation (toiture neuve ou existante, parking extérieur), puis le verdict « brancher ici ? » critère par critère ; `--sans-risques` coupe tous les appels à la demande (Géorisques, urbanisme, eau, solaire, desserte, zones d'activité) |
 | `compare --adresse "A" --adresse "B" … [mêmes options que diagnose]` | 2 à 6 adresses côte à côte, sans classement, avec le prix des locaux, une ligne courte par source consultée à la demande (zonage, friches, zones d'activité, accès routier, bâtiment et solaire, eau, risques ; « — » pour l'adresse qui ne l'a pas été), le parking et la toiture à solariser et le verdict « brancher ici ? » de chacune ; `texte`, `md`, `csv`, `json` |
-| `app [--port 8770] [--sans-ouvrir]` | Application locale dans le navigateur : adresse et projet, verdict sur la carte, diagnostic, rapport PDF, Markdown ou JSON |
+| `app [--port 8770] [--sans-ouvrir]` | Application locale dans le navigateur : adresse et projet (courbe de charge comprise), verdict sur la carte, diagnostic, rapport PDF, Markdown ou JSON, comparaison de 2 à 6 adresses |
 | `carte [--adresse "…"] [--puissance MW] [--reconstruire] [--sans-ouvrir] [--output FICHIER]` | Carte 3D hors ligne (`data/reports/carte.html` par défaut) |
 | `demo [--sans-ouvrir]` | Démonstration sans `refresh` : `essentiel` et la carte sur la base synthétique des tests (`data/demo/`), chiffres fictifs dits comme tels |
 | `europe --adresse "…" [--conso MWh]` | Hors de France, dans l'UE : prix moyen du pays et carbone de sa production, comparés à la France à tranche égale (moyennes nationales) |
@@ -266,7 +269,7 @@ flowchart LR
   (`ingestion/turpe.py`). La HTB a son propre calendrier (délibération CRE 2025-77) : week-ends et
   jours fériés creux, plages changées au 1er janvier 2027, Nouvelle-Aquitaine et Occitanie à part.
 - **Fiabilité** : géocodage BAN sur cinq candidats, adresse refusée si trop approximative ou
-  ambiguë ; consommation Enedis cherchée à l'adresse seulement quand la BAN la trouve au numéro
+  ambiguë ; projet refusé si la consommation dépasse ce que la puissance permet en un an ; consommation Enedis cherchée à l'adresse seulement quand la BAN la trouve au numéro
   près (clé « numéro + voie » sans accents ni ponctuation, « 13 bis » = « 13 B ») ; date des données affichée partout, avec alerte au-delà de 45 jours ; risques en repli
   local quand l'API Géorisques ne répond pas. Les risques ne sont « à vérifier » que si un plan de
   prévention (PPRN, PPRT, PPRM) approuvé ou prescrit couvre la commune, soit 13 919 communes : un
@@ -300,9 +303,9 @@ flowchart LR
 ```
 
 Le script joue `ruff`, `pytest`, puis un essai réel à Chilly-Mazarin (warehouse et réseau requis) ;
-`--rapide` saute `pytest`, `--sans-essai` saute l'essai réel. 614 tests sans réseau, dont un
+`--rapide` saute `pytest`, `--sans-essai` saute l'essai réel. 895 tests sans réseau, dont un
 `dbt build` complet sur une base synthétique qui reproduit les pièges des sources, plus les tests de
-données dbt. La CI GitHub Actions joue `ruff` et `pytest` à chaque PR.
+données dbt. La couverture est mesurée à chaque run complet (`pytest --cov`, lignes et branches : 92,8 % le 9 novembre 2026) et la suite échoue sous 91 %. Une matrice joue chaque activité à chaque palier de puissance, dans chaque territoire et chaque format, par la vraie ligne de commande, et chaque source à la demande est jouée contre huit pannes. La CI GitHub Actions joue `ruff` et `pytest` à chaque PR.
 
 ## Sources et licence
 

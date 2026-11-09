@@ -63,10 +63,12 @@ button { font: inherit; }
 .projet h3, .projet .large { grid-column: 1 / -1; }
 .projet h3 { margin: 0; font-family: var(--f-display); font-size: 17px; }
 .projet label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--parch-dim); }
-.projet input, .projet select { font: inherit; font-size: 14px; color: var(--parch); background: var(--papier); border: 1px solid var(--gold-dim); border-radius: 8px; padding: 5px 8px; }
-.projet input:focus-visible, .projet select:focus-visible { outline: none; border-color: var(--feuille); }
+.projet input, .projet select, .projet textarea { font: inherit; font-size: 14px; color: var(--parch); background: var(--papier); border: 1px solid var(--gold-dim); border-radius: 8px; padding: 5px 8px; }
+.projet input:focus-visible, .projet select:focus-visible, .projet textarea:focus-visible { outline: none; border-color: var(--feuille); }
 .projet .case { flex-direction: row; align-items: flex-start; gap: 8px; color: var(--parch); font-size: 13px; line-height: 1.35; }
 .projet .case input { margin-top: 2px; }
+.projet textarea { resize: vertical; }
+.projet input[type=file] { padding: 4px; font-size: 12px; }
 .projet p { margin: 0; font-size: 12px; color: var(--parch-dim); line-height: 1.4; }
 .etat { position: fixed; z-index: 6; top: calc(var(--haut, 52px) + 8px); left: 50%; transform: translateX(-50%); max-width: min(560px, calc(100vw - 32px));
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 14px; font-size: 13.5px; }
@@ -80,6 +82,14 @@ button { font: inherit; }
 .dossier pre { margin: 0; padding: 12px 14px; overflow: auto; flex: 1; white-space: pre-wrap; font: 13px/1.5 var(--f-body); background: var(--panel); }
 .dossier footer { padding: 8px 14px; font-size: 12px; color: var(--parch-dim); border-top: 1px solid var(--gold-dim); overflow-wrap: anywhere; }
 .dossier footer code { font-size: 11.5px; }
+.dossier.compare { width: min(1100px, calc(100vw - 32px)); }
+#dossierTable { overflow: auto; flex: 1; padding: 0 14px 12px; background: var(--panel); font-size: 12.5px; line-height: 1.45; }
+#dossierTable table { border-collapse: collapse; width: 100%; }
+#dossierTable th, #dossierTable td { text-align: left; vertical-align: top; padding: 6px 8px; border-bottom: 1px solid var(--gold-dim); }
+#dossierTable thead th { position: sticky; top: 0; background: var(--panel); font-family: var(--f-display); font-size: 13.5px; }
+#dossierTable tbody th { font-weight: 600; white-space: nowrap; }
+#dossierTable h3 { margin: 14px 0 4px; font-family: var(--f-display); font-size: 15px; }
+#dossierTable ul { margin: 0; padding-left: 18px; color: var(--parch-dim); }
 
 .city { position: fixed; z-index: 4; left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   width: 340px; max-width: calc(100vw - 32px); max-height: calc(100vh - var(--haut, 52px) - 32px); overflow-y: auto; }
@@ -244,13 +254,18 @@ button.hero:hover, button.mini:hover, button.hero:focus-visible, button.mini:foc
   <label>Surface (m²)<input id="surface_m2" inputmode="decimal" placeholder="coût d'achat"></label>
   <label>Chiffre d'affaires (€)<input id="ca_eur" inputmode="decimal"></label>
   <label class="large">Valeur ajoutée (€)<input id="va_eur" inputmode="decimal" placeholder="électro-intensité, accise réduite"></label>
+  <label class="large">Courbe de charge Enedis (CSV, facultatif)<input type="file" id="courbe" accept=".csv,text/csv"></label>
+  <p class="large" id="courbeGardee" hidden></p>
   <label class="case large"><input type="checkbox" id="complet">Diagnostic complet : interroge aussi Géorisques, l'urbanisme, VigiEau, PVGIS et la desserte (20 s environ, réseau requis)</label>
-  <p class="large">Laissez vide ce que vous ne connaissez pas : l'outil dit « non disponible » plutôt que de deviner. Le chiffre d'affaires et la valeur ajoutée demandent la consommation.</p>
+  <p class="large">Laissez vide ce que vous ne connaissez pas : l'outil dit « non disponible » plutôt que de deviner. Le chiffre d'affaires et la valeur ajoutée demandent la consommation ou la courbe.</p>
+  <label class="large">Comparer avec d'autres adresses (une par ligne, cinq au plus)<textarea id="autres" rows="3" placeholder="Place Bellecour 69002 Lyon"></textarea></label>
+  <button class="btn large" type="button" id="comparer">Comparer, sans classement</button>
 </form>
 <div class="etat frame" id="etat" role="status" hidden></div>
 <section class="dossier frame" id="dossier" aria-label="Diagnostic" hidden>
-  <header class="feuillage"><h2 id="dossierTitre">Diagnostic</h2><button class="btn" type="button" id="relancerComplet" hidden>Diagnostic complet</button><button class="btn" type="button" data-format="pdf">PDF</button><button class="btn" type="button" id="fermerDossier" aria-label="Fermer le diagnostic">×</button></header>
+  <header class="feuillage"><h2 id="dossierTitre">Diagnostic</h2><button class="btn" type="button" id="relancerComplet" hidden>Diagnostic complet</button><button class="btn" type="button" id="dossierPdf" data-format="pdf">PDF</button><span id="exports" hidden><button class="btn" type="button" data-export="csv">CSV</button> <button class="btn" type="button" data-export="md">Markdown</button> <button class="btn" type="button" data-export="json">JSON</button></span><button class="btn" type="button" id="fermerDossier" aria-label="Fermer le diagnostic">×</button></header>
   <pre id="dossierTexte"></pre>
+  <div id="dossierTable" hidden></div>
   <footer id="dossierPied"></footer>
 </section>
 <div class="hint">Glisser pour se déplacer · clic droit pour pivoter · molette pour zoomer jusqu'au monde · cliquer sur une case</div>
@@ -820,21 +835,30 @@ addEventListener("keydown", e => { if (e.key === "Escape") return fermer(); if (
 // Application locale : la page parle au serveur de `app`, qui géocode, diagnostique, épingle et rend le rapport
 const memoire = {
   lire() { try { return JSON.parse(sessionStorage.getItem("brancher") || "null"); } catch { return null; } },
-  ecrire(v) { try { sessionStorage.setItem("brancher", JSON.stringify(v)); } catch { /* stockage refusé : rien à garder */ } } };
+  // Une courbe trop lourde pour le stockage est oubliée au rechargement, pas le reste du projet
+  ecrire(v) { for (const w of [v, { ...v, projet: { ...v.projet, courbe_nom: "", courbe_csv: "" } }]) try { sessionStorage.setItem("brancher", JSON.stringify(w)); return; } catch { /* stockage refusé : rien à garder */ } } };
+let courbe = null, exports = null;
 const CHAMPS = ["puissance_mw", "conso_mwh", "activite", "surface_m2", "ca_eur", "va_eur"];
 const $ = id => document.getElementById(id);
 const etatEl = $("etat"), projetEl = $("projet"), dossierEl = $("dossier");
 const SOLEIL_SVG = '<svg class="soleil" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="#D9971E"/><path d="M12 1.8v3M12 19.2v3M1.8 12h3M19.2 12h3M4.8 4.8l2.1 2.1M17.1 17.1l2.1 2.1M4.8 19.2l2.1-2.1M17.1 6.9l2.1-2.1" stroke="#D9971E" stroke-width="1.8" stroke-linecap="round"/></svg>';
 function etat(message, genre) { etatEl.hidden = !message; etatEl.className = "etat frame" + (genre ? " " + genre : "");
   etatEl.innerHTML = message ? (genre === "attente" ? SOLEIL_SVG : "") + `<span>${esc(message)}</span>` : ""; }
-const projetSaisi = () => { const p = { adresse: $("q").value.trim(), complet: $("complet").checked }; for (const k of CHAMPS) p[k] = $(k).value.trim(); return p; };
-const remplir = p => { if (!p) return; $("q").value = p.adresse || ""; $("complet").checked = !!p.complet; for (const k of CHAMPS) $(k).value = p[k] || ""; };
+const projetSaisi = () => { const p = { adresse: $("q").value.trim(), complet: $("complet").checked, autres: $("autres").value, courbe_nom: courbe ? courbe.nom : "", courbe_csv: courbe ? courbe.csv : "" };
+  for (const k of CHAMPS) p[k] = $(k).value.trim(); return p; };
+// Un champ fichier ne se remplit pas par script : la courbe gardée est rappelée par son nom
+function garderCourbe(c) { courbe = c; $("courbe").value = ""; $("courbeGardee").hidden = !c;
+  $("courbeGardee").innerHTML = c ? `Courbe prise en compte : ${esc(c.nom)} <button class="btn candidat" type="button" id="retirerCourbe">Retirer</button>` : ""; }
+const remplir = p => { if (!p) return; $("q").value = p.adresse || ""; $("complet").checked = !!p.complet; $("autres").value = p.autres || ""; for (const k of CHAMPS) $(k).value = p[k] || "";
+  garderCourbe(p.courbe_csv ? { nom: p.courbe_nom, csv: p.courbe_csv } : null); };
 // Le projet du rapport : celui de la dernière analyse, ou l'adresse épinglée par la ligne de commande
 const derniere = () => { const m = memoire.lire(); return m && m.projet && DATA.adresse && m.adresse === DATA.adresse.libelle ? m : null; };
 const projetCourant = () => (derniere() || {}).projet || (DATA.adresse ? { adresse: DATA.adresse.libelle } : projetSaisi());
 const appeler = (chemin, corps) => fetch(chemin, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corps) });
 const HORS_LIGNE = "Le serveur de l'application ne répond pas : relancer python -m ingestion.cli app.";
-const occupe = oui => document.querySelectorAll("#analyser, [data-format], [data-action]").forEach(b => b.disabled = oui);
+const occupe = oui => document.querySelectorAll("#analyser, #comparer, [data-format], [data-action]").forEach(b => b.disabled = oui);
+function enregistrer(blob, nom) { const lien = document.createElement("a"); lien.href = URL.createObjectURL(blob); lien.download = nom;
+  document.body.appendChild(lien); lien.click(); lien.remove(); setTimeout(() => URL.revokeObjectURL(lien.href), 5000); }
 async function analyser(projet, lireApres = false) {
   if (!projet.adresse) { etat("Saisissez l'adresse du site.", "erreur"); $("q").focus(); return; }
   occupe(true); etat(projet.complet ? "Diagnostic complet en cours (20 s environ)…" : "Analyse en cours…", "attente");
@@ -852,19 +876,38 @@ async function telecharger(format) {
   try { const r = await appeler("/api/rapport", { ...projet, format });
     if (!r.ok) { const j = await r.json(); etat(j.erreur || "Rapport impossible.", "erreur"); return; }
     const nom = ((r.headers.get("Content-Disposition") || "").match(/filename="([^"]+)"/) || [])[1] || "diagnostic." + format;
-    const lien = document.createElement("a"); lien.href = URL.createObjectURL(await r.blob()); lien.download = nom;
-    document.body.appendChild(lien); lien.click(); lien.remove(); setTimeout(() => URL.revokeObjectURL(lien.href), 5000);
+    enregistrer(await r.blob(), nom);
     etat(`${nom} téléchargé (copie dans data/reports).`);
   } catch (e) { etat(HORS_LIGNE, "erreur"); }
   finally { occupe(false); } }
+// Comparaison de 2 à 6 adresses dans le panneau, sans épingle : la carte garde la dernière analyse
+const modeDossier = compare => { dossierEl.classList.toggle("compare", compare); $("dossierTable").hidden = !compare; $("dossierTexte").hidden = compare;
+  $("exports").hidden = !compare; $("dossierPdf").hidden = compare; if (compare) $("relancerComplet").hidden = true; dossierEl.hidden = false; };
+const liste = v => `<ul>${v.map(x => `<li>${esc(x)}</li>`).join("")}</ul>`;
+async function comparer() {
+  const projet = projetSaisi(), autres = projet.autres.split("\n").map(a => a.trim()).filter(Boolean);
+  if (!projet.adresse || !autres.length) { etat("Pour comparer : l'adresse du site en haut, puis une à cinq autres adresses, une par ligne.", "erreur"); return; }
+  basculerProjet(false); occupe(true); etat(projet.complet ? `Comparaison complète de ${autres.length + 1} adresses (20 s environ par adresse)…` : "Comparaison en cours…", "attente");
+  try { const r = await appeler("/api/compare", { ...projet, autres }), j = await r.json();
+    if (!r.ok) { etat(j.erreur || "Comparaison impossible.", "erreur"); return; }
+    const c = JSON.parse(j.fichiers.json); exports = j.fichiers;
+    $("dossierTitre").textContent = `Comparaison de ${c.adresses.length} adresses, sans classement`;
+    $("dossierTable").innerHTML = `<table><thead><tr><th></th>${c.adresses.map(a => `<th>${esc(a)}</th>`).join("")}</tr></thead><tbody>`
+      + c.tableau.map(l => `<tr><th>${esc(l.indicateur)}</th>${l.valeurs.map(v => `<td>${esc(v)}</td>`).join("")}</tr>`).join("")
+      + `</tbody></table><h3>Identique pour toutes les adresses</h3>${liste(c.communs)}<h3>Limites</h3>${liste(Object.values(c.limites))}`;
+    $("dossierPied").innerHTML = `Même comparaison en ligne de commande : <code>${esc(j.commande)}</code>`;
+    modeDossier(true); etat("");
+  } catch (e) { etat(HORS_LIGNE, "erreur"); }
+  finally { occupe(false); } }
+// BOM pour le CSV : Excel le lit alors en UTF-8 sans casser les accents
+const exporter = format => enregistrer(new Blob([(format === "csv" ? "\ufeff" : "") + exports[format]], { type: "text/plain;charset=utf-8" }), "comparaison." + format);
 // Le diagnostic de la dernière analyse ; une adresse épinglée par la ligne de commande est d'abord analysée
 function lireDiagnostic() { const m = derniere();
   if (!m) { remplir({ adresse: DATA.adresse ? DATA.adresse.libelle : "" }); return analyser(projetSaisi()); }
   $("dossierTitre").textContent = m.projet.complet ? "Diagnostic complet" : "L'essentiel";
   $("dossierTexte").textContent = m.texte;
   $("dossierPied").innerHTML = `Même rapport en ligne de commande : <code>${esc(m.commande)}</code>`;
-  $("relancerComplet").hidden = !!m.projet.complet;
-  dossierEl.hidden = false; }
+  modeDossier(false); $("relancerComplet").hidden = !!m.projet.complet; }
 function basculerProjet(ouvert) { projetEl.hidden = !ouvert; $("ouvrirProjet").setAttribute("aria-expanded", ouvert); }
 const replierRecherche = () => { if (!APP || !DATA.adresse) return; $("recherche").hidden = true; $("autreAdresse").hidden = false; };
 function fermer() { if (!dossierEl.hidden) dossierEl.hidden = true; else if (!projetEl.hidden) basculerProjet(false); else replierRecherche(); }
@@ -876,9 +919,12 @@ if (APP) {
   $("recherche").onsubmit = lancer; projetEl.onsubmit = lancer;
   $("ouvrirProjet").onclick = () => basculerProjet(projetEl.hidden);
   $("fermerDossier").onclick = () => dossierEl.hidden = true;
+  $("comparer").onclick = comparer;
+  $("courbe").onchange = async e => { const f = e.target.files[0]; if (f) garderCourbe({ nom: f.name, csv: await f.text() }); };
+  $("courbeGardee").onclick = e => { if (e.target.id === "retirerCourbe") garderCourbe(null); };
   $("relancerComplet").onclick = () => { dossierEl.hidden = true; remplir({ ...derniere().projet, complet: true }); analyser(projetSaisi(), true); };
-  document.addEventListener("click", e => { const b = e.target.closest("[data-format], [data-action]"); if (!b || b.disabled) return;
-    if (b.dataset.format) telecharger(b.dataset.format); else lireDiagnostic(); });
+  document.addEventListener("click", e => { const b = e.target.closest("[data-format], [data-action], [data-export]"); if (!b || b.disabled) return;
+    if (b.dataset.export) exporter(b.dataset.export); else if (b.dataset.format) telecharger(b.dataset.format); else lireDiagnostic(); });
   if (!DATA.adresse) $("q").focus();
   else if ((memoire.lire() || {}).lireApres && derniere()) { memoire.ecrire({ ...memoire.lire(), lireApres: false }); lireDiagnostic(); }
 }

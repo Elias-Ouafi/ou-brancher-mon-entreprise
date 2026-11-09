@@ -93,14 +93,21 @@ def lire_courbe(contenu: bytes) -> Courbe:
     if entete is None:
         raise CourbeError("courbe de charge sans ligne d'en-tête « Horodate;Valeur »")
     en_kw = any(cellule.strip() == "kW" for ligne in lignes[:entete] for cellule in ligne)
-    mesures = sorted(
-        (_instant(ligne[0]).astimezone(UTC), float(ligne[1].replace(",", ".")))
-        for ligne in lignes[entete + 1 :]
-        if len(ligne) >= 2 and ligne[0].strip() and ligne[1].strip()
-    )
-    if len(mesures) < 2:
-        raise CourbeError("courbe de charge vide ou réduite à une mesure")
+    mesures = []
+    for numero, ligne in enumerate(lignes[entete + 1 :], start=entete + 2):
+        if len(ligne) < 2 or not ligne[0].strip() or not ligne[1].strip():
+            continue
+        try:
+            mesure = (_instant(ligne[0]).astimezone(UTC), float(ligne[1].replace(",", ".")))
+        except ValueError:
+            raise CourbeError(
+                f"ligne {numero} : date ou valeur illisible ({';'.join(ligne[:2])})"
+            ) from None
+        mesures.append(mesure)
+    mesures.sort()
     ecarts = [(b[0] - a[0]).total_seconds() / 60 for a, b in pairwise(mesures)]
+    if not any(e > 0 for e in ecarts):
+        raise CourbeError("courbe de charge vide ou réduite à une mesure")
     pas = int(min(e for e in ecarts if e > 0))
     facteur = 1.0 if en_kw else 1 / 1000
     # Enedis date la fin de l'intervalle : la puissance moyenne vaut pour le pas qui précède

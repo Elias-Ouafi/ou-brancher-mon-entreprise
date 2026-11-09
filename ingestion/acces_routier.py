@@ -53,7 +53,7 @@ def _distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 def lire_autoroute(
     payload: dict[str, Any], *, latitude: float, longitude: float
 ) -> tuple[str, float] | None:
-    if payload.get("type") != "FeatureCollection":
+    if not isinstance(payload, dict) or payload.get("type") != "FeatureCollection":
         raise AccesRoutierError("reponse WFS de la BD TOPO inattendue")
     meilleur = None
     for feature in payload.get("features") or []:
