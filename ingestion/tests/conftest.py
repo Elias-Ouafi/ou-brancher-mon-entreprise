@@ -15,6 +15,14 @@ FIXTURES_DIR = Path(__file__).parent / "fixtures"
 TEST_BASE_URL = "https://odre.test/api/explore/v2.1"
 
 
+def pytest_addoption(parser: pytest.Parser) -> None:
+    parser.addoption(
+        "--maj-references",
+        action="store_true",
+        help="réécrit les sorties de ingestion/tests/references au lieu de les comparer",
+    )
+
+
 # Neutralise toute variable ECO2MIX_* de la machine hôte
 @pytest.fixture(autouse=True)
 def _isolate_environment(monkeypatch: pytest.MonkeyPatch) -> None:

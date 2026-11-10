@@ -1,0 +1,854 @@
+{
+  "adresses": [
+    "Place Bellecour 69002 Lyon",
+    "1 rue de test, Ajaccio"
+  ],
+  "tableau": [
+    {
+      "indicateur": "Territoire",
+      "valeurs": [
+        "Lyon (69123), Rhône, Auvergne-Rhône-Alpes",
+        "Ajaccio (2A004), Corse-du-Sud, Corse"
+      ],
+      "limite": null
+    },
+    {
+      "indicateur": "Géocodage",
+      "valeurs": [
+        "numéro, score 1,00",
+        "numéro, score 0,90"
+      ],
+      "limite": null
+    },
+    {
+      "indicateur": "Industrie : commune",
+      "valeurs": [
+        "1 site(s), 40,0 GWh/an",
+        "1 site(s), 3,0 GWh/an"
+      ],
+      "limite": "pression_industrielle"
+    },
+    {
+      "indicateur": "Industrie : département",
+      "valeurs": [
+        "3 site(s), 100 GWh/an, rang 1/4",
+        "1 site(s), 3,0 GWh/an, rang 4/4"
+      ],
+      "limite": "pression_industrielle"
+    },
+    {
+      "indicateur": "Région : couverture",
+      "valeurs": [
+        "200 %, excédentaire ; dépendance 3/3",
+        "70 %, déficitaire ; dépendance 2/3"
+      ],
+      "limite": "equilibre_regional"
+    },
+    {
+      "indicateur": "Contraintes RTE (3-5 ans)",
+      "valeurs": [
+        "3, dont 2 plus de 75 fois par an",
+        "réseau hors RTE"
+      ],
+      "limite": "contraintes_prospectives"
+    },
+    {
+      "indicateur": "Postes RTE du département",
+      "valeurs": [
+        "3 (HTB1 1, HTB2 1, HTB3 1)",
+        "aucun (réseau hors RTE)"
+      ],
+      "limite": "postes_rte"
+    },
+    {
+      "indicateur": "Zone prioritaire RTE",
+      "valeurs": [
+        "Vallée de la chimie (P2), à 7 km ; capacité 2029, si les projets se concrétisent",
+        "aucune (réseau hors RTE)"
+      ],
+      "limite": "zones_raccordement_rte"
+    },
+    {
+      "indicateur": "Site clé en main (France 2030)",
+      "valeurs": [
+        "Salaise-sur-Sanne, à 46 km ; prêt en 2026 - 2027",
+        "aucun dans ce territoire"
+      ],
+      "limite": "sites_cles_en_main"
+    },
+    {
+      "indicateur": "Électricité décarbonée",
+      "valeurs": [
+        "oui, 51,9 gCO₂e/kWh (France continentale)",
+        "non, 594 gCO₂e/kWh (Corse)"
+      ],
+      "limite": "carbone_territoire"
+    },
+    {
+      "indicateur": "Locaux d'activité (vente DVF)",
+      "valeurs": [
+        "3 250 €/m², 6 ventes",
+        "non disponible"
+      ],
+      "limite": "prix_locaux"
+    },
+    {
+      "indicateur": "Friches (Cartofriches)",
+      "valeurs": [
+        "2 de 1 ha ou plus à moins de 10 km ; la plus proche : 5,0 ha, à 2 km",
+        "aucune référencée de 1 ha ou plus à moins de 10 km"
+      ],
+      "limite": "friches"
+    },
+    {
+      "indicateur": "Parking à solariser (APER)",
+      "valeurs": [
+        "plus de 1 500 m²",
+        "plus de 1 500 m²"
+      ],
+      "limite": "obligations_solaires"
+    },
+    {
+      "indicateur": "Brancher ici ?",
+      "valeurs": [
+        "À vérifier avant de s'engager : risques (non évalué : facture).",
+        "À vérifier avant de s'engager : risques, carbone (non évalué : facture)."
+      ],
+      "limite": null
+    }
+  ],
+  "communs": [
+    "Données chargées le 01/07/2026.",
+    "Puissance 12 MW → HTA, Enedis (ou ELD) : Raccordement en moyenne tension (20 kV), souvent sur un départ dédié au-delà de quelques MW",
+    "Obligation solaire : bâtiment neuf, extension ou rénovation lourde de plus de 500 m² au sol (industrie, entrepôt, commerce, bureaux) : énergie renouvelable ou végétalisation sur 40 % de la toiture au moins, 50 % à compter du 1er juillet 2027 (CCH L171-4)",
+    "Prix de l'électricité pour l'entreprise (identique sur tout le territoire)",
+    "Aucun prix publié par Eurostat pour la tranche de 70 000 MWh/an.",
+    "Carbone du réseau et coût horaire d'un profil type",
+    "Aucun mois complet et tarifé : charger les données nationales récentes.",
+    "La Corse et l'outre-mer ont leurs propres barèmes réglementés : les prix ci-dessus valent pour la métropole continentale."
+  ],
+  "limites": {
+    "pression_industrielle": "Ne compte que les sites raccordés au réseau de transport (HTB) : les consommateurs raccordés à Enedis n'y figurent pas. Depuis 2022, environ 40 % des IRIS sont masqués par le secret statistique : le millésime retenu est donc le dernier publié en entier, au prix de quelques années d'ancienneté.",
+    "equilibre_regional": "Le réseau est interconnecté : une région déficitaire importe sans difficulté de ses voisines. Le solde décrit une dépendance structurelle, pas une pénurie ni un risque de coupure.",
+    "contraintes_prospectives": "Contraintes de transit liées à l'accueil des énergies renouvelables (injection), que RTE prévoit de gérer par de la flexibilité plutôt que par de nouveaux ouvrages ; données indicatives et non engageantes. Elles ne mesurent pas la capacité disponible pour un consommateur. Ni les ouvrages ni les postes ne sont géolocalisés en open data : la maille est le département, pas l'adresse, et une liaison entre deux départements compte dans les deux.",
+    "postes_rte": "Repère de densité du réseau de transport, pas une capacité de raccordement : un poste proche peut être saturé. Les postes ne sont pas géolocalisés en open data, et environ 3 % d'entre eux n'ont pas de département publié.",
+    "zones_raccordement_rte": "Zones et années cibles du schéma décennal de RTE, sous réserve des autorisations administratives et, pour les zones P2, de la concrétisation des projets industriels ; les zones P3 sont de simples exemples, sans date. Distance à vol d'oiseau jusqu'à la commune de référence de la zone, pas jusqu'au poste. Être proche d'une zone ne donne aucun droit d'accès au réseau : la capacité est attribuée selon les procédures de RTE. Concerne surtout les raccordements au réseau de transport (au-delà de quelques dizaines de MW).",
+    "sites_cles_en_main": "Distance à vol d'oiseau jusqu'au point de la commune, pas jusqu'au site lui-même. La période de maturité est celle annoncée pour un site prêt à accueillir une activité ; elle ne garantit ni la disponibilité du foncier à la date voulue, ni la puissance électrique raccordable, à confirmer auprès de l'aménageur et du gestionnaire de réseau.",
+    "carbone_territoire": "Intensité moyenne du réseau sur l'année, en cycle de vie (méthode location-based) : elle ne dit rien du contrat de fourniture ni des garanties d'origine achetées (méthode market-based), ni des heures de consommation, l'intensité variant fortement d'une heure à l'autre. Toutes les adresses du continent partagent la même valeur : le réseau y est interconnecté. Le seuil de 100 gCO2e/kWh est celui de la taxonomie européenne pour la production d'électricité ; « décarbonée » qualifie le réseau, pas l'entreprise, et ne permet pas à elle seule une allégation environnementale.",
+    "prix_locaux": "Prix de vente au m² des locaux industriels, commerciaux ou assimilés : DVF ne distingue pas les bureaux des commerces et entrepôts, et ne contient ni loyers ni locaux loués. Médiane des ventes d'un seul local, sans logement ni autre disposition dans l'acte, entre 15 et 5 000 m² et de 100 à 15 000 €/m² ; la valeur foncière comprend le terrain. Les ventes les plus récentes manquent de quelques mois de publication. Alsace, Moselle et Mayotte ne sont pas publiées. Ordre de grandeur pour comparer des villes, pas l'estimation d'un local précis.",
+    "friches": "Inventaire déclaratif et incomplet : une friche non référencée n'y figure pas et une friche listée peut être déjà occupée ou en cours de projet (statut donné). Seules les friches de 1 ha ou plus non reconverties sont retenues, d'après la surface d'unité foncière quand elle est renseignée (les sites sans surface sont écartés). Ni la propriété, ni le prix, ni la constructibilité ne sont garantis : à confirmer auprès de la collectivité, de l'établissement public foncier et au règlement de la zone. Les zones d'activité ne sont pas dans cette source.",
+    "obligations_solaires": "Rappel de la règle, pas un avis juridique. La surface du parking n'est pas connue de l'outil : l'obligation est donnée par seuil. Un data center n'est pas cité en tant que tel parmi les usages : à qualifier avec le service instructeur. Le texte prévoit des exonérations motivées (contraintes techniques, de sécurité, architecturales ou patrimoniales, coût économiquement inacceptable, parking ombragé par des arbres) et un arrêté peut écarter ou adapter l'obligation pour une installation classée. La part de toiture des bâtiments existants est fixée par décret, non chiffrée ici. La capacité portante de la toiture n'est pas publique : la BDNB (CSTB, Licence Ouverte 2.0) donne au mieux le matériau de toiture, pas la structure.",
+    "seuil_raccordement": "Indicatif : 1 kVA est assimilé à 1 kW. Le domaine de tension réel est fixé par le gestionnaire lors de l'étude de raccordement.",
+    "capacite_raccordement": "La capacité de raccordement disponible pour la consommation n'est pas publiée en open data (Caparéseau ne couvre que l'injection). Seule une étude de raccordement RTE ou Enedis fait foi.",
+    "prix_entreprise": "Prix moyen national constaté pour la tranche, hors TVA et taxes récupérables : identique en tout point du territoire (péréquation), il ne dépend pas de l'adresse. C'est une moyenne déclarée par les fournisseurs : un contrat donné peut s'en écarter nettement selon sa date de signature, sa durée et le profil du site. Les scénarios à 3 ans ne sont pas une prévision : le scénario central applique au prix des 12 derniers mois la variation médiane observée sur la tranche, et la fourchette reprend les erreurs passées de cette méthode (10e centile, médiane, 90e centile de l'écart entre prix réel et scénario central), crise de 2022-2023 comprise, élargie au besoin pour contenir le prix actuel. Tant que le contrôle sur le passé compte moins de 20 périodes, qui se chevauchent et tiennent souvent dans la même crise, la fourchette est dite indicative. Une rupture jamais observée la dépasserait encore.",
+    "cout_profil": "Le prix est identique en tout point du territoire (péréquation tarifaire) : ce coût ne dépend pas de l'adresse. Profil illustratif, heures creuses supposées de 22 h à 6 h (en réalité fixées localement par le gestionnaire de réseau), jours fériés comptés comme ouvrés, abonnement exclu. Carbone : intensité nationale, faute d'intensité régionale opposable."
+  },
+  "diagnostics": [
+    {
+      "territoire": {
+        "adresse": "Place Bellecour 69002 Lyon",
+        "code_insee_commune": "69123",
+        "commune": "Lyon",
+        "code_postal": "69002",
+        "code_departement": "69",
+        "departement": "Rhône",
+        "code_insee_region": "84",
+        "region": "Auvergne-Rhône-Alpes",
+        "latitude": 45.7578,
+        "longitude": 4.832,
+        "score": 1.0,
+        "precision": "housenumber",
+        "voie": null
+      },
+      "code_insee_commune": "69123",
+      "code_departement": "69",
+      "departement": "Rhône",
+      "code_insee_region": "84",
+      "region": "Auvergne-Rhône-Alpes",
+      "est_zni": false,
+      "annee_pression": 2021,
+      "commune": "Lyon",
+      "conso_industrielle_commune_gwh": 40.0,
+      "nb_sites_commune": 1,
+      "conso_commune_est_minorant": false,
+      "conso_industrielle_departement_gwh": 100.0,
+      "nb_sites_departement": 3,
+      "nb_communes_avec_site": 2,
+      "conso_departement_est_minorant": false,
+      "rang_pression_departement": 1,
+      "nb_departements_classes": 4,
+      "equilibre_mois_debut": "2025-01-01",
+      "equilibre_mois_fin": "2025-12-01",
+      "equilibre_nb_mois": 12,
+      "production_region_gwh": 2.4,
+      "consommation_region_gwh": 1.2,
+      "solde_region_gwh": 1.2,
+      "taux_couverture_region": 2.0,
+      "statut_equilibre": "excedentaire",
+      "rang_dependance_region": 3,
+      "nb_regions_classees": 3,
+      "puissance_enr_installee_mw": 14575.0,
+      "puissance_a_compenser_mw": 187.0,
+      "energie_non_evacuee_mwh": 2777.0,
+      "nb_postes_rte": 3,
+      "nb_postes_htb1": 1,
+      "nb_postes_htb2": 1,
+      "nb_postes_htb3": 1,
+      "nb_postes_en_projet": 1,
+      "nb_contraintes_departement": 3,
+      "nb_contraintes_frequentes_departement": 2,
+      "contraintes": [
+        {
+          "nom_de_l_ouvrage": "LIAISON LYON2LYON3",
+          "occurrence": "Très forte : plus de 150 fois par an",
+          "duree": "]4h-6h]",
+          "perennite": "moyenne",
+          "puissance_max_mw": 60.0,
+          "est_en_journee": true
+        },
+        {
+          "nom_de_l_ouvrage": "LIAISON BOURGLYON1",
+          "occurrence": "Forte : entre 75 et 150 fois par an",
+          "duree": "]4h-6h]",
+          "perennite": "elevee",
+          "puissance_max_mw": 80.0,
+          "est_en_journee": false
+        },
+        {
+          "nom_de_l_ouvrage": "LIAISON LYON2LYON3",
+          "occurrence": "Faible : entre 5 et 25 fois par an",
+          "duree": "]4h-6h]",
+          "perennite": "faible",
+          "puissance_max_mw": 40.0,
+          "est_en_journee": false
+        }
+      ],
+      "zone_rte": {
+        "zone": "Vallée de la chimie",
+        "priorite": "P2",
+        "annee_capacite": 2029,
+        "ouvrages": "nouveau poste 225 kV « Rhôna » raccordé au poste 400 kV de Mions",
+        "point_reference": "Saint-Fons",
+        "distance_km": 6.633598464
+      },
+      "zone_rte_p3": null,
+      "site_cle_en_main": {
+        "id_site": "site-27",
+        "commune": "Salaise-sur-Sanne",
+        "code_insee_commune": "38468",
+        "maturite_site": "2026 - 2027",
+        "distance_km": 46.0266511
+      },
+      "seuil": {
+        "puissance_mw": 12.0,
+        "domaine_tension": "HTA",
+        "gestionnaire": "Enedis (ou ELD)",
+        "commentaire": "Raccordement en moyenne tension (20 kV), souvent sur un départ dédié au-delà de quelques MW",
+        "domaine_turpe": "hta"
+      },
+      "conso_mwh": 70000.0,
+      "prix": null,
+      "cout": null,
+      "carbone": {
+        "systeme_electrique": "France continentale",
+        "intensite_acv_g_co2e_kwh": 51.9,
+        "validite_source": "année 2024",
+        "seuil_decarbone_g_co2e_kwh": 100.0,
+        "est_decarbone": true,
+        "intensite_directe_rte_g_co2_kwh": 22.44897959,
+        "rte_jour_debut": "2025-10-26",
+        "rte_jour_fin": "2026-06-30",
+        "profil_horaire": [],
+        "annee_profil": null
+      },
+      "limites": {
+        "pression_industrielle": "Ne compte que les sites raccordés au réseau de transport (HTB) : les consommateurs raccordés à Enedis n'y figurent pas. Depuis 2022, environ 40 % des IRIS sont masqués par le secret statistique : le millésime retenu est donc le dernier publié en entier, au prix de quelques années d'ancienneté.",
+        "equilibre_regional": "Le réseau est interconnecté : une région déficitaire importe sans difficulté de ses voisines. Le solde décrit une dépendance structurelle, pas une pénurie ni un risque de coupure.",
+        "contraintes_reseau": "Contraintes d'évacuation de la production renouvelable (injection), données à titre indicatif par RTE. Elles ne mesurent pas la capacité disponible pour un consommateur (soutirage). Pas de donnée pour la Corse ni l'outre-mer.",
+        "seuil_raccordement": "Indicatif : 1 kVA est assimilé à 1 kW. Le domaine de tension réel est fixé par le gestionnaire lors de l'étude de raccordement.",
+        "capacite_raccordement": "La capacité de raccordement disponible pour la consommation n'est pas publiée en open data (Caparéseau ne couvre que l'injection). Seule une étude de raccordement RTE ou Enedis fait foi.",
+        "cout_profil": "Le prix est identique en tout point du territoire (péréquation tarifaire) : ce coût ne dépend pas de l'adresse. Profil illustratif, heures creuses supposées de 22 h à 6 h (en réalité fixées localement par le gestionnaire de réseau), jours fériés comptés comme ouvrés, abonnement exclu. Carbone : intensité nationale, faute d'intensité régionale opposable.",
+        "prix_entreprise": "Prix moyen national constaté pour la tranche, hors TVA et taxes récupérables : identique en tout point du territoire (péréquation), il ne dépend pas de l'adresse. C'est une moyenne déclarée par les fournisseurs : un contrat donné peut s'en écarter nettement selon sa date de signature, sa durée et le profil du site. Les scénarios à 3 ans ne sont pas une prévision : le scénario central applique au prix des 12 derniers mois la variation médiane observée sur la tranche, et la fourchette reprend les erreurs passées de cette méthode (10e centile, médiane, 90e centile de l'écart entre prix réel et scénario central), crise de 2022-2023 comprise, élargie au besoin pour contenir le prix actuel. Tant que le contrôle sur le passé compte moins de 20 périodes, qui se chevauchent et tiennent souvent dans la même crise, la fourchette est dite indicative. Une rupture jamais observée la dépasserait encore.",
+        "risques_site": "Croisement de la position géocodée avec les zonages réglementaires et les cartographies d'aléas disponibles : le résultat dépend de la précision du géocodage et de la couverture des cartes, et un risque « non évalué » à l'adresse n'est pas un risque absent. Ce n'est ni l'état des risques réglementaire, obligatoire pour une vente ou une location, ni une étude de sol ou de vulnérabilité du site.",
+        "contraintes_prospectives": "Contraintes de transit liées à l'accueil des énergies renouvelables (injection), que RTE prévoit de gérer par de la flexibilité plutôt que par de nouveaux ouvrages ; données indicatives et non engageantes. Elles ne mesurent pas la capacité disponible pour un consommateur. Ni les ouvrages ni les postes ne sont géolocalisés en open data : la maille est le département, pas l'adresse, et une liaison entre deux départements compte dans les deux.",
+        "postes_rte": "Repère de densité du réseau de transport, pas une capacité de raccordement : un poste proche peut être saturé. Les postes ne sont pas géolocalisés en open data, et environ 3 % d'entre eux n'ont pas de département publié.",
+        "zones_raccordement_rte": "Zones et années cibles du schéma décennal de RTE, sous réserve des autorisations administratives et, pour les zones P2, de la concrétisation des projets industriels ; les zones P3 sont de simples exemples, sans date. Distance à vol d'oiseau jusqu'à la commune de référence de la zone, pas jusqu'au poste. Être proche d'une zone ne donne aucun droit d'accès au réseau : la capacité est attribuée selon les procédures de RTE. Concerne surtout les raccordements au réseau de transport (au-delà de quelques dizaines de MW).",
+        "sites_cles_en_main": "Distance à vol d'oiseau jusqu'au point de la commune, pas jusqu'au site lui-même. La période de maturité est celle annoncée pour un site prêt à accueillir une activité ; elle ne garantit ni la disponibilité du foncier à la date voulue, ni la puissance électrique raccordable, à confirmer auprès de l'aménageur et du gestionnaire de réseau.",
+        "carbone_territoire": "Intensité moyenne du réseau sur l'année, en cycle de vie (méthode location-based) : elle ne dit rien du contrat de fourniture ni des garanties d'origine achetées (méthode market-based), ni des heures de consommation, l'intensité variant fortement d'une heure à l'autre. Toutes les adresses du continent partagent la même valeur : le réseau y est interconnecté. Le seuil de 100 gCO2e/kWh est celui de la taxonomie européenne pour la production d'électricité ; « décarbonée » qualifie le réseau, pas l'entreprise, et ne permet pas à elle seule une allégation environnementale.",
+        "part_chiffre_affaires": "Facture estimée (prix moyen de la tranche × consommation déclarée, hors TVA) rapportée au chiffre d'affaires saisi : un ordre de grandeur, pas la facture réelle. Il situe le poids de l'électricité dans les comptes, sans seuil officiel. Le statut d'électro-intensif, qui ouvre droit à des taux réduits d'accise, se juge sur la valeur ajoutée et non sur le chiffre d'affaires : ce ratio ne le donne pas.",
+        "part_valeur_ajoutee": "Électro-intensité = consommation × accise au tarif normal ÷ valeur ajoutée, comparée aux paliers de 0,5 %, 2,25 % et 6,75 % en vigueur depuis le 1er janvier 2026 (CIBS L312-65 et L312-71). Seule l'activité principale industrielle (sections B à E de la NACE) y ouvre droit ; la valeur ajoutée se calcule au sens de l'article 1586 sexies du CGI. Tarifs réduits de 5,5, 3 et 0,5 €/MWh selon le palier (0,5 €/MWh aussi pour les secteurs exposés à la concurrence internationale fixés par arrêté, non identifiés ici), lus dans le formulaire 2040-TIC-SD et recoupés avec Légifrance : ce sont des droits à faire valoir par une attestation au fournisseur, pas une facture.",
+        "plans_prevention": "Un plan approuvé ou prescrit couvre une partie de la commune, pas forcément l'adresse : seul son zonage, consultable en mairie ou sur georisques.gouv.fr, dit si la parcelle est constructible et sous quelles conditions. Un plan prescrit n'a pas encore de règlement opposable, sauf application anticipée.",
+        "entreprises_enedis": "Ne compte que les entreprises raccordées au réseau Enedis : les sites raccordés à RTE (voir la pression industrielle) et aux entreprises locales de distribution (Strasbourg, Grenoble, Metz…) n'y figurent pas, ni la Corse et l'outre-mer. Adresses fournies par Enedis à titre indicatif : une adresse libellée autrement que dans la BAN n'est pas retrouvée, et l'absence de consommation à l'adresse ne prouve pas qu'elle n'est pas raccordée. Une consommation à l'adresse montre un raccordement existant, pas la puissance disponible.",
+        "zonage_sismique": "Zone réglementaire de la commune (de 1, très faible, à 5, forte), pas une étude de l'aléa au droit de la parcelle. Elle fixe les règles parasismiques des bâtiments neufs (arrêté du 22 octobre 2010, Eurocode 8) : en zone 2, pour les bâtiments de catégorie III et IV (plus de 300 personnes, équipements stratégiques) ; dès la zone 3, aussi pour la catégorie II (dont les bâtiments industriels recevant au plus 300 personnes). Les installations classées et les équipements à risque spécial relèvent de règles propres. Le zonage suit les communes de 2010 : dans une commune nouvelle, seule la position de l'adresse dit quelle zone s'applique.",
+        "acheminement_turpe": "Même grille dans toute la France (péréquation, Corse et outre-mer compris) : seul le domaine de tension et la puissance souscrite la font varier. Calcul indicatif : une seule puissance souscrite pour toutes les classes temporelles (1 kVA assimilé à 1 kW), heures creuses supposées de 22 h à 6 h et pointe de 9 h à 11 h et de 18 h à 20 h (fixées localement en réalité), jours fériés comptés comme ouvrés, énergie répartie sur les heures de l'année faute de courbe de charge ; version tarifaire retenue au moindre coût, sans la pointe mobile. Ne comptent ni les dépassements de puissance souscrite, ni l'énergie réactive, ni le raccordement lui-même (devis du gestionnaire). Au-delà de 40 MW, grille HTB 1 de RTE (la tension réelle, HTB 1, 2 ou 3, est fixée par RTE ; HTB 2 coûte moins en puissance souscrite), sur le calendrier HTB de la délibération n° 2025-77 : week-ends et jours fériés légaux entièrement creux ; jusqu'au 31 décembre 2026, heures creuses de 23 h à 7 h ; dès le 1er janvier 2027, de 22 h à 6 h en saison haute et de 2 h à 6 h puis de 12 h à 16 h en saison basse, sauf en Nouvelle-Aquitaine et en Occitanie (de 2 h à 4 h et de 10 h à 16 h, puis de 10 h à 18 h ; pointe de 7 h à 9 h et de 18 h à 20 h). Plages lues pour HTB 1 ; la journée type d'une activité reste celle d'un jour ouvré les jours fériés. Gestion et comptage du contrat d'accès au réseau, compteur détenu par RTE. Ne comptent ni la composante d'injection-soutirage (option réservée au stockage), ni les alimentations de secours (réservation de 3,78 €/kW/an en HTB 1 selon la délibération n° 2026-104, plus la partie dédiée, propre au site) ou complémentaires, ni les dépassements ponctuels.",
+        "continuite_alimentation": "Part des clients HTA et BT d'Enedis dont les coupures ont dépassé dans l'année 6 coupures longues (plus de 3 minutes), 35 coupures brèves ou 13 heures cumulées. C'est une moyenne départementale, pas la qualité au poste ou à la ligne qui desservira le site ; elle varie nettement entre zones urbaines et rurales d'un même département. Une année isolée au-dessus de 3 % suit souvent une tempête ; la moyenne sur cinq ans dit mieux la fiabilité structurelle. Ni la Corse, ni l'outre-mer, ni les territoires des entreprises locales de distribution ne sont couverts.",
+        "prix_locaux": "Prix de vente au m² des locaux industriels, commerciaux ou assimilés : DVF ne distingue pas les bureaux des commerces et entrepôts, et ne contient ni loyers ni locaux loués. Médiane des ventes d'un seul local, sans logement ni autre disposition dans l'acte, entre 15 et 5 000 m² et de 100 à 15 000 €/m² ; la valeur foncière comprend le terrain. Les ventes les plus récentes manquent de quelques mois de publication. Alsace, Moselle et Mayotte ne sont pas publiées. Ordre de grandeur pour comparer des villes, pas l'estimation d'un local précis.",
+        "accise_activite": "Tarif réduit des centres de stockage de données : 10 €/MWh sur la fraction au-delà de 1 GWh par an (L312-64 et L312-70), sous huit conditions cumulatives propres à l'exploitant (dont l'électro-sensibilité à 2,25 %, la valorisation de la chaleur fatale et la limitation de l'eau de refroidissement) que l'outil ne vérifie pas, hormis l'électro-sensibilité quand --va est donné. Aucun tarif réduit d'accise ne vise la recharge de véhicules ni l'entrepôt ; la réfaction des bornes de recharge porte sur le coût du raccordement, pas sur l'accise, et n'est pas chiffrée. Les montants sont des ordres de grandeur (consommation déclarée × tarif), sans retrancher l'accise du prix moyen Eurostat. Sans courbe publiée pour les data centers, les bornes de recharge et la logistique, la consommation est supposée à puissance constante ; pour l'industrie, la journée type est celle des points de plus de 250 kVA, pas celle du site.",
+        "zonage_urbanisme": "Donne le type de zone (U, AU, A ou N) et le document ; ne dit pas si une activité industrielle, un entrepôt ou un data center y est permis : cela se lit dans le règlement de la zone (PDF lié quand il est publié). Couverture variable : une commune sans document déposé et numérisé n'a aucune zone. Servitudes d'utilité publique, emplacements réservés et prescriptions ne sont pas lus.",
+        "friches": "Inventaire déclaratif et incomplet : une friche non référencée n'y figure pas et une friche listée peut être déjà occupée ou en cours de projet (statut donné). Seules les friches de 1 ha ou plus non reconverties sont retenues, d'après la surface d'unité foncière quand elle est renseignée (les sites sans surface sont écartés). Ni la propriété, ni le prix, ni la constructibilité ne sont garantis : à confirmer auprès de la collectivité, de l'établissement public foncier et au règlement de la zone. Les zones d'activité ne sont pas dans cette source.",
+        "restrictions_eau": "Donne le niveau (vigilance, alerte, alerte renforcée, crise) des arrêtés en vigueur aujourd'hui, par type de ressource : c'est la situation du jour, pas la fréquence des sécheresses ni la disponibilité future de l'eau. Un data center refroidi à l'eau ou une industrie à procédés humides dépend du point de prélèvement réel et du réseau d'eau potable choisi, que cette source ne donne pas ; les volumes prélevés (BNPE) ne mesurent pas la tension sur la ressource et ne sont pas affichés. Le détail des usages encadrés se lit dans l'arrêté.",
+        "zones_activite": "Les zones d'activité, industrielles et artisanales sont celles que l'IGN a saisies : couverture et mise à jour variables, sans garantie qu'une parcelle y soit libre, viabilisée ni raccordable. Être dans une zone d'activité ne vaut pas constructibilité pour un projet précis : le règlement de la zone d'urbanisme et le gestionnaire de la zone font foi. Le décompte s'arrête à 500 objets dans la boîte de recherche.",
+        "acces_routier": "Les temps sont ceux d'une voiture, jamais d'un poids lourd : la Géoplateforme n'a pas de profil poids lourd, et les restrictions de gabarit, de poids ou de matières dangereuses ne sont pas appliquées. Les ports et les aéroports sont placés au centre de leur commune (pas à leur entrée) et le chantier rail-route à sa position publiée : le temps est un ordre de grandeur. L'échangeur autoroutier n'est pas identifié dans les données ouvertes : seule la distance à vol d'oiseau jusqu'au tronçon autoroutier le plus proche est donnée, ce qui ne dit pas où l'on y entre.",
+        "solaire": "Le productible est celui d'un kWc de panneaux fixes à l'inclinaison et à l'orientation optimales avec 14 % de pertes : un ordre de grandeur annuel, ni une étude d'ombrage ni le productible d'une toiture réelle (pente, orientation et structure à relever). L'emprise est celle du bâtiment le plus proche de l'adresse géocodée, qui peut ne pas être celui du projet ; la BD TOPO ne dit rien de la toiture ni de la structure. PVGIS limite les appels à 30 par seconde et par adresse IP.",
+        "voisinage_site": "Les rayons sont un choix de l'outil, aucun texte n'en fixe : un établissement Seveso proche ne dit pas si l'adresse est dans le périmètre de son plan de prévention technologique, que donnent les plans de prévention de la commune. Les distances des installations sont à vol d'oiseau depuis le point déclaré par l'inspection ; les sols pollués et les cavités sont comptés dans le rayon que filtre l'API, sans distance. Seules les installations sous autorisation ou enregistrement en exploitation sont retenues (la déclaration n'est pas recensée). Un ancien site CASIAS n'est pas un sol pollué avéré. Là où l'API ne renvoie aucune exposition aux argiles (outre-mer, et Ajaccio lors de l'essai du 29 octobre), le territoire est dit non couvert. Une installation dont le code postal et le code commune ne sont pas dans le même département est écartée : sa position n'est pas fiable (une fiche de Rouen placée au centre de Paris, constat du 29 octobre 2026), au prix des rares communes dont le code postal relève du département voisin. Ce n'est ni l'état des risques réglementaire ni une étude de sol.",
+        "obligations_solaires": "Rappel de la règle, pas un avis juridique. La surface du parking n'est pas connue de l'outil : l'obligation est donnée par seuil. Un data center n'est pas cité en tant que tel parmi les usages : à qualifier avec le service instructeur. Le texte prévoit des exonérations motivées (contraintes techniques, de sécurité, architecturales ou patrimoniales, coût économiquement inacceptable, parking ombragé par des arbres) et un arrêté peut écarter ou adapter l'obligation pour une installation classée. La part de toiture des bâtiments existants est fixée par décret, non chiffrée ici. La capacité portante de la toiture n'est pas publique : la BDNB (CSTB, Licence Ouverte 2.0) donne au mieux le matériau de toiture, pas la structure.",
+        "zones_repartition_eaux": "Une zone de répartition des eaux dit un déficit structurel reconnu par arrêté, pas le débit ni le niveau de nappe du jour (voir les restrictions d'eau). Une zone souterraine vise un aquifère précis, parfois profond (Albien en Île-de-France) : le prélèvement n'est concerné que s'il puise dans cet aquifère. Hors zone, un prélèvement peut rester soumis à déclaration ou autorisation selon son volume (autres rubriques de R214-1) et aux arrêtés de restriction. La liste des communes classées est arrêtée par chaque préfet de département (R211-72) : le contour du Sandre peut en différer à la marge. Aucune zone n'est publiée en outre-mer dans ce référentiel."
+      },
+      "risques": null,
+      "risques_erreur": null,
+      "ca_eur": null,
+      "va_eur": null,
+      "chargements": {
+        "eurostat_nrg_pc_205": "2026-07-01",
+        "national_tr": "2026-07-01",
+        "national_cons_def": "2026-07-01",
+        "consommation_annuelle_par_iris": "2026-07-01",
+        "enedis_conso_entreprises_adresse": "2026-07-01",
+        "equilibre_regional_mensuel_prod_conso_brute": "2026-07-01",
+        "contraintes_region": "2026-07-01",
+        "postes_electriques_rte": "2026-07-01",
+        "gaspar_risques": "2026-07-01",
+        "gaspar_plans": "2026-07-01",
+        "zonage_sismique": "2026-07-01",
+        "enedis_continuite_alimentation": "2026-07-01",
+        "ventes_locaux": "2026-07-01",
+        "friches": "2026-07-01",
+        "zones_repartition_eaux": "2026-07-01"
+      },
+      "courbe": null,
+      "plans_prevention": [
+        {
+          "code_procedure": "PPRT1",
+          "type_plan": "PPRT",
+          "libelle_plan": "Vallée de la chimie",
+          "risques": "Risque industriel",
+          "etat": "approuvé",
+          "date_prescription": "2015-04-21",
+          "date_approbation": "2016-10-19"
+        },
+        {
+          "code_procedure": "PPRI1",
+          "type_plan": "PPRN",
+          "libelle_plan": "PPRI du Grand Lyon",
+          "risques": "Inondation",
+          "etat": "approuvé",
+          "date_prescription": "2004-01-07",
+          "date_approbation": "2009-03-02"
+        }
+      ],
+      "accise": {
+        "tarif_eur_mwh": 26.35,
+        "date_debut": "2026-08-01",
+        "reduits": {
+          "grande_consommatrice": 5.5,
+          "electro_sensible": 3.0,
+          "electro_intensive": 0.5,
+          "concurrence_internationale": 0.5,
+          "centre_stockage_donnees": 10.0
+        }
+      },
+      "entreprises_commune": {
+        "annee": 2025,
+        "nb_sites": 5,
+        "consommation_gwh": 0.375,
+        "consommation_industrie_gwh": 0.3,
+        "nb_sites_industrie": 2,
+        "code_naf2_principal": "24",
+        "libelle_naf2_principal": "Métallurgie",
+        "consommation_naf2_principal_gwh": 0.3,
+        "rang_industrie_departement": 2,
+        "nb_communes_departement": 2
+      },
+      "entreprises_adresse": null,
+      "acheminement": {
+        "domaine_turpe": "hta",
+        "utilisation": "longue",
+        "date_debut": "2026-08-01",
+        "puissance_kva": 12000.0,
+        "conso_mwh": 70000.0,
+        "gestion_comptage_eur": 832.93,
+        "puissance_eur": 436800.0,
+        "energie_eur": 932421.5753,
+        "total_eur": 1370054.505,
+        "prix_eur_mwh": 19.57220722,
+        "profil": "plat"
+      },
+      "continuite": {
+        "derniere_annee": 2024,
+        "part_mal_alimentes_pct": 2.5,
+        "moyenne_5_ans_pct": 2.2,
+        "annees_au_dela_seuil_5_ans": 1,
+        "mediane_nationale_pct": 2.5,
+        "depasse_seuil": false
+      },
+      "prix_locaux": {
+        "niveau": "commune",
+        "nb_ventes": 6,
+        "prix_m2_median": 3250.0,
+        "prix_m2_q1": 2625.0,
+        "prix_m2_q3": 3875.0,
+        "derniere_vente": "2025-07-01"
+      },
+      "surface_m2": null,
+      "activite": "data-center",
+      "urbanisme": null,
+      "urbanisme_consulte": false,
+      "urbanisme_erreur": null,
+      "eau": null,
+      "eau_erreur": null,
+      "voisinage": null,
+      "voisinage_erreur": null,
+      "nb_zones_activite": null,
+      "zones_activite": [],
+      "zones_activite_erreur": null,
+      "poles_proches": [
+        [
+          "aeroport",
+          "Lyon-Saint-Exupéry",
+          45.7175,
+          5.1036
+        ],
+        [
+          "port",
+          "HAROPA (Le Havre)",
+          49.4938,
+          0.1077
+        ],
+        [
+          "rail",
+          "Lyon Venissieux",
+          45.697,
+          4.903
+        ]
+      ],
+      "acces_routier": null,
+      "acces_routier_erreur": null,
+      "batiment": null,
+      "productible": null,
+      "solaire_consulte": false,
+      "solaire_erreur": null,
+      "nb_friches": 2,
+      "friches": [
+        {
+          "site_id": "F1",
+          "nom": "Site F1",
+          "type_friche": "friche industrielle",
+          "statut": "friche sans projet",
+          "commune": "Lyon",
+          "surface_m2": 50000.0,
+          "type_zone_urbanisme": "U",
+          "pollution_sol": null,
+          "distance_km": 1.80017083
+        },
+        {
+          "site_id": "F2",
+          "nom": "Site F2",
+          "type_friche": "friche industrielle",
+          "statut": "friche avec projet",
+          "commune": "Lyon",
+          "surface_m2": 30000.0,
+          "type_zone_urbanisme": "U",
+          "pollution_sol": null,
+          "distance_km": 4.370403858
+        }
+      ],
+      "zones_repartition": [
+        {
+          "nom": "Nappe de test",
+          "ressource": "eaux souterraines"
+        }
+      ],
+      "commune_a_des_sites": true,
+      "part_chiffre_affaires": null,
+      "part_valeur_ajoutee": null,
+      "accise_reduite": null,
+      "verdict": {
+        "phrase": "À vérifier avant de s'engager : risques (non évalué : facture).",
+        "criteres": [
+          {
+            "nom": "Raccordement",
+            "etat": "ok",
+            "valeur": "HTA, Enedis (ou ELD)",
+            "detail": "Raccordement courant au réseau de distribution ; délai et coût fixés par l'étude du gestionnaire."
+          },
+          {
+            "nom": "Risques",
+            "etat": "attention",
+            "valeur": "2 plans de prévention dans la commune",
+            "detail": "Vallée de la chimie (risque industriel, approuvé en 2016), PPRI du Grand Lyon (inondation, approuvé en 2009). Le règlement du plan peut interdire ou conditionner la construction selon la zone : le consulter en mairie avant de s'engager."
+          },
+          {
+            "nom": "Carbone",
+            "etat": "ok",
+            "valeur": "51,9 gCO₂e/kWh",
+            "detail": "France continentale : sous le seuil de 100 gCO₂e/kWh de la taxonomie européenne."
+          },
+          {
+            "nom": "Facture",
+            "etat": "inconnu",
+            "valeur": "prix non disponible",
+            "detail": "non publié par Eurostat pour 70 000 MWh/an"
+          },
+          {
+            "nom": "Foncier",
+            "etat": "info",
+            "valeur": "site clé en main à 46 km",
+            "detail": "Salaise-sur-Sanne, annoncé prêt en 2026 - 2027. 2 friche(s) de 1 ha ou plus à moins de 10 km."
+          }
+        ]
+      }
+    },
+    {
+      "territoire": {
+        "adresse": "1 rue de test, Ajaccio",
+        "code_insee_commune": "2A004",
+        "commune": "Ajaccio",
+        "code_postal": null,
+        "code_departement": "2A",
+        "departement": "Corse-du-Sud",
+        "code_insee_region": "94",
+        "region": "Corse",
+        "latitude": 41.9192,
+        "longitude": 8.7386,
+        "score": 0.9,
+        "precision": "housenumber",
+        "voie": null
+      },
+      "code_insee_commune": "2A004",
+      "code_departement": "2A",
+      "departement": "Corse-du-Sud",
+      "code_insee_region": "94",
+      "region": "Corse",
+      "est_zni": true,
+      "annee_pression": 2021,
+      "commune": "Ajaccio",
+      "conso_industrielle_commune_gwh": 3.0,
+      "nb_sites_commune": 1,
+      "conso_commune_est_minorant": false,
+      "conso_industrielle_departement_gwh": 3.0,
+      "nb_sites_departement": 1,
+      "nb_communes_avec_site": 1,
+      "conso_departement_est_minorant": false,
+      "rang_pression_departement": 4,
+      "nb_departements_classes": 4,
+      "equilibre_mois_debut": "2025-01-01",
+      "equilibre_mois_fin": "2025-12-01",
+      "equilibre_nb_mois": 12,
+      "production_region_gwh": 0.84,
+      "consommation_region_gwh": 1.2,
+      "solde_region_gwh": -0.36,
+      "taux_couverture_region": 0.7,
+      "statut_equilibre": "deficitaire",
+      "rang_dependance_region": 2,
+      "nb_regions_classees": 3,
+      "puissance_enr_installee_mw": null,
+      "puissance_a_compenser_mw": null,
+      "energie_non_evacuee_mwh": null,
+      "nb_postes_rte": 0,
+      "nb_postes_htb1": 0,
+      "nb_postes_htb2": 0,
+      "nb_postes_htb3": 0,
+      "nb_postes_en_projet": 0,
+      "nb_contraintes_departement": 0,
+      "nb_contraintes_frequentes_departement": null,
+      "contraintes": [],
+      "zone_rte": {
+        "zone": "Plan-de-Campagne",
+        "priorite": "P2",
+        "annee_capacite": 2029,
+        "ouvrages": "nouveau poste 225 kV dans le secteur de Plan-de-Campagne, raccordé au réseau 400 kV",
+        "point_reference": "Cabriès",
+        "distance_km": 325.4614464
+      },
+      "zone_rte_p3": null,
+      "site_cle_en_main": null,
+      "seuil": {
+        "puissance_mw": 12.0,
+        "domaine_tension": "HTA",
+        "gestionnaire": "Enedis (ou ELD)",
+        "commentaire": "Raccordement en moyenne tension (20 kV), souvent sur un départ dédié au-delà de quelques MW",
+        "domaine_turpe": "hta"
+      },
+      "conso_mwh": 70000.0,
+      "prix": null,
+      "cout": null,
+      "carbone": {
+        "systeme_electrique": "Corse",
+        "intensite_acv_g_co2e_kwh": 594.0,
+        "validite_source": "déc. 2020",
+        "seuil_decarbone_g_co2e_kwh": 100.0,
+        "est_decarbone": false,
+        "intensite_directe_rte_g_co2_kwh": null,
+        "rte_jour_debut": null,
+        "rte_jour_fin": null,
+        "profil_horaire": [
+          [
+            0,
+            445.4872849
+          ],
+          [
+            1,
+            445.4872849
+          ],
+          [
+            2,
+            445.4872849
+          ],
+          [
+            3,
+            445.4872849
+          ],
+          [
+            4,
+            445.4872849
+          ],
+          [
+            5,
+            445.4872849
+          ],
+          [
+            6,
+            445.4872849
+          ],
+          [
+            7,
+            445.4872849
+          ],
+          [
+            8,
+            445.4872849
+          ],
+          [
+            9,
+            445.4872849
+          ],
+          [
+            10,
+            445.4872849
+          ],
+          [
+            11,
+            445.4872849
+          ],
+          [
+            12,
+            445.4872849
+          ],
+          [
+            13,
+            445.4872849
+          ],
+          [
+            14,
+            445.4872849
+          ],
+          [
+            15,
+            445.4872849
+          ],
+          [
+            16,
+            445.4872849
+          ],
+          [
+            17,
+            445.4872849
+          ],
+          [
+            18,
+            823.8463487
+          ],
+          [
+            19,
+            1336.461855
+          ],
+          [
+            20,
+            1336.461855
+          ],
+          [
+            21,
+            1336.461855
+          ],
+          [
+            22,
+            958.1027907
+          ],
+          [
+            23,
+            445.4872849
+          ]
+        ],
+        "annee_profil": 2025
+      },
+      "limites": {
+        "pression_industrielle": "Ne compte que les sites raccordés au réseau de transport (HTB) : les consommateurs raccordés à Enedis n'y figurent pas. Depuis 2022, environ 40 % des IRIS sont masqués par le secret statistique : le millésime retenu est donc le dernier publié en entier, au prix de quelques années d'ancienneté.",
+        "equilibre_regional": "Le réseau est interconnecté : une région déficitaire importe sans difficulté de ses voisines. Le solde décrit une dépendance structurelle, pas une pénurie ni un risque de coupure.",
+        "contraintes_reseau": "Contraintes d'évacuation de la production renouvelable (injection), données à titre indicatif par RTE. Elles ne mesurent pas la capacité disponible pour un consommateur (soutirage). Pas de donnée pour la Corse ni l'outre-mer.",
+        "seuil_raccordement": "Indicatif : 1 kVA est assimilé à 1 kW. Le domaine de tension réel est fixé par le gestionnaire lors de l'étude de raccordement.",
+        "capacite_raccordement": "La capacité de raccordement disponible pour la consommation n'est pas publiée en open data (Caparéseau ne couvre que l'injection). Seule une étude de raccordement RTE ou Enedis fait foi.",
+        "cout_profil": "Le prix est identique en tout point du territoire (péréquation tarifaire) : ce coût ne dépend pas de l'adresse. Profil illustratif, heures creuses supposées de 22 h à 6 h (en réalité fixées localement par le gestionnaire de réseau), jours fériés comptés comme ouvrés, abonnement exclu. Carbone : intensité nationale, faute d'intensité régionale opposable.",
+        "prix_entreprise": "Prix moyen national constaté pour la tranche, hors TVA et taxes récupérables : identique en tout point du territoire (péréquation), il ne dépend pas de l'adresse. C'est une moyenne déclarée par les fournisseurs : un contrat donné peut s'en écarter nettement selon sa date de signature, sa durée et le profil du site. Les scénarios à 3 ans ne sont pas une prévision : le scénario central applique au prix des 12 derniers mois la variation médiane observée sur la tranche, et la fourchette reprend les erreurs passées de cette méthode (10e centile, médiane, 90e centile de l'écart entre prix réel et scénario central), crise de 2022-2023 comprise, élargie au besoin pour contenir le prix actuel. Tant que le contrôle sur le passé compte moins de 20 périodes, qui se chevauchent et tiennent souvent dans la même crise, la fourchette est dite indicative. Une rupture jamais observée la dépasserait encore.",
+        "risques_site": "Croisement de la position géocodée avec les zonages réglementaires et les cartographies d'aléas disponibles : le résultat dépend de la précision du géocodage et de la couverture des cartes, et un risque « non évalué » à l'adresse n'est pas un risque absent. Ce n'est ni l'état des risques réglementaire, obligatoire pour une vente ou une location, ni une étude de sol ou de vulnérabilité du site.",
+        "contraintes_prospectives": "Contraintes de transit liées à l'accueil des énergies renouvelables (injection), que RTE prévoit de gérer par de la flexibilité plutôt que par de nouveaux ouvrages ; données indicatives et non engageantes. Elles ne mesurent pas la capacité disponible pour un consommateur. Ni les ouvrages ni les postes ne sont géolocalisés en open data : la maille est le département, pas l'adresse, et une liaison entre deux départements compte dans les deux.",
+        "postes_rte": "Repère de densité du réseau de transport, pas une capacité de raccordement : un poste proche peut être saturé. Les postes ne sont pas géolocalisés en open data, et environ 3 % d'entre eux n'ont pas de département publié.",
+        "zones_raccordement_rte": "Zones et années cibles du schéma décennal de RTE, sous réserve des autorisations administratives et, pour les zones P2, de la concrétisation des projets industriels ; les zones P3 sont de simples exemples, sans date. Distance à vol d'oiseau jusqu'à la commune de référence de la zone, pas jusqu'au poste. Être proche d'une zone ne donne aucun droit d'accès au réseau : la capacité est attribuée selon les procédures de RTE. Concerne surtout les raccordements au réseau de transport (au-delà de quelques dizaines de MW).",
+        "sites_cles_en_main": "Distance à vol d'oiseau jusqu'au point de la commune, pas jusqu'au site lui-même. La période de maturité est celle annoncée pour un site prêt à accueillir une activité ; elle ne garantit ni la disponibilité du foncier à la date voulue, ni la puissance électrique raccordable, à confirmer auprès de l'aménageur et du gestionnaire de réseau.",
+        "carbone_territoire": "Intensité moyenne du réseau sur l'année, en cycle de vie (méthode location-based) : elle ne dit rien du contrat de fourniture ni des garanties d'origine achetées (méthode market-based), ni des heures de consommation, l'intensité variant fortement d'une heure à l'autre. Toutes les adresses du continent partagent la même valeur : le réseau y est interconnecté. Le seuil de 100 gCO2e/kWh est celui de la taxonomie européenne pour la production d'électricité ; « décarbonée » qualifie le réseau, pas l'entreprise, et ne permet pas à elle seule une allégation environnementale.",
+        "part_chiffre_affaires": "Facture estimée (prix moyen de la tranche × consommation déclarée, hors TVA) rapportée au chiffre d'affaires saisi : un ordre de grandeur, pas la facture réelle. Il situe le poids de l'électricité dans les comptes, sans seuil officiel. Le statut d'électro-intensif, qui ouvre droit à des taux réduits d'accise, se juge sur la valeur ajoutée et non sur le chiffre d'affaires : ce ratio ne le donne pas.",
+        "part_valeur_ajoutee": "Électro-intensité = consommation × accise au tarif normal ÷ valeur ajoutée, comparée aux paliers de 0,5 %, 2,25 % et 6,75 % en vigueur depuis le 1er janvier 2026 (CIBS L312-65 et L312-71). Seule l'activité principale industrielle (sections B à E de la NACE) y ouvre droit ; la valeur ajoutée se calcule au sens de l'article 1586 sexies du CGI. Tarifs réduits de 5,5, 3 et 0,5 €/MWh selon le palier (0,5 €/MWh aussi pour les secteurs exposés à la concurrence internationale fixés par arrêté, non identifiés ici), lus dans le formulaire 2040-TIC-SD et recoupés avec Légifrance : ce sont des droits à faire valoir par une attestation au fournisseur, pas une facture.",
+        "plans_prevention": "Un plan approuvé ou prescrit couvre une partie de la commune, pas forcément l'adresse : seul son zonage, consultable en mairie ou sur georisques.gouv.fr, dit si la parcelle est constructible et sous quelles conditions. Un plan prescrit n'a pas encore de règlement opposable, sauf application anticipée.",
+        "entreprises_enedis": "Ne compte que les entreprises raccordées au réseau Enedis : les sites raccordés à RTE (voir la pression industrielle) et aux entreprises locales de distribution (Strasbourg, Grenoble, Metz…) n'y figurent pas, ni la Corse et l'outre-mer. Adresses fournies par Enedis à titre indicatif : une adresse libellée autrement que dans la BAN n'est pas retrouvée, et l'absence de consommation à l'adresse ne prouve pas qu'elle n'est pas raccordée. Une consommation à l'adresse montre un raccordement existant, pas la puissance disponible.",
+        "zonage_sismique": "Zone réglementaire de la commune (de 1, très faible, à 5, forte), pas une étude de l'aléa au droit de la parcelle. Elle fixe les règles parasismiques des bâtiments neufs (arrêté du 22 octobre 2010, Eurocode 8) : en zone 2, pour les bâtiments de catégorie III et IV (plus de 300 personnes, équipements stratégiques) ; dès la zone 3, aussi pour la catégorie II (dont les bâtiments industriels recevant au plus 300 personnes). Les installations classées et les équipements à risque spécial relèvent de règles propres. Le zonage suit les communes de 2010 : dans une commune nouvelle, seule la position de l'adresse dit quelle zone s'applique.",
+        "acheminement_turpe": "Même grille dans toute la France (péréquation, Corse et outre-mer compris) : seul le domaine de tension et la puissance souscrite la font varier. Calcul indicatif : une seule puissance souscrite pour toutes les classes temporelles (1 kVA assimilé à 1 kW), heures creuses supposées de 22 h à 6 h et pointe de 9 h à 11 h et de 18 h à 20 h (fixées localement en réalité), jours fériés comptés comme ouvrés, énergie répartie sur les heures de l'année faute de courbe de charge ; version tarifaire retenue au moindre coût, sans la pointe mobile. Ne comptent ni les dépassements de puissance souscrite, ni l'énergie réactive, ni le raccordement lui-même (devis du gestionnaire). Au-delà de 40 MW, grille HTB 1 de RTE (la tension réelle, HTB 1, 2 ou 3, est fixée par RTE ; HTB 2 coûte moins en puissance souscrite), sur le calendrier HTB de la délibération n° 2025-77 : week-ends et jours fériés légaux entièrement creux ; jusqu'au 31 décembre 2026, heures creuses de 23 h à 7 h ; dès le 1er janvier 2027, de 22 h à 6 h en saison haute et de 2 h à 6 h puis de 12 h à 16 h en saison basse, sauf en Nouvelle-Aquitaine et en Occitanie (de 2 h à 4 h et de 10 h à 16 h, puis de 10 h à 18 h ; pointe de 7 h à 9 h et de 18 h à 20 h). Plages lues pour HTB 1 ; la journée type d'une activité reste celle d'un jour ouvré les jours fériés. Gestion et comptage du contrat d'accès au réseau, compteur détenu par RTE. Ne comptent ni la composante d'injection-soutirage (option réservée au stockage), ni les alimentations de secours (réservation de 3,78 €/kW/an en HTB 1 selon la délibération n° 2026-104, plus la partie dédiée, propre au site) ou complémentaires, ni les dépassements ponctuels.",
+        "continuite_alimentation": "Part des clients HTA et BT d'Enedis dont les coupures ont dépassé dans l'année 6 coupures longues (plus de 3 minutes), 35 coupures brèves ou 13 heures cumulées. C'est une moyenne départementale, pas la qualité au poste ou à la ligne qui desservira le site ; elle varie nettement entre zones urbaines et rurales d'un même département. Une année isolée au-dessus de 3 % suit souvent une tempête ; la moyenne sur cinq ans dit mieux la fiabilité structurelle. Ni la Corse, ni l'outre-mer, ni les territoires des entreprises locales de distribution ne sont couverts.",
+        "prix_locaux": "Prix de vente au m² des locaux industriels, commerciaux ou assimilés : DVF ne distingue pas les bureaux des commerces et entrepôts, et ne contient ni loyers ni locaux loués. Médiane des ventes d'un seul local, sans logement ni autre disposition dans l'acte, entre 15 et 5 000 m² et de 100 à 15 000 €/m² ; la valeur foncière comprend le terrain. Les ventes les plus récentes manquent de quelques mois de publication. Alsace, Moselle et Mayotte ne sont pas publiées. Ordre de grandeur pour comparer des villes, pas l'estimation d'un local précis.",
+        "accise_activite": "Tarif réduit des centres de stockage de données : 10 €/MWh sur la fraction au-delà de 1 GWh par an (L312-64 et L312-70), sous huit conditions cumulatives propres à l'exploitant (dont l'électro-sensibilité à 2,25 %, la valorisation de la chaleur fatale et la limitation de l'eau de refroidissement) que l'outil ne vérifie pas, hormis l'électro-sensibilité quand --va est donné. Aucun tarif réduit d'accise ne vise la recharge de véhicules ni l'entrepôt ; la réfaction des bornes de recharge porte sur le coût du raccordement, pas sur l'accise, et n'est pas chiffrée. Les montants sont des ordres de grandeur (consommation déclarée × tarif), sans retrancher l'accise du prix moyen Eurostat. Sans courbe publiée pour les data centers, les bornes de recharge et la logistique, la consommation est supposée à puissance constante ; pour l'industrie, la journée type est celle des points de plus de 250 kVA, pas celle du site.",
+        "zonage_urbanisme": "Donne le type de zone (U, AU, A ou N) et le document ; ne dit pas si une activité industrielle, un entrepôt ou un data center y est permis : cela se lit dans le règlement de la zone (PDF lié quand il est publié). Couverture variable : une commune sans document déposé et numérisé n'a aucune zone. Servitudes d'utilité publique, emplacements réservés et prescriptions ne sont pas lus.",
+        "friches": "Inventaire déclaratif et incomplet : une friche non référencée n'y figure pas et une friche listée peut être déjà occupée ou en cours de projet (statut donné). Seules les friches de 1 ha ou plus non reconverties sont retenues, d'après la surface d'unité foncière quand elle est renseignée (les sites sans surface sont écartés). Ni la propriété, ni le prix, ni la constructibilité ne sont garantis : à confirmer auprès de la collectivité, de l'établissement public foncier et au règlement de la zone. Les zones d'activité ne sont pas dans cette source.",
+        "restrictions_eau": "Donne le niveau (vigilance, alerte, alerte renforcée, crise) des arrêtés en vigueur aujourd'hui, par type de ressource : c'est la situation du jour, pas la fréquence des sécheresses ni la disponibilité future de l'eau. Un data center refroidi à l'eau ou une industrie à procédés humides dépend du point de prélèvement réel et du réseau d'eau potable choisi, que cette source ne donne pas ; les volumes prélevés (BNPE) ne mesurent pas la tension sur la ressource et ne sont pas affichés. Le détail des usages encadrés se lit dans l'arrêté.",
+        "zones_activite": "Les zones d'activité, industrielles et artisanales sont celles que l'IGN a saisies : couverture et mise à jour variables, sans garantie qu'une parcelle y soit libre, viabilisée ni raccordable. Être dans une zone d'activité ne vaut pas constructibilité pour un projet précis : le règlement de la zone d'urbanisme et le gestionnaire de la zone font foi. Le décompte s'arrête à 500 objets dans la boîte de recherche.",
+        "acces_routier": "Les temps sont ceux d'une voiture, jamais d'un poids lourd : la Géoplateforme n'a pas de profil poids lourd, et les restrictions de gabarit, de poids ou de matières dangereuses ne sont pas appliquées. Les ports et les aéroports sont placés au centre de leur commune (pas à leur entrée) et le chantier rail-route à sa position publiée : le temps est un ordre de grandeur. L'échangeur autoroutier n'est pas identifié dans les données ouvertes : seule la distance à vol d'oiseau jusqu'au tronçon autoroutier le plus proche est donnée, ce qui ne dit pas où l'on y entre.",
+        "solaire": "Le productible est celui d'un kWc de panneaux fixes à l'inclinaison et à l'orientation optimales avec 14 % de pertes : un ordre de grandeur annuel, ni une étude d'ombrage ni le productible d'une toiture réelle (pente, orientation et structure à relever). L'emprise est celle du bâtiment le plus proche de l'adresse géocodée, qui peut ne pas être celui du projet ; la BD TOPO ne dit rien de la toiture ni de la structure. PVGIS limite les appels à 30 par seconde et par adresse IP.",
+        "voisinage_site": "Les rayons sont un choix de l'outil, aucun texte n'en fixe : un établissement Seveso proche ne dit pas si l'adresse est dans le périmètre de son plan de prévention technologique, que donnent les plans de prévention de la commune. Les distances des installations sont à vol d'oiseau depuis le point déclaré par l'inspection ; les sols pollués et les cavités sont comptés dans le rayon que filtre l'API, sans distance. Seules les installations sous autorisation ou enregistrement en exploitation sont retenues (la déclaration n'est pas recensée). Un ancien site CASIAS n'est pas un sol pollué avéré. Là où l'API ne renvoie aucune exposition aux argiles (outre-mer, et Ajaccio lors de l'essai du 29 octobre), le territoire est dit non couvert. Une installation dont le code postal et le code commune ne sont pas dans le même département est écartée : sa position n'est pas fiable (une fiche de Rouen placée au centre de Paris, constat du 29 octobre 2026), au prix des rares communes dont le code postal relève du département voisin. Ce n'est ni l'état des risques réglementaire ni une étude de sol.",
+        "obligations_solaires": "Rappel de la règle, pas un avis juridique. La surface du parking n'est pas connue de l'outil : l'obligation est donnée par seuil. Un data center n'est pas cité en tant que tel parmi les usages : à qualifier avec le service instructeur. Le texte prévoit des exonérations motivées (contraintes techniques, de sécurité, architecturales ou patrimoniales, coût économiquement inacceptable, parking ombragé par des arbres) et un arrêté peut écarter ou adapter l'obligation pour une installation classée. La part de toiture des bâtiments existants est fixée par décret, non chiffrée ici. La capacité portante de la toiture n'est pas publique : la BDNB (CSTB, Licence Ouverte 2.0) donne au mieux le matériau de toiture, pas la structure.",
+        "zones_repartition_eaux": "Une zone de répartition des eaux dit un déficit structurel reconnu par arrêté, pas le débit ni le niveau de nappe du jour (voir les restrictions d'eau). Une zone souterraine vise un aquifère précis, parfois profond (Albien en Île-de-France) : le prélèvement n'est concerné que s'il puise dans cet aquifère. Hors zone, un prélèvement peut rester soumis à déclaration ou autorisation selon son volume (autres rubriques de R214-1) et aux arrêtés de restriction. La liste des communes classées est arrêtée par chaque préfet de département (R211-72) : le contour du Sandre peut en différer à la marge. Aucune zone n'est publiée en outre-mer dans ce référentiel."
+      },
+      "risques": null,
+      "risques_erreur": null,
+      "ca_eur": null,
+      "va_eur": null,
+      "chargements": {
+        "eurostat_nrg_pc_205": "2026-07-01",
+        "national_tr": "2026-07-01",
+        "national_cons_def": "2026-07-01",
+        "consommation_annuelle_par_iris": "2026-07-01",
+        "enedis_conso_entreprises_adresse": "2026-07-01",
+        "equilibre_regional_mensuel_prod_conso_brute": "2026-07-01",
+        "contraintes_region": "2026-07-01",
+        "postes_electriques_rte": "2026-07-01",
+        "gaspar_risques": "2026-07-01",
+        "gaspar_plans": "2026-07-01",
+        "zonage_sismique": "2026-07-01",
+        "enedis_continuite_alimentation": "2026-07-01",
+        "ventes_locaux": "2026-07-01",
+        "friches": "2026-07-01",
+        "zones_repartition_eaux": "2026-07-01"
+      },
+      "courbe": null,
+      "plans_prevention": [
+        {
+          "code_procedure": "PPRIF",
+          "type_plan": "PPRN",
+          "libelle_plan": "PPRIF d'Ajaccio",
+          "risques": "Feu de forêt",
+          "etat": "prescrit",
+          "date_prescription": "2007-01-11",
+          "date_approbation": null
+        }
+      ],
+      "accise": {
+        "tarif_eur_mwh": 26.35,
+        "date_debut": "2026-08-01",
+        "reduits": {
+          "grande_consommatrice": 5.5,
+          "electro_sensible": 3.0,
+          "electro_intensive": 0.5,
+          "concurrence_internationale": 0.5,
+          "centre_stockage_donnees": 10.0
+        }
+      },
+      "entreprises_commune": null,
+      "entreprises_adresse": null,
+      "acheminement": {
+        "domaine_turpe": "hta",
+        "utilisation": "longue",
+        "date_debut": "2026-08-01",
+        "puissance_kva": 12000.0,
+        "conso_mwh": 70000.0,
+        "gestion_comptage_eur": 832.93,
+        "puissance_eur": 436800.0,
+        "energie_eur": 932421.5753,
+        "total_eur": 1370054.505,
+        "prix_eur_mwh": 19.57220722,
+        "profil": "plat"
+      },
+      "continuite": null,
+      "prix_locaux": null,
+      "surface_m2": null,
+      "activite": "data-center",
+      "urbanisme": null,
+      "urbanisme_consulte": false,
+      "urbanisme_erreur": null,
+      "eau": null,
+      "eau_erreur": null,
+      "voisinage": null,
+      "voisinage_erreur": null,
+      "nb_zones_activite": null,
+      "zones_activite": [],
+      "zones_activite_erreur": null,
+      "poles_proches": [
+        [
+          "aeroport",
+          "Ajaccio-Napoléon Bonaparte",
+          41.9267,
+          8.7369
+        ],
+        [
+          "port",
+          "Ajaccio",
+          41.9267,
+          8.7369
+        ]
+      ],
+      "acces_routier": null,
+      "acces_routier_erreur": null,
+      "batiment": null,
+      "productible": null,
+      "solaire_consulte": false,
+      "solaire_erreur": null,
+      "nb_friches": 0,
+      "friches": [],
+      "zones_repartition": [],
+      "commune_a_des_sites": true,
+      "part_chiffre_affaires": null,
+      "part_valeur_ajoutee": null,
+      "accise_reduite": null,
+      "verdict": {
+        "phrase": "À vérifier avant de s'engager : risques, carbone (non évalué : facture).",
+        "criteres": [
+          {
+            "nom": "Raccordement",
+            "etat": "ok",
+            "valeur": "HTA, Enedis (ou ELD)",
+            "detail": "Raccordement courant au réseau de distribution ; délai et coût fixés par l'étude du gestionnaire."
+          },
+          {
+            "nom": "Risques",
+            "etat": "attention",
+            "valeur": "1 plan de prévention dans la commune",
+            "detail": "PPRIF d'Ajaccio (feu de forêt, prescrit en 2007). Le règlement du plan peut interdire ou conditionner la construction selon la zone : le consulter en mairie avant de s'engager."
+          },
+          {
+            "nom": "Carbone",
+            "etat": "attention",
+            "valeur": "594 gCO₂e/kWh",
+            "detail": "Corse : au-dessus du seuil de 100 gCO₂e/kWh de la taxonomie européenne. Le moins carboné vers 0 h (445 gCO₂e/kWh), le plus vers 19 h (1 336), heure locale ; profil EDF SEI 2025."
+          },
+          {
+            "nom": "Facture",
+            "etat": "inconnu",
+            "valeur": "prix non disponible",
+            "detail": "non publié par Eurostat pour 70 000 MWh/an"
+          },
+          {
+            "nom": "Foncier",
+            "etat": "info",
+            "valeur": "aucun site clé en main",
+            "detail": "Dans ce territoire. 0 friche(s) de 1 ha ou plus à moins de 10 km."
+          }
+        ]
+      }
+    }
+  ]
+}

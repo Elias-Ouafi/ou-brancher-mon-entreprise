@@ -1,0 +1,14 @@
+Place Bellecour 69002 Lyon
+Commune Lyon (69123) · Rhône (69) · Auvergne-Rhône-Alpes (84)
+Données chargées le 01/07/2026.
+
+Prix moyen : 0,0700 €/kWh HTVA, soit environ 21 000 000 € par an pour 300 000 MWh (tranche IG ; Eurostat, S1 2025 – S2 2025)
+Acheminement : environ 3 810 000 € HTVA par an, soit 12,7 €/MWh, déjà compris dans le prix moyen (TURPE 7 HTB 1, longue utilisation, la moins chère ici ; 45 000 kVA souscrits, journée type mesurée par Enedis pour l'industrie)
+Électricité décarbonée : oui (France continentale), 51,9 gCO₂e/kWh en cycle de vie, sous le seuil de 100 gCO₂e/kWh
+Part du chiffre d'affaires : 2,3 % (21 000 000 € sur 900 000 000 €)
+Part de la valeur ajoutée : facture 4,2 % ; électro-intensité 1,6 % (accise au tarif normal de 26,35 €/MWh depuis le 01/08/2026, rapportée à la valeur ajoutée), au-dessus du palier de 0,5 % : taux réduit d'accise possible (activité grande consommatrice, 5,50 €/MWh au lieu de 26,35) si l'activité principale relève de l'industrie, de l'énergie ou de l'eau (sections B à E de la NACE)
+Activité : industrie, profil de charge : journée type mesurée par Enedis (points de plus de 250 kVA). Régime d'accise : activité industrielle (CIBS L312-65 et L312-71) : grande consommatrice (E23) dès 0,5 % d'électro-intensité, électro-sensible (E24) dès 2,25 %, électro-intensive (E25) dès 6,75 %, ou exposée à la concurrence internationale (E30, L312-72, secteurs fixés par arrêté) : palier et taux selon --va.
+Accise : environ 1 650 000 € par an au tarif réduit de 5,50 €/MWh (activité grande consommatrice), au lieu de 7 900 000 € au tarif normal de 26,35 €/MWh, soit 6 260 000 € de moins, si l'activité principale relève de l'industrie, de l'énergie ou de l'eau (sections B à E de la NACE), sur attestation au fournisseur
+Locaux d'activité : 3 250 €/m² à la vente à Lyon (médiane de 6 ventes, quartiles 2 625 à 3 875 ; dernière vente en 07/2025 ; DVF). Pour 2 000 m² : environ 6 500 000 € à l'achat (de 5 250 000 € à 7 750 000 €)
+À savoir : Le prix ne dépend pas de l'adresse mais de la consommation (péréquation, Corse et outre-mer compris). Le carbone est la moyenne annuelle du réseau de ce territoire, pas celle d'un contrat de fourniture.
+Brancher ici ? À vérifier avant de s'engager : raccordement, risques.

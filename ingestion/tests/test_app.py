@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 from ingestion.config import Settings
-from ingestion.geocode import AdresseAmbigueError
+from ingestion.geocode import AdresseAmbigueError, AdresseIntrouvableError
 from ingestion.tests.medallion import DBT_BIN
 from ingestion.tests.test_diagnostic import territoire
 from reporting import app, carte
@@ -87,11 +87,65 @@ def test_analyse_epingle_le_verdict(
     reponse = app.traiter("POST", "/api/analyse", corps, settings_app)
 
     assert reponse.statut == HTTPStatus.OK
-    donnees = _json(reponse)
+    (donnees,) = _json(reponse)["adresses"]
     assert donnees["texte"].startswith("1 rue de test, Lyon")
+    assert donnees["saisie"] == "Lyon"
     assert donnees["commande"].endswith("--conso 15000 --sans-risques --format pdf")
     assert sans_carte[0]["territoire"] == LYON
     assert sans_carte[0]["verdict_adresse"]["phrase"]
+    assert sans_carte[0]["autre"] is None
+
+
+AJACCIO = territoire("2A004", "Ajaccio", latitude=41.92, longitude=8.74)
+
+
+@pytest.mark.skipif(DBT_BIN is None, reason="dbt non installé")
+def test_deux_adresses_epinglees_et_pas_une_de_plus(
+    settings_app: Settings,
+    sans_carte: list[dict],
+    monkeypatch: pytest.MonkeyPatch,
+    no_network: None,
+) -> None:
+    lieux = {"Lyon": LYON, "Ajaccio": AJACCIO}
+    monkeypatch.setattr(app, "geocode", lambda adresse, **_: lieux[adresse])
+    corps = {"adresse": "Lyon", "autres": ["Ajaccio"], "puissance_mw": 2}
+    reponse = app.traiter("POST", "/api/analyse", json.dumps(corps).encode(), settings_app)
+
+    assert reponse.statut == HTTPStatus.OK
+    assert [a["saisie"] for a in _json(reponse)["adresses"]] == ["Lyon", "Ajaccio"]
+    territoire_autre, verdict_autre = sans_carte[0]["autre"]
+    assert territoire_autre == AJACCIO and verdict_autre["phrase"]
+
+    corps["autres"] = ["Ajaccio", "Lyon"]
+    reponse = app.traiter("POST", "/api/analyse", json.dumps(corps).encode(), settings_app)
+    assert reponse.statut == HTTPStatus.BAD_REQUEST
+    assert "2 adresses au plus" in _json(reponse)["erreur"]
+    assert len(sans_carte) == 1
+
+
+# L'adresse en cause est désignée par son rang : la page propose les communes sous le bon champ
+@pytest.mark.skipif(DBT_BIN is None, reason="dbt non installé")
+def test_seconde_adresse_ambigue_ou_introuvable(
+    settings_app: Settings, sans_carte: list[dict], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def geocode(adresse: str, **_: object) -> object:
+        if adresse == "rue de Paris":
+            raise AdresseAmbigueError(adresse, ["Rue de Paris 93380", "Rue de Paris 97400"])
+        if adresse == "nulle part":
+            raise AdresseIntrouvableError("aucun résultat")
+        return LYON
+
+    monkeypatch.setattr(app, "geocode", geocode)
+    corps = {"adresse": "Lyon", "autres": ["rue de Paris"]}
+    reponse = app.traiter("POST", "/api/analyse", json.dumps(corps).encode(), settings_app)
+    assert reponse.statut == HTTPStatus.CONFLICT
+    assert _json(reponse)["rang"] == 1 and len(_json(reponse)["candidats"]) == 2
+
+    corps["autres"] = ["nulle part"]
+    reponse = app.traiter("POST", "/api/analyse", json.dumps(corps).encode(), settings_app)
+    assert reponse.statut == HTTPStatus.BAD_REQUEST
+    assert "« nulle part » est introuvable" in _json(reponse)["erreur"]
+    assert not sans_carte
 
 
 def test_adresse_ambigue_renvoie_les_candidats(
@@ -185,6 +239,18 @@ def test_gabarit_porte_les_marqueurs_de_l_application() -> None:
     gabarit = carte.GABARIT.read_text(encoding="utf-8")
     assert app.MARQUEUR_APP in gabarit
     assert "connect-src 'self'" in gabarit
+    # Fenêtre d'accueil : une adresse, une seconde à la demande, jamais une troisième
+    assert all(f'id="{champ}"' in gabarit for champ in ("accueil", "q", "q2", "ajouter2"))
+    assert 'id="q3"' not in gabarit
+
+
+def test_seconde_adresse_dans_la_ligne_de_la_premiere(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(carte, "reperer", lambda *args: [0, 1, 2])
+    adresse = carte.construire_adresse([], LYON, {"phrase": "a"}, (AJACCIO, {"phrase": "b"}))
+    assert adresse["libelle"] == LYON.adresse and adresse["verdict"] == {"phrase": "a"}
+    assert adresse["autre"]["libelle"] == AJACCIO.adresse
+    assert adresse["autre"]["verdict"] == {"phrase": "b"} and "autre" not in adresse["autre"]
+    assert "autre" not in carte.construire_adresse([], LYON)
 
 
 COURBE = "Horodate;Valeur\n2026-09-01T00:30:00+02:00;12000000\n2026-09-01T01:00:00+02:00;6000000\n"
@@ -202,8 +268,8 @@ def test_courbe_lue_depuis_le_formulaire() -> None:
         app.lire_projet({"adresse": "a", "courbe_csv": "Horodate;Valeur\nhier;beaucoup\n"})
 
 
-@pytest.mark.parametrize("autres", [[], [" "], ["b"] * 6, "b"])
-def test_comparaison_refusee_hors_de_2_a_6_adresses(settings: Settings, autres: object) -> None:
+@pytest.mark.parametrize("autres", [[], [" "], ["b", "c"], "b"])
+def test_comparaison_refusee_hors_de_deux_adresses(settings: Settings, autres: object) -> None:
     corps = json.dumps({"adresse": "a", "autres": autres}).encode()
     reponse = app.traiter("POST", "/api/compare", corps, settings)
     assert reponse.statut == HTTPStatus.BAD_REQUEST

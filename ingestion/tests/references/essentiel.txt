@@ -1,0 +1,11 @@
+Place Bellecour 69002 Lyon
+Commune Lyon (69123) · Rhône (69) · Auvergne-Rhône-Alpes (84)
+Données chargées le 01/07/2026.
+
+Prix moyen : non publié par Eurostat pour 70 000 MWh/an
+Acheminement : environ 1 370 000 € HTVA par an, soit 19,6 €/MWh, déjà compris dans le prix moyen (TURPE 7 HTA, longue utilisation, la moins chère ici ; 12 000 kVA souscrits, puissance constante)
+Électricité décarbonée : oui (France continentale), 51,9 gCO₂e/kWh en cycle de vie, sous le seuil de 100 gCO₂e/kWh
+Activité : data center, profil de charge : puissance constante, faute de courbe publiée. Régime d'accise : centres de stockage de données (E16, CIBS L312-64 et L312-70) : tarif réduit sur la fraction au-delà de 1 GWh par an, sous huit conditions cumulatives attestées au fournisseur, dont l'électro-sensibilité (2,25 % de la valeur ajoutée : voir --va), la valorisation de la chaleur fatale et la limitation de l'eau de refroidissement.
+Locaux d'activité : 3 250 €/m² à la vente à Lyon (médiane de 6 ventes, quartiles 2 625 à 3 875 ; dernière vente en 07/2025 ; DVF)
+À savoir : Le prix ne dépend pas de l'adresse mais de la consommation (péréquation, Corse et outre-mer compris). Le carbone est la moyenne annuelle du réseau de ce territoire, pas celle d'un contrat de fourniture.
+Brancher ici ? À vérifier avant de s'engager : risques (non évalué : facture).
