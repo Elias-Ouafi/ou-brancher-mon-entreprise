@@ -49,7 +49,6 @@ def _distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     )
 
 
-# Tronçon de type autoroutier le plus proche : nom de la route et distance à vol d'oiseau
 def lire_autoroute(
     payload: dict[str, Any], *, latitude: float, longitude: float
 ) -> tuple[str, float] | None:
@@ -132,8 +131,6 @@ def itineraire(
         return None
 
 
-# Autoroute la plus proche (à vol d'oiseau), puis temps en voiture vers les pôles de fret donnés
-# sous forme (type, nom, latitude, longitude)
 def lire_acces(
     *,
     latitude: float,

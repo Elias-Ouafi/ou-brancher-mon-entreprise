@@ -595,7 +595,6 @@ class PrixEntreprise:
 class Accise:
     tarif_eur_mwh: float
     date_debut: date
-    # Tarifs réduits en vigueur par catégorie du seed (`centre_stockage_donnees`…)
     reduits: dict[str, float] = field(default_factory=dict)
 
     # L'accise est indexée chaque 1er février : passé cette date, le barème est peut-être périmé
@@ -708,7 +707,6 @@ class PlanPrevention:
     # PPRN (naturels), PPRT (technologiques) ou PPRM (miniers)
     type_plan: str
     libelle_plan: str
-    # Familles d'aléas couvertes (« Inondation, Mouvement de terrain »)
     risques: str | None
     # `approuvé` (ou appliqué par anticipation) ou `prescrit` (en cours d'élaboration)
     etat: str
@@ -757,7 +755,6 @@ class Diagnostic:
     nb_contraintes_departement: int
     nb_contraintes_frequentes_departement: int | None
     contraintes: list[ContrainteOuvrage]
-    # Zone prioritaire RTE (P1 ou P2) la plus proche de l'adresse
     zone_rte: ZoneRte | None
     # Exemple de zone P3 cité par RTE, seulement s'il est plus proche que `zone_rte`
     zone_rte_p3: ZoneRte | None
@@ -774,9 +771,7 @@ class Diagnostic:
     risques_erreur: str | None = None
     ca_eur: float | None = None
     va_eur: float | None = None
-    # Dernier chargement de chaque source par `refresh` (voir `SOURCES_CHARGEES`)
     chargements: dict[str, date] = field(default_factory=dict)
-    # Courbe de charge Enedis fournie par `--courbe`
     courbe: BilanCourbe | None = None
     # Plans de prévention en vigueur dans la commune ; `None` si l'export GASPAR n'est pas chargé
     plans_prevention: list[PlanPrevention] | None = None
@@ -792,17 +787,14 @@ class Diagnostic:
     # Prix de vente des locaux d'activité (DVF) et surface cherchée avec `--surface`
     prix_locaux: PrixLocaux | None = None
     surface_m2: float | None = None
-    # Clé de `ACTIVITES` donnée par `--activite`
     activite: str | None = None
     # Zone d'urbanisme de l'adresse (Géoportail de l'urbanisme) ; `urbanisme_consulte` distingue
     # « aucun document numérisé » de « non consulté »
     urbanisme: ZoneUrbanisme | None = None
     urbanisme_consulte: bool = False
     urbanisme_erreur: str | None = None
-    # Arrêtés de restriction des usages de l'eau en vigueur à l'adresse (VigiEau)
     eau: SituationEau | None = None
     eau_erreur: str | None = None
-    # Argiles, cavités, Seveso, installations classées et sols pollués autour de l'adresse
     voisinage: Voisinage | None = None
     voisinage_erreur: str | None = None
     # Zones d'activité de la BD TOPO à moins de `RAYON_ZONES_ACTIVITE_KM` (nombre et plus proches)
@@ -814,7 +806,6 @@ class Diagnostic:
     poles_proches: list[tuple[str, str, float, float]] = field(default_factory=list)
     acces_routier: list[Acces] | None = None
     acces_routier_erreur: str | None = None
-    # Bâtiment de l'adresse (BD TOPO) et productible photovoltaïque d'un kWc (PVGIS)
     batiment: Batiment | None = None
     productible: Productible | None = None
     solaire_consulte: bool = False
@@ -2862,7 +2853,6 @@ def _contrainte(c: ContrainteOuvrage) -> str:
     return f"{c.nom_de_l_ouvrage} ({', '.join(d for d in details if d)})"
 
 
-# « ]4h-6h] » -> « épisodes de 4 à 6 h » ; « ]0h-2h] » -> « épisodes de moins de 2 h »
 def _duree(duree: str) -> str:
     bornes = re.fullmatch(r"\](\d+)h-(\d+)h\]", duree.strip())
     if bornes is None:
@@ -2871,7 +2861,6 @@ def _duree(duree: str) -> str:
     return f"épisodes de moins de {fin} h" if debut == "0" else f"épisodes de {debut} à {fin} h"
 
 
-# « 2026-S1 » -> « S1 2026 » ; `precedent` donne le semestre d'avant
 def _semestre(code: str, *, precedent: bool = False) -> str:
     annee, numero = int(code[:4]), int(code[-1])
     if precedent:
@@ -2879,7 +2868,6 @@ def _semestre(code: str, *, precedent: bool = False) -> str:
     return f"S{numero} {annee}"
 
 
-# Trois chiffres significatifs : 67 375 -> 67 400, 5 496 000 -> 5 500 000
 def _euros_arrondis(valeur: float) -> str:
     if valeur <= 0:
         return f"{_nombre(valeur)} €"

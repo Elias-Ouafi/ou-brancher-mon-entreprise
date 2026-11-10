@@ -543,7 +543,6 @@ def main(argv: list[str] | None = None) -> int:
 
                 print(en_json(diagnostic))
             else:
-                # Import paresseux : matplotlib et reportlab ne servent qu'au rapport
                 from reporting.implantation import generer_rapport_implantation
 
                 path = generer_rapport_implantation(

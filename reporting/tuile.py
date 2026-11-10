@@ -176,7 +176,6 @@ class _Isometrie:
             _melange(teinte, "#FFFFFF", 0.1),
         )
 
-    # Volume de révolution : profil [(rayon, hauteur)] de bas en haut, moitié droite ombrée
     def revolution(
         self, x: float, y: float, z: float, profil: list[tuple[float, float]], teinte: str
     ) -> None:
@@ -365,7 +364,6 @@ def _aeroport(d: _Isometrie, x: float, y: float, e: float, _: Piece) -> None:
     d.boite(x + 0.18 * e, y, 0, 0.2 * e, 0.92 * e, 0.012 * e, "#4A4D52")
     for k in range(-3, 4):
         d.boite(x + 0.18 * e, y + k * 0.12 * e, 0.012 * e, 0.012 * e, 0.07 * e, 0.002, "#F4F6F4")
-    # Avion cargo : fuselage, ailes et dérive, posé sur le tarmac
     ax, ay, z = x - 0.02 * e, y + 0.12 * e, 0.09 * e
     d.poly([(ax - 0.28 * e, ay, z), (ax + 0.3 * e, ay, z), (ax + 0.3 * e, ay, z + 0.07 * e),
             (ax - 0.28 * e, ay, z + 0.07 * e)], "#F4F6F4", "#AEB6B1")  # fmt: skip

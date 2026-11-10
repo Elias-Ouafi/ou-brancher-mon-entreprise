@@ -16,7 +16,6 @@ from ingestion.extract_sismique import contient
 logger = logging.getLogger(__name__)
 
 COUCHE = "BDTOPO_V3:zone_d_activite_ou_d_interet"
-# Zones d'activité, industrielles et artisanales de la BD TOPO
 NATURE = "Zone industrielle"
 RAYON_KM = 5
 NB_AFFICHEES = 3
@@ -34,7 +33,6 @@ class ZoneActivite:
     nom: str
     distance_km: float
     surface_ha: float
-    # L'adresse est dans la zone
     contient_adresse: bool
 
 

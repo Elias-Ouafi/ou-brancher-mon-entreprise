@@ -34,11 +34,9 @@ class _Graphiques:
         self.actif = actif
         self.dossier = document.with_name(f"{document.stem}_graphiques")
 
-    # `nom` est une fonction de `reporting.charts`, rendue en `<nom>.png`
     def image(self, nom: str, legende: str) -> list[str]:
         if not self.actif:
             return []
-        # Import paresseux : sans graphiques, matplotlib n'est pas nécessaire
         from reporting import charts
 
         self.dossier.mkdir(parents=True, exist_ok=True)

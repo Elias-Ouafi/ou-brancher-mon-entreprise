@@ -59,7 +59,6 @@ MARQUEUR_SCRIPTS = "<!--__SCRIPTS__-->"
 MARQUEUR_CHARTE = "/*__CHARTE__*/"
 # Gardé dans la page générée : l'adresse se remplace sans reconstruire la carte
 MARQUEUR_ADRESSE = "/*__ADRESSE__*/"
-# Territoire et verdict de la seconde adresse
 Seconde = tuple[Territoire, dict[str, Any] | None]
 _LIGNE_ADRESSE = re.compile(r"^(DATA\.adresse = /\*__ADRESSE__\*/).*$", re.MULTILINE)
 
@@ -137,7 +136,6 @@ def lire_donnees_gold(database: Path) -> dict[str, Any]:
         return gold
 
 
-# Case terrestre d'un point : encart de son département d'outre-mer, sinon métropole
 def reperer(
     grilles: list[Grille], lon: float, lat: float, departement: str | None = None
 ) -> list[int] | None:
@@ -338,7 +336,6 @@ def rendre_html(donnees: dict[str, Any]) -> str:
     return placer_adresse(html, adresse)
 
 
-# Remplace seulement l'épingle : la carte ne se refait pas pour une nouvelle adresse
 def placer_adresse(html: str, adresse: dict[str, Any] | None) -> str:
     html, remplacements = _LIGNE_ADRESSE.subn(lambda m: f"{m.group(1)}{_json(adresse)};", html)
     if remplacements != 1:
@@ -346,7 +343,6 @@ def placer_adresse(html: str, adresse: dict[str, Any] | None) -> str:
     return html
 
 
-# Reprend l'épingle d'une ancienne carte dans une carte refaite
 def reprendre_adresse(ancienne: str, nouvelle: str) -> str:
     ligne = _LIGNE_ADRESSE.search(ancienne)
     if ligne is None:
@@ -354,7 +350,6 @@ def reprendre_adresse(ancienne: str, nouvelle: str) -> str:
     return _LIGNE_ADRESSE.sub(lambda _: ligne.group(0), nouvelle, count=1)
 
 
-# GeoJSON du bronze, téléchargé à la première utilisation ; `None` si injoignable
 def _geojson(jeu: str, url: str, settings: Settings) -> Path | None:
     path = dernier_geojson(jeu, settings)
     if path is None:

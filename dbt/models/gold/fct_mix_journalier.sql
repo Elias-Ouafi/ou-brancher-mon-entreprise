@@ -29,7 +29,6 @@ jours as (
 
         sum(solde_echanges_mw * heures) / 1000 as solde_echanges_gwh,
 
-        -- gCO2/kWh x MWh = kgCO2 ; / 1000 pour des tonnes
         sum(taux_co2_g_kwh * production_totale_mw * heures) / 1000 as emissions_tco2,
         sum(taux_co2_g_kwh * production_totale_mw * heures) / nullif(
             sum(production_totale_mw * heures) filter (where taux_co2_g_kwh is not null), 0

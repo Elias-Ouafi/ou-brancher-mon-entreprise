@@ -123,7 +123,6 @@ class Territoire:
         )
 
 
-# Découpe le champ `context` de la BAN : « 69, Rhône, Auvergne-Rhône-Alpes »
 def _contexte(valeur: str) -> tuple[str, str, str]:
     parts = [p.strip() for p in valeur.split(",") if p.strip()]
     if len(parts) >= 3:
