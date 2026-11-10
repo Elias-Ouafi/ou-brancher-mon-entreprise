@@ -14,5 +14,6 @@ description: Générer la carte 3D pour une adresse et la vérifier dans le navi
    de l'adresse avec sa fiche « Brancher ici ? », la vue « Territoire » (touche 2) en couleurs
    réelles, les boutons de système électrique en bas à droite.
 4. Capture d'écran comme preuve ; signaler tout écart avec les décisions « Carte » de PLAN.md.
-5. Si `reporting/app.py` a changé : `preview_start` avec la configuration `app`, puis une analyse
-   depuis la page, jusqu'au verdict épinglé et au rapport.
+5. Si `reporting/app.py` ou le parcours a changé : `preview_start` avec la configuration `app`,
+   « Nouvelle analyse », une adresse puis deux (côte à côte, onglets, caméra cadrée), jusqu'au
+   rapport PDF.

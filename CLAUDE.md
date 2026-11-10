@@ -19,7 +19,8 @@ en sort pour devenir une ligne de « État » (skill `cloturer-etape`).
 `python .claude/scripts/verifier.py` joue dans l'ordre ce que la CI joue, puis l'essai réel :
 
 1. `ruff check .` et `ruff format --check .`
-2. `pytest` (895 tests sans réseau, couverture mesurée, plancher 91 %, dont un `dbt build` sur base synthétique)
+2. `pytest` (914 tests sans réseau, couverture mesurée, plancher 92,5 %, dont un `dbt build` sur base synthétique ;
+   sorties de référence réécrites par `pytest ingestion/tests/test_references.py --maj-references`)
 3. essai réel : `essentiel` à Chilly-Mazarin, 12 MW et 70 000 MWh (warehouse et réseau requis)
 
 `--rapide` saute pytest, `--sans-essai` saute l'essai réel. Une étape du plan n'est cochée qu'après
@@ -36,7 +37,9 @@ les trois, sur un projet de 1 à 50 MW.
 - Code le plus simple possible ; commentaires sur la logique seulement (règle, piège d'une source,
   raison d'un choix), jamais d'en-tête d'utilité par fonction ou par modèle.
 - Documentation en français, dans README et PLAN seulement. Tout chiffre a sa source et sa limite ;
-  « non disponible » plutôt qu'un chiffre inventé.
+  « non disponible » plutôt qu'un chiffre inventé. Le PDF fait exception : court et visuel, il ne
+  garde que la limite des cinq critères ; texte, Markdown et JSON les portent toutes.
+- Application : deux adresses au plus, saisies dans la fenêtre d'accueil ; au-delà, `compare`.
 - Tests sans réseau : API simulées (`pytest-httpx`), fixture `no_network`, `medallion_db` pour dbt.
 
 ## Git

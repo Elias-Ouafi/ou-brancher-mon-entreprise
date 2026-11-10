@@ -1,0 +1,11 @@
+Place Bellecour 69002 Lyon
+Commune Lyon (69123) · Rhône (69) · Auvergne-Rhône-Alpes (84)
+Données chargées le 01/07/2026.
+
+Prix moyen : 0,2145 €/kWh HTVA, soit environ 3 220 000 € par an pour 15 000 MWh (tranche ID ; Eurostat, S1 2025 – S2 2025)
+Acheminement : environ 273 000 € HTVA par an, soit 18,2 €/MWh, déjà compris dans le prix moyen (TURPE 7 HTA, longue utilisation, la moins chère ici ; 2 000 kVA souscrits, puissance constante)
+Électricité décarbonée : oui (France continentale), 51,9 gCO₂e/kWh en cycle de vie, sous le seuil de 100 gCO₂e/kWh
+Activité : bornes de recharge, profil de charge : puissance constante, faute de courbe publiée. Régime d'accise : aucun usage de l'attestation officielle ne vise la recharge de véhicules (seuls le transport guidé, E15, et le transport collectif routier de personnes, E19, y figurent).
+Locaux d'activité : 3 250 €/m² à la vente à Lyon (médiane de 6 ventes, quartiles 2 625 à 3 875 ; dernière vente en 07/2025 ; DVF)
+À savoir : Le prix ne dépend pas de l'adresse mais de la consommation (péréquation, Corse et outre-mer compris). Le carbone est la moyenne annuelle du réseau de ce territoire, pas celle d'un contrat de fourniture.
+Brancher ici ? À vérifier avant de s'engager : risques.

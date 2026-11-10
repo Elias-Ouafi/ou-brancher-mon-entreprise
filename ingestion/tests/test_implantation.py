@@ -9,6 +9,7 @@ import duckdb
 import pytest
 from fontTools.ttLib import TTFont
 from pytest_httpx import HTTPXMock
+from reportlab.graphics import renderPDF
 
 from ingestion import cli
 from ingestion.config import Settings
@@ -24,7 +25,7 @@ from reporting import charte, implantation, implantation_charts, implantation_pd
 from reporting.carte import resume_adresse
 from reporting.implantation import generer_rapport_implantation, lire_comparaisons, nom_fichier
 from reporting.implantation_pdf import _pdf
-from reporting.tuile import Piece, Tuile, dessin_tuile, legende, lire_tuile
+from reporting.tuile import MAQUETTES, Piece, Tuile, dessin_tuile, legende, lire_tuile, teinte_sol
 
 pytestmark = pytest.mark.skipif(DBT_BIN is None, reason="dbt non installé (uv sync --group dbt)")
 
@@ -305,6 +306,36 @@ def test_tuile_dessinee_avec_ses_elements() -> None:
         "29", 48.0, -4.0, 12.0, 10, 20, pieces=[Piece("Energies Marines", "Ouessant", 25)]
     )
     assert dessin_tuile(marine).contents
+
+
+def test_chaque_maquette_se_dessine() -> None:
+    nue = len(dessin_tuile(Tuile("01", 45.8, 5.3, 12.0, 200, 300, zone_rte="Zone")).contents)
+    for nature in MAQUETTES:
+        seule = replace(CENTRALE, pieces=[Piece(nature, nature, 2400.0)], zone_rte="Zone")
+        assert len(dessin_tuile(seule).contents) != nue, nature
+    toutes = replace(CENTRALE, pieces=[Piece(nature, nature) for nature in MAQUETTES])
+    assert renderPDF.drawToString(dessin_tuile(toutes)).startswith(b"%PDF")
+
+
+# Plaine du nord, sud-ouest, garrigue, forêt d'altitude, haute montagne, Guyane, île au relief
+RELIEFS = [
+    Tuile("59", 50.6, 3.0, 12.0, 30, 60),
+    Tuile("33", 44.8, -0.6, 12.0, 20, 50),
+    Tuile("13", 43.3, 5.4, 12.0, 100, 400),
+    Tuile("73", 45.4, 6.6, 12.0, 1500, 3200),
+    Tuile("74", 45.9, 6.9, 12.0, 2400, 4800),
+    Tuile("973", 4.9, -52.3, 12.0, 20, 80, outre_mer=True),
+    Tuile("974", -21.1, 55.5, 3.0, 600, 2600, outre_mer=True),
+]
+
+
+def test_chaque_relief_a_sa_teinte_et_se_dessine() -> None:
+    assert len({teinte_sol(tuile) for tuile in RELIEFS}) == len(RELIEFS)
+    for tuile in RELIEFS:
+        assert renderPDF.drawToString(dessin_tuile(tuile)).startswith(b"%PDF")
+    # Sommets enneigés au-dessus de 2 300 m, plus d'arbres au-dessus de 1 700 m
+    savoie, mont_blanc = (len(dessin_tuile(t).contents) for t in RELIEFS[3:5])
+    assert savoie != mont_blanc
 
 
 def test_tuile_absente_sans_contours(reglages: Settings) -> None:

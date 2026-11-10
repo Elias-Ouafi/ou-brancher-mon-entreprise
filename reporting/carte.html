@@ -35,7 +35,7 @@ body { background: var(--ink); color: var(--parch); font-family: var(--f-body); 
     radial-gradient(ellipse at 50% 45%, transparent 55%, color-mix(in srgb, var(--ink) 85%, transparent) 100%); }
 .frame { background: linear-gradient(180deg, var(--panel-2), var(--panel)); border: 1px solid var(--gold-dim);
   box-shadow: 0 6px 20px color-mix(in srgb, var(--encre) 14%, transparent); }
-.city, .legend, .projet, .dossier, .tip { border-radius: 14px; }
+.city, .legend, .dossier, .tip { border-radius: 14px; }
 button { font: inherit; }
 .feuillage { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 40'%3E%3Cpath d='M0 34C30 34 44 20 70 22s34-14 50-18' fill='none' stroke='%236E9F4E' stroke-width='1.4' opacity='.55'/%3E%3Cpath d='M38 26c-2-7 3-12 10-12-1 7-4 11-10 12Zm30-3c1-7 7-10 13-9-2 6-6 9-13 9Zm24-11c3-6 9-7 14-5-3 5-8 7-14 5Z' fill='%236E9F4E' opacity='.45'/%3E%3C/svg%3E");
   background-color: var(--panel); background-repeat: no-repeat; background-position: right 8px bottom 2px; background-size: 120px 40px; }
@@ -55,25 +55,40 @@ button { font: inherit; }
 .topbar > * { pointer-events: auto; }
 .brand { font-family: var(--f-display); font-weight: 700; letter-spacing: .04em; color: var(--gold); font-size: 14px; text-transform: uppercase; text-shadow: 0 0 8px var(--papier), 0 0 2px var(--papier); pointer-events: none; }
 .brand { display: inline-flex; align-items: center; gap: 8px; }
-.recherche { display: flex; align-items: center; gap: 8px; flex: 0 1 620px; min-width: 0; }
-.recherche input { flex: 1; min-width: 0; font: inherit; font-size: 14px; color: var(--parch); background: var(--papier); border: 1px solid var(--gold-dim); border-radius: 999px; padding: 6px 14px; }
-.recherche input:focus-visible { outline: none; border-color: var(--feuille); box-shadow: 0 0 0 3px color-mix(in srgb, var(--feuille) 22%, transparent); }
-.projet { position: fixed; z-index: 6; top: calc(var(--haut, 52px) + 8px); left: max(16px, env(safe-area-inset-left, 0px)); width: 360px; max-width: calc(100vw - 32px);
-  padding: 12px 14px 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
-.projet h3, .projet .large { grid-column: 1 / -1; }
-.projet h3 { margin: 0; font-family: var(--f-display); font-size: 17px; }
+/* Fenêtre d'accueil : une adresse, une seconde si on veut comparer, le projet replié */
+.voile { position: fixed; inset: 0; z-index: 8; display: grid; justify-items: center; align-items: start; padding: 16px; overflow-y: auto; background: color-mix(in srgb, var(--encre) 30%, transparent); }
+.accueil { position: relative; box-sizing: border-box; margin: auto 0; width: min(540px, 100%); border-radius: 18px; padding: 22px 24px 20px; display: grid; gap: 12px; }
+.accueil h2 { margin: 0; font-family: var(--f-display); font-size: 25px; line-height: 1.15; text-wrap: balance; padding-right: 28px; }
+.accueil .chapeau { margin: 0; color: var(--parch-dim); font-size: 14px; line-height: 1.45; }
+.accueil .close { position: absolute; right: 12px; top: 10px; background: none; border: 0; color: var(--parch); font-size: 22px; line-height: 1; cursor: pointer; padding: 4px; }
+.champ { display: grid; gap: 5px; font-size: 13px; color: var(--parch-dim); }
+.champ > span { display: flex; align-items: center; gap: 8px; }
+.champ input { font: inherit; font-size: 15px; color: var(--parch); background: var(--papier); border: 1px solid var(--gold-dim); border-radius: 10px; padding: 9px 12px; }
+.champ input:focus-visible { outline: none; border-color: var(--feuille); box-shadow: 0 0 0 3px color-mix(in srgb, var(--feuille) 22%, transparent); }
+.rang { display: inline-grid; place-items: center; flex: none; width: 20px; height: 20px; border-radius: 50%; background: var(--soleil); color: var(--papier); font: 700 12px var(--f-body); }
+.rang.deux { background: var(--feuille); }
+.lien { margin-left: auto; background: none; border: 0; padding: 0; color: var(--parch-dim); font: inherit; font-size: 12px; text-decoration: underline; cursor: pointer; }
+.candidats { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12.5px; }
+.candidats .btn { font-size: 12.5px; padding: 3px 10px; }
+.accueil .seul { justify-self: start; }
+.reglages summary { cursor: pointer; font-size: 13px; color: var(--parch-dim); }
+.reglages summary:hover { color: var(--parch); }
+.reglages[open] summary { margin-bottom: 10px; }
+.message { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 13.5px; line-height: 1.35; color: var(--orange); }
+.message.attente { color: var(--parch); }
+.btn.grand { padding: 10px 18px; font-size: 15px; }
+.projet { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+.projet .large { grid-column: 1 / -1; }
 .projet label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--parch-dim); }
-.projet input, .projet select, .projet textarea { font: inherit; font-size: 14px; color: var(--parch); background: var(--papier); border: 1px solid var(--gold-dim); border-radius: 8px; padding: 5px 8px; }
-.projet input:focus-visible, .projet select:focus-visible, .projet textarea:focus-visible { outline: none; border-color: var(--feuille); }
+.projet input, .projet select { font: inherit; font-size: 14px; color: var(--parch); background: var(--papier); border: 1px solid var(--gold-dim); border-radius: 8px; padding: 5px 8px; }
+.projet input:focus-visible, .projet select:focus-visible { outline: none; border-color: var(--feuille); }
 .projet .case { flex-direction: row; align-items: flex-start; gap: 8px; color: var(--parch); font-size: 13px; line-height: 1.35; }
 .projet .case input { margin-top: 2px; }
-.projet textarea { resize: vertical; }
 .projet input[type=file] { padding: 4px; font-size: 12px; }
 .projet p { margin: 0; font-size: 12px; color: var(--parch-dim); line-height: 1.4; }
 .etat { position: fixed; z-index: 6; top: calc(var(--haut, 52px) + 8px); left: 50%; transform: translateX(-50%); max-width: min(560px, calc(100vw - 32px));
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 14px; font-size: 13.5px; }
 .etat.erreur { border-color: var(--orange); }
-.etat .candidat { font-size: 12.5px; padding: 3px 10px; }
 .actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 14px; background: var(--panel); border-top: 1px solid var(--gold-dim); }
 .dossier { position: fixed; z-index: 7; top: calc(var(--haut, 52px) + 8px); right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   width: min(640px, calc(100vw - 32px)); display: flex; flex-direction: column; overflow: hidden; }
@@ -178,14 +193,30 @@ button.hero:hover, button.mini:hover, button.hero:focus-visible, button.mini:foc
 .jauge i { position: absolute; top: -3px; width: 4px; height: 12px; border-radius: 2px; background: var(--encre); box-shadow: 0 0 0 2px var(--panel); transform: translateX(-50%); }
 .graduations { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--parch-dim); font-variant-numeric: tabular-nums; }
 .mini { display: flex; align-items: flex-start; gap: 8px; padding: 7px 9px; border-radius: 10px; }
-.mini .s { flex: none; width: 18px; height: 18px; margin-top: 1px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: var(--papier); background: var(--parch-dim); }
-.mini .s.ok { background: var(--good); }
-.mini .s.attention { background: var(--warn); }
-.mini .s.info { background: var(--soleil); }
+.mini .s, .cellule .s { flex: none; width: 18px; height: 18px; margin-top: 1px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: var(--papier); background: var(--parch-dim); }
+.mini .s.ok, .cellule .s.ok { background: var(--good); }
+.mini .s.attention, .cellule .s.attention { background: var(--warn); }
+.mini .s.info, .cellule .s.info { background: var(--soleil); }
 .mini .k { display: block; font-size: 11.5px; color: var(--parch-dim); }
 .mini .v { display: block; font-size: 13px; font-weight: 700; line-height: 1.22; font-variant-numeric: tabular-nums; }
 .mini.attention { background: color-mix(in srgb, var(--warn) 10%, var(--panel)); border-color: color-mix(in srgb, var(--warn) 55%, var(--gold-dim)); }
 .detail { padding: 8px 10px; border-radius: 10px; background: var(--panel-2); font-size: 12.5px; line-height: 1.4; }
+/* Deux adresses : onglets pour passer de l'une à l'autre, et tableau côte à côte */
+.onglets { display: flex; gap: 4px; padding: 6px 10px 0; background: var(--panel); border-bottom: 1px solid var(--gold-dim); }
+.onglets button { display: flex; align-items: center; gap: 6px; min-width: 0; font: inherit; font-size: 12.5px; color: var(--parch-dim); background: none; border: 1px solid transparent; border-bottom: 0; border-radius: 10px 10px 0 0; padding: 6px 10px; margin-bottom: -1px; cursor: pointer; }
+.onglets button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.onglets button:hover, .onglets button:focus-visible { color: var(--parch); outline: none; }
+.onglets button[aria-selected="true"] { background: var(--panel-2); border-color: var(--gold-dim); color: var(--parch); font-weight: 600; }
+.city.cote { width: 620px; }
+table.cote { width: 100%; border-collapse: collapse; background: var(--panel); font-size: 13px; }
+table.cote th, table.cote td { text-align: left; vertical-align: top; padding: 7px 10px; border-bottom: 1px solid var(--gold-dim); }
+table.cote thead th { font-size: 12.5px; line-height: 1.3; width: 40%; }
+table.cote thead th:first-child { width: 20%; }
+table.cote thead .rang { margin-right: 4px; }
+table.cote tbody th { font-weight: 500; color: var(--parch-dim); }
+.cellule { display: flex; align-items: flex-start; gap: 7px; font-weight: 600; line-height: 1.25; font-variant-numeric: tabular-nums; }
+.etats { padding: 6px 14px; font-size: 11.5px; color: var(--parch-dim); background: var(--panel); border-top: 1px solid var(--gold-dim); }
+.city .lieu { font-size: 12px; color: var(--parch-dim); margin-top: 2px; }
 #tuile3d { position: fixed; z-index: 5; pointer-events: none; display: block; will-change: transform; filter: drop-shadow(0 8px 14px color-mix(in srgb, var(--encre) 28%, transparent)); }
 .legend .teintes i.monde { border-radius: 2px; }
 .rlabel.pays { letter-spacing: .1em; font-size: 12px; }
@@ -200,7 +231,8 @@ button.hero:hover, button.mini:hover, button.hero:focus-visible, button.mini:foc
 .banner.p2 .pr { background: var(--parch-dim); }
 .banner .by { color: var(--parch-dim); font-variant-numeric: tabular-nums; }
 .banner.cible { border-color: var(--vert); box-shadow: 0 0 0 3px color-mix(in srgb, var(--vert) 22%, transparent); }
-.banner.adresse { border-color: var(--soleil); box-shadow: 0 0 0 3px color-mix(in srgb, var(--soleil) 25%, transparent); padding: 3px 10px; font-weight: 700; max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+.banner.adresse { border-color: var(--soleil); box-shadow: 0 0 0 3px color-mix(in srgb, var(--soleil) 25%, transparent); padding: 3px 10px; font-weight: 700; max-width: 260px; }
+.banner.adresse span { overflow: hidden; text-overflow: ellipsis; }
 .tip { position: fixed; z-index: 6; pointer-events: none; padding: 6px 10px; border-radius: 3px; font-size: 13px; max-width: 260px; }
 .tip b { font-family: var(--f-display); font-size: 13.5px; letter-spacing: .03em; }
 .tip div { color: var(--parch-dim); }
@@ -217,7 +249,7 @@ button.hero:hover, button.mini:hover, button.hero:focus-visible, button.mini:foc
 @media (max-width: 760px) {
   .city { bottom: calc(132px + env(safe-area-inset-bottom, 0px)); width: auto; right: max(16px, env(safe-area-inset-right, 0px)); max-height: 55vh; overflow-y: auto; }
   .city .y { padding: 5px 12px; }
-  .city.avec-tuile { width: auto; }
+  .city.avec-tuile, .city.cote { width: auto; }
   .tuile-corps { grid-template-columns: 1fr; }
   .tuile-gauche { border-right: 0; }
   .tuile-place { height: 136px; }
@@ -239,15 +271,20 @@ button.hero:hover, button.mini:hover, button.hero:focus-visible, button.mini:foc
 
 <div class="topbar">
   <span class="brand"><svg class="soleil" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="#D9971E"/><path d="M12 1.8v3M12 19.2v3M1.8 12h3M19.2 12h3M4.8 4.8l2.1 2.1M17.1 17.1l2.1 2.1M4.8 19.2l2.1-2.1M17.1 6.9l2.1-2.1" stroke="#D9971E" stroke-width="1.8" stroke-linecap="round"/><path d="M12 16.5c0-3 1.6-4.6 4.2-4.8-.2 2.9-1.8 4.6-4.2 4.8Z" fill="#6E9F4E"/></svg>Où brancher mon entreprise</span>
-  <button class="btn" type="button" id="autreAdresse" hidden>Autre adresse</button>
-  <form class="recherche" id="recherche" hidden>
-    <input id="q" name="adresse" aria-label="Adresse du site" type="search" autocomplete="street-address" placeholder="Adresse du site, par exemple 3 allée des Peupliers 91380 Chilly-Mazarin" required>
-    <button class="btn" type="button" id="ouvrirProjet" aria-expanded="false" aria-controls="projet">Projet</button>
-    <button class="btn primaire" type="submit" id="analyser">Analyser</button>
-  </form>
+  <button class="btn" type="button" id="nouvelle" hidden>Nouvelle analyse</button>
 </div>
-<form class="projet frame feuillage" id="projet" hidden>
-  <h3>Votre projet</h3>
+<div class="voile" id="accueil" hidden>
+<form class="accueil frame feuillage" id="saisie" role="dialog" aria-modal="true" aria-labelledby="accueilTitre">
+  <button class="close" type="button" id="fermerAccueil" aria-label="Fermer" hidden>×</button>
+  <h2 id="accueilTitre">Où voulez-vous brancher votre entreprise ?</h2>
+  <p class="chapeau">Saisissez l'adresse du site envisagé. La carte s'ouvre dessus et dit, en cinq critères, si le projet peut s'y raccorder.</p>
+  <label class="champ"><span><b class="rang">1</b>Adresse du site</span><input id="q" name="adresse" type="search" autocomplete="street-address" placeholder="3 allée des Peupliers 91380 Chilly-Mazarin" required></label>
+  <div class="candidats" id="candidats0" hidden></div>
+  <label class="champ" id="champ2" hidden><span><b class="rang deux">2</b>Seconde adresse, pour comparer<button class="lien" type="button" id="retirer2">Retirer</button></span><input id="q2" name="adresse2" type="search" placeholder="Place Bellecour 69002 Lyon"></label>
+  <div class="candidats" id="candidats1" hidden></div>
+  <button class="btn seul" type="button" id="ajouter2">+ Ajouter une seconde adresse</button>
+  <details class="reglages" id="reglages"><summary>Préciser le projet (facultatif) : puissance, consommation, activité</summary>
+  <div class="projet">
   <label>Puissance (MW)<input id="puissance_mw" inputmode="decimal" placeholder="12"></label>
   <label>Consommation (MWh/an)<input id="conso_mwh" inputmode="decimal" placeholder="70 000"></label>
   <label class="large">Activité<select id="activite"><option value="">Non précisée</option><option value="data-center">Data center</option><option value="irve">Bornes de recharge</option><option value="industrie">Industrie</option><option value="logistique">Logistique</option></select></label>
@@ -256,14 +293,16 @@ button.hero:hover, button.mini:hover, button.hero:focus-visible, button.mini:foc
   <label class="large">Valeur ajoutée (€)<input id="va_eur" inputmode="decimal" placeholder="électro-intensité, accise réduite"></label>
   <label class="large">Courbe de charge Enedis (CSV, facultatif)<input type="file" id="courbe" accept=".csv,text/csv"></label>
   <p class="large" id="courbeGardee" hidden></p>
-  <label class="case large"><input type="checkbox" id="complet">Diagnostic complet : interroge aussi Géorisques, l'urbanisme, VigiEau, PVGIS et la desserte (20 s environ, réseau requis)</label>
-  <p class="large">Laissez vide ce que vous ne connaissez pas : l'outil dit « non disponible » plutôt que de deviner. Le chiffre d'affaires et la valeur ajoutée demandent la consommation ou la courbe.</p>
-  <label class="large">Comparer avec d'autres adresses (une par ligne, cinq au plus)<textarea id="autres" rows="3" placeholder="Place Bellecour 69002 Lyon"></textarea></label>
-  <button class="btn large" type="button" id="comparer">Comparer, sans classement</button>
+  <label class="case large"><input type="checkbox" id="complet">Diagnostic complet : interroge aussi Géorisques, l'urbanisme, VigiEau, PVGIS et la desserte (20 s environ par adresse, réseau requis)</label>
+  <p class="large">Laissez vide ce que vous ne connaissez pas : l'outil dit « non disponible » plutôt que de deviner. Sans puissance, il ne peut pas dire qui raccorde. Le chiffre d'affaires et la valeur ajoutée demandent la consommation ou la courbe.</p>
+  </div></details>
+  <p class="message" id="message" role="status" hidden></p>
+  <button class="btn primaire grand" type="submit" id="analyser">Analyser</button>
 </form>
+</div>
 <div class="etat frame" id="etat" role="status" hidden></div>
 <section class="dossier frame" id="dossier" aria-label="Diagnostic" hidden>
-  <header class="feuillage"><h2 id="dossierTitre">Diagnostic</h2><button class="btn" type="button" id="relancerComplet" hidden>Diagnostic complet</button><button class="btn" type="button" id="dossierPdf" data-format="pdf">PDF</button><span id="exports" hidden><button class="btn" type="button" data-export="csv">CSV</button> <button class="btn" type="button" data-export="md">Markdown</button> <button class="btn" type="button" data-export="json">JSON</button></span><button class="btn" type="button" id="fermerDossier" aria-label="Fermer le diagnostic">×</button></header>
+  <header class="feuillage"><h2 id="dossierTitre">Diagnostic</h2><button class="btn" type="button" id="relancerComplet" hidden>Diagnostic complet</button><button class="btn primaire" type="button" id="dossierPdf" data-format="pdf">Rapport PDF</button><span id="exports" hidden><button class="btn" type="button" data-export="csv">CSV</button> <button class="btn" type="button" data-export="md">Markdown</button> <button class="btn" type="button" data-export="json">JSON</button></span><button class="btn" type="button" id="fermerDossier" aria-label="Fermer le diagnostic">×</button></header>
   <pre id="dossierTexte"></pre>
   <div id="dossierTable" hidden></div>
   <footer id="dossierPied"></footer>
@@ -436,6 +475,9 @@ const ringOf = (list, w, c) => { const set = new Set(list.map(t => t.i)), out = 
 
 // Repères : sites clés en main, zones RTE, adresse et liens vers ce qui compte pour elle
 const caseDe = ref => ref ? tileAt(...ref) : null;
+// Une ou deux adresses (la seconde voyage sous `autre`) ; la première porte le bâtiment et les liens
+const ADRESSES = DATA.adresse ? [DATA.adresse, DATA.adresse.autre].filter(Boolean) : [];
+let courante = 0;
 const VERDICT = DATA.adresse && DATA.adresse.verdict;
 const followers = [];
 const markers = { sites: new THREE.Group(), zones: new THREE.Group(), liens: new THREE.Group() }; scene.add(markers.sites, markers.zones, markers.liens);
@@ -444,7 +486,9 @@ const ringMat = new THREE.MeshBasicMaterial({ color: col(CHARTE("encre")), trans
 const zoneObjs = DATA.zones.map(z => ({ z, t: caseDe(z.case) })).filter(o => o.t && o.t.land);
 for (const { t } of zoneObjs) { const m = new THREE.Mesh(new THREE.RingGeometry(R * .9, R * 1.12, 6), ringMat.clone()); m.rotation.x = -Math.PI / 2; m.rotation.z = Math.PI / 6;
   m.position.set(t.x, 0, t.z); m.userData = { i: t.i, dy: .08, ring: true }; markers.zones.add(m); followers.push(m); }
-const adresseTile = DATA.adresse ? caseDe(DATA.adresse.case) : null;
+for (const a of ADRESSES) a.tile = caseDe(a.case);
+const adresseTile = DATA.adresse ? DATA.adresse.tile : null;
+const autreTile = ADRESSES[1] && ADRESSES[1].tile !== adresseTile ? ADRESSES[1].tile : null;
 // Arc lumineux de l'adresse vers la zone RTE utile et vers le site clé en main le plus proche
 const lienVers = (t, couleur, dh = 1.3) => { if (!adresseTile || !t) return; const a = batimentAdresse ? batimentAdresse.position : adresseTile, ha = adresseTile.baseH + 1.1 * PS + hautBatiment, hb = t.baseH + dh * PS;
   const haut = Math.max(ha, hb) + 1.5 * PS + Math.hypot(t.x - a.x, t.z - a.z) * .25;
@@ -509,8 +553,8 @@ const autre = (g, f) => g.add(piece(cone, mat(FILIERES[f] || "#7fe3ff"), 0, 0, 0
 const D_MAX = 2 / 3 * HW * .97;
 const MAX_MW = {}, nCase = {}; for (const p of DATA.production) { const t = caseDe(p.case); if (!t) continue; MAX_MW[t.g] = Math.max(MAX_MW[t.g] || 0, p.mw); if (t.land) nCase[t.i] = (nCase[t.i] || 0) + 1; }
 for (const s of [...DATA.sites, ...(DATA.fret || [])]) { const t = caseDe(s.case); if (t && t.land) nCase[t.i] = (nCase[t.i] || 0) + 1; }
-// Le bâtiment de l'adresse prend sa place sur la case, à côté de ce qu'elle porte déjà
-if (adresseTile && adresseTile.land) nCase[adresseTile.i] = (nCase[adresseTile.i] || 0) + 1;
+// Le bâtiment de chaque adresse prend sa place sur sa case, à côté de ce qu'elle porte déjà
+for (const t of [adresseTile, autreTile]) if (t && t.land) nCase[t.i] = (nCase[t.i] || 0) + 1;
 // Pôles, pôles de fret et sites clés en main d'une case se partagent les deux tiers, côte à côte sur un cercle
 const parCase = {}, prodObjs = [];
 const place = t => { const n = nCase[t.i], k = parCase[t.i] = (parCase[t.i] || 0) + 1, sin = Math.sin(Math.PI / n);
@@ -582,8 +626,8 @@ function nuagePollen(n, rayon, haut, taille) { const pos = [], cl = [], TEINTES_
 
 // L'entreprise du visiteur : la seule maquette à liseré doré, immeuble vitré et aile basse, qu'on repère sans qu'elle écrase la carte
 let batimentAdresse = null, hautBatiment = 0;
-if (adresseTile && adresseTile.land) { const t = adresseTile, or = col(CHARTE("soleil")), { d, x, z } = place(t), g = batimentAdresse = new THREE.Group(), e = Math.max(d * 1.2, R * .92);
-  const beton = mat("#f3efe4"), verre = mat("#3f7396", { metalness: .45, roughness: .22 }), dore = mat(CHARTE("soleil"), { emissive: or, emissiveIntensity: .5 }), jardin = mat(CHARTE("feuille")), dalle = mat("#ded9ca");
+function poserEntreprise(t, teinte) { const or = col(teinte), { d, x, z } = place(t), g = new THREE.Group(), e = Math.max(d * 1.2, R * .92);
+  const beton = mat("#f3efe4"), verre = mat("#3f7396", { metalness: .45, roughness: .22 }), dore = mat(teinte, { emissive: or, emissiveIntensity: .5 }), jardin = mat(CHARTE("feuille")), dalle = mat("#ded9ca");
   g.add(piece(socleGeo, dore, 0, 0, 0), piece(boite, dalle, 0, .035, 0, .84, .015, .66));
   const etages = 8, pas = .118, tx = -.16, tz = -.1;
   for (let k = 0; k < etages; k++) g.add(piece(boite, verre, tx, .05 + k * pas, tz, .34, pas - .02, .3), piece(boite, beton, tx, .05 + (k + 1) * pas - .02, tz, .37, .02, .33));
@@ -594,12 +638,16 @@ if (adresseTile && adresseTile.land) { const t = adresseTile, or = col(CHARTE("s
   for (const px of [.06, .17, .28]) { const p = piece(boite, SITE.pv, px, .24, .08, .09, .012, .22); p.rotation.z = -.3; g.add(p); }
   g.add(piece(boite, dore, .17, .15, .28, .18, .014, .08));
   for (const m of g.children) m.castShadow = m !== g.children[0];
-  g.scale.set(e, e, e); g.position.set(x, 0, z); g.userData = { i: t.i }; scene.add(g); followers.push(g); hautBatiment = sommet * e;
+  g.scale.set(e, e, e); g.position.set(x, 0, z); g.userData = { i: t.i }; scene.add(g); followers.push(g);
   // Anneau doré qui pulse sur la case et liseré autour d'elle : la lecture se fait de loin
   const onde = new THREE.Mesh(new THREE.RingGeometry(R * .9, R * 1.12, 6), new THREE.MeshBasicMaterial({ color: or, transparent: true, opacity: .8, side: THREE.DoubleSide, depthWrite: false }));
   onde.rotation.x = -Math.PI / 2; onde.rotation.z = Math.PI / 6; onde.position.set(t.x, 0, t.z); onde.userData = { i: t.i, dy: .09, ring: true }; scene.add(onde); followers.push(onde);
-  adresseBand.set(ringOf([t], .2 * PS, or));
-  const pollen = nuagePollen(70, R * 1.5, R * 2.1, .17); pollen.position.set(t.x, 0, t.z); pollen.userData = { i: t.i, pollen: true }; scene.add(pollen); followers.push(pollen); }
+  const pollen = nuagePollen(70, R * 1.5, R * 2.1, .17); pollen.position.set(t.x, 0, t.z); pollen.userData = { i: t.i, pollen: true }; scene.add(pollen); followers.push(pollen);
+  return { g, haut: sommet * e, lisere: ringOf([t], .2 * PS, or) }; }
+// La seconde adresse a le même bâtiment, au liseré vert : on distingue les deux sans légende
+{ const poses = [[adresseTile, "soleil"], [autreTile, "feuille"]].filter(([t]) => t && t.land).map(([t, n]) => [t, poserEntreprise(t, CHARTE(n))]);
+  for (const [t, b] of poses) { ADRESSES.find(a => a.tile === t).batiment = b.g; if (t === adresseTile) { batimentAdresse = b.g; hautBatiment = b.haut; } }
+  adresseBand.set(poses.flatMap(([, b]) => b.lisere)); }
 if (zoneCible) lienVers(zoneCible.t, CHARTE("encre"));
 if (siteCible) lienVers(caseDe(siteCible.case), CHARTE("soleil"), .5);
 
@@ -631,7 +679,8 @@ for (const o of zoneObjs) { const { z, t } = o; addLabel(`<span class="pr">${esc
 const parCarte = {}; for (const o of prodObjs) (parCarte[o.t.g] ||= []).push(o);
 for (const os of Object.values(parCarte)) for (const { p, t } of os.slice(0, 6))
   addLabel(`<span>${esc(p.n)}</span><span class="by">${fmt(p.mw)} MW</span>`, "banner prod", { g: t.g, i: t.i, x: t.x, z: t.z, y: 2.4 * PS }, ["territoire"]);
-if (adresseTile) addLabel(esc(DATA.adresse.libelle), "banner adresse", { g: adresseTile.g, i: adresseTile.i, x: adresseTile.x, z: adresseTile.z, y: 3.6 * PS }, ["raccordement", "territoire"]);
+ADRESSES.forEach((a, k) => { const t = a.tile; if (!t) return;
+  addLabel((ADRESSES.length > 1 ? `<b class="rang${k ? " deux" : ""}">${k + 1}</b>` : "") + `<span>${esc(a.libelle)}</span>`, "banner adresse", { g: t.g, i: t.i, x: t.x, z: t.z, y: (k && !autreTile ? 5 : 3.6) * PS }, ["raccordement", "territoire"]); });
 
 // À l'échelle du monde, seuls les territoires étudiés se nomment
 const etiquettesMonde = GR.map((g, gi) => { const ts = land.filter(t => t.g === gi); if (!ts.length) return null; const el = document.createElement("div");
@@ -728,7 +777,7 @@ const PILL = { ok: ["good", "favorable"], attention: ["warn", "à vérifier"], i
 const cityEl = document.getElementById("city");
 const ficheVide = () => { selBand.set([]); cityEl.style.removeProperty("--rc"); cityEl.classList.remove("avec-tuile"); cacherTuile();
   const ts = land.filter(t => t.g === carte), deps = new Set(ts.map(t => t.dep)).size;
-  cityEl.innerHTML = `<header><h2>${esc(nomCarte(carte))}</h2><div class="sub">${ts.length} cases · ${deps} département${deps > 1 ? "s" : ""}</div></header><div class="vide">${APP ? "Saisissez l'adresse du site en haut, réglez le projet si besoin, puis Analyser. " : "Pour choisir une adresse depuis la carte : python -m ingestion.cli app. "}Cliquez sur une case pour afficher les indicateurs de son département. Changez de carte ou de lentille en bas à droite (touches 1 et 2 pour les lentilles).</div>`; };
+  cityEl.classList.remove("cote"); cityEl.innerHTML = `<header><h2>${esc(nomCarte(carte))}</h2><div class="sub">${ts.length} cases · ${deps} département${deps > 1 ? "s" : ""}</div></header><div class="vide">${APP ? "« Nouvelle analyse », en haut, ouvre la saisie d'une ou deux adresses. " : "Pour choisir une adresse depuis la carte : python -m ingestion.cli app. "}Cliquez sur une case pour afficher les indicateurs de son département. Changez de carte ou de lentille en bas à droite (touches 1 et 2 pour les lentilles).</div>`; };
 // Ce que porte la case, en noms courts : la maquette se lit, le nom la confirme
 const contenuCase = t => { const l = [
   ...prodObjs.filter(o => o.t === t).map(o => `<b>${esc(nomFiliere(o.p.f))}</b> · ${esc(o.p.n)}, ${fmt(o.p.mw)} MW`),
@@ -737,32 +786,43 @@ const contenuCase = t => { const l = [
   ...zoneObjs.filter(o => o.t === t).map(o => `<b>Zone RTE ${esc(o.z.pr)}</b> · ${esc(o.z.n)}`) ];
   const relief = t.altMax >= 1000 ? `jusqu'à ${fmt(t.altMax)} m` : `${fmt(t.alt)} m d'altitude`;
   return `<div class="tuile-contenu">${l.map(x => `<div>${x}</div>`).join("")}<div>${relief} · case ≈ ${fmt(GR[t.g].rayonKm * 2, GR[t.g].rayonKm < 5 ? 1 : 0)} km</div></div>`; };
-function showVerdict(enAttente = false) { if (!VERDICT) return ficheVide(); selBand.set([]); cityEl.style.removeProperty("--rc"); cityEl.classList.add("avec-tuile"); if (enAttente) cacherTuile();
-  const criteres = Object.fromEntries(VERDICT.criteres.map(c => [c.nom, c])), general = VERDICT.criteres.some(c => c.etat === "attention") ? "attention" : VERDICT.criteres.some(c => c.etat === "inconnu") ? "inconnu" : "ok";
+const ETATS = `<div class="etats">✓ favorable · ! à vérifier avant de s'engager · ? non évalué · i pour information. Un clic sur une carte chiffrée l'explique.</div>`;
+const onglets = choisi => ADRESSES.length < 2 ? "" : `<div class="onglets" role="tablist">${ADRESSES.map((a, k) => `<button type="button" role="tab" aria-selected="${choisi === k}" data-adresse="${k}"><b class="rang${k ? " deux" : ""}">${k + 1}</b><span>${esc(a.libelle)}</span></button>`).join("")}<button type="button" role="tab" aria-selected="${choisi === "cote"}" data-adresse="cote"><span>Côte à côte</span></button></div>`;
+function showVerdict(enAttente = false, k = courante) { const A = ADRESSES[k], V = A && A.verdict; if (!V) return ficheVide(); courante = k; selBand.set([]); cityEl.style.removeProperty("--rc"); cityEl.classList.remove("cote"); cityEl.classList.add("avec-tuile"); if (enAttente) cacherTuile();
+  const criteres = Object.fromEntries(V.criteres.map(c => [c.nom, c])), general = V.criteres.some(c => c.etat === "attention") ? "attention" : V.criteres.some(c => c.etat === "inconnu") ? "inconnu" : "ok";
   const plein = c => c && `${c.valeur}. ${c.detail}`;
-  const lignes = (VERDICT.resume || VERDICT.criteres).filter(l => !["Électricité", "Facture", "Carbone"].includes(l.nom))
+  const lignes = (V.resume || V.criteres).filter(l => !["Électricité", "Facture", "Carbone"].includes(l.nom))
     // « dans la commune » reste dans le détail : la carte garde le mot qui décide
     .map(l => mini(l.nom, esc(l.valeur.replace(" dans la commune", "")), l.etat, criteres[l.nom] && criteres[l.nom].detail)).join("");
-  cityEl.innerHTML = `<header class="tete ${general}"><span class="sceau">${SYMBOLE[general]}</span><div><h2>Brancher ici ?</h2><div class="reponse">${esc(VERDICT.phrase)}</div></div></header>
-  <div class="tuile-corps"><div class="tuile-gauche"><div class="tuile-place" id="tuilePlace"></div>${adresseTile ? contenuCase(adresseTile) : ""}</div>
-  <div class="tuile-info${enAttente ? " attente" : ""}" id="tuileInfo"><div class="heros">${heroCarbone(VERDICT.carbone && VERDICT.carbone.g, VERDICT.carbone && VERDICT.carbone.seuil, plein(criteres.Carbone))}${heroPrix(VERDICT.prix && VERDICT.prix.eur_kwh, plein(criteres.Facture), criteres.Facture && criteres.Facture.valeur.includes("par an") ? criteres.Facture.valeur : null)}</div>
-  <div class="minis">${lignes}</div><div class="detail" hidden></div></div></div>${actions()}${sources(esc(LIMITE), noteRapport(), esc(FRAICHEUR))}`;
-  if (adresseTile && !enAttente) montrerTuile(adresseTile); }
-// Après le verdict : lire le diagnostic, puis l'emporter en PDF, Markdown ou JSON
-const actions = () => APP ? `<div class="actions"><button class="btn primaire" type="button" data-action="lire">Lire le diagnostic</button><button class="btn" type="button" data-format="pdf">PDF</button><button class="btn" type="button" data-format="md">Markdown</button><button class="btn" type="button" data-format="json">JSON</button></div>` : "";
-const noteRapport = () => APP ? `Le rapport reprend le projet saisi${projetCourant().complet ? ", diagnostic complet" : " ; cochez « Diagnostic complet » dans Projet pour les risques à l'adresse, l'urbanisme, l'eau et le solaire"}.`
-  : `Rapport complet : python -m ingestion.cli diagnose --adresse "${esc(DATA.adresse.libelle)}", ou l'application (python -m ingestion.cli app).`;
-cityEl.addEventListener("click", e => { const b = e.target.closest("[data-detail]"); if (!b) return; const zone = cityEl.querySelector(".detail"), ouvert = b.getAttribute("aria-expanded") === "true";
+  cityEl.innerHTML = `<header class="tete ${general}"><span class="sceau">${SYMBOLE[general]}</span><div><h2>Brancher ici ?</h2><div class="reponse">${esc(V.phrase)}</div><div class="lieu">${esc(A.libelle)}</div></div></header>${onglets(k)}
+  <div class="tuile-corps"><div class="tuile-gauche"><div class="tuile-place" id="tuilePlace"></div>${A.tile ? contenuCase(A.tile) : ""}</div>
+  <div class="tuile-info${enAttente ? " attente" : ""}" id="tuileInfo"><div class="heros">${heroCarbone(V.carbone && V.carbone.g, V.carbone && V.carbone.seuil, plein(criteres.Carbone))}${heroPrix(V.prix && V.prix.eur_kwh, plein(criteres.Facture), criteres.Facture && criteres.Facture.valeur.includes("par an") ? criteres.Facture.valeur : null)}</div>
+  <div class="minis">${lignes}</div><div class="detail" hidden></div></div></div>${ETATS}${actions(k)}${sources(esc(LIMITE), noteRapport(A), esc(FRAICHEUR))}`;
+  if (A.tile && !enAttente) montrerTuile(A.tile); }
+// Deux adresses : les mêmes lignes en regard, sans classement
+function showCote() { selBand.set([]); cacherTuile(); cityEl.style.removeProperty("--rc"); cityEl.classList.remove("avec-tuile"); cityEl.classList.add("cote");
+  const noms = [...new Set(ADRESSES.flatMap(a => a.verdict.resume.map(l => l.nom)))];
+  const cellule = (a, nom) => { const l = a.verdict.resume.find(x => x.nom === nom); return l ? `<span class="cellule"><span class="s ${esc(l.etat)}" aria-label="${esc((PILL[l.etat] || PILL.info)[1])}">${SYMBOLE[l.etat] || "i"}</span><span>${esc(l.valeur.replace(" dans la commune", ""))}</span></span>` : "—"; };
+  cityEl.innerHTML = `<header><h2>Vos deux adresses</h2><div class="sub">Côte à côte, sans classement : à vous de peser les critères.</div></header>${onglets("cote")}
+  <table class="cote"><thead><tr><th></th>${ADRESSES.map((a, k) => `<th><b class="rang${k ? " deux" : ""}">${k + 1}</b>${esc(a.libelle)}</th>`).join("")}</tr></thead><tbody>
+  <tr><th>Brancher ici ?</th>${ADRESSES.map(a => `<td>${esc(a.verdict.phrase)}</td>`).join("")}</tr>
+  ${noms.map(n => `<tr><th>${esc(n)}</th>${ADRESSES.map(a => `<td>${cellule(a, n)}</td>`).join("")}</tr>`).join("")}</tbody></table>${ETATS.replace(" Un clic sur une carte chiffrée l'explique.", " Un onglet ouvre le détail d'une adresse.")}
+  ${APP ? `<div class="actions">${ADRESSES.map((_, k) => `<button class="btn primaire" type="button" data-format="pdf" data-k="${k}">Rapport PDF · adresse ${k + 1}</button>`).join("")}<button class="btn" type="button" data-action="comparer">Tableau détaillé</button></div>` : ""}${sources(esc(LIMITE), esc(FRAICHEUR))}`; }
+// Après le verdict : le rapport PDF en un clic, puis le détail et les autres formats
+const actions = k => APP ? `<div class="actions"><button class="btn primaire" type="button" data-format="pdf" data-k="${k}">Télécharger le rapport PDF</button><button class="btn" type="button" data-action="lire" data-k="${k}">Lire le détail</button><button class="btn" type="button" data-format="md" data-k="${k}">Markdown</button><button class="btn" type="button" data-format="json" data-k="${k}">JSON</button></div>` : "";
+const noteRapport = A => APP ? `Le rapport reprend le projet saisi${((derniere() || {}).projet || {}).complet ? ", diagnostic complet" : " ; « Diagnostic complet », dans Nouvelle analyse, ajoute les risques à l'adresse, l'urbanisme, l'eau et le solaire"}.`
+  : `Rapport complet : python -m ingestion.cli diagnose --adresse "${esc(A.libelle)}", ou l'application (python -m ingestion.cli app).`;
+cityEl.addEventListener("click", e => { const o = e.target.closest("[data-adresse]"); if (o) return choisir(o.dataset.adresse); const b = e.target.closest("[data-detail]"); if (!b) return; const zone = cityEl.querySelector(".detail"), ouvert = b.getAttribute("aria-expanded") === "true";
   cityEl.querySelectorAll("[data-detail]").forEach(x => x.setAttribute("aria-expanded", "false")); zone.hidden = ouvert; if (!ouvert) { zone.textContent = b.dataset.detail; b.setAttribute("aria-expanded", "true"); } });
 function showDep(code, tuile) { const d = DEP[code]; if (!d) return;
-  const ts = depTiles[code] || []; cityEl.classList.toggle("avec-tuile", !!tuile); cacherTuile();
+  const ts = depTiles[code] || []; cityEl.classList.remove("cote"); cityEl.classList.toggle("avec-tuile", !!tuile); cacherTuile();
   selBand.set(ringOf(ts, .26 * PS, col(CHARTE("encre"))));
   const equilibre = d.tc == null ? "inconnu" : d.tc >= 1 ? "ok" : "attention";
   cityEl.style.setProperty("--rc", REGION_COLORS[d.r] || CHARTE("encart"));
   cityEl.innerHTML = `<header><h2>${esc(d.n)}</h2><div class="sub">${esc(d.c)} · ${esc(d.rn)}</div><button class="close" aria-label="Fermer la fiche">×</button></header>
   <div class="${tuile ? "tuile-corps" : ""}">${tuile ? `<div class="tuile-gauche"><div class="tuile-place" id="tuilePlace"></div>${contenuCase(tuile)}</div>` : ""}<div class="tuile-info"><div class="heros">${heroCarbone(d.co2)}${heroPrix(null)}</div>
   <div class="minis">${mini(`Conso. industrielle ${d.an || ""}`, `${fmt(d.gwh)} GWh`, "info", d.rk ? `Rang ${d.rk} sur ${d.nc} départements.` : "")}${mini("Postes RTE", fmt(d.p), "info", `Dont ${fmt(d.p3)} en 400 kV${d.pp ? ", " + d.pp + " en projet" : ""}.`)}${mini("Couverture régionale", d.tc == null ? "n.d." : fmt(d.tc * 100) + " %", equilibre, d.tc == null ? "" : d.tc >= 1 ? "La région produit plus qu'elle ne consomme." : "La région importe une partie de son électricité.")}</div><div class="detail" hidden></div></div></div>${sources(esc(LIMITE), esc(FRAICHEUR))}`;
-  cityEl.querySelector(".close").onclick = () => VERDICT ? showVerdict() : ficheVide();
+  cityEl.querySelector(".close").onclick = () => !VERDICT ? ficheVide() : autreTile ? showCote() : showVerdict();
   if (tuile) montrerTuile(tuile); }
 
 // Caméra : une carte à la fois, assez loin des autres pour que le brouillard les cache
@@ -790,8 +850,17 @@ if (MONDE.length) { const b = document.createElement("button"); b.textContent = 
 GR.forEach((g, gi) => { if (!tiles.some(t => t.g === gi && t.land)) return; const b = document.createElement("button");
   b.dataset.carte = gi; b.textContent = nomCarte(gi); b.onclick = () => montrerCarte(gi); boutons.appendChild(b); });
 // Arrivée sur l'adresse : la caméra plonge, la case se soulève, puis sa tuile sort vers l'encart
-const vueAdresse = (immediat, duree = 1100) => { suivreCarte(adresseTile.g); showVerdict(true); allerA(adresseTile.x, adresseTile.z + (innerWidth <= 1320 ? 7 : 0), 26, immediat, { duree, apres: sortirTuile }); }; // Sur écran étroit, l'encart couvre le centre : le bâtiment reste au-dessus
-if (adresseTile) { const b = document.createElement("button"); b.textContent = "Adresse"; b.onclick = () => vueAdresse(); boutons.appendChild(b); }
+const vueAdresse = (immediat, duree = 1100) => { suivreCarte(adresseTile.g); showVerdict(true, 0); allerA(adresseTile.x, adresseTile.z + (innerWidth <= 1320 ? 7 : 0), 26, immediat, { duree, apres: sortirTuile }); }; // Sur écran étroit, l'encart couvre le centre : le bâtiment reste au-dessus
+// Deux adresses : la caméra recule juste assez pour les tenir toutes deux, la tuile si elles la partagent,
+// la région si elles en occupent deux bouts, le monde si elles n'ont pas le même système électrique
+const DEUX = !!(autreTile && adresseTile && VERDICT && ADRESSES[1].verdict);
+function vueAdresses(immediat, duree = 1100) { const a = adresseTile, b = autreTile; showCote();
+  if (a.g !== b.g) return montrerMonde(immediat);
+  const milieu = [(a.x + b.x) / 2, (a.z + b.z) / 2], ecart = Math.hypot(a.x - b.x, a.z - b.z);
+  suivreCarte(a.g); allerA(milieu[0], milieu[1] + (innerWidth <= 1320 ? ecart * .25 + 5 : 0), Math.max(30, ecart * 1.9 + 16), immediat, { duree, apres: () => { if (!vagueLancee) { setLens(lens); lancerVague(...milieu); } } }); }
+function choisir(v) { if (v === "cote") return vueAdresses(); const k = +v, t = ADRESSES[k].tile; showVerdict(false, k);
+  if (t) { suivreCarte(t.g); allerA(t.x, t.z + (innerWidth <= 1320 ? 7 : 0), 26); } }
+if (adresseTile) { const b = document.createElement("button"); b.textContent = DEUX ? "Adresses" : "Adresse"; b.onclick = () => DEUX ? vueAdresses() : vueAdresse(); boutons.appendChild(b); }
 soleil(emprises[0].x, emprises[0].z);
 
 // Survol et sélection
@@ -826,13 +895,14 @@ renderer.domElement.addEventListener("pointerleave", () => { tip.hidden = true; 
 renderer.domElement.addEventListener("pointerdown", e => { document.querySelector(".hint").classList.add("vu"); down = [e.clientX, e.clientY]; if (vol) { const f = vol.apres; vol = null; if (f) f(); } });
 renderer.domElement.addEventListener("pointerup", e => { if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 6 || e.button !== 0) return; const i = pick(e); if (i < 0) return;
   if (vueMonde) return montrerCarte(land[i].g);
-  if (land[i] === adresseTile && VERDICT) return showVerdict(); showDep(land[i].dep, land[i]); });
+  const k = ADRESSES.findIndex(a => a.tile === land[i] && a.verdict); if (k >= 0) return showVerdict(false, k); showDep(land[i].dep, land[i]); });
 document.querySelectorAll(".lens").forEach(b => b.onclick = () => setLens(b.dataset.lens));
 // Les touches 1 et 2 ne changent pas de lentille pendant la saisie d'un champ
 addEventListener("keydown", e => { if (e.key === "Escape") return fermer(); if (e.target.closest && e.target.closest("input, select, textarea")) return;
   const k = { "1": "raccordement", "2": "territoire" }[e.key]; if (k) setLens(k); if (e.key === "0") montrerMonde(); });
 
-// Application locale : la page parle au serveur de `app`, qui géocode, diagnostique, épingle et rend le rapport
+// Application locale : la page parle au serveur de `app`, qui géocode, diagnostique, épingle et rend le rapport.
+// Tout part de la fenêtre d'accueil : une adresse, une seconde si l'on veut comparer (deux au plus)
 const memoire = {
   lire() { try { return JSON.parse(sessionStorage.getItem("brancher") || "null"); } catch { return null; } },
   // Une courbe trop lourde pour le stockage est oubliée au rechargement, pas le reste du projet
@@ -840,55 +910,63 @@ const memoire = {
 let courbe = null, exports = null;
 const CHAMPS = ["puissance_mw", "conso_mwh", "activite", "surface_m2", "ca_eur", "va_eur"];
 const $ = id => document.getElementById(id);
-const etatEl = $("etat"), projetEl = $("projet"), dossierEl = $("dossier");
+const etatEl = $("etat"), accueilEl = $("accueil"), dossierEl = $("dossier");
 const SOLEIL_SVG = '<svg class="soleil" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="#D9971E"/><path d="M12 1.8v3M12 19.2v3M1.8 12h3M19.2 12h3M4.8 4.8l2.1 2.1M17.1 17.1l2.1 2.1M4.8 19.2l2.1-2.1M17.1 6.9l2.1-2.1" stroke="#D9971E" stroke-width="1.8" stroke-linecap="round"/></svg>';
 function etat(message, genre) { etatEl.hidden = !message; etatEl.className = "etat frame" + (genre ? " " + genre : "");
   etatEl.innerHTML = message ? (genre === "attente" ? SOLEIL_SVG : "") + `<span>${esc(message)}</span>` : ""; }
-const projetSaisi = () => { const p = { adresse: $("q").value.trim(), complet: $("complet").checked, autres: $("autres").value, courbe_nom: courbe ? courbe.nom : "", courbe_csv: courbe ? courbe.csv : "" };
+// Messages de la fenêtre d'accueil : l'attente et l'erreur se lisent là où l'on a saisi
+function dire(message, genre) { const el = $("message"); el.hidden = !message; el.className = "message" + (genre ? " " + genre : "");
+  el.innerHTML = message ? (genre === "attente" ? SOLEIL_SVG : "") + `<span>${esc(message)}</span>` : ""; }
+function ouvrirAccueil() { accueilEl.hidden = false; $("fermerAccueil").hidden = !ADRESSES.length; dire(""); $("q").focus(); $("q").select(); }
+function secondeAdresse(oui) { $("champ2").hidden = !oui; $("ajouter2").hidden = oui; $("candidats1").hidden = true; if (!oui) $("q2").value = ""; }
+const saisie = () => { const p = { adresse: $("q").value.trim(), autre: $("champ2").hidden ? "" : $("q2").value.trim(), complet: $("complet").checked, courbe_nom: courbe ? courbe.nom : "", courbe_csv: courbe ? courbe.csv : "" };
   for (const k of CHAMPS) p[k] = $(k).value.trim(); return p; };
 // Un champ fichier ne se remplit pas par script : la courbe gardée est rappelée par son nom
 function garderCourbe(c) { courbe = c; $("courbe").value = ""; $("courbeGardee").hidden = !c;
-  $("courbeGardee").innerHTML = c ? `Courbe prise en compte : ${esc(c.nom)} <button class="btn candidat" type="button" id="retirerCourbe">Retirer</button>` : ""; }
-const remplir = p => { if (!p) return; $("q").value = p.adresse || ""; $("complet").checked = !!p.complet; $("autres").value = p.autres || ""; for (const k of CHAMPS) $(k).value = p[k] || "";
-  garderCourbe(p.courbe_csv ? { nom: p.courbe_nom, csv: p.courbe_csv } : null); };
-// Le projet du rapport : celui de la dernière analyse, ou l'adresse épinglée par la ligne de commande
-const derniere = () => { const m = memoire.lire(); return m && m.projet && DATA.adresse && m.adresse === DATA.adresse.libelle ? m : null; };
-const projetCourant = () => (derniere() || {}).projet || (DATA.adresse ? { adresse: DATA.adresse.libelle } : projetSaisi());
+  $("courbeGardee").innerHTML = c ? `Courbe prise en compte : ${esc(c.nom)} <button class="btn" type="button" id="retirerCourbe">Retirer</button>` : ""; }
+const remplir = p => { if (!p) return; $("q").value = p.adresse || ""; $("q2").value = p.autre || ""; secondeAdresse(!!p.autre); $("complet").checked = !!p.complet; for (const k of CHAMPS) $(k).value = p[k] || "";
+  $("reglages").open = !!p.complet || !!p.courbe_csv || CHAMPS.some(k => p[k]); garderCourbe(p.courbe_csv ? { nom: p.courbe_nom, csv: p.courbe_csv } : null); };
+// La dernière analyse ne vaut que si la carte épingle encore ses adresses (la ligne de commande a pu en épingler une autre)
+const derniere = () => { const m = memoire.lire(); return m && m.projet && m.adresses && m.adresses.length === ADRESSES.length && m.adresses.every((a, k) => a.adresse === ADRESSES[k].libelle) ? m : null; };
+const epinglees = () => ({ adresse: ADRESSES[0] ? ADRESSES[0].libelle : "", autre: ADRESSES[1] ? ADRESSES[1].libelle : "" });
+// Le projet envoyé au serveur pour l'adresse k : celui de la dernière analyse, à l'adresse telle qu'elle a été saisie
+const projetDe = k => { const m = derniere(); return { ...(m ? m.projet : {}), adresse: m ? m.adresses[k].saisie : ADRESSES[k].libelle, autres: [] }; };
 const appeler = (chemin, corps) => fetch(chemin, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corps) });
 const HORS_LIGNE = "Le serveur de l'application ne répond pas : relancer python -m ingestion.cli app.";
-const occupe = oui => document.querySelectorAll("#analyser, #comparer, [data-format], [data-action]").forEach(b => b.disabled = oui);
+const occupe = oui => document.querySelectorAll("#analyser, [data-format], [data-action]").forEach(b => b.disabled = oui);
 function enregistrer(blob, nom) { const lien = document.createElement("a"); lien.href = URL.createObjectURL(blob); lien.download = nom;
   document.body.appendChild(lien); lien.click(); lien.remove(); setTimeout(() => URL.revokeObjectURL(lien.href), 5000); }
 async function analyser(projet, lireApres = false) {
-  if (!projet.adresse) { etat("Saisissez l'adresse du site.", "erreur"); $("q").focus(); return; }
-  occupe(true); etat(projet.complet ? "Diagnostic complet en cours (20 s environ)…" : "Analyse en cours…", "attente");
-  try { const r = await appeler("/api/analyse", projet), j = await r.json();
-    if (r.status === 409) { etatEl.hidden = false; etatEl.className = "etat frame erreur";
-      etatEl.innerHTML = `<span>${esc(j.erreur)}</span>` + j.candidats.map(c => `<button class="btn candidat" type="button">${esc(c)}</button>`).join("");
-      etatEl.querySelectorAll(".candidat").forEach((b, k) => b.onclick = () => { $("q").value = j.candidats[k]; analyser(projetSaisi()); }); return; }
-    if (!r.ok) { etat(j.erreur || "Analyse impossible.", "erreur"); return; }
-    memoire.ecrire({ projet, adresse: j.adresse, texte: j.texte, commande: j.commande, lireApres });
-    etat("Verdict prêt : la carte se recharge sur l'adresse.", "attente"); location.reload();
-  } catch (e) { etat(HORS_LIGNE, "erreur"); }
+  if (accueilEl.hidden) ouvrirAccueil();
+  if (!projet.adresse) { dire("Saisissez l'adresse du site."); $("q").focus(); return; }
+  for (const k of [0, 1]) $("candidats" + k).hidden = true;
+  occupe(true); dire(projet.complet ? "Diagnostic complet en cours (20 s environ par adresse)…" : "Analyse en cours…", "attente");
+  try { const r = await appeler("/api/analyse", { ...projet, autres: projet.autre ? [projet.autre] : [] }), j = await r.json();
+    if (r.status === 409) { const rang = j.rang || 0, zone = $("candidats" + rang); dire(j.erreur); zone.hidden = false;
+      zone.innerHTML = j.candidats.map(c => `<button class="btn" type="button">${esc(c)}</button>`).join("");
+      zone.querySelectorAll("button").forEach((b, k) => b.onclick = () => { $(rang ? "q2" : "q").value = j.candidats[k]; analyser(saisie(), lireApres); }); return; }
+    if (!r.ok) { dire(j.erreur || "Analyse impossible."); return; }
+    memoire.ecrire({ projet, adresses: j.adresses.map(a => ({ adresse: a.adresse, saisie: a.saisie, texte: a.texte, commande: a.commande })), lireApres });
+    dire(j.adresses.length > 1 ? "Verdicts prêts : la carte s'ouvre sur vos deux adresses." : "Verdict prêt : la carte s'ouvre sur l'adresse.", "attente"); location.reload();
+  } catch (e) { dire(HORS_LIGNE); }
   finally { occupe(false); } }
-async function telecharger(format) {
-  const projet = projetCourant(); occupe(true); etat(`Préparation du ${format === "md" ? "Markdown" : format.toUpperCase()}…`, "attente");
-  try { const r = await appeler("/api/rapport", { ...projet, format });
+async function telecharger(format, k = courante) {
+  occupe(true); etat(`Préparation du ${format === "md" ? "Markdown" : format.toUpperCase()}…`, "attente");
+  try { const r = await appeler("/api/rapport", { ...projetDe(k), format });
     if (!r.ok) { const j = await r.json(); etat(j.erreur || "Rapport impossible.", "erreur"); return; }
     const nom = ((r.headers.get("Content-Disposition") || "").match(/filename="([^"]+)"/) || [])[1] || "diagnostic." + format;
     enregistrer(await r.blob(), nom);
     etat(`${nom} téléchargé (copie dans data/reports).`);
   } catch (e) { etat(HORS_LIGNE, "erreur"); }
   finally { occupe(false); } }
-// Comparaison de 2 à 6 adresses dans le panneau, sans épingle : la carte garde la dernière analyse
+// Tableau détaillé des deux adresses dans le panneau, avec ses exports
 const modeDossier = compare => { dossierEl.classList.toggle("compare", compare); $("dossierTable").hidden = !compare; $("dossierTexte").hidden = compare;
   $("exports").hidden = !compare; $("dossierPdf").hidden = compare; if (compare) $("relancerComplet").hidden = true; dossierEl.hidden = false; };
 const liste = v => `<ul>${v.map(x => `<li>${esc(x)}</li>`).join("")}</ul>`;
 async function comparer() {
-  const projet = projetSaisi(), autres = projet.autres.split("\n").map(a => a.trim()).filter(Boolean);
-  if (!projet.adresse || !autres.length) { etat("Pour comparer : l'adresse du site en haut, puis une à cinq autres adresses, une par ligne.", "erreur"); return; }
-  basculerProjet(false); occupe(true); etat(projet.complet ? `Comparaison complète de ${autres.length + 1} adresses (20 s environ par adresse)…` : "Comparaison en cours…", "attente");
-  try { const r = await appeler("/api/compare", { ...projet, autres }), j = await r.json();
+  const complet = ((derniere() || {}).projet || {}).complet;
+  occupe(true); etat(complet ? "Comparaison complète (20 s environ par adresse)…" : "Comparaison en cours…", "attente");
+  try { const r = await appeler("/api/compare", { ...projetDe(0), autres: [projetDe(1).adresse] }), j = await r.json();
     if (!r.ok) { etat(j.erreur || "Comparaison impossible.", "erreur"); return; }
     const c = JSON.parse(j.fichiers.json); exports = j.fichiers;
     $("dossierTitre").textContent = `Comparaison de ${c.adresses.length} adresses, sans classement`;
@@ -901,32 +979,29 @@ async function comparer() {
   finally { occupe(false); } }
 // BOM pour le CSV : Excel le lit alors en UTF-8 sans casser les accents
 const exporter = format => enregistrer(new Blob([(format === "csv" ? "\ufeff" : "") + exports[format]], { type: "text/plain;charset=utf-8" }), "comparaison." + format);
-// Le diagnostic de la dernière analyse ; une adresse épinglée par la ligne de commande est d'abord analysée
-function lireDiagnostic() { const m = derniere();
-  if (!m) { remplir({ adresse: DATA.adresse ? DATA.adresse.libelle : "" }); return analyser(projetSaisi()); }
-  $("dossierTitre").textContent = m.projet.complet ? "Diagnostic complet" : "L'essentiel";
-  $("dossierTexte").textContent = m.texte;
-  $("dossierPied").innerHTML = `Même rapport en ligne de commande : <code>${esc(m.commande)}</code>`;
+// Le détail de la dernière analyse ; une adresse épinglée par la ligne de commande est d'abord analysée
+function lireDiagnostic(k = courante) { const m = derniere();
+  if (!m) { remplir(epinglees()); return analyser(saisie(), true); }
+  courante = k; $("dossierTitre").textContent = (m.projet.complet ? "Diagnostic complet" : "L'essentiel") + (ADRESSES.length > 1 ? ` · adresse ${k + 1}` : "");
+  $("dossierTexte").textContent = m.adresses[k].texte;
+  $("dossierPied").innerHTML = `Même rapport en ligne de commande : <code>${esc(m.adresses[k].commande)}</code>`;
   modeDossier(false); $("relancerComplet").hidden = !!m.projet.complet; }
-function basculerProjet(ouvert) { projetEl.hidden = !ouvert; $("ouvrirProjet").setAttribute("aria-expanded", ouvert); }
-const replierRecherche = () => { if (!APP || !DATA.adresse) return; $("recherche").hidden = true; $("autreAdresse").hidden = false; };
-function fermer() { if (!dossierEl.hidden) dossierEl.hidden = true; else if (!projetEl.hidden) basculerProjet(false); else replierRecherche(); }
+function fermer() { if (!dossierEl.hidden) dossierEl.hidden = true; else if (ADRESSES.length) accueilEl.hidden = true; }
 if (APP) {
-  document.body.classList.add("app"); $("recherche").hidden = false; replierRecherche();
-  $("autreAdresse").onclick = () => { $("autreAdresse").hidden = true; $("recherche").hidden = false; $("q").focus(); $("q").select(); };
-  remplir((derniere() || {}).projet || (DATA.adresse ? { adresse: DATA.adresse.libelle } : (memoire.lire() || {}).projet));
-  const lancer = e => { e.preventDefault(); basculerProjet(false); analyser(projetSaisi()); };
-  $("recherche").onsubmit = lancer; projetEl.onsubmit = lancer;
-  $("ouvrirProjet").onclick = () => basculerProjet(projetEl.hidden);
+  document.body.classList.add("app"); $("nouvelle").hidden = !ADRESSES.length;
+  $("nouvelle").onclick = ouvrirAccueil; $("fermerAccueil").onclick = fermer;
+  remplir((derniere() || {}).projet || (ADRESSES.length ? epinglees() : (memoire.lire() || {}).projet));
+  $("saisie").onsubmit = e => { e.preventDefault(); analyser(saisie()); };
+  $("ajouter2").onclick = () => { secondeAdresse(true); $("q2").focus(); };
+  $("retirer2").onclick = () => secondeAdresse(false);
   $("fermerDossier").onclick = () => dossierEl.hidden = true;
-  $("comparer").onclick = comparer;
   $("courbe").onchange = async e => { const f = e.target.files[0]; if (f) garderCourbe({ nom: f.name, csv: await f.text() }); };
   $("courbeGardee").onclick = e => { if (e.target.id === "retirerCourbe") garderCourbe(null); };
-  $("relancerComplet").onclick = () => { dossierEl.hidden = true; remplir({ ...derniere().projet, complet: true }); analyser(projetSaisi(), true); };
-  document.addEventListener("click", e => { const b = e.target.closest("[data-format], [data-action], [data-export]"); if (!b || b.disabled) return;
-    if (b.dataset.export) exporter(b.dataset.export); else if (b.dataset.format) telecharger(b.dataset.format); else lireDiagnostic(); });
-  if (!DATA.adresse) $("q").focus();
-  else if ((memoire.lire() || {}).lireApres && derniere()) { memoire.ecrire({ ...memoire.lire(), lireApres: false }); lireDiagnostic(); }
+  $("relancerComplet").onclick = () => { dossierEl.hidden = true; remplir({ ...derniere().projet, complet: true }); analyser(saisie(), true); };
+  document.addEventListener("click", e => { const b = e.target.closest("[data-format], [data-action], [data-export]"); if (!b || b.disabled) return; const k = b.dataset.k == null ? courante : +b.dataset.k;
+    if (b.dataset.export) exporter(b.dataset.export); else if (b.dataset.format) telecharger(b.dataset.format, k); else if (b.dataset.action === "comparer") comparer(); else lireDiagnostic(k); });
+  if (!ADRESSES.length) ouvrirAccueil();
+  else if ((memoire.lire() || {}).lireApres && derniere()) { memoire.ecrire({ ...memoire.lire(), lireApres: false }); lireDiagnostic(0); }
 }
 
 const v3 = new THREE.Vector3();
@@ -985,7 +1060,7 @@ function montrerTuile(t) {
   if (tuile3d.groupe) { tuile3d.scene.remove(tuile3d.groupe); tuile3d.jetables.forEach(o => o.dispose()); tuile3d.jetables = []; tuile3d.decor.traverse(o => { if (o.material) o.material.dispose(); }); }
   const g = tuile3d.groupe = new THREE.Group(), decor = tuile3d.decor = new THREE.Group(), H = R * 1.05 + t.baseH * .2; g.add(decor);
   // Maquettes un peu agrandies : sur la tuile seule, elles ne masquent plus rien
-  const portees = [markers.production, markers.fret, markers.sites].flatMap(grp => grp.children.filter(o => o.userData.i === t.i)); if (t === adresseTile && batimentAdresse) portees.push(batimentAdresse);
+  const portees = [markers.production, markers.fret, markers.sites].flatMap(grp => grp.children.filter(o => o.userData.i === t.i)); for (const a of ADRESSES) if (a.tile === t && a.batiment) portees.push(a.batiment);
   const k = portees.length > 1 ? 1.2 : 1.45, dalles = portees.map(o => ({ x: o.position.x - t.x, z: o.position.z - t.z, r: o.scale.x * k * .5 }));
   for (const o of portees) { const c = copie(o); c.position.set(o.position.x - t.x, H, o.position.z - t.z); c.scale.multiplyScalar(k); c.traverse(m => { if (m.isMesh && m !== c.children[0]) m.castShadow = true; }); g.add(c); }
   // Chemin d'une dalle au bord, ou d'un bord à l'autre sur une case vide
@@ -1082,7 +1157,8 @@ setLens("raccordement"); secherTerre();
 montrerMonde(true); cadrer(DISTANCE_MONDE);
 if (!adresseTile) { ficheVide(); setTimeout(() => lancerVague(mondeCentre.x, mondeCentre.z), 400); }
 else if (!VERDICT) showDep(DATA.adresse.departement, adresseTile);
-if (adresseTile) { if (REDUCED) vueAdresse(true); else { if (VERDICT) showVerdict(true); setTimeout(() => VERDICT ? vueAdresse(false, 2400) : allerA(adresseTile.x, adresseTile.z, 26, false, { duree: 2400, apres: sortirTuile }), 700); } }
+if (DEUX) { if (REDUCED) vueAdresses(true); else { showCote(); setTimeout(() => vueAdresses(false, 2400), 700); } }
+else if (adresseTile) { if (REDUCED) vueAdresse(true); else { if (VERDICT) showVerdict(true); setTimeout(() => VERDICT ? vueAdresse(false, 2400) : allerA(adresseTile.x, adresseTile.z, 26, false, { duree: 2400, apres: sortirTuile }), 700); } }
 requestAnimationFrame(tick);
 </script>
 </body>

@@ -32,6 +32,9 @@ logger = logging.getLogger(__name__)
 HOTE = "127.0.0.1"
 PORT = 8770
 MARQUEUR_APP = "/*__APP__*/false"
+# Deux adresses au plus dans l'application : la fiche les met côte à côte ; `compare` en ligne de
+# commande en accepte jusqu'à six
+NB_ADRESSES_APP = 2
 COMMANDE_REFRESH = "python -m ingestion.cli refresh --months 180"
 TYPES = {
     "pdf": "application/pdf",
@@ -113,10 +116,10 @@ def lire_autres(corps: dict[str, Any]) -> list[str]:
     if not isinstance(autres, list):
         raise ProjetInvalideError("autres adresses : liste attendue")
     autres = [a for a in (str(a).strip() for a in autres) if a]
-    if not comparaison.NB_ADRESSES_MIN <= len(autres) + 1 <= comparaison.NB_ADRESSES_MAX:
+    if len(autres) + 1 > NB_ADRESSES_APP:
         raise ProjetInvalideError(
-            f"comparer de {comparaison.NB_ADRESSES_MIN} à {comparaison.NB_ADRESSES_MAX} adresses"
-            f" ({len(autres) + 1} données)"
+            f"{NB_ADRESSES_APP} adresses au plus dans l'application ({len(autres) + 1} données) ;"
+            " au-delà : python -m ingestion.cli compare"
         )
     return autres
 
@@ -212,26 +215,52 @@ def page(settings: Settings) -> Reponse:
     return Reponse(HTTPStatus.OK, "text/html; charset=utf-8", html.encode("utf-8"))
 
 
-# Analyse l'adresse et épingle son verdict sur la carte, que la page recharge ensuite
+# Analyse une ou deux adresses et épingle leur verdict sur la carte, que la page recharge ensuite
 def analyser(corps: dict[str, Any], settings: Settings) -> Reponse:
     try:
         projet = lire_projet(corps)
-        diagnostic = diagnostiquer(projet, settings)
+        projets = [projet, *(replace(projet, adresse=a) for a in lire_autres(corps))]
+        diagnostics = []
+        for rang, p in enumerate(projets):
+            try:
+                diagnostics.append(diagnostiquer(p, settings))
+            except AdresseAmbigueError as error:
+                # La page propose les communes sous le champ de l'adresse en cause
+                return _json(
+                    HTTPStatus.CONFLICT,
+                    {
+                        "erreur": f"« {p.adresse} » est ambiguë : choisir la commune.",
+                        "candidats": error.candidats,
+                        "rang": rang,
+                    },
+                )
+            except AdresseIntrouvableError as error:
+                raise ProjetInvalideError(
+                    f"« {p.adresse} » est introuvable ({error}). Préciser la rue et la commune."
+                ) from None
+        epingles = [(d.territoire, carte.verdict_carte(d)) for d in diagnostics]
         carte.mettre_a_jour_carte(
             settings=settings,
-            territoire=diagnostic.territoire,
-            verdict_adresse=carte.verdict_carte(diagnostic),
+            territoire=epingles[0][0],
+            verdict_adresse=epingles[0][1],
+            autre=epingles[1] if len(epingles) > 1 else None,
         )
     except ECHECS_PREVUS as error:
         return _erreur(error)
-    texte = formater_diagnostic(diagnostic) if projet.complet else formater_essentiel(diagnostic)
+    formater = formater_diagnostic if projet.complet else formater_essentiel
     return _json(
         HTTPStatus.OK,
         {
-            "adresse": diagnostic.territoire.adresse,
-            "texte": texte,
-            "essentiel": essentiel_en_dict(diagnostic),
-            "commande": commande(projet, "pdf"),
+            "adresses": [
+                {
+                    "adresse": d.territoire.adresse,
+                    "saisie": p.adresse,
+                    "texte": formater(d),
+                    "essentiel": essentiel_en_dict(d),
+                    "commande": commande(p, "pdf"),
+                }
+                for p, d in zip(projets, diagnostics, strict=True)
+            ]
         },
     )
 
@@ -264,6 +293,8 @@ def comparer(corps: dict[str, Any], settings: Settings) -> Reponse:
     try:
         projet = lire_projet(corps)
         autres = lire_autres(corps)
+        if not autres:
+            raise ProjetInvalideError("comparer demande une seconde adresse")
         diagnostics = []
         for adresse in (projet.adresse, *autres):
             try:
