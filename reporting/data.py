@@ -12,13 +12,10 @@ COULEURS = ("bleu", "blanc", "rouge")
 
 @dataclass(frozen=True, slots=True)
 class Options:
-    # Durée d'un créneau, en heures
     heures_creneau: int = 3
-    # Consommation flexible déplacée chaque jour, en kWh
     usage_flexible_kwh: float = 7.0
     # Heure locale de début du créneau de référence (soirée, retour à domicile)
     heure_reference: int = 18
-    # Quantile définissant un pic de carbone
     quantile_pic: float = 0.9
 
 
@@ -219,7 +216,6 @@ def _carbone(connection: duckdb.DuckDBPyConnection, rapport: RapportMensuel, par
         {**params, "q": rapport.options.quantile_pic},
     ).fetchone()[0]
 
-    # Îlots d'heures consécutives au-dessus du seuil (technique gaps and islands)
     episodes = connection.execute(
         """
         WITH pics AS (
@@ -319,7 +315,6 @@ def _creneaux(connection: duckdb.DuckDBPyConnection, rapport: RapportMensuel, pa
             f"FROM ({_fenetres_sql(n)}) WHERE {filtre} ORDER BY {ordre}, heure_utc",
             params,
         ).fetchall()
-        # Sélection gloutonne de fenêtres disjointes : la meilleure
         retenus: list[Creneau] = []
         for debut, prix, co2, couleur, periode in rows:
             debut = _paris(debut)
@@ -370,7 +365,6 @@ def _economie(connection: duckdb.DuckDBPyConnection, rapport: RapportMensuel, pa
         kwh_par_jour=kwh,
         cout_optimise=None if prix_opt is None else prix_opt * kwh,
         cout_reference=None if prix_ref is None else prix_ref * kwh,
-        # g/kWh x kWh = g ; / 1000 pour des kilogrammes
         co2_optimise_kg=co2_opt * kwh / 1000,
         co2_reference_kg=co2_ref * kwh / 1000,
     )

@@ -107,6 +107,7 @@ voisinage du site (argiles, cavités, Seveso, installations classées, sols poll
 | Parcours du néophyte (10 novembre) : `app` ouvre une fenêtre d'accueil qui demande une adresse, une seconde si l'on veut comparer (deux au plus), le projet replié ; la carte s'ouvre cadrée sur les adresses (la tuile si elles la partagent, la région si elles en occupent deux bouts, le monde si l'une est outre-mer), chacune avec son bâtiment (liseré doré pour la première, vert pour la seconde) ; fiche adaptée : verdict et cartes chiffrées pour une adresse, mêmes lignes côte à côte et un onglet par adresse pour deux ; rapport PDF en un clic | `reporting/carte.html`, `reporting/app.py` |
 | PDF court et visuel (10 novembre) : 3 pages au lieu de 9 pour l'exemple de référence, environ sept fois moins de texte ; le verdict et sa tuile, puis une fiche par critère (échelle des domaines de tension, plans de prévention, jauge du carbone, parts de la facture et accise, distances et prix des locaux) avec trois phrases au plus, dont la limite qui pèse sur la décision et un conseil ; repères du site en tableau, deux graphiques du territoire | `reporting/implantation_pdf.py`, `reporting/visuels.py` |
 | Démonstration sans `refresh` (étape 25, 31 octobre) : `demo` construit une fois la base synthétique des tests dans `data/demo/` (une minute environ, sans réseau), répond `essentiel` pour un hub de recharge fictif de 2 MW à Lyon, chiffres dits fictifs en première ligne, et ouvre la carte ; environ 2 s ensuite | `ingestion/demo.py`, `demo` |
+| Commentaires épurés (P2, 10 novembre) : pipeline (extractions, bronze, warehouse, config, macros dbt) puis couche application (`diagnostic.py`, `georisques.py`, `reporting/`, `carte.html`) ; restent les règles métier, les pièges de source, les choix d'architecture et la forme des tuples documentée sur les champs | `ingestion/`, `reporting/`, `dbt/` |
 
 **À surveiller** :
 - **Géorisques** : l'API, coupée du 24 au 28 octobre, répond de nouveau. Le 29 octobre au soir,
@@ -173,14 +174,13 @@ projet ; « code » : se prend dans le dépôt.
 | Ordre | Étape | Qui | Condition ou date |
 |---|---|---|---|
 | 1 | **P1** Mettre la démonstration en ligne gratuitement (Cloud Run, détail dans le lot P) | Code, puis porteur (compte Google Cloud) | Aucune ; une demi-journée de code |
-| 2 | **P2** Finir d'épurer les commentaires : couche application (`ingestion/diagnostic.py`, `georisques.py`, `reporting/`) | Code | Pipeline (extractions, bronze, warehouse, dbt) fait le 10 novembre |
-| 3 | **Lot T** Qualité des tests : essai réel élargi (T7), application simulée dans le navigateur (T5), CI sous Windows (T8) ; corriger le gestionnaire affiché en Corse et outre-mer | Code | T1 à T4 faites le 9 novembre, T6 le 10 ; T5 demande un choix du porteur ; le gestionnaire demande une source officielle |
-| 4 | **29** Main-d'œuvre qualifiée dans `diagnose` et `compare` | Code | Sources vérifiées le 9 novembre, trois choix du porteur avant de coder (sous le tableau du lot A) |
-| 5 | **P3** Étoile d'abord : l'application lit le schéma `etoile` quand le grain existe | Code | Long : après P1 et P2 |
-| 6 | **Carte, lot B** : prototype three.js r186 hors ligne (une demi-journée), puis lots C et D | Code | Le lot D épingle `compare` sur la carte |
-| 7 | **19** Capacité en soutirage de RTE ; seed `accise_electricite` de 2027 | Code | 1er janvier 2027 (publication RTE), 1er janvier et 1er février (accise) |
-| 8 | Trier les « Manques repérés et pistes » du lot A | Porteur et code | Garder l'utile et faisable vite, reporter le long |
-| 9 | **8, 30, S, 6** Prix au-delà de 150 GWh, modèle prédictif, ambiance sonore, international | Code | Chacune sa condition (lot B) ; l'international en dernier |
+| 2 | **Lot T** Qualité des tests : essai réel élargi (T7), application simulée dans le navigateur (T5), CI sous Windows (T8) ; corriger le gestionnaire affiché en Corse et outre-mer | Code | T1 à T4 faites le 9 novembre, T6 le 10 ; T5 demande un choix du porteur ; le gestionnaire demande une source officielle |
+| 3 | **29** Main-d'œuvre qualifiée dans `diagnose` et `compare` | Code | Sources vérifiées le 9 novembre, trois choix du porteur avant de coder (sous le tableau du lot A) |
+| 4 | **P3** Étoile d'abord : l'application lit le schéma `etoile` quand le grain existe | Code | Long : après P1 |
+| 5 | **Carte, lot B** : prototype three.js r186 hors ligne (une demi-journée), puis lots C et D | Code | Le lot D épingle `compare` sur la carte |
+| 6 | **19** Capacité en soutirage de RTE ; seed `accise_electricite` de 2027 | Code | 1er janvier 2027 (publication RTE), 1er janvier et 1er février (accise) |
+| 7 | Trier les « Manques repérés et pistes » du lot A | Porteur et code | Garder l'utile et faisable vite, reporter le long |
+| 8 | **8, 30, S, 6** Prix au-delà de 150 GWh, modèle prédictif, ambiance sonore, international | Code | Chacune sa condition (lot B) ; l'international en dernier |
 
 
 ### Lot A : à prendre maintenant
@@ -275,7 +275,6 @@ rien n'est décidé) :
 | Étape | Contenu | Critère |
 |---|---|---|
 | **P1** Démonstration en ligne | `HOTE` et `PORT` lus dans l'environnement (`0.0.0.0` et `$PORT` en conteneur, 127.0.0.1 par défaut) ; commande `publier` qui copie dans `data/public.duckdb` les schémas `gold` et `etoile`, plus `silver.prix_entreprises`, `silver.tempo_jours`, `silver.ecowatt_jours` et la date du dernier chargement de chaque table bronze (lus par l'application) ; `Dockerfile` sans PySpark ni Java (seule l'ingestion en a besoin) qui embarque cette base ; `gcloud run deploy --source .` lancé à la main, jamais planifié ; la date des données s'affiche, `refresh` ne tourne jamais en ligne | Les parcours de l'application marchent sur l'URL publique ; aucune variable `ECO2MIX_RTE_*` ni `ECO2MIX_ECOWATT_*` dans l'image ; taille de la base publique mesurée |
-| **P2** Commentaires de la couche application | Même règle que le pipeline : retirer ce qui décrit un champ ou une ligne | `ruff`, `pytest`, essai réel |
 | **P3** Étoile d'abord | Chaque nouveau fait gold a ses clés vers `dim_commune` et `dim_date` ; l'application lit `etoile` là où le grain existe | Sorties de référence inchangées |
 
 Licences de la base publique : Licence Ouverte et CC BY permettent la diffusion en citant la source

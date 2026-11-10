@@ -91,7 +91,6 @@ def lire_batiments(
         geometrie = feature.get("geometry") or {}
         if geometrie.get("type") != "MultiPolygon":
             continue
-        # Les bâtiments de la BD TOPO portent une altitude : on ne garde que x et y
         polygones = [[[c[:2] for c in a] for a in anneaux] for anneaux in geometrie["coordinates"]]
         distance, surface_km2 = math.inf, 0.0
         for anneaux in polygones:

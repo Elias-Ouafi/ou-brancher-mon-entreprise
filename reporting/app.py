@@ -56,7 +56,6 @@ class Projet:
     surface_m2: float | None = None
     ca_eur: float | None = None
     va_eur: float | None = None
-    # Appels à la demande de `diagnose` (Géorisques, urbanisme, eau, solaire, desserte)
     complet: bool = False
     courbe: Courbe | None = None
     courbe_nom: str | None = None
@@ -124,7 +123,6 @@ def lire_autres(corps: dict[str, Any]) -> list[str]:
     return autres
 
 
-# La commande équivalente, citée au pied du rapport pour le refaire sans l'application
 def commande(projet: Projet, format: str, autres: list[str] | None = None) -> str:
     morceaux = [f"python -m ingestion.cli {'compare' if autres else 'diagnose'}"]
     morceaux += [f'--adresse "{a}"' for a in (projet.adresse, *(autres or []))]
@@ -215,7 +213,6 @@ def page(settings: Settings) -> Reponse:
     return Reponse(HTTPStatus.OK, "text/html; charset=utf-8", html.encode("utf-8"))
 
 
-# Analyse une ou deux adresses et épingle leur verdict sur la carte, que la page recharge ensuite
 def analyser(corps: dict[str, Any], settings: Settings) -> Reponse:
     try:
         projet = lire_projet(corps)
@@ -225,7 +222,6 @@ def analyser(corps: dict[str, Any], settings: Settings) -> Reponse:
             try:
                 diagnostics.append(diagnostiquer(p, settings))
             except AdresseAmbigueError as error:
-                # La page propose les communes sous le champ de l'adresse en cause
                 return _json(
                     HTTPStatus.CONFLICT,
                     {
@@ -269,7 +265,6 @@ def rapport(corps: dict[str, Any], settings: Settings) -> Reponse:
     format = corps.get("format", "pdf")
     if format not in TYPES:
         return _json(HTTPStatus.BAD_REQUEST, {"erreur": f"format inconnu : {format}"})
-    # Import paresseux : matplotlib et reportlab ne servent qu'au rapport
     from reporting.implantation import generer_rapport_implantation
 
     try:

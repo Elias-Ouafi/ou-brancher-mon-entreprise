@@ -97,7 +97,6 @@ def jauge_carbone(valeur: float, seuil: float, maximum: float, largeur: float) -
     return dessin
 
 
-# Barre empilée : chaque part (libellé, montant, teinte) à sa proportion, légende dessous
 def barre_parts(
     parts: Sequence[tuple[str, float, colors.Color]],
     largeur: float,
@@ -126,7 +125,6 @@ def barre_parts(
     return dessin
 
 
-# Barres horizontales comparées (libellé, valeur, texte de la valeur, teinte) sur la même échelle
 def barres(
     lignes: Sequence[tuple[str, float, str, colors.Color]], largeur: float, marge: float = 150
 ) -> Drawing:
