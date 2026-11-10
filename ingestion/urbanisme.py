@@ -56,7 +56,7 @@ def _date(valeur: str | None) -> str | None:
 
 # Zone du point : `None` si aucun document d'urbanisme numérisé ne le couvre
 def lire_zone(payload: dict[str, Any]) -> ZoneUrbanisme | None:
-    if payload.get("type") != "FeatureCollection":
+    if not isinstance(payload, dict) or payload.get("type") != "FeatureCollection":
         raise UrbanismeError("reponse du Geoportail de l'urbanisme inattendue")
     zones = [f.get("properties") or {} for f in payload.get("features") or []]
     if not zones:

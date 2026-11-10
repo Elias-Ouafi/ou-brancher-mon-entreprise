@@ -84,7 +84,7 @@ class Productible:
 def lire_batiments(
     payload: dict[str, Any], *, latitude: float, longitude: float
 ) -> Batiment | None:
-    if payload.get("type") != "FeatureCollection":
+    if not isinstance(payload, dict) or payload.get("type") != "FeatureCollection":
         raise SolaireError("reponse WFS de la BD TOPO inattendue")
     meilleur = None
     for feature in payload.get("features") or []:

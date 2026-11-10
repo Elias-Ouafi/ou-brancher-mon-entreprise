@@ -21,6 +21,7 @@ from ingestion.diagnostic import (
     essentiel_en_dict,
     formater_diagnostic,
     formater_essentiel,
+    incoherence_projet,
     lire_diagnostic,
 )
 from ingestion.extract_odre import ExtractionWindow
@@ -434,10 +435,14 @@ def main(argv: list[str] | None = None) -> int:
                 f"--{option} demande --conso ou --courbe : le calcul part de la consommation"
                 " annuelle"
             )
-    # Sortie redirigée sous Windows : cp1252 ne connaît ni « → » ni « ≤ »
+    puissance, conso = getattr(args, "puissance", None), getattr(args, "conso", None)
+    if message := incoherence_projet(puissance, conso):
+        parser.error(message)
+    # Sortie redirigée sous Windows : cp1252 ne connaît ni « → » ni « ≤ ». « replace » : sous
+    # pytest, le même flux relit la sortie des processus enfants, écrite dans la page de la console
     for flux in (sys.stdout, sys.stderr):
         if hasattr(flux, "reconfigure"):
-            flux.reconfigure(encoding="utf-8")
+            flux.reconfigure(encoding="utf-8", errors="replace")
     if args.verbose:
         logging.basicConfig(
             level=logging.DEBUG, format="%(asctime)s %(levelname)-8s %(name)s %(message)s"
