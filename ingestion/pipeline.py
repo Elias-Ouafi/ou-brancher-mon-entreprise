@@ -53,7 +53,6 @@ from ingestion.warehouse import LoadResult, build_loader
 
 logger = logging.getLogger(__name__)
 
-# Colonne témoin du contrôle de fraîcheur
 FRESHNESS_MEASURE = "consommation"
 
 SLOT_MINUTES = 15
@@ -116,7 +115,6 @@ class CoverageReport:
         }
 
 
-# Bornes UTC `[début, fin)` d'un mois civil français
 def month_bounds(year: int, month: int) -> tuple[datetime, datetime]:
     start = datetime(year, month, 1, tzinfo=PARIS_TZ)
     next_year, next_month = (year + 1, 1) if month == 12 else (year, month + 1)

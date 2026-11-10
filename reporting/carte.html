@@ -535,7 +535,6 @@ const MAQUETTES = {
       piece(cone, roche, -.3, 0, -.15, .28, .34, .28), piece(cone, roche, .3, 0, -.15, .28, .3, .28),
       piece(boite, beton, 0, 0, .1, .14, .06, .07), piece(boite, eau, 0, 0, .25, .08, .012, .16));
     g.children[3].rotation.y = .6; },
-  // Chaudière, salle des machines, cheminée rayée rouge et blanc, cuves de combustible
   "Thermique non renouvelable": g => { const murs = mat("#9a958a"), toit = mat("#6f6c66"), cheminee = mat("#d8d4cb"), rouge = mat(FILIERES["Thermique non renouvelable"]), cuve = mat("#c9c3b4"), fumee = mat("#b7b9bb", { roughness: 1 });
     g.add(piece(boite, murs, -.08, 0, -.04, .2, .26, .2), piece(boite, toit, -.08, .25, -.04, .22, .03, .22), piece(boite, murs, .12, 0, .14, .3, .12, .13),
       piece(fut, cheminee, -.27, 0, -.22, .1, .56, .1), piece(cyl, rouge, -.27, .43, -.22, .075, .04, .075), piece(cyl, rouge, -.27, .51, -.22, .07, .04, .07),
@@ -578,12 +577,10 @@ const MAQUETTES_FRET = {
   port: g => { const quai = mat("#a9a59a"), acier = mat(FRET.port), eau = mat("#1f6f9e", { roughness: .2, metalness: .1 });
     g.add(piece(boite, eau, 0, .035, .3, .8, .01, .22), piece(boite, quai, 0, .035, -.08, .8, .03, .55));
     pile(g, -.2, -.25, 6, 0); pile(g, .12, -.25, 4, 2);
-    // Portique à conteneurs : pieds sur le quai, flèche au-dessus de l'eau
     g.add(piece(boite, acier, -.05, .065, .12, .03, .5, .03), piece(boite, acier, .15, .065, .12, .03, .5, .03), piece(boite, acier, .05, .55, .2, .26, .04, .5)); },
   aeroport: g => { const piste = mat("#4a4d52"), blanc = mat("#f1f3f4"), vitre = mat("#7fc6e8", { metalness: .3 });
     g.add(piece(boite, piste, 0, .035, .1, .9, .01, .16), piece(boite, blanc, 0, .046, .1, .7, .002, .015));
     g.add(piece(cyl, blanc, -.3, .035, -.22, .07, .45, .07), piece(boite, vitre, -.3, .48, -.22, .14, .08, .14), piece(boite, mat("#6f6c66"), -.3, .56, -.22, .16, .02, .16));
-    // Avion cargo : fuselage couché, ailes, dérive
     const avion = new THREE.Group(); avion.position.set(.12, .12, -.12); avion.rotation.y = -.5;
     const fuselage = piece(cyl, blanc, -.22, 0, 0, .08, .45, .08); fuselage.rotation.z = -Math.PI / 2;
     avion.add(fuselage, piece(boite, blanc, 0, -.01, 0, .1, .02, .5), piece(boite, blanc, -.2, 0, 0, .06, .14, .02), piece(boite, mat(FRET.port), -.2, .1, 0, .06, .05, .021));
@@ -592,7 +589,6 @@ const MAQUETTES_FRET = {
     g.add(piece(boite, ballast, 0, .035, .05, .85, .02, .3));
     for (const z of [-.01, .11]) g.add(piece(boite, rail, 0, .055, z, .85, .015, .015));
     for (const x of [-.22, .2]) { g.add(piece(boite, wagon, x, .07, .05, .36, .03, .14)); pile(g, x, .05, 2, x > 0 ? 1 : 3); }
-    // Portique de transbordement enjambant la voie
     g.add(piece(boite, acier, 0, .04, -.12, .03, .42, .03), piece(boite, acier, 0, .04, .22, .03, .42, .03), piece(boite, acier, 0, .44, .05, .05, .04, .38)); },
 };
 const valeurFret = p => p.m === "rail" ? p.ml : p.v, MAX_FRET = {};
@@ -1027,7 +1023,6 @@ function solTuile(t, dalles, chemin) { const N = 1024, cv = document.createEleme
   if (t.alt < 600) { const cote = .46 * R * pas; c.save(); c.translate(N / 2, N / 2); c.rotate(alea() * 1.2);
     for (let i = -4; i <= 4; i++) for (let j = -4; j <= 4; j++) { const v = alea(), teinte = vive.clone(); if (t.alt < 300 && !MEDITERRANEE.has(t.dep) && v < .22) teinte.lerp(col("#d3bf6b"), .75); else teinte.offsetHSL((alea() - .5) * .04, (alea() - .5) * .12, (v - .5) * .13);
       c.fillStyle = srgb(teinte); c.fillRect(i * cote, j * cote, cote, cote * (.8 + alea() * .4));
-      // Sillons : la matière qui manquait à une face unie
       c.strokeStyle = "rgba(40,50,20,.07)"; c.lineWidth = 2; for (let k = 1; k < 8; k++) { c.beginPath(); c.moveTo(i * cote + k * cote / 8, j * cote); c.lineTo(i * cote + k * cote / 8, j * cote + cote); c.stroke(); }
       c.strokeStyle = "rgba(38,66,28,.55)"; c.lineWidth = 3.5; c.strokeRect(i * cote, j * cote, cote, cote); }
     c.restore(); }
@@ -1063,7 +1058,6 @@ function montrerTuile(t) {
   const portees = [markers.production, markers.fret, markers.sites].flatMap(grp => grp.children.filter(o => o.userData.i === t.i)); for (const a of ADRESSES) if (a.tile === t && a.batiment) portees.push(a.batiment);
   const k = portees.length > 1 ? 1.2 : 1.45, dalles = portees.map(o => ({ x: o.position.x - t.x, z: o.position.z - t.z, r: o.scale.x * k * .5 }));
   for (const o of portees) { const c = copie(o); c.position.set(o.position.x - t.x, H, o.position.z - t.z); c.scale.multiplyScalar(k); c.traverse(m => { if (m.isMesh && m !== c.children[0]) m.castShadow = true; }); g.add(c); }
-  // Chemin d'une dalle au bord, ou d'un bord à l'autre sur une case vide
   const angle = hash(t.r, t.c) * 6.283, bord = a => ({ x: Math.sin(a) * R, z: Math.cos(a) * R }), dep = dalles[0] || bord(angle + Math.PI), fin = bord(angle), mi = { x: (dep.x + fin.x) / 2 + (hash(t.c, 3) - .5) * R * .7, z: (dep.z + fin.z) / 2 + (hash(t.r, 5) - .5) * R * .7 };
   const chemin = Array.from({ length: 21 }, (_, n) => { const u = n / 20, v = 1 - u; return { x: v * v * dep.x + 2 * u * v * mi.x + u * u * fin.x, z: v * v * dep.z + 2 * u * v * mi.z + u * u * fin.z }; });
   // Relief qui s'efface au bord et sous les dalles : les maquettes restent posées et les flancs raccordés
@@ -1073,11 +1067,9 @@ function montrerTuile(t) {
   dessus.computeVertexNormals();
   const peinture = solTuile(t, dalles, chemin), plateau = new THREE.Mesh(dessus, new THREE.MeshStandardMaterial({ map: peinture, roughness: .95 })); plateau.receiveShadow = true; decor.add(plateau);
   const flancs = new THREE.Mesh(flancsTuile(t, H, t.biome), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .95, flatShading: true, side: THREE.DoubleSide })); decor.add(flancs); tuile3d.jetables.push(dessus, peinture, flancs.geometry);
-  // Arbres et rochers plantés sur le relief, hors des dalles et du chemin
   const troncs2 = [], feuilles = [], sapins = [], cailloux = [], libre = (x, z) => horsHex(x, z) < .93 && dalles.every(d => Math.hypot(x - d.x, z - d.z) > d.r * 1.08) && chemin.every(q => Math.hypot(x - q.x, z - q.z) > .09 * R);
   const haut = t.alt > 900, garrigue = MEDITERRANEE.has(t.dep);
   for (let n = 0, poses = 0; n < 260 && poses < (t.alt > 1700 ? 12 : garrigue ? 22 : 46); n++) { const a = hash(n * .73 + t.c, t.r) * 6.283, d = Math.sqrt(hash(t.c, n * 1.31 + t.r)) * R, x = Math.sin(a) * d, z = Math.cos(a) * d;
-    // Bosquets plutôt que semis régulier
     if (!libre(x, z) || bruit(x / R * 2.4 + t.r, z / R * 2.4 + t.c) < .42) continue; poses++;
     const y = sol(x, z), s = (.13 + hash(n, t.r) * .11) * R, teinte = col(haut ? "#2c6a3a" : garrigue ? "#8f9f42" : hash(n, 7) < .3 ? "#7fb23c" : "#3f8a3f").offsetHSL(0, 0, (hash(x, z) - .5) * .09);
     troncs2.push({ x, y, z, sol: y, sx: s * .16, sy: s * .9 });

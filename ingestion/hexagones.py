@@ -216,7 +216,6 @@ def _centroide(anneau: list[tuple[float, float]]) -> tuple[float, float]:
     return cx / (3 * a), cz / (3 * a)
 
 
-# Département de chaque point, par balayage ligne à ligne (les points partagent peu de z)
 def _localiser(
     points: list[tuple[float, float]], polygones: dict[str, list[list[tuple[float, float]]]]
 ) -> list[str | None]:
@@ -436,7 +435,6 @@ class TuileMonde:
 @dataclass(frozen=True, slots=True)
 class Monde:
     rayon_scene: float
-    # Code ADM0_A3 → nom français
     pays: dict[str, str]
     tuiles: list[TuileMonde]
 

@@ -30,7 +30,6 @@ ZONAGE_PATH = "zonage_sismique"
 RAYON_SEVESO_KM = 5
 RAYON_ICPE_KM = 1
 RAYON_SOLS_M = 500
-# Taille de page maximale admise par l'API
 TAILLE_PAGE = 1000
 REGIMES_ICPE = {"Autorisation", "Enregistrement"}
 EN_EXPLOITATION = "En exploitation avec titre"
@@ -79,7 +78,6 @@ def _sans_accents(texte: str) -> str:
     return "".join(c for c in decompose if not unicodedata.combining(c)).lower()
 
 
-# Classe un statut Géorisques (« Risque Existant - faible », « Risque non Connu »…)
 def exposition(statut: str | None) -> Exposition:
     if not statut:
         return Exposition.ABSENT

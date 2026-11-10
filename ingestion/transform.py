@@ -138,7 +138,6 @@ def _au_schema(table: pa.Table, schema: pa.Schema) -> pa.Table:
     return pa.Table.from_arrays([table.column(f.name).cast(f.type) for f in schema], schema=schema)
 
 
-# Conversion d'une série d'horodatages ODRÉ, dans l'ordre : même règle que `records_to_table`
 def normalize_datetimes(raw_values: Iterable[str]) -> list[datetime]:
     valeurs = list(raw_values)
     if not valeurs:
@@ -152,7 +151,6 @@ def to_utc(raw: str) -> datetime:
     return normalize_datetimes([raw])[0]
 
 
-# `run_id` utilisable comme nom de fichier sous Windows et Linux
 def safe_run_id(run_id: str) -> str:
     return _UNSAFE_FILENAME_CHARS.sub("-", run_id).strip("-") or "run"
 

@@ -128,7 +128,6 @@ class AltimetrieClient:
     def __exit__(self, *exc_info: object) -> None:
         self.close()
 
-    # Altitude de chaque point (lon, lat) en mètres, `None` hors couverture
     def altitudes(self, points: list[tuple[float, float]]) -> list[float | None]:
         resultat: list[float | None] = []
         for debut in range(0, len(points), POINTS_PAR_REQUETE):
