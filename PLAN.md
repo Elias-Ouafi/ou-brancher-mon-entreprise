@@ -143,30 +143,45 @@ voisinage du site (argiles, cavités, Seveso, installations classées, sols poll
 
 Les étapes gardent leur numéro d'origine (l'ordre de prise est la colonne « Ordre »). Chacune
 n'est cochée qu'après ruff, pytest (dont `dbt build`) et un essai réel sur un projet de 1 à 50 MW
-(`python .claude/scripts/verifier.py`). Quatre lots : A, à prendre maintenant ; T, qualité des tests ; B, en attente d'une
-source, d'une date ou d'une décision ; C, présenter le projet à un incubateur.
+(`python .claude/scripts/verifier.py`). Quatre lots : A, à prendre maintenant ; P, présenter le projet en ligne ; T, qualité des
+tests ; B, en attente d'une source, d'une date ou d'une décision.
 
 **État des lieux du 9 novembre** : 72 pull requests fusionnées, aucune ouverte ;
 toutes les étapes du lot A sauf la 29 sont closes ; ce qui bloque la suite n'est plus du code mais
-les décisions et entretiens du lot C et la publication RTE du 1er janvier 2027 (étape 19).
+la mise en ligne de la démonstration (lot P) et la publication RTE du 1er janvier 2027 (étape 19).
 
 ### Prochaines étapes, dans l'ordre
+
+**Consignes du porteur (10 novembre)**, à appliquer à chaque étape :
+- **démonstration d'abord** : l'application doit marcher pour une présentation en entretien
+  d'embauche ; les fonctions jugées utiles et faisables passent vite, une activité trop longue
+  est reportée et notée ici ;
+- **identifiants personnels** : jamais dans le dépôt ni dans une image en ligne ; qui recharge
+  les données crée ses propres comptes (RTE pour Tempo et Ecowatt, les seuls à en demander) dans
+  `identifiants.local.txt`, ignoré par git ; l'application et le reste de `refresh` n'en
+  demandent aucun ;
+- **data engineering lisible** : médaillon (bronze Parquet + `MERGE`, silver et gold dbt) et
+  schéma en étoile au-dessus du gold pour l'usage ; le code le moins verbeux possible ; un
+  commentaire dit une règle métier, un piège de source ou un choix d'architecture, jamais ce que
+  fait une ligne ;
+- **pas de but lucratif** : modèle économique, entretiens, incubateurs et dossier vivent hors git,
+  dans `prive/` (ignoré) ; les choix vont au plus automatisable, au moindre effort du porteur.
 
 Le détail de chaque ligne est dans son lot, plus bas. « Porteur » : hors code, attend le porteur du
 projet ; « code » : se prend dans le dépôt.
 
 | Ordre | Étape | Qui | Condition ou date |
 |---|---|---|---|
-| 1 | **26** Décider du modèle économique (trois pistes posées) | Porteur | Aucune ; conditionne le dossier et le choix du programme |
-| 2 | **23** Mener les entretiens (proposition : 5 par segment, 20 au total) | Porteur | Avant toute piste nouvelle : les réponses peuvent réordonner les lots A et B |
-| 3 | **28** Relever la page de GreenTech Innovation (appel 2027) et la FAQ de Station F, puis choisir le programme | Porteur | Dès mi-novembre ; l'édition 2026 avait clos le 19 janvier |
-| 4 | **Lot T** Qualité des tests : essai réel élargi (T7), application simulée dans le navigateur (T5), CI sous Windows (T8) ; corriger le gestionnaire affiché en Corse et outre-mer | Code | T1 à T4 faites le 9 novembre, T6 le 10 ; T5 demande un choix du porteur ; le gestionnaire demande une source officielle |
-| 5 | **29** Main-d'œuvre qualifiée dans `diagnose` et `compare` | Code | Seule étape du lot A ; sources vérifiées le 9 novembre, trois choix du porteur avant de coder (sous le tableau du lot A) |
-| 6 | **Carte, lot B** : prototype three.js r186 hors ligne (une demi-journée), puis lots C et D | Code | Indépendant des entretiens ; le lot D épingle `compare` sur la carte |
+| 1 | **P1** Mettre la démonstration en ligne gratuitement (Cloud Run, détail dans le lot P) | Code, puis porteur (compte Google Cloud) | Aucune ; une demi-journée de code |
+| 2 | **P2** Finir d'épurer les commentaires : couche application (`ingestion/diagnostic.py`, `georisques.py`, `reporting/`) | Code | Pipeline (extractions, bronze, warehouse, dbt) fait le 10 novembre |
+| 3 | **Lot T** Qualité des tests : essai réel élargi (T7), application simulée dans le navigateur (T5), CI sous Windows (T8) ; corriger le gestionnaire affiché en Corse et outre-mer | Code | T1 à T4 faites le 9 novembre, T6 le 10 ; T5 demande un choix du porteur ; le gestionnaire demande une source officielle |
+| 4 | **29** Main-d'œuvre qualifiée dans `diagnose` et `compare` | Code | Sources vérifiées le 9 novembre, trois choix du porteur avant de coder (sous le tableau du lot A) |
+| 5 | **P3** Étoile d'abord : l'application lit le schéma `etoile` quand le grain existe | Code | Long : après P1 et P2 |
+| 6 | **Carte, lot B** : prototype three.js r186 hors ligne (une demi-journée), puis lots C et D | Code | Le lot D épingle `compare` sur la carte |
 | 7 | **19** Capacité en soutirage de RTE ; seed `accise_electricite` de 2027 | Code | 1er janvier 2027 (publication RTE), 1er janvier et 1er février (accise) |
-| 8 | **22, 27, 24** Reprendre le Lean Canvas, compléter la concurrence, tenir la traction ; tourner la vidéo | Porteur | Après les entretiens |
-| 9 | Trier les « Manques repérés et pistes » du lot A | Porteur et code | Après les entretiens |
-| 10 | **8, 30, S, 6** Prix au-delà de 150 GWh, modèle prédictif, ambiance sonore, international | Code | Chacune sa condition (lot B) ; l'international en dernier |
+| 8 | Trier les « Manques repérés et pistes » du lot A | Porteur et code | Garder l'utile et faisable vite, reporter le long |
+| 9 | **8, 30, S, 6** Prix au-delà de 150 GWh, modèle prédictif, ambiance sonore, international | Code | Chacune sa condition (lot B) ; l'international en dernier |
+
 
 ### Lot A : à prendre maintenant
 
@@ -208,10 +223,10 @@ Restent hors de l'application, à dessein :
 
 | Commande | Pourquoi elle reste en ligne de commande | Quand la reprendre |
 |---|---|---|
-| `compare` au-delà de deux adresses | L'application épingle et compare deux adresses (10 novembre) ; six côte à côte ne tiennent pas dans la fiche | Lot D de la carte, si les entretiens le demandent |
+| `compare` au-delà de deux adresses | L'application épingle et compare deux adresses (10 novembre) ; six côte à côte ne tiennent pas dans la fiche | Lot D de la carte, si le besoin se confirme |
 | `europe` | Moyennes nationales seulement, hors du diagnostic à l'adresse | Avec l'étape 6, en dernier |
 | `refresh` | Une vingtaine de minutes et un seul writer DuckDB : l'application affiche la date des données et la commande à lancer | Pas prévu |
-| `tempo`, `ecowatt`, `report` | Comptes RTE requis ; rapport mensuel hérité du persona des bureaux, sans rôle dans le choix d'un site | Pas prévu ; à retirer si les entretiens C23 confirment qu'il ne sert pas |
+| `tempo`, `ecowatt`, `report` | Comptes RTE requis ; rapport mensuel hérité du persona des bureaux, sans rôle dans le choix d'un site | Pas prévu ; à retirer s'il ne sert pas |
 | `demo` | Une commande pour un jury, sans adresse à saisir | Pas prévu |
 
 Fins d'étapes closes, gardées en limite plutôt qu'en étape : l'étape 17 est terminée (la composante
@@ -227,7 +242,7 @@ est terminée (le débit ou le niveau de nappe du jour face à une référence d
 de l'outil : Hub'Eau ne publie aucune référence, le QMNA5 se calcule station par station).
 
 **Manques repérés et pistes** (recherche du 29 octobre, imagerie ajoutée le 1er novembre ; à trier
-après les entretiens C23, rien n'est décidé) :
+rien n'est décidé) :
 
 | Manque | Piste | Condition |
 |---|---|---|
@@ -245,6 +260,28 @@ après les entretiens C23, rien n'est décidé) :
 | Besoin de recharge poids lourds au dépôt | Situer l'adresse dans une zone logistique à fort besoin de puissance (étude Enedis de décembre 2025) | Maille des zones logistiques (SDES), licence |
 | Version 2 de l'étude du 28 octobre | Photovoltaïque existant (OpenPVMapper, CC-BY, ~75 % de précision), bassin d'emploi (passé à l'étape 29), détection de changement sur l'ortho | Licences du LiDAR HD et de l'OCS GE : Licence Ouverte 2.0 selon data.gouv.fr (lu le 1er novembre) ; OpenPVMapper reste une prépublication sans producteur officiel, hors de la règle du 25 octobre |
 | Version 3 de l'étude du 28 octobre | Projections climatiques (DRIAS, Explore2) | Licence de DRIAS ; date de la carte RGA 2026 |
+
+### Lot P : présenter le projet en ligne
+
+**Recherche du 10 novembre** (pages officielles lues sauf mention « relayé ») :
+
+| Hébergeur | Gratuit | Ce qui compte ici | Verdict |
+|---|---|---|---|
+| [Google Cloud Run](https://cloud.google.com/run/pricing) | Chaque mois 180 000 vCPU-s, 360 000 GiB-s et 2 millions de requêtes, dans us-central1, us-east1 ou us-west1 ; compte de facturation obligatoire (relayé : page de tarifs illisible par l'outil le 10 novembre, à relire avant de déployer) | Facturé à la requête, rien au repos ; jusqu'à 32 GiB : la base et le PDF tiennent ; à 2 GiB, 50 h de calcul actif par mois | **Retenu** : 2 GiB, une instance au plus, alerte budgétaire à 1 € |
+| [Render](https://render.com/docs/free) | 750 h par mois, endormi après 15 min sans trafic (réveil en une minute environ), disque éphémère | Mémoire non affichée sur la page officielle, 512 Mo relayé : juste pour DuckDB et le PDF | Repli si Cloud Run ne convient pas |
+| [Hugging Face Spaces](https://huggingface.co/docs/hub/en/spaces-overview) | Seuls les Spaces statiques ; Docker et Gradio exigent un plan payant | L'application a un serveur Python | Écarté |
+| Fly.io, Heroku | Plus d'offre gratuite (relayé) | | Écarté |
+
+| Étape | Contenu | Critère |
+|---|---|---|
+| **P1** Démonstration en ligne | `HOTE` et `PORT` lus dans l'environnement (`0.0.0.0` et `$PORT` en conteneur, 127.0.0.1 par défaut) ; commande `publier` qui copie dans `data/public.duckdb` les schémas `gold` et `etoile`, plus `silver.prix_entreprises`, `silver.tempo_jours`, `silver.ecowatt_jours` et la date du dernier chargement de chaque table bronze (lus par l'application) ; `Dockerfile` sans PySpark ni Java (seule l'ingestion en a besoin) qui embarque cette base ; `gcloud run deploy --source .` lancé à la main, jamais planifié ; la date des données s'affiche, `refresh` ne tourne jamais en ligne | Les parcours de l'application marchent sur l'URL publique ; aucune variable `ECO2MIX_RTE_*` ni `ECO2MIX_ECOWATT_*` dans l'image ; taille de la base publique mesurée |
+| **P2** Commentaires de la couche application | Même règle que le pipeline : retirer ce qui décrit un champ ou une ligne | `ruff`, `pytest`, essai réel |
+| **P3** Étoile d'abord | Chaque nouveau fait gold a ses clés vers `dim_commune` et `dim_date` ; l'application lit `etoile` là où le grain existe | Sorties de référence inchangées |
+
+Licences de la base publique : Licence Ouverte et CC BY permettent la diffusion en citant la source
+(déjà fait à chaque chiffre) ; DVF interdit la réidentification, d'où aucune vente unitaire (le
+silver `ventes_locaux` reste hors de la base) ; les chantiers rail-route de SNCF Réseau (ODbL)
+imposent de diffuser la base dérivée sous la même licence.
 
 ### Lot T : qualité des tests
 
@@ -291,28 +328,8 @@ Rien à coder tant que la condition n'est pas levée.
 | **Carte** Refonte (lots B à F, voir plus bas) | Une carte lisible imprimée, qui montre ce que la puissance demandée change | Lots 0 et A faits (29 et 30 octobre) ; suite : lot B, prototype three.js r186 hors ligne |
 | **S** Ambiance sonore de la tuile (demande du 29 octobre) : un son discret qui rappelle le facteur le plus marquant de la case (par exemple un bourdonnement électrique si le nucléaire domine), aucun s'il n'y a pas de facteur dominant | Rendre la carte plus parlante sans texte de plus ; le son n'est jamais une information en soi | Lot A de la carte fait le 30 octobre. Prérequis restants : règle du facteur dominant écrite à partir des critères déjà calculés, « aucun » possible ; sons libres de droits (CC0 ou domaine public, licence et auteur notés dans le dépôt) ; lecture après un geste de l'utilisateur, volume bas, bouton de coupure, sans effet sur le rapport imprimé ; vérification par le skill `essai-carte` |
 | **8** Repère de prix au-delà de 150 000 MWh/an, après la fin de l'ARENH | Un projet de 20 MW constant dépasse la dernière tranche Eurostat (IG, sans borne) | Une source officielle et ouverte d'un prix à terme ; le classement pondéré dans `compare` reste écarté (décision du 15 octobre) |
-| **30** Modèle prédictif d'implantation (demande du 1er novembre, cadrage plus bas) : par zone d'emploi, probabilité d'implantations nouvelles à 3 ans, apprise sur l'historique | Signaler tôt les territoires qui montent, en complément des faits à l'adresse ; il dira où les projets vont, pas où ils seraient rentables ni si la puissance est disponible | Données fiabilisées (critères à écrire) ; entretiens C23 ; décision du porteur face à « comparaison sans classement » (15 octobre) ; historique de la capacité en soutirage, absent à ce jour |
+| **30** Modèle prédictif d'implantation (demande du 1er novembre, cadrage plus bas) : par zone d'emploi, probabilité d'implantations nouvelles à 3 ans, apprise sur l'historique | Signaler tôt les territoires qui montent, en complément des faits à l'adresse ; il dira où les projets vont, pas où ils seraient rentables ni si la puissance est disponible | Données fiabilisées (critères à écrire) ; décision du porteur face à « comparaison sans classement » (15 octobre) ; historique de la capacité en soutirage, absent à ce jour |
 | **6** Extension internationale, voir plus bas | En dernier (décision du 25 octobre) | Jeton ENTSO-E et contours des zones de prix |
-
-### Lot C : présenter le projet à un incubateur
-
-Recherche du 29 octobre, détail dans « Ce que demandent les incubateurs ». Étapes surtout hors
-code ; seules 21 et 25 touchent au dépôt (faites le 31 octobre, voir « État »). Le dossier, le
-pitch et le Lean Canvas restent hors du dépôt (documentation limitée à README et PLAN) : une page
-privée du porteur du projet les rassemble depuis le 31 octobre. Seules leurs conclusions reviennent
-ici.
-
-| Ordre | Étape | Où on en est (31 octobre) | Ce qui reste |
-|---|---|---|---|
-| 1 | **26** Modèle économique | Trois pistes posées : outil libre (MIT, déjà le cas) et études sur mesure ; offre aux collectivités et agences de développement ; licence d'usage ou service en ligne, contraire à la décision « local, à la demande ». Réutilisation commerciale relevée source par source : Licence Ouverte 2.0 (ODRÉ, Enedis, EDF SEI, BAN, Géorisques, IGN, Etalab, Cartofriches, SDES, DGAC) et CC BY 4.0 (Ember, PVGIS, catalogue du JRC lu) la permettent en citant la source ; DVF interdit la réidentification des personnes ; ODbL (SNCF Réseau, Nominatim) impose le partage à l'identique d'une base dérivée diffusée | **Décision du porteur.** Avant de vendre : confirmation écrite de l'ADEME pour la Base Carbone (Licence Ouverte selon Datagir, relayé), conditions du portail RTE (Tempo, Ecowatt) et de VigiEau non trouvées |
-| 2 | **23** Entretiens avec des porteurs de projets, avant tout nouveau développement | Grille de huit questions (dernière recherche de site, critère décisif et bloquant, raccordement et étude exploratoire, pièces de maturité, eau et chaleur fatale, consommation par MW, coût de la recherche, démonstration sur un de leurs sites) et tableau de relevé prêts | **Les mener.** Nombre à fixer (aucune source n'en donne ; proposition de travail : 5 par segment, 20 au total) ; reporter les réponses dans le Lean Canvas ; elles peuvent réordonner les lots A et B |
-| 3 | **28** Choix du programme (relevé à la main, aucune planification) | GreenTech Innovation : édition 2026 close le 19 janvier 2026 (ouverte le 24 novembre 2025), appel 2027 pas publié au 31 octobre ; MVP et business plan demandés jusqu'ici. Station F Founders : 25 entreprises au plus par promotion, calendrier non confirmé (relayé). F/ai écarté (start-up natives de l'IA) | **Choix du porteur** ; relever à la main la page de GreenTech Innovation dès mi-novembre (si le calendrier se répète, à confirmer) et vérifier si une entreprise immatriculée est exigée ; lire la FAQ de Station F |
-| 4 | **22** Lean Canvas | Neuf blocs écrits en hypothèses, chacun avec son test | Le reprendre après les entretiens |
-| 5 | **24** Traction sans télémétrie | Relevé du 31 octobre : 11 adresses de recette, 63 pull requests fusionnées, 0 étoile, 0 issue, 0 essai réel avec un porteur | Tenir à la main essais réels et retours écrits |
-| 6 | **27** Concurrence et alternatives | Premier tableau : Caparéseau (production seulement avant 2027), cartographie et simulateur de raccordement d'Enedis (capacités BT et HTA, document de 2023 relayé, à recouper avec le portail client), étude exploratoire, sites clés en main et France Foncier +, sites « fast track » de l'État (26 sites, relayé), cabinets et agences, Yottar (aucune source). Aucun outil public trouvé ne rassemble raccordement, foncier, coût complet, carbone et risques à l'adresse | Compléter avec les alternatives citées en entretien |
-
-Vidéo de démonstration de 1 à 2 minutes, hors dépôt, sur l'exemple de référence réel : à tourner
-par le porteur (plan en cinq temps dans la page du dossier).
 
 ### Échéances à guetter
 
@@ -493,36 +510,6 @@ obligations de l'ADEME et de l'Arcep sur le WUE et la chaleur fatale n'est pas �
 réduits d'accise ont depuis été lus dans le formulaire 2040-TIC-SD et le texte consolidé du CIBS
 (étape 18, décision du 29 octobre).
 
-## Ce que demandent les incubateurs : recherche du 29 octobre
-
-Recherche documentaire pour présenter le projet (étapes 21 à 28, lot C). Même notation que plus
-haut : **P** = page du programme ou de l'organisme lue, **S** = relayé par un tiers. Il n'existe pas
-de business plan unique imposé : chaque programme a son formulaire, mais tous reviennent aux mêmes
-blocs (problème, solution, marché, concurrence, modèle économique, équipe, traction).
-
-| Programme ou méthode | Ce qui est demandé ou jugé | Niveau | Source |
-|---|---|---|---|
-| Plan de Sequoia | Dix sections : mission en une phrase, problème, solution, pourquoi maintenant, marché, concurrence, modèle économique, équipe, finances, vision à cinq ans | P | [Sequoia, « Writing a business plan »](https://sequoiacap.com/article/writing-a-business-plan/) |
-| Lean Canvas | Neuf blocs (segments, problèmes, proposition de valeur, solutions, canaux, revenus, coûts, indicateurs clés, avantage concurrentiel) ; outil à reprendre et faire pivoter, pour convaincre partenaires et financeurs | P | [Bpifrance Création](https://bpifrance-creation.fr/moment-de-vie/lean-canvas-lapplication-methode-du-lean-startup) |
-| Y Combinator | Devise « Make something people want » ; entretien en visioconférence, décision le jour même ; questions de candidature citées par un tiers : pourquoi cette idée, expertise du domaine, preuve que les gens en ont besoin, avancement, vidéo des fondateurs ; réponses courtes et sans jargon commercial | P (page de candidature) ; S (questions) | [YC, Apply](https://www.ycombinator.com/apply), [Arc](https://arc.dev/employer-blog/y-combinator-application-tips/) |
-| Station F, Founders Program | Projet technologique, équipe à plein temps, MVP déjà construit ; formulaire et vidéo ; trois mois (réseau et apprentissage, puis exécution), mentor choisi, jusqu'à 15 mois d'hébergement ; thème différent à chaque promotion | P (page de 2023) | [Station F, batch 3](https://stationf.co/news/founders-program-batch-3-open) |
-| GreenTech Innovation (ministère de la Transition écologique, Ecolab du CGDD) | Label et accompagnement ; jugé sur l'ambition environnementale, la faisabilité, le réalisme économique et l'innovation ; 20 à 25 projets par édition ; appel annuel (clos le 19 janvier 2026 pour l'édition 2026) | S | [FrenchWeb](https://www.frenchweb.fr/greentech-innovation-2026-derniere-ligne-droite-avant-la-cloture-des-candidatures-le-19-janvier-2026/459622), [greentechinnovation.fr](https://greentechinnovation.fr/en/2025/04/22/startup-apply-to-the-greentech-initiative-2/) |
-| Bourse French Tech (Bpifrance) | Jeune entreprise immatriculée en France ; dépenses de faisabilité, modèle économique, tests ; **montants contradictoires selon les relais (30 000 à 90 000 €)**, page officielle refusée à la lecture (HTTP 403) | S | [les-aides.fr](https://les-aides.fr/aide/VCEvGZx2wMDhXw/bpifrance/bourse-french-tech-emergence.html), [Hayot Expertise](https://hayot-expertise.fr/blog/bourse-french-tech-bpifrance-conditions) |
-| Réseau Entreprendre | Prêt d'honneur sans intérêt ni garantie ; étude par des chefs d'entreprise puis comité d'engagement ; critère central : emplois créés (au moins 5 à 3 ans selon les antennes) | S | [Guide du candidat 2025 (Côte d'Azur)](https://www.reseau-entreprendre.org/cote-d-azur/wp-content/uploads/sites/75/2025/03/Guide-du-candidat-2025.pdf), [Maddyness](https://www.maddyness.com/2019/12/09/aides-subvention-prets-honneur/) |
-| Wilco | Appels par thème ; en 2018, Île-de-France, moins de trois ans, traction commerciale déjà là, prêt d'honneur et 36 mois d'accompagnement | S (2018 à 2022) | [Maddyness](https://www.maddyness.com/evenement/appel-a-candidature-wilco-btoc/) |
-
-Ce qui s'applique au projet tel qu'il est : le MVP existe (16 octobre), il est technologique et
-touche la transition écologique, ce qui le place dans les critères de Station F et de GreenTech
-Innovation. Ce qui manque à tous les dossiers : la preuve du besoin par des entretiens, des
-chiffres de traction, un modèle économique et une équipe décrite. Réseau Entreprendre et la Bourse
-French Tech supposent une entreprise créée (et des emplois pour le premier) : à voir après
-l'étape 26.
-
-Trous de la recherche : page officielle de la Bourse French Tech illisible (403) ; règlement 2027 de
-GreenTech Innovation non publié ; aucun incubateur spécialisé énergie et data centers actif trouvé
-(EDF Pulse Incubation accompagne des projets climat, sans lien établi avec le raccordement) ; aucune
-source ne fixe un nombre d'entretiens clients.
-
 ## Ce que les études ont établi (9 octobre au 1er novembre)
 
 - **Les besoins des entreprises**, dans l'ordre : de la puissance disponible à une date connue
@@ -665,10 +652,10 @@ source ne fixe un nombre d'entretiens clients.
 | 29 oct. | Accise réduite chiffrée (18, fin) : tarifs de la loi de finances 2026 (loi n° 2026-103) lus dans le formulaire DGFiP 2040-TIC-SD 2026, en mode « table » de pdftotext (le mode « layout » décalait d'une ligne libellés et montants ; alignement vérifié sur les tarifs normaux, dont le montant figure dans le libellé), et recoupés avec le texte consolidé du CIBS sur Légifrance : 5,5 €/MWh (grande consommatrice, dès 0,5 % d'électro-intensité), 3 (électro-sensible, dès 2,25 %), 0,5 (électro-intensive, dès 6,75 %), 0,5 (exposée à la concurrence internationale, L312-72), 10 pour les centres de stockage de données sur la fraction au-delà de 1 GWh par an (L312-64, L312-70) ; seed `accise_electricite` à une ligne par catégorie. Les paliers de `--va` passent de 3,375 % (bouclier tarifaire, fini le 31 décembre 2025) à 2,25 %. Tarif réduit total, sans majoration ZNI à part (le formulaire n'en déclare pas). Industriel : seulement sans `--activite` ou avec `industrie` (sections B à E de la NACE) ; data center : refusé quand `--va` montre moins de 2,25 % (condition 8 de L312-70), les sept autres conditions dites, pas vérifiées ; aucune réduction pour la recharge ni l'entrepôt. Montants donnés à côté du prix moyen Eurostat, sans l'en retrancher (on ignore la part d'accise réduite dans la moyenne de la tranche) |
 | 29 oct. | Cohérence (lot 0) : exemples du README refaits sur l'exemple de référence ; captures prises par Chrome sans interface (`--headless=new`, rendu WebGL logiciel SwiftShader), la vue « Territoire » par un appel à `setLens` ajouté à une copie de la page, jamais au gabarit ; courbe d'exemple tirée de `profils_charge_reels` (industrie > 250 kVA) et mise à l'échelle d'une pointe de 12 MW, dite comme telle, à la place de la courbe de bureau. Au-delà de 36 kVA, `--courbe` ne chiffre pas l'énergie heure par heure (aucun prix horaire public, décision du 12 octobre) : la ligne renvoie au prix de la tranche et à l'acheminement sur la courbe |
 | 29 oct. | Voisinage du site (15) : API Géorisques à la demande, coupée par `--sans-risques`, en plus du rapport à l'adresse et indépendante de lui (l'un peut répondre sans l'autre). Rayons choisis par l'outil, aucun texte n'en fixe : argiles au point, cavités et sols pollués à 500 m (filtre de l'API, sans distance : SIS, SUP et instructions n'ont qu'un polygone), installations classées à 1 km, Seveso à 5 km ; seules les installations sous autorisation ou enregistrement « en exploitation avec titre » sont retenues (« Non ICPE » et « Autres régimes » n'ont ni titre ni état) ; un ancien site CASIAS n'est pas un sol pollué avéré. Le critère « risques » du verdict reste réglé par les plans de prévention (un Seveso seuil haut impose un PPRT, déjà compté) : le voisinage complète son détail (Seveso le plus proche, SIS) sans changer son état |
-| 29 oct. | Prochaines étapes en trois lots (A maintenant, B en attente, C incubateur) ; une étape terminée quitte « Suite » et ne reste que dans « État » et les décisions |
+| 29 oct. | Prochaines étapes en lots (A maintenant, B en attente ; P et T ajoutés en novembre) ; une étape terminée quitte « Suite » et ne reste que dans « État » et les décisions |
 | 30 oct. | Carte, lot A : direction « le relevé » sur fond papier clair (`#F4F1EA`), encre `#14202B`, vert `#2E7D5B`, orange `#C2571A`, dans `reporting/charte.py`, seule source des couleurs de la carte (variables CSS injectées, lues par la scène), du PDF et des graphiques ; Tempo garde ses couleurs. Spectral (titres) et Inter (texte, chiffres), licence OFL, depuis le dépôt Google Fonts, réduites au latin par fontTools, en base64 dans la page (`font-src data:`) et enregistrées dans reportlab et matplotlib ; la table de remplacement des glyphes du PDF disparaît. L'échelle de note rouge → blanc → vert du 26 octobre est gardée ; anneau des zones RTE et lien vers la zone à l'encre, plus en cyan additif (invisible sur papier) |
 | 31 oct. | Application (`app`) : serveur `http.server` de la bibliothèque standard, sans nouvelle dépendance, lié à 127.0.0.1 et lancé à la main (ni tâche planifiée ni service) ; la carte reste une page autonome qui s'ouvre aussi en `file://`, en lecture seule. Après une analyse, le serveur épingle le verdict dans `carte.html` et la page se recharge, plutôt que de rejouer l'épingle en JavaScript ; une carte refaite (données ou gabarit plus récents) reprend l'épingle de la précédente. Port 8770 (8765 sert déjà l'essai des cartes). Les rapports reprennent `generer_rapport_implantation` ; le Markdown est rendu sans graphiques, pour un seul fichier à télécharger. Les appels à la demande de `diagnose` sont regroupés dans `completer_en_ligne`, partagé par `diagnose`, `compare` et l'application. Touches solarpunk à la demande du porteur, posées sur la direction « le relevé » sans la remplacer : `SOLEIL` et `FEUILLE` dans `reporting/charte.py`, réservés à la carte ; le PDF garde la sobriété du relevé. L'épingle de l'adresse quitte le rouge, réservé au défavorable dans la note des cases |
-| 31 oct. | Démonstration (25) : `demo` réutilise tel quel le jeu synthétique des tests (`ingestion/tests/medallion.py`), sans copie à tenir à jour ; base construite une fois dans `data/demo/`, effacée si la construction échoue. Projet fictif de 2 MW et 15 000 MWh à Lyon plutôt que l'exemple de référence : la base synthétique n'a ni Chilly-Mazarin ni la tranche IF. Aucun géocodage (adresse fixe) ni appel à la demande ; seule la carte télécharge contours et relief, et la commande réussit sans elle. La ligne « plus de 45 jours, relancer refresh » reste : l'avertissement de première ligne dit que la base est fictive. Lot C : le dossier (Lean Canvas, grille d'entretiens, traction, modèle économique, concurrence, programmes) vit hors du dépôt, dans une page privée du porteur ; seules ses conclusions sont dans « Suite » |
+| 31 oct. | Démonstration (25) : `demo` réutilise tel quel le jeu synthétique des tests (`ingestion/tests/medallion.py`), sans copie à tenir à jour ; base construite une fois dans `data/demo/`, effacée si la construction échoue. Projet fictif de 2 MW et 15 000 MWh à Lyon plutôt que l'exemple de référence : la base synthétique n'a ni Chilly-Mazarin ni la tranche IF. Aucun géocodage (adresse fixe) ni appel à la demande ; seule la carte télécharge contours et relief, et la commande réussit sans elle. La ligne « plus de 45 jours, relancer refresh » reste : l'avertissement de première ligne dit que la base est fictive |
 | 1er nov. | Calendrier HTB (17, fin) : l'hypothèse du 29 octobre (identique à la HTA) était fausse. Délibération CRE 2025-77, texte du tarif HTB 1 : week-ends et jours fériés entièrement creux ; jusqu'au 31 décembre 2026, creuses de 23 h à 7 h ; dès le 1er janvier 2027, 22 h - 6 h en saison haute, 2 h - 6 h et 12 h - 16 h en saison basse, sauf Nouvelle-Aquitaine et Occitanie (2 h - 4 h et 10 h - 16 h, puis 10 h - 18 h, pointe dès 7 h). Le régime suit la date de chaque heure : une année de grille à cheval sur le 1er janvier compte les deux, sans attendre la bascule. Les deux régimes de 2027 ont autant d'heures de chaque classe : à puissance constante, la région ne change rien ; seul un profil variable la fait apparaître. À 45 MW et 300 000 MWh : 3,79 M€ au lieu de 3,83 M€. Délibération 2026-33 lue en recherche de ces plages : elle ne touche qu'aux heures méridiennes de la HTA-BT. Jours fériés légaux, sans ceux d'Alsace-Moselle (la délibération 2025-77 ne les cite pas) ; HTA-BT inchangée |
 | 1er nov. | Monde en tuiles : Natural Earth 5.1.2 (`ne_50m_admin_0_countries`, domaine public, déjà au projet pour les terres), préféré aux limites officielles de la Banque mondiale (CC BY 4.0, mais fichiers lourds à tous les niveaux administratifs, sans adresse stable). Producteur non étatique et frontières de fait : acceptable pour un fond sans donnée, sans ligne dans `limites_methodologiques` puisqu'aucun chiffre n'en sort ; la limite est dite dans la légende et le README. Pays étudiés dans `PAYS_ETUDIES` : un code et une grille pour en ajouter un. Seuls les cinq départements d'outre-mer ont des données ; les collectivités restent ternes. Antarctique exclu. Encarts d'outre-mer à leur vraie position, décalés au sud s'ils se chevauchent, en Mercator calé sur la métropole. Tuile du PDF dessinée en vectoriel par reportlab, sans capture de la 3D ni réseau. Captures de `docs/exemples/` : Chrome sans interface avec `--force-prefers-reduced-motion` et `--virtual-time-budget`, pour ne pas saisir l'animation en cours |
 | 8 nov. | Obligations de solarisation (16, fin) : textes lus sur Légifrance le 8 novembre (CCH L171-4 dans sa version du 28 mai 2026, loi n° 2026-403 ; L171-5 à venir au 1er janvier 2028 ; loi APER art. 40 dans sa version du 28 novembre 2025, loi n° 2025-1129 ; décret n° 2025-802 pour les seuils d'outre-mer). La loi du 26 novembre 2025 n'a pas reporté les échéances des parkings : elle admet les procédés mixtes (ombrières sur 35 % de la moitié, le reste végétalisé). Règles en constantes datées dans `ingestion/solaire.py` plutôt qu'en seed : quelques dates et seuils, lus par le seul diagnostic. Usages BD TOPO soumis : « Commercial et services », « Industriel », « Sportif » ; « Indifférencié » dit inconnu. Rappel de la règle sans effet sur le verdict ni avis juridique : exonérations motivées, exclusion possible des installations classées par arrêté et cas du data center, non cité en tant que tel, dits dans la limite. Structure des toitures écartée : aucune source publique de capacité portante ; BDNB (CSTB, Licence Ouverte 2.0) non intégrée, elle ne donne qu'un matériau. `compare` : seuil du parking et bâtiment existant au tableau, règle des toitures neuves une fois sous le tableau |
@@ -697,4 +684,4 @@ source ne fixe un nombre d'entretiens clients.
 | Ports fluviaux parmi les pôles de fret | Pas de maille port dans les données VNF du SDES |
 | Persona des bureaux | Pour quelques dizaines de MWh, le prix est le même partout et le raccordement rarement un sujet (28 oct.) |
 | Spark pour silver et gold | dbt-duckdb suffit à ce volume |
-| Site web en ligne, exécution planifiée, Airflow | Hors périmètre : ligne de commande ou application sur 127.0.0.1, lancées à la main |
+| Exécution planifiée, Airflow, `refresh` en ligne | Hors périmètre : tout se lance à la main ; la démonstration en ligne (lot P) sert une base figée |

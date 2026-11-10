@@ -129,7 +129,6 @@ def lire_chantiers(contenu: bytes) -> list[dict[str, Any]]:
         chantier["longueur_m"] += _nombre(ligne.get(_LONGUEUR))
         if engins := (ligne.get("Manutention 2021") or "").strip():
             chantier["manutention"].add(engins)
-    # Engins de toutes les cours, dans un ordre stable
     for chantier in cumul.values():
         chantier["manutention"] = ", ".join(sorted(chantier["manutention"])) or None
     return list(cumul.values())

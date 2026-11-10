@@ -545,7 +545,6 @@ EUROSTAT_PRIX_ENTREPRISES = DatasetSpec(
 )
 
 
-# Datasets extraits depuis ODRÉ, adressables par `--dataset` en ligne de commande
 SPECS: dict[str, DatasetSpec] = {
     spec.dataset_id: spec
     for spec in (

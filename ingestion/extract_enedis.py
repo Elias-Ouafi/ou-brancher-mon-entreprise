@@ -97,7 +97,6 @@ def telecharger_conso_entreprises(
             page = lire_page(reponse.content)
             lignes += page
             pages += 1
-            # La page suivante vient de l'en-tête Link, avec son curseur `after`
             suivante = reponse.links.get("next", {}).get("url")
             url, params = (suivante, None) if page and suivante else (None, None)
     finally:

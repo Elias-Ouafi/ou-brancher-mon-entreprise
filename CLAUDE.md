@@ -2,7 +2,7 @@
 
 Le projet se décrit dans [README.md](README.md) (usage, architecture) et [PLAN.md](PLAN.md) (état,
 étapes, décisions en vigueur). Les lire avant toute étape ; ce fichier ne les répète pas. La
-prochaine étape se lit dans « Prochaines étapes, dans l'ordre » de PLAN (détail dans les lots A, T, B, C) ; une étape finie
+prochaine étape se lit dans « Prochaines étapes, dans l'ordre » de PLAN (détail dans les lots A, P, T, B) ; une étape finie
 en sort pour devenir une ligne de « État » (skill `cloturer-etape`).
 
 ## Environnement
@@ -13,6 +13,8 @@ en sort pour devenir une ligne de « État » (skill `cloturer-etape`).
   `python -m ingestion.cli refresh --months 180`. DuckDB n'accepte qu'un writer : pas de session
   `duckdb` ouverte pendant un `refresh` ou un `dbt build`.
 - `identifiants.local.txt` et `.env` ne se lisent pas et ne se citent jamais.
+- `prive/` (modèle économique, entretiens, dossier) est ignoré par git : rien n'en sort vers README,
+  PLAN ou un commit.
 
 ## Vérifier
 

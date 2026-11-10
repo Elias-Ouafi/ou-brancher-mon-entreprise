@@ -30,7 +30,6 @@ ZONAGE_PATH = "zonage_sismique"
 RAYON_SEVESO_KM = 5
 RAYON_ICPE_KM = 1
 RAYON_SOLS_M = 500
-# Taille de page maximale admise par l'API
 TAILLE_PAGE = 1000
 REGIMES_ICPE = {"Autorisation", "Enregistrement"}
 EN_EXPLOITATION = "En exploitation avec titre"

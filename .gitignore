@@ -25,3 +25,6 @@ dbt/dbt_packages/
 # Claude Code : réglages propres au poste
 .claude/settings.local.json
 .coverage
+
+# Stratégie du porteur (modèle économique, entretiens, dossier) : jamais versionnée
+prive/
