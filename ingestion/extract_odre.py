@@ -24,7 +24,6 @@ RECORDS_PAGE_SIZE = 100
 # `offset` maximal accepté par `/records` (limit + offset <= 10 000)
 RECORDS_MAX_OFFSET = 10_000 - RECORDS_PAGE_SIZE
 
-# Statuts HTTP considérés comme transitoires, donc rejouables
 RETRYABLE_STATUS_CODES = frozenset({408, 425, 429, 500, 502, 503, 504})
 
 USER_AGENT = (
@@ -105,7 +104,6 @@ class ExtractionWindow:
     def duration_hours(self) -> float:
         return (self.end - self.start).total_seconds() / 3600
 
-    # Majorant du nombre de lignes attendues, utilisé pour choisir l'endpoint
     def estimated_rows(self, rows_per_hour: int = EXPECTED_ROWS_PER_HOUR) -> int:
         return int(self.duration_hours * rows_per_hour) + 1
 

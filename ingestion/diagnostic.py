@@ -1175,7 +1175,6 @@ def _gwh(valeur: float) -> str:
 @dataclass(frozen=True, slots=True)
 class Section:
     titre: str
-    # Couples (`"texte"` ou `"limite"`, contenu), dans l'ordre d'affichage
     elements: list[tuple[str, str]]
 
 
@@ -2602,7 +2601,6 @@ def avec_risques_locaux(diagnostic: Diagnostic, *, settings: Settings | None = N
     return replace(diagnostic, risques=risques)
 
 
-# Ajoute le rapport Géorisques de l'adresse ; ne fait jamais échouer le diagnostic
 def completer_risques(diagnostic: Diagnostic, *, settings: Settings | None = None) -> Diagnostic:
     t = diagnostic.territoire
     codes_commune = {t.code_insee_commune, diagnostic.code_insee_commune}
@@ -2622,7 +2620,6 @@ def completer_risques(diagnostic: Diagnostic, *, settings: Settings | None = Non
     return replace(diagnostic, risques=risques)
 
 
-# Ajoute le voisinage de l'adresse (Géorisques) ; ne fait jamais échouer le diagnostic
 def completer_voisinage(diagnostic: Diagnostic, *, settings: Settings | None = None) -> Diagnostic:
     t = diagnostic.territoire
     try:
@@ -2635,7 +2632,6 @@ def completer_voisinage(diagnostic: Diagnostic, *, settings: Settings | None = N
     return replace(diagnostic, voisinage=voisinage)
 
 
-# Ajoute la zone d'urbanisme de l'adresse ; ne fait jamais échouer le diagnostic
 def completer_urbanisme(diagnostic: Diagnostic, *, settings: Settings | None = None) -> Diagnostic:
     t = diagnostic.territoire
     try:
@@ -2646,7 +2642,6 @@ def completer_urbanisme(diagnostic: Diagnostic, *, settings: Settings | None = N
     return replace(diagnostic, urbanisme=zone, urbanisme_consulte=True)
 
 
-# Ajoute le bâtiment de l'adresse et le productible solaire ; ne fait jamais échouer le diagnostic
 def completer_solaire(diagnostic: Diagnostic, *, settings: Settings | None = None) -> Diagnostic:
     t = diagnostic.territoire
     try:
@@ -2660,7 +2655,6 @@ def completer_solaire(diagnostic: Diagnostic, *, settings: Settings | None = Non
     return replace(diagnostic, batiment=batiment, productible=productible, solaire_consulte=True)
 
 
-# Ajoute les temps d'accès à l'autoroute et aux pôles de fret ; ne fait jamais échouer le diagnostic
 def completer_acces_routier(
     diagnostic: Diagnostic, *, settings: Settings | None = None
 ) -> Diagnostic:
@@ -2678,7 +2672,6 @@ def completer_acces_routier(
     return replace(diagnostic, acces_routier=acces)
 
 
-# Ajoute les zones d'activité proches de l'adresse ; ne fait jamais échouer le diagnostic
 def completer_zones_activite(
     diagnostic: Diagnostic, *, settings: Settings | None = None
 ) -> Diagnostic:
@@ -2693,7 +2686,6 @@ def completer_zones_activite(
     return replace(diagnostic, nb_zones_activite=nb, zones_activite=zones)
 
 
-# Ajoute les arrêtés sécheresse de l'adresse ; ne fait jamais échouer le diagnostic
 def completer_eau(diagnostic: Diagnostic, *, settings: Settings | None = None) -> Diagnostic:
     t = diagnostic.territoire
     try:

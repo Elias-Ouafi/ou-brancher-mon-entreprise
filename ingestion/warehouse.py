@@ -54,7 +54,6 @@ class WarehouseLoader(Protocol):
 
     def merge_parquet(self, parquet_path: Path | str) -> LoadResult: ...
 
-    # Plus récent `date_heure` présent, ou `None` si la table est vide
     def latest_timestamp(self, *, measure: str | None = None) -> datetime | None: ...
 
     def count_distinct_instants(self, *, start: datetime, end: datetime) -> int: ...
@@ -112,7 +111,6 @@ class DuckDBLoader:
     def _key_join(self, left: str, right: str) -> str:
         return " AND ".join(f"{left}.{name} = {right}.{name}" for name in self.spec.key_names)
 
-    # Ordre de départage des lignes d'une même clé dans un lot
     @property
     def _dedup_order(self) -> str:
         if not self.spec.measures:
@@ -137,7 +135,6 @@ class DuckDBLoader:
     def _column_list(self) -> str:
         return ", ".join(self.spec.schema.names)
 
-    # Connexion paresseuse : rien n'est ouvert tant qu'aucune requête n'est émise
     @property
     def connection(self) -> duckdb.DuckDBPyConnection:
         if self._connection is None:
