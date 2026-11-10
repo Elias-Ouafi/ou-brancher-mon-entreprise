@@ -59,7 +59,7 @@ def _surface_anneau(anneau: list[tuple[float, float]]) -> float:
 
 
 def lire_zones(payload: dict[str, Any], *, latitude: float, longitude: float) -> list[ZoneActivite]:
-    if payload.get("type") != "FeatureCollection":
+    if not isinstance(payload, dict) or payload.get("type") != "FeatureCollection":
         raise ZonesActiviteError("reponse WFS de la BD TOPO inattendue")
     zones = []
     for feature in payload.get("features") or []:

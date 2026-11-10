@@ -25,6 +25,7 @@ ou-brancher = "ingestion.cli:main"
 [dependency-groups]
 dev = [
     "pytest>=8.2",
+    "pytest-cov>=5",
     "pytest-httpx>=0.30",
     "ruff>=0.6",
 ]
@@ -58,3 +59,15 @@ allowed-confusables = ["–"]
 testpaths = ["ingestion/tests"]
 addopts = "-q --strict-markers"
 filterwarnings = ["ignore:PySpark does not yet fully support pandas:FutureWarning"]
+
+# Mesurée par `pytest --cov` (CI et verifier.py) ; les tests eux-mêmes ne comptent pas
+[tool.coverage.run]
+source = ["ingestion", "reporting"]
+omit = ["ingestion/tests/*"]
+branch = true
+
+[tool.coverage.report]
+# Relevé du 9 novembre 2026 : 92,5 % sous Windows ; marge pour la CI sous Ubuntu, pas encore mesurée
+fail_under = 91
+show_missing = true
+skip_covered = true

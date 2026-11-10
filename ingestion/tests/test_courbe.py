@@ -50,10 +50,42 @@ def test_power_in_kw_is_detected() -> None:
     assert lire_courbe(export_enedis("kW")).conso_kwh == pytest.approx(84)
 
 
-@pytest.mark.parametrize("contenu", [b"date;kWh\n2026-01-01;3\n", b"Horodate;Valeur\n"])
-def test_unreadable_curve_is_rejected(contenu: bytes) -> None:
-    with pytest.raises(CourbeError):
+@pytest.mark.parametrize(
+    ("contenu", "message"),
+    [
+        (b"", "sans ligne d'en-tête"),
+        (b"date;kWh\n2026-01-01;3\n", "sans ligne d'en-tête"),
+        (b"Horodate,Valeur\n2026-01-01T00:30:00,3\n", "sans ligne d'en-tête"),
+        (b"\x00\xff\x89PNG\r\n\x1a\n\x00", "sans ligne d'en-tête"),
+        (b"Horodate;Valeur\n", "vide ou réduite"),
+        (b"Horodate;Valeur\n2026-01-01T00:30:00;3\n", "vide ou réduite"),
+        (b"Horodate;Valeur\n2026-01-01T00:30:00;3\n2026-01-01T00:30:00;4\n", "vide ou réduite"),
+        (b"Horodate;Valeur\n2026-01-01T00:30:00;3\nhier;4\n", "ligne 3 : date ou valeur"),
+        (b"Horodate;Valeur\n2026-01-01T00:30:00;beaucoup\n", "ligne 2 : date ou valeur"),
+    ],
+)
+def test_unreadable_curve_is_rejected(contenu: bytes, message: str) -> None:
+    with pytest.raises(CourbeError, match=message):
         lire_courbe(contenu)
+
+
+# Une courbe illisible donne un message et le code 1, jamais une trace Python
+@pytest.mark.parametrize("commande", ["essentiel", "diagnose", "compare"])
+def test_commande_refuse_une_courbe_illisible(
+    commande: str,
+    tmp_path: Path,
+    settings: Settings,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    fichier = tmp_path / "courbe.csv"
+    fichier.write_text("Horodate;Valeur\nhier;beaucoup\n", encoding="utf-8")
+    monkeypatch.setattr(cli, "get_settings", lambda: settings)
+    monkeypatch.setattr(cli, "geocode", lambda *args, **kwargs: territoire("69123", "Lyon"))
+    adresses = ["--adresse", "Lyon"] * (2 if commande == "compare" else 1)
+
+    assert cli.main([commande, *adresses, "--courbe", str(fichier)]) == 1
+    assert "courbe de charge illisible : ligne 2" in caplog.text
 
 
 @pytest.mark.skipif(DBT_BIN is None, reason="dbt non installé (uv sync --group dbt)")
