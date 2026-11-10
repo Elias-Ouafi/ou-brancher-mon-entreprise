@@ -315,7 +315,6 @@ VISUELS = {
 }
 
 
-# Une fiche par critère, bordée de la couleur de son état : nom, état, valeur, dessin, trois phrases
 def _fiche(d: Diagnostic, critere: Critere, comparaisons: Comparaisons) -> Table:
     teinte = TEINTES_ETAT.get(critere.etat, DISCRET)
     couleur = teinte.hexval().replace("0x", "#")
@@ -357,7 +356,6 @@ def _fiche(d: Diagnostic, critere: Critere, comparaisons: Comparaisons) -> Table
     return fiche
 
 
-# Les faits courts du tableau de `compare`, pour cette seule adresse
 def _reperes(d: Diagnostic) -> list:
     lignes = [
         [
@@ -399,7 +397,6 @@ def _territoire(d: Diagnostic, comparaisons: Comparaisons) -> list:
     return [KeepTogether([Paragraph(titre, STYLES["h1"]), images[0]]), *images[1:]]
 
 
-# Touche solarpunk : un filet vert, un soleil et une branche en tête de première page
 def _ornement(canvas, _document) -> None:
     canvas.saveState()
     haut, droite = A4[1] - 8 * mm, A4[0] - 18 * mm

@@ -153,7 +153,6 @@ def _locaux(d: Diagnostic) -> str:
 def _toiture_existante(d: Diagnostic) -> str:
     if not d.solaire_consulte:
         return "—"
-    # Deuxième ligne : celle du bâtiment existant, propre à l'adresse
     return lignes_obligations_solaires(
         d.batiment, code_departement=d.code_departement, solaire_consulte=True
     )[1]

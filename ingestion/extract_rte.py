@@ -38,7 +38,6 @@ class RteCredentialsMissingError(ExtractionError):
     pass
 
 
-# Plage de jours civils `[start, end)`, en heure de Paris
 @dataclass(frozen=True, slots=True)
 class DayRange:
     start: date
@@ -66,7 +65,6 @@ class DayRange:
         return f"[{self.start.isoformat()} -> {self.end.isoformat()})"
 
 
-# Minuit heure de Paris, au format ISO avec décalage attendu par l'API
 def _paris_midnight(day: date) -> str:
     return datetime(day.year, day.month, day.day, tzinfo=PARIS_TZ).isoformat()
 

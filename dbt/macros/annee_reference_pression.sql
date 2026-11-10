@@ -1,4 +1,3 @@
--- Millésime de référence de la pression industrielle
 {% macro annee_reference_pression(iris_relation) -%}
     select coalesce(
         max(annee) filter (where not a_du_secret),

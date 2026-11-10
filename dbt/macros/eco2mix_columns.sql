@@ -1,4 +1,3 @@
--- Listes de colonnes partagées par les modèles, pour ne les écrire qu'une fois
 
 -- Filières de production, alignées sur le seed `dim_filiere`
 {% macro filieres() -%}
@@ -15,7 +14,6 @@
     ) }}
 {%- endmacro %}
 
--- Somme de colonnes en traitant `null` comme 0 (filière non renseignée)
 {% macro somme(colonnes) -%}
     {%- for colonne in colonnes -%}
         coalesce({{ colonne }}, 0){{ ' + ' if not loop.last }}

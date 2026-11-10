@@ -25,112 +25,90 @@ class Settings(BaseSettings):
 
     consolidation_dataset_id: str = "eco2mix-national-cons-def"
 
-    # Portail API de RTE. Compte gratuit sur https://data.rte-france.com
     rte_api_base_url: str = "https://digital.iservices.rte-france.com"
 
     ban_base_url: str = "https://data.geopf.fr/geocodage"
 
-    # API Géorisques (risques naturels et technologiques à l'adresse), sans clé
     georisques_base_url: str = "https://www.georisques.gouv.fr/api/v1/"
 
-    # Export GASPAR (risques recensés par commune), servi hors de l'API : repli quand elle se tait
+    # Export GASPAR servi hors de l'API Géorisques : repli quand elle se tait
     gaspar_url: str = "https://files.georisques.fr/GASPAR/gaspar.zip"
 
-    # API Carto de l'IGN (Géoportail de l'urbanisme : zone d'urbanisme d'un point), sans clé
     apicarto_base_url: str = "https://apicarto.ign.fr/api/"
 
-    # Service WFS de la Géoplateforme (BD TOPO de l'IGN, Licence Ouverte) : zones d'activité
     geoplateforme_wfs_url: str = "https://data.geopf.fr/wfs/ows"
 
-    # Calcul d'itinéraire de la Géoplateforme (profil voiture seulement, pas de poids lourd)
+    # Profil voiture seulement : la Géoplateforme n'a pas de profil poids lourd
     itineraire_url: str = "https://data.geopf.fr/navigation/itineraire"
     itineraire_ressource: str = "bdtopo-pgr"
 
-    # PVGIS (Commission européenne, JRC) : productible photovoltaïque d'un kWc en un point
     pvgis_url: str = "https://re.jrc.ec.europa.eu/api/v5_3/PVcalc"
 
-    # VigiEau (arrêtés de restriction des usages de l'eau en vigueur à un point), sans clé
     vigieau_base_url: str = "https://api.vigieau.beta.gouv.fr/api/"
 
-    # Service WFS de Géorisques (zonage sismique réglementaire), répond quand l'API se tait
     zonage_sismique_url: str = "https://www.georisques.gouv.fr/services"
 
-    # Service WFS du Sandre (référentiel ZRPE), zones de répartition des eaux
     zones_repartition_eaux_url: str = "https://services.sandre.eaufrance.fr/geo/zrpe"
 
-    # Intensité carbone annuelle des pays européens (Ember, CC BY 4.0)
     ember_url: str = (
         "https://files.ember-energy.org/public-downloads/generation/outputs/"
         "release_generation_yearly_lower.csv"
     )
 
-    # Pays d'une adresse hors de France (Nominatim, OpenStreetMap, ODbL) : une requête par appel
+    # Nominatim (ODbL) : une requête par appel, règle d'usage du service
     nominatim_url: str = "https://nominatim.openstreetmap.org/search"
 
-    # Production horaire par filière en Corse et outre-mer (EDF SEI, licence ouverte)
     edf_sei_url: str = (
         "https://opendata.edf.fr/data-fair/api/v1/datasets/"
         "courbe-de-charge-de-la-production-delectricite-par-filiere/raw"
     )
 
-    # Open data d'Enedis (data-fair), sans compte ni clé : consommation des entreprises par adresse
     enedis_base_url: str = "https://opendata.enedis.fr/data-fair/api/v1/datasets/"
 
-    # API de diffusion d'Eurostat (JSON-stat), sans compte ni clé
     eurostat_base_url: str = "https://ec.europa.eu/eurostat/api/dissemination"
 
-    # Contours des départements d'Etalab (IGN Admin Express simplifié à 1 km), sans clé
     contours_url: str = (
         "https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/2025/geojson/"
         "departements-1000m.geojson.gz"
     )
 
-    # Terres émergées de Natural Earth (domaine public) : pays voisins en brouillard sur la carte
     terres_url: str = (
         "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/"
         "ne_50m_land.geojson"
     )
 
-    # Pays du monde de Natural Earth (domaine public) : tuiles ternes autour des pays étudiés
     pays_url: str = (
         "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/"
         "ne_50m_admin_0_countries.geojson"
     )
 
-    # Centre de chaque commune (geo.api.gouv.fr, Etalab), sans clé : place les pôles de production
     geo_communes_url: str = "https://geo.api.gouv.fr/communes"
 
-    # Marchandises par port maritime et par année (SDES, catalogue DiDo, licence ouverte)
     ports_fret_url: str = (
         "https://data.statistiques.developpement-durable.gouv.fr/dido/api/v1/datafiles/"
         "89c4e831-27ae-4fe7-8ff7-d6c82fa4a841/csv"
     )
 
-    # Fret par aéroport (DGAC, série APT, licence ouverte) : fiche data.gouv.fr de l'archive
+    # L'archive DGAC change d'adresse à chaque publication : on passe par sa fiche data.gouv.fr
     aeroports_fret_dataset_url: str = (
         "https://www.data.gouv.fr/api/1/datasets/64808a5811da153f1439914c/"
     )
 
-    # Chantiers de transport combiné rail-route (SNCF Réseau, ODbL)
     chantiers_rail_route_url: str = (
         "https://ressources.data.sncf.com/api/explore/v2.1/catalog/datasets/"
         "chantiers-de-transport-combines/exports/csv?use_labels=true"
     )
 
-    # Ventes immobilières par année (DVF géolocalisé, DGFiP et Etalab, Licence Ouverte 2.0)
     dvf_url: str = "https://files.data.gouv.fr/geo-dvf/latest/csv/{annee}/full.csv.gz"
     dvf_nb_annees: int = 5
 
-    # Friches référencées dans Cartofriches (Cerema, Licence Ouverte v2) : le lien permanent de la
-    # ressource data.gouv.fr suit la dernière version publiée du fichier
+    # Lien permanent data.gouv.fr : il suit la dernière version publiée de Cartofriches
     friches_url: str = "https://www.data.gouv.fr/fr/datasets/r/74feb3ed-5f9f-4ef8-8fab-b0128d569a99"
 
-    # Service d'altimétrie de la Géoplateforme (IGN, RGE ALTI), sans clé
     altimetrie_base_url: str = "https://data.geopf.fr/altimetrie"
 
     rte_client_id: str | None = None
     rte_client_secret: SecretStr | None = None
-    # Application Ecowatt du portail RTE, distincte de celle de Tempo
     ecowatt_client_id: str | None = None
     ecowatt_client_secret: SecretStr | None = None
 
@@ -141,10 +119,9 @@ class Settings(BaseSettings):
 
     retry_wait_seconds: float = Field(default=1.0, ge=0)
 
-    # Au-delà de ce nombre de lignes estimées, on abandonne la pagination de `/records`
     records_row_threshold: int = Field(default=900, ge=1)
 
-    # Couche bronze : un Parquet immuable par exécution, fidèle à la source
+    # Bronze : un Parquet immuable par exécution, fidèle à la source
     bronze_dir: Path = Path("data/bronze")
     duckdb_path: Path = Path("data/warehouse/eco2mix.duckdb")
 
@@ -159,7 +136,6 @@ class Settings(BaseSettings):
     consolidation_min_coverage: float = Field(default=0.95, gt=0, le=1)
 
 
-# Instance partagée, mise en cache pour éviter de relire `.env` à chaque appel
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     return Settings()

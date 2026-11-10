@@ -48,7 +48,6 @@ def generate_monthly_report(
         connection.close()
 
     chemin = output or report_path(mois, settings=settings, format=format)
-    # Imports à la demande : reportlab n'est utile qu'au PDF, matplotlib qu'aux graphiques
     if format == "md":
         from reporting import markdown
 

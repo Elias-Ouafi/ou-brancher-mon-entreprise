@@ -26,7 +26,6 @@ class ZonageSismiqueError(ExtractionError):
     pass
 
 
-# Polygones d'une géométrie GeoJSON, chacun une liste d'anneaux (extérieur puis trous)
 def _polygones(geometrie: dict[str, Any]) -> list[list[list[list[float]]]]:
     if geometrie.get("type") == "Polygon":
         polygones = [geometrie["coordinates"]]
@@ -110,7 +109,6 @@ def telecharger_zonage(
     return lignes
 
 
-# Le point est-il dans l'un des polygones ? Règle pair-impair, trous compris
 def contient(polygones: list[list[list[list[float]]]], longitude: float, latitude: float) -> bool:
     for anneaux in polygones:
         dedans = False

@@ -137,7 +137,6 @@ def aplatir_json_stat(payload: dict[str, Any]) -> list[dict[str, Any]]:
         valeurs = {str(i): v for i, v in enumerate(valeurs) if v is not None}
     statuts: dict[str, str] = payload.get("status") or {}
 
-    # Codes de chaque dimension, rangés selon leur position dans le cube
     codes = {nom: sorted(cat["index"], key=cat["index"].get) for nom, cat in categories.items()}
     if [len(codes[d]) for d in dimensions] != tailles:
         raise EurostatResponseError("tailles et dimensions incoherentes")

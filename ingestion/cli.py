@@ -543,7 +543,6 @@ def main(argv: list[str] | None = None) -> int:
 
                 print(en_json(diagnostic))
             else:
-                # Import paresseux : matplotlib et reportlab ne servent qu'au rapport
                 from reporting.implantation import generer_rapport_implantation
 
                 path = generer_rapport_implantation(
@@ -595,7 +594,6 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 print(sortie)
         case "carte":
-            # Import paresseux : la carte n'est utile qu'à cette commande
             import webbrowser
 
             from reporting.carte import generer_carte, mettre_a_jour_carte, verdict_carte
@@ -693,7 +691,6 @@ def main(argv: list[str] | None = None) -> int:
             outcome, result = run_prix_entreprises_ingestion(settings=settings, run_id=args.run_id)
             logger.info("prix entreprises charges %s %s", outcome, result.as_dict())
         case "report":
-            # Import paresseux : matplotlib et reportlab ne servent qu'ici
             from reporting.monthly import generate_monthly_report
 
             output = Path(args.output) if args.output else None

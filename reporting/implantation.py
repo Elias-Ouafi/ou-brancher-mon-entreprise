@@ -42,7 +42,6 @@ SOURCES = [
 ]
 
 
-# Une plage du profil type : puissance appelée sur `[heure_debut, heure_fin)`
 @dataclass(frozen=True, slots=True)
 class PlageProfil:
     type_jour: str
@@ -133,7 +132,6 @@ def lire_comparaisons(
     )
 
 
-# `implantation_69123_20-rue-de-la-republique-69002-lyon.pdf` : stable et lisible
 def nom_fichier(diagnostic: Diagnostic, format: Format) -> str:
     ascii_ = (
         unicodedata.normalize("NFKD", diagnostic.territoire.adresse)
@@ -178,7 +176,6 @@ def generer_rapport_implantation(
                 commande=commande,
             )
         else:
-            # Import paresseux : reportlab n'est utile qu'au PDF
             from reporting import implantation_pdf
 
             implantation_pdf.rendre(
@@ -213,7 +210,6 @@ def texte_compact(contenu: str) -> str:
     return " ".join(contenu.split())
 
 
-# Graphique placé après chaque section, par numéro de section (1 à 4)
 GRAPHIQUES = {
     1: ("pression_departements", "Pression industrielle des départements"),
     2: ("couverture_regions", "Couverture de la consommation par la production, par région"),
@@ -254,7 +250,6 @@ def rendre_markdown(
         blocs.append("")
         if graphiques and numero in GRAPHIQUES:
             nom, legende = GRAPHIQUES[numero]
-            # Import paresseux : sans graphiques, matplotlib n'est pas nécessaire
             from reporting import implantation_charts
 
             png = getattr(implantation_charts, nom)(diagnostic, comparaisons)
