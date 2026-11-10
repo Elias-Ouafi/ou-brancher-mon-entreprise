@@ -153,4 +153,4 @@ def test_toutes_les_sources_en_panne_l_application_repond(
 
     reponse = app.traiter("POST", "/api/analyse", corps, reglages)
     assert reponse.statut == HTTPStatus.OK
-    assert "Brancher ici ?" in json.loads(reponse.corps)["texte"]
+    assert "Brancher ici ?" in json.loads(reponse.corps)["adresses"][0]["texte"]

@@ -1,0 +1,49 @@
+# Comparaison de 2 adresses
+
+*Sans classement : chaque indicateur est donné tel quel, avec sa limite en fin de document.*
+
+| Indicateur | Place Bellecour 69002 Lyon | 1 rue de test, Ajaccio |
+|---|---|---|
+| Territoire | Lyon (69123), Rhône, Auvergne-Rhône-Alpes | Ajaccio (2A004), Corse-du-Sud, Corse |
+| Géocodage | numéro, score 1,00 | numéro, score 0,90 |
+| Industrie : commune | 1 site(s), 40,0 GWh/an | 1 site(s), 3,0 GWh/an |
+| Industrie : département | 3 site(s), 100 GWh/an, rang 1/4 | 1 site(s), 3,0 GWh/an, rang 4/4 |
+| Région : couverture | 200 %, excédentaire ; dépendance 3/3 | 70 %, déficitaire ; dépendance 2/3 |
+| Contraintes RTE (3-5 ans) | 3, dont 2 plus de 75 fois par an | réseau hors RTE |
+| Postes RTE du département | 3 (HTB1 1, HTB2 1, HTB3 1) | aucun (réseau hors RTE) |
+| Zone prioritaire RTE | Vallée de la chimie (P2), à 7 km ; capacité 2029, si les projets se concrétisent | aucune (réseau hors RTE) |
+| Site clé en main (France 2030) | Salaise-sur-Sanne, à 46 km ; prêt en 2026 - 2027 | aucun dans ce territoire |
+| Électricité décarbonée | oui, 51,9 gCO₂e/kWh (France continentale) | non, 594 gCO₂e/kWh (Corse) |
+| Locaux d'activité (vente DVF) | 3 250 €/m², 6 ventes | non disponible |
+| Friches (Cartofriches) | 2 de 1 ha ou plus à moins de 10 km ; la plus proche : 5,0 ha, à 2 km | aucune référencée de 1 ha ou plus à moins de 10 km |
+| Parking à solariser (APER) | plus de 1 500 m² | plus de 1 500 m² |
+| Brancher ici ? | À vérifier avant de s'engager : risques (non évalué : facture). | À vérifier avant de s'engager : risques, carbone (non évalué : facture). |
+
+## Identique pour toutes les adresses
+
+- Données chargées le 01/07/2026.
+- Puissance 12 MW → HTA, Enedis (ou ELD) : Raccordement en moyenne tension (20 kV), souvent sur un départ dédié au-delà de quelques MW
+- Obligation solaire : bâtiment neuf, extension ou rénovation lourde de plus de 500 m² au sol (industrie, entrepôt, commerce, bureaux) : énergie renouvelable ou végétalisation sur 40 % de la toiture au moins, 50 % à compter du 1er juillet 2027 (CCH L171-4)
+- Prix de l'électricité pour l'entreprise (identique sur tout le territoire)
+- Aucun prix publié par Eurostat pour la tranche de 70 000 MWh/an.
+- Carbone du réseau et coût horaire d'un profil type
+- Aucun mois complet et tarifé : charger les données nationales récentes.
+- La Corse et l'outre-mer ont leurs propres barèmes réglementés : les prix ci-dessus valent pour la métropole continentale.
+
+## Limites
+
+- Ne compte que les sites raccordés au réseau de transport (HTB) : les consommateurs raccordés à Enedis n'y figurent pas. Depuis 2022, environ 40 % des IRIS sont masqués par le secret statistique : le millésime retenu est donc le dernier publié en entier, au prix de quelques années d'ancienneté.
+- Le réseau est interconnecté : une région déficitaire importe sans difficulté de ses voisines. Le solde décrit une dépendance structurelle, pas une pénurie ni un risque de coupure.
+- Contraintes de transit liées à l'accueil des énergies renouvelables (injection), que RTE prévoit de gérer par de la flexibilité plutôt que par de nouveaux ouvrages ; données indicatives et non engageantes. Elles ne mesurent pas la capacité disponible pour un consommateur. Ni les ouvrages ni les postes ne sont géolocalisés en open data : la maille est le département, pas l'adresse, et une liaison entre deux départements compte dans les deux.
+- Repère de densité du réseau de transport, pas une capacité de raccordement : un poste proche peut être saturé. Les postes ne sont pas géolocalisés en open data, et environ 3 % d'entre eux n'ont pas de département publié.
+- Zones et années cibles du schéma décennal de RTE, sous réserve des autorisations administratives et, pour les zones P2, de la concrétisation des projets industriels ; les zones P3 sont de simples exemples, sans date. Distance à vol d'oiseau jusqu'à la commune de référence de la zone, pas jusqu'au poste. Être proche d'une zone ne donne aucun droit d'accès au réseau : la capacité est attribuée selon les procédures de RTE. Concerne surtout les raccordements au réseau de transport (au-delà de quelques dizaines de MW).
+- Distance à vol d'oiseau jusqu'au point de la commune, pas jusqu'au site lui-même. La période de maturité est celle annoncée pour un site prêt à accueillir une activité ; elle ne garantit ni la disponibilité du foncier à la date voulue, ni la puissance électrique raccordable, à confirmer auprès de l'aménageur et du gestionnaire de réseau.
+- Intensité moyenne du réseau sur l'année, en cycle de vie (méthode location-based) : elle ne dit rien du contrat de fourniture ni des garanties d'origine achetées (méthode market-based), ni des heures de consommation, l'intensité variant fortement d'une heure à l'autre. Toutes les adresses du continent partagent la même valeur : le réseau y est interconnecté. Le seuil de 100 gCO2e/kWh est celui de la taxonomie européenne pour la production d'électricité ; « décarbonée » qualifie le réseau, pas l'entreprise, et ne permet pas à elle seule une allégation environnementale.
+- Prix de vente au m² des locaux industriels, commerciaux ou assimilés : DVF ne distingue pas les bureaux des commerces et entrepôts, et ne contient ni loyers ni locaux loués. Médiane des ventes d'un seul local, sans logement ni autre disposition dans l'acte, entre 15 et 5 000 m² et de 100 à 15 000 €/m² ; la valeur foncière comprend le terrain. Les ventes les plus récentes manquent de quelques mois de publication. Alsace, Moselle et Mayotte ne sont pas publiées. Ordre de grandeur pour comparer des villes, pas l'estimation d'un local précis.
+- Inventaire déclaratif et incomplet : une friche non référencée n'y figure pas et une friche listée peut être déjà occupée ou en cours de projet (statut donné). Seules les friches de 1 ha ou plus non reconverties sont retenues, d'après la surface d'unité foncière quand elle est renseignée (les sites sans surface sont écartés). Ni la propriété, ni le prix, ni la constructibilité ne sont garantis : à confirmer auprès de la collectivité, de l'établissement public foncier et au règlement de la zone. Les zones d'activité ne sont pas dans cette source.
+- Rappel de la règle, pas un avis juridique. La surface du parking n'est pas connue de l'outil : l'obligation est donnée par seuil. Un data center n'est pas cité en tant que tel parmi les usages : à qualifier avec le service instructeur. Le texte prévoit des exonérations motivées (contraintes techniques, de sécurité, architecturales ou patrimoniales, coût économiquement inacceptable, parking ombragé par des arbres) et un arrêté peut écarter ou adapter l'obligation pour une installation classée. La part de toiture des bâtiments existants est fixée par décret, non chiffrée ici. La capacité portante de la toiture n'est pas publique : la BDNB (CSTB, Licence Ouverte 2.0) donne au mieux le matériau de toiture, pas la structure.
+- Indicatif : 1 kVA est assimilé à 1 kW. Le domaine de tension réel est fixé par le gestionnaire lors de l'étude de raccordement.
+- La capacité de raccordement disponible pour la consommation n'est pas publiée en open data (Caparéseau ne couvre que l'injection). Seule une étude de raccordement RTE ou Enedis fait foi.
+- Prix moyen national constaté pour la tranche, hors TVA et taxes récupérables : identique en tout point du territoire (péréquation), il ne dépend pas de l'adresse. C'est une moyenne déclarée par les fournisseurs : un contrat donné peut s'en écarter nettement selon sa date de signature, sa durée et le profil du site. Les scénarios à 3 ans ne sont pas une prévision : le scénario central applique au prix des 12 derniers mois la variation médiane observée sur la tranche, et la fourchette reprend les erreurs passées de cette méthode (10e centile, médiane, 90e centile de l'écart entre prix réel et scénario central), crise de 2022-2023 comprise, élargie au besoin pour contenir le prix actuel. Tant que le contrôle sur le passé compte moins de 20 périodes, qui se chevauchent et tiennent souvent dans la même crise, la fourchette est dite indicative. Une rupture jamais observée la dépasserait encore.
+- Le prix est identique en tout point du territoire (péréquation tarifaire) : ce coût ne dépend pas de l'adresse. Profil illustratif, heures creuses supposées de 22 h à 6 h (en réalité fixées localement par le gestionnaire de réseau), jours fériés comptés comme ouvrés, abonnement exclu. Carbone : intensité nationale, faute d'intensité régionale opposable.
+

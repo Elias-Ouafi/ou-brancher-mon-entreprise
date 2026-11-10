@@ -1,6 +1,6 @@
 # Plan du projet
 
-> Mis à jour le 9 novembre 2026. Périmètre : la France (métropole, Corse, outre-mer), en ligne de
+> Mis à jour le 10 novembre 2026. Périmètre : la France (métropole, Corse, outre-mer), en ligne de
 > commande ou dans l'application locale, à la demande.
 
 Ce fichier porte l'état du projet, les étapes qui restent, les recherches qui les justifient et
@@ -103,6 +103,9 @@ voisinage du site (argiles, cavités, Seveso, installations classées, sols poll
 | Pannes des sources à la demande (T4, 9 novembre) : chacune des sept sources jouée contre huit pannes (délai dépassé, connexion coupée, 500, 404, corps vide, page de maintenance, JSON inattendu, liste vide) : le diagnostic aboutit, l'échec est dit dans sa section (pour les risques, par le repli sur l'export GASPAR), aucun critère du verdict ne change d'état ; mêmes pannes sur `diagnose`, `compare` et l'application entiers. Quatre lectures corrigées (urbanisme, bâtiment, autoroute, zones d'activité plantaient sur un JSON qui n'est pas un objet) ; un corps vide de Géorisques n'est plus lu comme « rien à signaler », sauf pour `rga` | `test_pannes.py` |
 | Matrice des cas d'usage (T3, 9 novembre) : 158 cas joués par la vraie ligne de commande sur la base synthétique, vérifiés sur des invariants : `essentiel` pour chaque activité à chaque palier de puissance (bornes de `seuils_raccordement` comprises), `diagnose` et `compare` dans tous leurs formats, les onze communes de la recette à 12 et 45 MW, chaque option, l'accise réduite selon l'activité, les projets refusés, le warehouse absent ; les quinze chaînes de chargement rejouées deux fois (rien de dupliqué, Parquet jamais écrasé) et les commandes d'entretien, `tempo`, `ecowatt`, `report` et `app` lancées par `cli.main` ; une consommation que la puissance ne permet pas (plus de 8 784 heures) est refusée en ligne de commande et dans l'application | `test_cas_usage.py`, `test_commandes.py`, `incoherence_projet` |
 | Couverture des tests mesurée (T1, 9 novembre) : `pytest --cov` en CI et dans `verifier.py`, lignes et branches, 92,8 % au relevé après T4, échec sous 91 % ; courbe de charge illisible refusée avec le numéro de la ligne fautive dans `essentiel`, `diagnose`, `compare` et l'application (T2) | `pyproject.toml` (`tool.coverage`), `ingestion/courbe.py` |
+| Sorties de référence (T6, 10 novembre) : douze sorties de `essentiel`, `diagnose` et `compare` et le rapport Markdown figés sur la base synthétique, comparés à chaque run ; un libellé changé fait échouer le test, `--maj-references` réécrit les références ; PDF relu par `pypdf` : pages, pied de page, sections, tuile, aucun caractère sans glyphe ; chaque maquette et chaque relief de la tuile dessinés (`reporting/tuile.py` de 65 à 98 %) ; couverture 94,4 %, plancher à 92,5 %. Essai réel : le PDF complet de Chilly-Mazarin (9 pages) n'a aucun caractère sans glyphe | `test_references.py`, `ingestion/tests/references/` |
+| Parcours du néophyte (10 novembre) : `app` ouvre une fenêtre d'accueil qui demande une adresse, une seconde si l'on veut comparer (deux au plus), le projet replié ; la carte s'ouvre cadrée sur les adresses (la tuile si elles la partagent, la région si elles en occupent deux bouts, le monde si l'une est outre-mer), chacune avec son bâtiment (liseré doré pour la première, vert pour la seconde) ; fiche adaptée : verdict et cartes chiffrées pour une adresse, mêmes lignes côte à côte et un onglet par adresse pour deux ; rapport PDF en un clic | `reporting/carte.html`, `reporting/app.py` |
+| PDF court et visuel (10 novembre) : 3 pages au lieu de 9 pour l'exemple de référence, environ sept fois moins de texte ; le verdict et sa tuile, puis une fiche par critère (échelle des domaines de tension, plans de prévention, jauge du carbone, parts de la facture et accise, distances et prix des locaux) avec trois phrases au plus, dont la limite qui pèse sur la décision et un conseil ; repères du site en tableau, deux graphiques du territoire | `reporting/implantation_pdf.py`, `reporting/visuels.py` |
 | Démonstration sans `refresh` (étape 25, 31 octobre) : `demo` construit une fois la base synthétique des tests dans `data/demo/` (une minute environ, sans réseau), répond `essentiel` pour un hub de recharge fictif de 2 MW à Lyon, chiffres dits fictifs en première ligne, et ouvre la carte ; environ 2 s ensuite | `ingestion/demo.py`, `demo` |
 
 **À surveiller** :
@@ -157,7 +160,7 @@ projet ; « code » : se prend dans le dépôt.
 | 1 | **26** Décider du modèle économique (trois pistes posées) | Porteur | Aucune ; conditionne le dossier et le choix du programme |
 | 2 | **23** Mener les entretiens (proposition : 5 par segment, 20 au total) | Porteur | Avant toute piste nouvelle : les réponses peuvent réordonner les lots A et B |
 | 3 | **28** Relever la page de GreenTech Innovation (appel 2027) et la FAQ de Station F, puis choisir le programme | Porteur | Dès mi-novembre ; l'édition 2026 avait clos le 19 janvier |
-| 4 | **Lot T** Qualité des tests : sorties de référence (T6), essai réel élargi (T7), application simulée dans le navigateur (T5), CI sous Windows (T8) ; corriger le gestionnaire affiché en Corse et outre-mer | Code | T1 à T4 faites le 9 novembre ; T5 demande un choix du porteur ; le gestionnaire demande une source officielle |
+| 4 | **Lot T** Qualité des tests : essai réel élargi (T7), application simulée dans le navigateur (T5), CI sous Windows (T8) ; corriger le gestionnaire affiché en Corse et outre-mer | Code | T1 à T4 faites le 9 novembre, T6 le 10 ; T5 demande un choix du porteur ; le gestionnaire demande une source officielle |
 | 5 | **29** Main-d'œuvre qualifiée dans `diagnose` et `compare` | Code | Seule étape du lot A ; sources vérifiées le 9 novembre, trois choix du porteur avant de coder (sous le tableau du lot A) |
 | 6 | **Carte, lot B** : prototype three.js r186 hors ligne (une demi-journée), puis lots C et D | Code | Indépendant des entretiens ; le lot D épingle `compare` sur la carte |
 | 7 | **19** Capacité en soutirage de RTE ; seed `accise_electricite` de 2027 | Code | 1er janvier 2027 (publication RTE), 1er janvier et 1er février (accise) |
@@ -205,7 +208,7 @@ Restent hors de l'application, à dessein :
 
 | Commande | Pourquoi elle reste en ligne de commande | Quand la reprendre |
 |---|---|---|
-| `compare` épinglé sur la carte (plusieurs épingles, caméra d'un site à l'autre) | Le tableau du panneau suffit à présélectionner ; les épingles demandent la refonte de la scène | Lot D de la carte |
+| `compare` au-delà de deux adresses | L'application épingle et compare deux adresses (10 novembre) ; six côte à côte ne tiennent pas dans la fiche | Lot D de la carte, si les entretiens le demandent |
 | `europe` | Moyennes nationales seulement, hors du diagnostic à l'adresse | Avec l'étape 6, en dernier |
 | `refresh` | Une vingtaine de minutes et un seul writer DuckDB : l'application affiche la date des données et la commande à lancer | Pas prévu |
 | `tempo`, `ecowatt`, `report` | Comptes RTE requis ; rapport mensuel hérité du persona des bureaux, sans rôle dans le choix d'un site | Pas prévu ; à retirer si les entretiens C23 confirment qu'il ne sert pas |
@@ -249,33 +252,32 @@ But : que chaque cas d'usage du persona soit joué par un test sans réseau, et 
 soit essayée par une machine plutôt qu'à la main. Chaque étape a son critère ; aucune n'ajoute de
 tâche planifiée.
 
-**Constat du 9 novembre**, après T1 à T4 :
-- 895 tests sans réseau (4 min 34 s, contre 2 min 30 s avant le lot : à surveiller) ;
-  couverture **92,8 %** des lignes et des branches
-  d'`ingestion/` et de `reporting/`, plancher à 91 % ;
-- restent sous 90 % : `reporting/tuile.py` à 65 % (tuile vectorielle du PDF, à prendre avec T6),
-  `ingestion/pipeline.py` à 86 % ; `cli.py` est passé de 74 à 93 %, `pipeline.py` de 59 à 86 % ;
+**Constat du 10 novembre**, après T1 à T4 et T6 :
+- 914 tests sans réseau (12 min 44 s au relevé du 10 novembre avec la couverture, contre 4 min 34 s
+  le 9 et 2 min 30 s avant le lot : à mesurer de nouveau, poste au repos, avant T5 et T8) ;
+  couverture **94,6 %** des lignes et des branches
+  d'`ingestion/` et de `reporting/`, plancher à 92,5 % ;
+- reste sous 90 % : `ingestion/pipeline.py` à 86 % ; `reporting/tuile.py` est passé de 65 à 98 % ;
 - **défaut trouvé par la matrice, non corrigé** : en Corse et outre-mer, le verdict annonce
   « HTA, Enedis (ou ELD) » puis « HTB, RTE » et « étude RTE indispensable », alors que la section
   « Tension du réseau » dit que le réseau n'y est pas exploité par RTE ; le seed
   `seuils_raccordement` ne connaît pas les zones non interconnectées. À corriger après lecture
   d'une source officielle sur le gestionnaire de chaque territoire (test en `xfail` strict dans
   `test_cas_usage.py`, qui échouera le jour où c'est corrigé) ;
-- le JavaScript de `reporting/carte.html` n'est exécuté par aucun test : formulaire, adresse
-  ambiguë, comparaison, courbe gardée et téléchargements ne sont vérifiés qu'à la main (skill
-  `essai-carte`) ; les tests de l'application s'arrêtent au serveur ;
+- le JavaScript de `reporting/carte.html` n'est exécuté par aucun test : fenêtre d'accueil,
+  adresse ambiguë, deux adresses, courbe gardée et téléchargements ne sont vérifiés qu'à la main
+  (skill `essai-carte`) ; les tests de l'application s'arrêtent au serveur ;
 - l'essai réel de `verifier.py` ne joue qu'un cas : `essentiel`, 12 MW, Chilly-Mazarin ;
 - la CI ne tourne que sous Ubuntu alors que le poste est sous Windows (console cp1252, chemins).
 
 | Ordre | Étape | Contenu | Critère |
 |---|---|---|---|
-| T5 | Application simulée dans le navigateur | Un navigateur piloté par les tests, sur `app` lancé contre la base de démonstration, réseau coupé : adresse → verdict épinglé → diagnostic → PDF ; adresse ambiguë → choix d'une commune ; comparaison → tableau → CSV ; courbe déposée → gardée après rechargement → retirée ; serveur arrêté → message ; page ouverte en `file://` → lecture seule ; aucune erreur dans la console | Les six parcours passent en local et en CI ; **choix du porteur** : `pytest-playwright` (Microsoft, Apache 2.0, télécharge Chromium, groupe de dépendances `e2e` à part) ou rester à l'essai à la main |
-| T6 | Sorties de référence | Texte, Markdown et JSON de l'exemple de référence figés sur la base synthétique, comparés à chaque run ; PDF contrôlé sur son nombre de pages, son texte extrait et l'absence de caractère remplacé | Un changement de libellé non voulu fait échouer un test ; la mise à jour d'une référence est un geste explicite |
+| T5 | Application simulée dans le navigateur | Un navigateur piloté par les tests, sur `app` lancé contre la base de démonstration, réseau coupé : fenêtre d'accueil → adresse → verdict épinglé → PDF ; adresse ambiguë → choix d'une commune ; deux adresses → côte à côte → tableau détaillé → CSV ; courbe déposée → gardée après rechargement → retirée ; serveur arrêté → message ; page ouverte en `file://` → lecture seule ; aucune erreur dans la console | Les six parcours passent en local et en CI ; **choix du porteur** : `pytest-playwright` (Microsoft, Apache 2.0, télécharge Chromium, groupe de dépendances `e2e` à part) ou rester à l'essai à la main |
 | T7 | Essai réel élargi | `verifier.py` joue, en plus : `diagnose --sans-risques` à 45 MW (HTB), `compare` de deux adresses, une adresse en Corse, un appel à `/api/analyse` de l'application ; `--complet` ajoute un `diagnose` avec les sources à la demande | Moins d'une minute sans `--complet` ; chaque cas dit ce qu'il attend (domaine de tension, système électrique) |
 | T8 | CI sous Windows | Un second job `windows-latest` (Java 17, mêmes commandes) | Vert sur une PR ; les pièges d'encodage sont pris avant le poste |
 
-T1 à T4 sont faites (voir « État »). Ordre : T6, T7, en relevant le plancher de
-couverture après chacune ; T5 et T8 après le choix du porteur et une mesure du temps de CI. Hors périmètre : tests
+T1 à T4 et T6 sont faites (voir « État »). Ordre : T7, en relevant le plancher de
+couverture ensuite ; T5 et T8 après le choix du porteur et une mesure du temps de CI. Hors périmètre : tests
 de charge (un seul utilisateur, en local) et tests sur les API réelles en CI (elles tombent sans
 prévenir : l'essai réel reste lancé à la main).
 
@@ -676,6 +678,10 @@ source ne fixe un nombre d'entretiens clients.
 | 9 nov. | Matrice des cas d'usage : des invariants, pas des valeurs (verdict à cinq critères, gestionnaire conforme au seed, parts de l'acheminement qui font le total, prix absent dit « non publié »). La base synthétique reste sans tranche IF, exprès : c'est elle qui joue le cas « non disponible ». Les tests qui écrivent un Parquet se passent de la fixture `no_network` (PySpark parle à sa JVM par une socket locale) et remplacent chaque extraction. Un défaut connu et pas encore corrigé s'écrit en `xfail` strict, avec sa raison |
 | 9 nov. | Projet incohérent refusé : consommation annuelle supérieure à la puissance × 8 784 heures (année bissextile), avant tout calcul, avec le plafond dans le message ; même règle dans `essentiel`, `diagnose`, `compare` et l'application |
 | 9 nov. | Pannes des sources à la demande : une réponse qui n'est pas l'objet JSON attendu est un échec de la source, dit dans sa section, jamais une trace Python ni un « rien à signaler ». Géorisques : corps vide accepté pour `rga` seulement (carte des argiles absente hors du continent), refusé pour les installations classées, les cavités et les sols pollués, où il ferait afficher zéro à tort. Une panne ne change l'état d'aucun critère du verdict |
+| 10 nov. | Sorties de référence (T6) : douze sorties de la vraie ligne de commande figées dans `ingestion/tests/references/` (`essentiel`, `diagnose` et `compare` de l'exemple de référence à Lyon, dans chaque format, plus un hub de recharge de 2 MW et une industrie de 45 MW pour les libellés que la tranche IF, absente de la base synthétique, ne montre pas) et le rapport Markdown. Le jour est figé au 15 juillet 2026 (fraîcheur des données, barèmes à revérifier, échéances solaires en dépendent). Les JSON sont comparés à dix chiffres significatifs : le dernier bit d'une somme peut différer entre Windows et la CI. Mise à jour par `--maj-references`, jamais en silence : le diff des références se relit dans la PR. Le PDF n'est pas figé (son texte extrait dépend de la mise en page) : nombre de pages borné, pied de page sur chaque page, titres de section du rapport Markdown retrouvés, chaque caractère présent dans Inter ou Spectral (un glyphe absent s'imprime en carré vide sans que l'extraction le montre). `pypdf` (BSD) entre au groupe `dev`, pour les tests seulement |
+| 10 nov. | Application pour un néophyte, à la demande du porteur : deux adresses au plus (la ligne de commande garde 2 à 6) ; tout part d'une fenêtre d'accueil, la barre de recherche et le panneau « Projet » disparaissent ; la seconde adresse voyage dans la ligne de la première (`autre`), pour que la page générée garde une seule ligne à remplacer ; la caméra cadre les adresses sans rien retirer de la carte ; `/api/analyse` rend une entrée par adresse et désigne par son rang celle qui est ambiguë |
+| 10 nov. | PDF, à la demande du porteur : un rapport qui se regarde. Il ne garde que la limite qui pèse sur chacun des cinq critères, avec un conseil (`CONSEILS`, trois phrases au plus par critère) ; la règle « tout chiffre a sa limite » reste tenue par les sorties texte, Markdown et JSON, auxquelles le PDF renvoie. Visuels vectoriels reportlab, sans dépendance nouvelle ; les domaines de tension viennent du seed `seuils_raccordement`. Le profil type de bureau (36 kVA) quitte le PDF : hérité de l'ancien persona |
+| 10 nov. | Prix le plus haut et le plus bas d'une tranche : à prix égal, le semestre le plus récent (`fct_prix_entreprise_tranche`) ; sans ordre, DuckDB départageait au hasard, ce que les sorties de référence ont montré |
 
 ## Écarté
 

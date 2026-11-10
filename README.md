@@ -66,7 +66,7 @@ Il faut Python 3.12 et Java 17 (pour PySpark). Tout tourne sur votre poste, sans
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e . dbt-duckdb matplotlib reportlab pytest pytest-cov pytest-httpx ruff
+.\.venv\Scripts\python.exe -m pip install -e . dbt-duckdb matplotlib reportlab pytest pytest-cov pytest-httpx pypdf ruff
 Copy-Item .env.example .env
 ```
 
@@ -98,18 +98,23 @@ après un `refresh` interrompu, rappelle la commande à lancer.
 .\.venv\Scripts\python.exe -m ingestion.cli app
 ```
 
-Le navigateur s'ouvre sur `http://127.0.0.1:8770/`. Le parcours :
-1. saisir l'adresse du site en haut ;
-2. dans « Projet », indiquer la puissance, la consommation, l'activité, et si besoin la surface,
-   le chiffre d'affaires et la valeur ajoutée ; déposer l'export CSV de la courbe de charge Enedis
-   si vous l'avez ; cocher « Diagnostic complet » pour interroger
-   aussi Géorisques, l'urbanisme, VigiEau, PVGIS et la desserte ;
-3. « Analyser » : la carte se recharge sur l'adresse avec le verdict « Brancher ici ? » ; une
-   adresse ambiguë propose les communes possibles ;
-4. « Lire le diagnostic », puis télécharger le rapport en PDF, Markdown ou JSON. Une copie reste
-   dans `data/reports/`, et le panneau donne la commande qui refait le même rapport ;
-5. pour présélectionner : dans « Projet », une à cinq autres adresses, une par ligne, puis
-   « Comparer, sans classement » ; le tableau s'enregistre en CSV, Markdown ou JSON.
+Le navigateur s'ouvre sur `http://127.0.0.1:8770/` et une fenêtre demande l'adresse du site :
+1. saisir l'adresse ; « Ajouter une seconde adresse » si vous hésitez entre deux sites (deux au
+   plus dans l'application, `compare` en ligne de commande en prend jusqu'à six) ;
+2. si vous les connaissez, déplier « Préciser le projet » : puissance, consommation, activité,
+   surface, chiffre d'affaires, valeur ajoutée, export CSV de la courbe de charge Enedis ;
+   « Diagnostic complet » interroge aussi Géorisques, l'urbanisme, VigiEau, PVGIS et la desserte ;
+3. « Analyser » : la carte s'ouvre cadrée sur ce que vous avez saisi, la tuile pour une adresse
+   ou deux adresses voisines, la région si elles en occupent deux bouts, le monde si l'une est
+   outre-mer. Une adresse ambiguë propose les communes possibles sous son champ ;
+4. lire la fiche : pour une adresse, le verdict « Brancher ici ? » et ses cartes chiffrées
+   (✓ favorable, ! à vérifier, ? non évalué, i pour information) ; pour deux, les mêmes lignes
+   côte à côte, sans classement, et un onglet par adresse ;
+5. « Télécharger le rapport PDF » : trois à quatre pages, le verdict puis un dessin et trois
+   phrases au plus par critère. « Lire le détail », Markdown et JSON gardent toutes les limites
+   méthodologiques ; une copie reste dans `data/reports/`.
+
+« Nouvelle analyse », en haut, rouvre la fenêtre.
 
 Le serveur n'écoute que sur la machine (127.0.0.1) et s'arrête par Ctrl+C. `--port` change le
 port.
@@ -163,7 +168,7 @@ Toutes s'écrivent `.\.venv\Scripts\python.exe -m ingestion.cli <commande>`.
 | `essentiel --adresse "…" [--puissance MW] [--conso MWh] [--activite data-center\|irve\|industrie\|logistique] [--courbe CSV] [--ca €] [--va €] [--surface m²] [--format json]` | Réponse courte : prix, carbone, prix de vente des locaux d'activité (DVF) et verdict « brancher ici ? » ; avec `--puissance` et `--conso` au-delà de 36 kVA, la part acheminement (TURPE 7) de la facture ; `--courbe` lit l'export Enedis, `--ca` donne la part de la facture dans le chiffre d'affaires, `--va` l'électro-intensité fiscale (taux réduit d'accise dès 0,5 % de la valeur ajoutée), `--activite` le profil de charge (journée type mesurée par Enedis pour l'industrie, puissance constante sinon) et le régime d'accise de l'activité ; avec `--va` ou `--activite`, l'accise au tarif réduit de la loi de finances 2026 face au tarif normal (10 €/MWh au-delà du premier GWh pour un data center, 5,5, 3 ou 0,5 €/MWh selon le palier d'électro-intensité pour l'industrie), sous conditions |
 | `diagnose --adresse "…" [--puissance MW] [--conso MWh] [--activite data-center\|irve\|industrie\|logistique] [--courbe CSV] [--ca €] [--va €] [--surface m²] [--format pdf\|md\|json]` | Diagnostic complet : industrie locale, réseau, raccordement (dont la qualité de fourniture du département), prix, acheminement, carbone, risques et sismicité, voisinage (argiles, cavités à 500 m, Seveso à 5 km, installations classées à 1 km, sols pollués à 500 m), foncier (zone d'urbanisme, friches à moins de 10 km, zones d'activité à moins de 5 km, prix des locaux), eau (arrêtés de restriction du jour, zone de répartition des eaux), desserte (temps vers le fret, autoroute), bâtiment et productible solaire, obligations de solarisation (toiture neuve ou existante, parking extérieur), puis le verdict « brancher ici ? » critère par critère ; `--sans-risques` coupe tous les appels à la demande (Géorisques, urbanisme, eau, solaire, desserte, zones d'activité) |
 | `compare --adresse "A" --adresse "B" … [mêmes options que diagnose]` | 2 à 6 adresses côte à côte, sans classement, avec le prix des locaux, une ligne courte par source consultée à la demande (zonage, friches, zones d'activité, accès routier, bâtiment et solaire, eau, risques ; « — » pour l'adresse qui ne l'a pas été), le parking et la toiture à solariser et le verdict « brancher ici ? » de chacune ; `texte`, `md`, `csv`, `json` |
-| `app [--port 8770] [--sans-ouvrir]` | Application locale dans le navigateur : adresse et projet (courbe de charge comprise), verdict sur la carte, diagnostic, rapport PDF, Markdown ou JSON, comparaison de 2 à 6 adresses |
+| `app [--port 8770] [--sans-ouvrir]` | Application locale dans le navigateur : fenêtre d'accueil pour une ou deux adresses et le projet (courbe de charge comprise), carte cadrée sur les adresses, verdict ou comparaison côte à côte, rapport PDF en un clic, Markdown ou JSON |
 | `carte [--adresse "…"] [--puissance MW] [--reconstruire] [--sans-ouvrir] [--output FICHIER]` | Carte 3D hors ligne (`data/reports/carte.html` par défaut) |
 | `demo [--sans-ouvrir]` | Démonstration sans `refresh` : `essentiel` et la carte sur la base synthétique des tests (`data/demo/`), chiffres fictifs dits comme tels |
 | `europe --adresse "…" [--conso MWh]` | Hors de France, dans l'UE : prix moyen du pays et carbone de sa production, comparés à la France à tranche égale (moyennes nationales) |
@@ -200,7 +205,10 @@ arbres et fleurs sont un décor, pas un plan du site. À droite, on lit le verdi
 carbone et prix en jauges, puis raccordement, prix des locaux, risques et foncier, « non
 disponible » si l'indicateur manque. Un clic sur une carte chiffrée ouvre son détail ; « Sources et
 limites » se déplie sous la fiche. Le PDF porte une tuile dessinée en vectoriel
-(`reporting/tuile.py`). Un clic sur une case fait sortir sa tuile à côté de la fiche du
+(`reporting/tuile.py`), puis une fiche par critère : échelle des domaines de tension, jauge du
+carbone, parts de la facture, distances et prix des locaux (`reporting/visuels.py`). Il ne garde
+que la limite qui pèse sur chaque critère, avec un conseil ; toutes les limites restent dans les
+sorties texte, Markdown et JSON. Un clic sur une case fait sortir sa tuile à côté de la fiche du
 département. Les boutons en bas à droite
 passent d'une carte à l'autre. Deux vues (touches 1 et 2). « Raccorder », par défaut : chaque
 case de 24 km est notée du rouge (défavorable) au vert (favorable) en passant par le blanc (neutre),
@@ -303,9 +311,9 @@ flowchart LR
 ```
 
 Le script joue `ruff`, `pytest`, puis un essai réel à Chilly-Mazarin (warehouse et réseau requis) ;
-`--rapide` saute `pytest`, `--sans-essai` saute l'essai réel. 895 tests sans réseau, dont un
+`--rapide` saute `pytest`, `--sans-essai` saute l'essai réel. 914 tests sans réseau, dont un
 `dbt build` complet sur une base synthétique qui reproduit les pièges des sources, plus les tests de
-données dbt. La couverture est mesurée à chaque run complet (`pytest --cov`, lignes et branches : 92,8 % le 9 novembre 2026) et la suite échoue sous 91 %. Une matrice joue chaque activité à chaque palier de puissance, dans chaque territoire et chaque format, par la vraie ligne de commande, et chaque source à la demande est jouée contre huit pannes. La CI GitHub Actions joue `ruff` et `pytest` à chaque PR.
+données dbt. La couverture est mesurée à chaque run complet (`pytest --cov`, lignes et branches : 94,6 % le 10 novembre 2026) et la suite échoue sous 92,5 %. Une matrice joue chaque activité à chaque palier de puissance, dans chaque territoire et chaque format, par la vraie ligne de commande, et chaque source à la demande est jouée contre huit pannes. Les sorties de `essentiel`, `diagnose` et `compare` sont comparées à des références figées (`ingestion/tests/references/`) : après un changement de libellé voulu, `pytest ingestion/tests/test_references.py --maj-references` les réécrit, et leur diff se relit avant de commiter. La CI GitHub Actions joue `ruff` et `pytest` à chaque PR.
 
 ## Sources et licence
 

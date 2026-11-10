@@ -59,6 +59,8 @@ MARQUEUR_SCRIPTS = "<!--__SCRIPTS__-->"
 MARQUEUR_CHARTE = "/*__CHARTE__*/"
 # Gardé dans la page générée : l'adresse se remplace sans reconstruire la carte
 MARQUEUR_ADRESSE = "/*__ADRESSE__*/"
+# Territoire et verdict de la seconde adresse
+Seconde = tuple[Territoire, dict[str, Any] | None]
 _LIGNE_ADRESSE = re.compile(r"^(DATA\.adresse = /\*__ADRESSE__\*/).*$", re.MULTILINE)
 
 _DEPARTEMENTS_SQL = """
@@ -152,6 +154,7 @@ def construire_donnees(
     *,
     territoire: Territoire | None = None,
     verdict_adresse: dict[str, Any] | None = None,
+    autre: Seconde | None = None,
     genere_le: datetime | None = None,
     monde: Monde | None = None,
 ) -> dict[str, Any]:
@@ -226,7 +229,7 @@ def construire_donnees(
         ],
         "prix": gold.get("prix", []),
         "donnees": gold.get("donnees"),
-        "adresse": construire_adresse(grilles, territoire, verdict_adresse),
+        "adresse": construire_adresse(grilles, territoire, verdict_adresse, autre),
     }
 
 
@@ -295,14 +298,17 @@ def verdict_carte(diagnostic: Diagnostic) -> dict[str, Any]:
     }
 
 
+# La seconde adresse de l'application (deux au plus) voyage dans la première, sous `autre` :
+# la page générée garde une seule ligne à remplacer
 def construire_adresse(
     grilles: list[Grille],
     territoire: Territoire | None,
     verdict_adresse: dict[str, Any] | None = None,
+    autre: Seconde | None = None,
 ) -> dict[str, Any] | None:
     if territoire is None:
         return None
-    return {
+    adresse = {
         "libelle": territoire.adresse,
         "departement": territoire.code_departement,
         "case": reperer(
@@ -310,6 +316,9 @@ def construire_adresse(
         ),
         "verdict": verdict_adresse,
     }
+    if autre is not None:
+        adresse["autre"] = construire_adresse(grilles, *autre)
+    return adresse
 
 
 # `</` échappé : un nom contenant `</script>` ne doit pas fermer la balise
@@ -381,6 +390,7 @@ def generer_carte(
     settings: Settings | None = None,
     territoire: Territoire | None = None,
     verdict_adresse: dict[str, Any] | None = None,
+    autre: Seconde | None = None,
     output: Path | None = None,
 ) -> Path:
     settings = settings or get_settings()
@@ -400,6 +410,7 @@ def generer_carte(
             gold,
             territoire=territoire,
             verdict_adresse=verdict_adresse,
+            autre=autre,
             monde=_monde(grilles, settings),
         )
     )
@@ -427,14 +438,19 @@ def mettre_a_jour_carte(
     settings: Settings | None = None,
     territoire: Territoire | None = None,
     verdict_adresse: dict[str, Any] | None = None,
+    autre: Seconde | None = None,
     output: Path | None = None,
 ) -> Path:
     settings = settings or get_settings()
     path = chemin(settings, output)
     if not carte_a_jour(path, settings):
         return generer_carte(
-            settings=settings, territoire=territoire, verdict_adresse=verdict_adresse, output=path
+            settings=settings,
+            territoire=territoire,
+            verdict_adresse=verdict_adresse,
+            autre=autre,
+            output=path,
         )
-    adresse = construire_adresse(_grilles(settings), territoire, verdict_adresse)
+    adresse = construire_adresse(_grilles(settings), territoire, verdict_adresse, autre)
     path.write_text(placer_adresse(path.read_text(encoding="utf-8"), adresse), encoding="utf-8")
     return path
