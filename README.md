@@ -70,7 +70,7 @@ python -m venv .venv
 Copy-Item .env.example .env
 ```
 
-**Pour voir l'outil sans rien charger** (une démonstration pour un jury, par exemple) :
+**Pour voir l'outil sans rien charger** :
 
 ```powershell
 .\.venv\Scripts\python.exe -m ingestion.cli demo

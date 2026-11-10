@@ -26,5 +26,5 @@ dbt/dbt_packages/
 .claude/settings.local.json
 .coverage
 
-# Stratégie du porteur (modèle économique, entretiens, dossier) : jamais versionnée
+# Notes privées : jamais versionnées
 prive/

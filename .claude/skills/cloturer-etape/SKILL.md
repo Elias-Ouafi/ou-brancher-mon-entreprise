@@ -9,9 +9,9 @@ description: Clore une étape du plan : vérification complète (ruff, pytest, e
    y compris l'essai réel. Si le warehouse est absent ou périmé, proposer un `refresh` (deux
    minutes environ) plutôt que sauter l'essai. Ajouter un essai réel propre à l'étape, sur un
    projet de 1 à 50 MW (12 MW et 70 000 MWh à Chilly-Mazarin par défaut), et en citer la sortie.
-2. **PLAN.md** : ligne dans le tableau « État », étape retirée de « Suite », décision datée dans
-   « Décisions en vigueur » si un choix a été fait, « À surveiller » si une source a une limite
-   nouvelle. Date du jour en tête du fichier.
+2. **PLAN.md** : ligne dans le tableau « État », étape retirée de « Suite », règle (sans date) dans
+   « Règles en vigueur » si un choix a été fait, « À surveiller » si une source a une limite
+   nouvelle. Ni date de jalon ni historique : le plan dit l'état présent.
 3. **README.md** : commandes, sources et licences. Si la suite a changé, nombre de tests dans
    README et CLAUDE.md.
 4. **Git** : branche depuis `main` à jour, commit en français (titre court, corps qui dit l'étape

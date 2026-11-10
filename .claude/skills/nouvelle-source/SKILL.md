@@ -18,7 +18,7 @@ Modèle à suivre : le commit `242e88d` (DVF, étape 12), `git show 242e88d`.
    d'urbanisme, arrêtés sur l'eau, itinéraires). Modèle à la demande : `ingestion/eau.py` (client
    httpx, erreur propre `…Error`, `completer_…` dans `ingestion/diagnostic.py` qui journalise
    l'échec sans bloquer, ajouté à `completer_en_ligne` que partagent `diagnose`, `compare` et
-   `app`, coupé par `--sans-risques`). Noter le choix en décision datée dans PLAN.
+   `app`, coupé par `--sans-risques`). Noter le choix dans « Règles en vigueur » de PLAN.
 
 ## Fichiers à toucher, dans l'ordre
 

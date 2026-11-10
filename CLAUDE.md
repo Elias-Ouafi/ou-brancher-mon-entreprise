@@ -2,7 +2,7 @@
 
 Le projet se décrit dans [README.md](README.md) (usage, architecture) et [PLAN.md](PLAN.md) (état,
 étapes, décisions en vigueur). Les lire avant toute étape ; ce fichier ne les répète pas. La
-prochaine étape se lit dans « Prochaines étapes, dans l'ordre » de PLAN (détail dans les lots A, P, T, B) ; une étape finie
+prochaine étape se lit dans « Prochaines étapes, dans l'ordre » de PLAN (détail dans les lots A, T, B) ; une étape finie
 en sort pour devenir une ligne de « État » (skill `cloturer-etape`).
 
 ## Environnement
@@ -13,8 +13,7 @@ en sort pour devenir une ligne de « État » (skill `cloturer-etape`).
   `python -m ingestion.cli refresh --months 180`. DuckDB n'accepte qu'un writer : pas de session
   `duckdb` ouverte pendant un `refresh` ou un `dbt build`.
 - `identifiants.local.txt` et `.env` ne se lisent pas et ne se citent jamais.
-- `prive/` (modèle économique, entretiens, dossier) est ignoré par git : rien n'en sort vers README,
-  PLAN ou un commit.
+- `prive/` est ignoré par git : rien n'en sort vers README, PLAN ou un commit.
 
 ## Vérifier
 
@@ -32,13 +31,16 @@ les trois, sur un projet de 1 à 50 MW.
 
 - Persona : projets de 1 à 50 MW (data centers, IRVE, industrie, logistique). Les bureaux ne sont
   plus la cible.
-- Local et à la demande : jamais de tâche planifiée, cron, workflow programmé ni Airflow.
+- Local et à la demande : jamais de tâche planifiée, cron, workflow programmé ni Airflow ; pas
+  d'hébergement en ligne. Le projet se présente à des recruteurs depuis le dépôt GitHub et se lance
+  sur son poste.
 - Nouvelle source : producteur officiel, licence ouverte ; bronze Parquet immuable + `MERGE`
   DuckDB, silver et gold en dbt, limite dans le seed `limites_methodologiques`
   (skill `nouvelle-source`).
 - Code le plus simple possible ; commentaires sur la logique seulement (règle, piège d'une source,
   raison d'un choix), jamais d'en-tête d'utilité par fonction ou par modèle.
-- Documentation en français, dans README et PLAN seulement. Tout chiffre a sa source et sa limite ;
+- Documentation en français, dans README et PLAN seulement, au présent : ni historique, ni
+  intention abandonnée, ni date de jalon (git garde la chronologie). Tout chiffre a sa source et sa limite ;
   « non disponible » plutôt qu'un chiffre inventé. Le PDF fait exception : court et visuel, il ne
   garde que la limite des cinq critères ; texte, Markdown et JSON les portent toutes.
 - Application : deux adresses au plus, saisies dans la fenêtre d'accueil ; au-delà, `compare`.
