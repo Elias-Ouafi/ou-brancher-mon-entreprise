@@ -63,6 +63,8 @@ class Comparaisons:
     historique_prix: list[tuple[date, float]] = field(default_factory=list)
     # (horizon en années, prix bas, central, haut) de la tranche, sinon vide
     scenarios_prix: list[tuple[int, float, float, float]] = field(default_factory=list)
+    # (domaine de tension, puissance min, puissance max, gestionnaire) du seed, par ordre
+    seuils: list[tuple[str, float, float | None, str]] = field(default_factory=list)
 
 
 def lire_comparaisons(
@@ -93,6 +95,13 @@ def lire_comparaisons(
         """,
         {"profil": PROFIL_DEFAUT},
     ).fetchall()
+    seuils = connection.execute(
+        """
+        select domaine_tension, puissance_min_mw, puissance_max_mw, gestionnaire
+        from gold.seuils_raccordement
+        order by ordre
+        """
+    ).fetchall()
     historique_prix: list[tuple[Any, ...]] = []
     scenarios_prix: list[tuple[Any, ...]] = []
     if tranche is not None:
@@ -120,6 +129,7 @@ def lire_comparaisons(
         profil=[PlageProfil(*ligne) for ligne in profil],
         historique_prix=[(d, float(v)) for d, v in historique_prix],
         scenarios_prix=[(int(h), float(b), float(c), float(t)) for h, b, c, t in scenarios_prix],
+        seuils=[(d, float(a), None if b is None else float(b), g) for d, a, b, g in seuils],
     )
 
 

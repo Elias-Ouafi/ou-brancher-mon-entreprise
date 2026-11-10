@@ -19,9 +19,10 @@ historique as (
         avg(prix_htva_eur_kwh) filter (where rang_semestre >= dernier_rang - 9)
             as prix_moyen_5_ans_eur_kwh,
         min(prix_htva_eur_kwh) as prix_min_eur_kwh,
-        arg_min(semestre, prix_htva_eur_kwh) as semestre_min,
+        -- À prix égal, le semestre le plus récent : sans ordre, l'égalité se départage au hasard
+        arg_min(semestre, prix_htva_eur_kwh order by rang_semestre desc) as semestre_min,
         max(prix_htva_eur_kwh) as prix_max_eur_kwh,
-        arg_max(semestre, prix_htva_eur_kwh) as semestre_max
+        arg_max(semestre, prix_htva_eur_kwh order by rang_semestre desc) as semestre_max
     from prix
     group by tranche
 ),
