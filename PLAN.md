@@ -1,22 +1,21 @@
 # Plan du projet
 
-> Mis à jour le 10 novembre 2026. Périmètre : la France (métropole, Corse, outre-mer), en ligne de
-> commande ou dans l'application locale, à la demande.
+> Périmètre : la France (métropole, Corse, outre-mer), en ligne de commande ou dans l'application
+> locale, à la demande. Le projet vit sur GitHub et se lance sur son poste ; rien n'est hébergé.
 
 Ce fichier porte l'état du projet, les étapes qui restent, les recherches qui les justifient et
-les décisions en vigueur ; le [README](README.md) dit comment s'en servir. Sections, dans l'ordre :
-persona, état (ce qui existe), suite (prochaines étapes dans l'ordre, puis trois lots), refonte de la carte, recherches
-documentaires, décisions, sujets écartés. Une étape terminée quitte « Suite » et devient une ligne
-de « État » (skill `cloturer-etape`).
+les règles en vigueur ; le [README](README.md) dit comment s'en servir. Sections, dans l'ordre :
+persona, état (ce qui existe), suite (prochaines étapes, puis trois lots), refonte de la carte,
+recherches documentaires, règles en vigueur, sujets écartés. Une étape terminée quitte « Suite »
+et devient une ligne de « État » (skill `cloturer-etape`).
 
 ## Persona
 
-**Pivot du 28 octobre** : le porteur d'un **projet de 1 à 50 MW** qui cherche où s'implanter :
-data center, hub de bornes de recharge (véhicules légers et poids lourds), site industriel, site
-logistique (entrepôt froid, quai électrifié). C'est le modèle de Yottar, cité par le porteur du
-projet (aucune source publique sur Yottar trouvée le 28 octobre). Le persona précédent, l'entreprise
-qui déménage ses bureaux, est abandonné : pour quelques dizaines de MWh, le prix de l'électricité
-est identique partout et ne départage pas les villes ; l'outil n'avait rien de décisif à lui dire.
+Le porteur d'un **projet de 1 à 50 MW** qui cherche où s'implanter : data center, hub de bornes de
+recharge (véhicules légers et poids lourds), site industriel, site logistique (entrepôt froid,
+quai électrifié). Pour des bureaux, le prix de l'électricité est identique partout et ne départage
+pas les villes : l'outil n'a rien de décisif à leur dire.
+
 
 Pour un projet de 1 à 50 MW, l'électricité **est** le critère d'implantation :
 - **puissance disponible et délai** : de 0,25 à 20 MW, Enedis en HTA (départ dédié au-delà de
@@ -49,9 +48,9 @@ par an sur le calendrier HTB, vérifié le 1er novembre).
 
 ## État
 
-Le MVP est atteint depuis le 16 octobre. `essentiel` donne en 1,5 s environ le prix moyen et le
+`essentiel` donne en 1,5 s environ le prix moyen et le
 verdict carbone ; il répond juste sur 11 adresses de recette, de Paris à Mamoudzou (test
-`test_recette_mvp.py`). Depuis le pivot du 28 octobre, `diagnose` couvre aussi le foncier
+`test_recette_mvp.py`). `diagnose` couvre aussi le foncier
 (urbanisme, friches, zones d'activité), l'eau, la desserte et le solaire de l'adresse, et le
 voisinage du site (argiles, cavités, Seveso, installations classées, sols pollués).
 
@@ -72,19 +71,19 @@ voisinage du site (argiles, cavités, Seveso, installations classées, sols poll
 | Verdict « brancher ici ? » en cinq critères (raccordement, risques, carbone, facture, foncier), dans `essentiel`, `diagnose`, `compare` et sur la carte | `verdict`, `phrase_verdict` |
 | Carte 3D épurée autour du verdict : vue « Raccorder » par défaut, adresse reliée à la zone RTE utile et au site clé en main ; épinglée par `essentiel` et `diagnose` (seule l'épingle bouge si les données n'ont pas changé) | `carte`, `reporting/carte.py` |
 | Une carte par système électrique (métropole et Corse, chaque DROM), ouverte sur celle de l'adresse ; deux vues : « Raccorder », cases notées du rouge au blanc puis au vert, et « Territoire », paysage réel (mer bleue, verdure, relief IGN) avec carbone et prix moyen dans l'encart ; dans les deux vues, 95 pôles de production du registre national en maquettes par filière, et les sites clés en main en maquette, nommés au survol | `ingestion/hexagones.py`, `fct_sites_production` |
-| Grands pôles de fret dans les deux vues de la carte, en maquettes (port à portique, aéroport et avion cargo, chantier rail-route) : 34 pôles en 2025 au-dessus des seuils de la décision du 26 octobre | `ingestion/extract_fret.py`, `fct_poles_fret`, seeds `dim_ports_fret` et `dim_aeroports_fret` |
+| Grands pôles de fret dans les deux vues de la carte, en maquettes (port à portique, aéroport et avion cargo, chantier rail-route) : 34 pôles en 2025 au-dessus des seuils | `ingestion/extract_fret.py`, `fct_poles_fret`, seeds `dim_ports_fret` et `dim_aeroports_fret` |
 | Risques sans dépendre de l'API Géorisques : export GASPAR chargé par `refresh` | `fct_risques_commune` |
 | Zone de sismicité réglementaire (1 à 5) à l'adresse, sans l'API : couche WFS de Géorisques chargée par `refresh`, point dans polygone en Python | `ingestion/extract_sismique.py`, `fct_zonage_sismique` |
 | Qualité de fourniture du département dans `diagnose` : part des clients Enedis au-delà des seuils réglementaires de coupure (dernière année, moyenne sur cinq ans, médiane des départements, seuil de 3 %) ; « non publiée » hors Enedis | `fct_continuite_departement`, `ligne_continuite` |
-| Risques « à vérifier » seulement sous un plan de prévention approuvé ou prescrit (13 919 communes au lieu des 31 706 qui ont un risque recensé) | `fct_plans_prevention_commune`, `_critere_risques` |
+| Risques « à vérifier » seulement sous un plan de prévention approuvé ou prescrit (13 919 communes ; 31 706 ont un risque seulement recensé) | `fct_plans_prevention_commune`, `_critere_risques` |
 | Zone d'urbanisme de l'adresse (U, AU, A ou N, document et règlement) dans `diagnose` et `compare`, et dans le critère « foncier » du verdict (« à vérifier » en zone A ou N) ; appel à la demande, sans stockage | `ingestion/urbanisme.py`, API Carto module GPU |
 | Friches de 1 ha ou plus et pas reconverties (Cartofriches, Cerema, Licence Ouverte v2) : nombre à moins de 10 km et les trois plus proches, avec type, surface, zone d'urbanisme et statut, dans `diagnose` et `compare` (détail du critère « foncier ») | `ingestion/extract_friches.py`, `friches`, `fct_friches` |
 | Arrêtés de restriction des usages de l'eau en vigueur à l'adresse (VigiEau : niveau le plus haut parmi les eaux superficielles, souterraines et potable, date de fin) dans `diagnose` et `compare` ; appel à la demande | `ingestion/eau.py` |
-| Tension structurelle sur la ressource en eau (étape 20, 8 novembre) : l'adresse dans une zone de répartition des eaux (118 zones du Sandre, chargées par `refresh`), ressource visée (superficielle, souterraine ou les deux) et seuil d'autorisation des prélèvements (8 m³/h, R214-1 rubrique 1.3.1.0), dans `diagnose` ; Chilly-Mazarin dans la ZRE de l'Albien (eaux souterraines) | `ingestion/extract_zre.py`, `fct_zones_repartition_eaux`, `ligne_zones_repartition` |
+| Tension structurelle sur la ressource en eau : l'adresse dans une zone de répartition des eaux (118 zones du Sandre, chargées par `refresh`), ressource visée (superficielle, souterraine ou les deux) et seuil d'autorisation des prélèvements (8 m³/h, R214-1 rubrique 1.3.1.0), dans `diagnose` ; Chilly-Mazarin dans la ZRE de l'Albien (eaux souterraines) | `ingestion/extract_zre.py`, `fct_zones_repartition_eaux`, `ligne_zones_repartition` |
 | Zones d'activité et industrielles de la BD TOPO à moins de 5 km (nombre, trois plus proches avec surface, adresse dans la zone ou non) dans `diagnose` et `compare` ; appel WFS à la demande | `ingestion/zones_activite.py` |
 | Accès routier : temps en voiture (Géoplateforme) vers le port, l'aéroport et le chantier rail-route de fret les plus proches du même territoire, et distance à vol d'oiseau jusqu'à l'autoroute la plus proche (BD TOPO), dans `diagnose` et `compare` | `ingestion/acces_routier.py` |
 | Bâtiment de l'adresse (BD TOPO : usage, emprise au sol, hauteur) et productible photovoltaïque d'un kWc (PVGIS : kWh par kWc et par an, inclinaison optimale), dans `diagnose` et `compare` ; appels à la demande | `ingestion/solaire.py` |
-| Obligations de solarisation (étape 16, 8 novembre), rappelées dans `diagnose` et `compare` : toiture d'un bâtiment neuf, d'une extension ou d'une rénovation lourde de plus de 500 m² au sol (40 % depuis le 1er juillet 2026, 50 % au 1er juillet 2027, CCH L171-4), bâtiment existant de l'adresse au 1er janvier 2028 selon son usage et son emprise BD TOPO (L171-5), parc de stationnement extérieur au-delà du seuil du territoire (1 500 m², 1 000 à La Réunion, 2 500 en Guyane, non fixé à Mayotte ; échéance 2026 ou 2028 selon la surface, loi APER art. 40 modifiée le 26 novembre 2025) ; à Chilly-Mazarin, bâtiment le plus proche résidentiel, hors de L171-5 | `lignes_obligations_solaires`, `ingestion/solaire.py` |
+| Obligations de solarisation, rappelées dans `diagnose` et `compare` : toiture d'un bâtiment neuf, d'une extension ou d'une rénovation lourde de plus de 500 m² au sol (40 % depuis le 1er juillet 2026, 50 % au 1er juillet 2027, CCH L171-4), bâtiment existant de l'adresse au 1er janvier 2028 selon son usage et son emprise BD TOPO (L171-5), parc de stationnement extérieur au-delà du seuil du territoire (1 500 m², 1 000 à La Réunion, 2 500 en Guyane, non fixé à Mayotte ; échéance 2026 ou 2028 selon la surface, loi APER art. 40 modifiée le 26 novembre 2025) ; à Chilly-Mazarin, bâtiment le plus proche résidentiel, hors de L171-5 | `lignes_obligations_solaires`, `ingestion/solaire.py` |
 | Date de chargement de chaque source dans toutes les sorties ; pied de page des rapports avec la commande pour les refaire | `ligne_chargements`, `pied_de_page` |
 | Prix de vente des locaux d'activité : médiane et quartiles au m² par commune (repli sur le département sous 5 ventes), cinq dernières années de ventes DVF (393 099 ventes de 2021 à 2025 chargées, 219 564 retenues) ; coût d'achat avec `--surface` ; affiché pour information, aucun loyer | `ingestion/extract_dvf.py`, `ventes_locaux`, `fct_prix_locaux`, `ligne_locaux` |
 | Pays de l'UE-27 : prix Eurostat et carbone Ember du pays, face à la France à tranche égale ; pays trouvé par Nominatim | `europe`, `fct_pays_ue` |
@@ -94,24 +93,20 @@ voisinage du site (argiles, cavités, Seveso, installations classées, sols poll
 | Signal Ecowatt (J à J+3) relevé à la demande par `ecowatt`, jours orange et rouges dans le rapport mensuel | `RteEcowattClient`, `rte_ecowatt`, `ecowatt_jours`, `ligne_ecowatt` |
 | Modèle en étoile : 3 dimensions (`dim_commune`, `dim_date`, `dim_risque`) et 4 faits (conso des entreprises, prix des locaux, risques, mix journalier), clés étrangères testées sur le warehouse réel | `dbt/models/etoile/` |
 | Exemples du README sur le persona : captures des deux vues et PDF de `diagnose` pour 12 MW et 70 000 MWh à Chilly-Mazarin, courbe d'exemple HTA de 12 MW (journée type Enedis de l'industrie mise à l'échelle) ; un seul nom, « Où brancher mon entreprise », sur la carte | `docs/exemples/` |
-| Voisinage du site (étape 15, 29 octobre), à la demande par l'API Géorisques : argiles à l'adresse, cavités à moins de 500 m, établissements Seveso en exploitation à moins de 5 km (distance), installations classées sous autorisation ou enregistrement à moins de 1 km, sols pollués à moins de 500 m (SIS, SUP, sites en instruction, CASIAS) ; à Chilly-Mazarin : argiles fortes, SMCA (Seveso seuil bas) à 4,8 km, 2 installations classées, 11 anciens sites CASIAS | `GeorisquesClient.voisinage`, `completer_voisinage`, `lignes_voisinage` |
-| Charte commune (lot A de la refonte de la carte, 30 octobre) : papier clair et encre bleu nuit, vert pour le favorable, orange pour « à vérifier », Spectral et Inter embarquées (OFL) dans la carte, le PDF et les graphiques ; le PDF garde ₂, ≥ et → au lieu de les remplacer | `reporting/charte.py`, `reporting/polices/` |
-| Carte du monde en tuiles (1er novembre) : tous les pays en tuiles ternes, France et départements d'outre-mer en couleur et à leur place ; ouverture sur le monde, plongée vers l'adresse, tuile détaillée qui sort de la carte ; fiche en jauges et cartes chiffrées, détail et limites à la demande ; bâtiment 3D au liseré doré à la place de l'épingle, sans bandeau d'adresse ; vague de reverdissement et pousse des arbres, inspirées de Terra Nil, coupées si l'utilisateur limite les animations ; tuile dessinée en vectoriel en tête du PDF ; encre vert nuit, titres verts et ornement solarpunk jusque dans le PDF | `ingestion/hexagones.py`, `reporting/carte.html`, `reporting/tuile.py` |
-| Application locale (31 octobre) : `app` sert la carte sur 127.0.0.1 et permet tout le parcours dans le navigateur : adresse, réglages du projet, adresse ambiguë résolue par le choix d'une commune, verdict épinglé, diagnostic (essentiel ou complet), rapport PDF, Markdown ou JSON téléchargé avec la commande qui le refait ; depuis le 9 novembre, courbe de charge Enedis déposée dans « Projet » et comparaison de 2 à 6 adresses en tableau dans le panneau (CSV, Markdown, JSON), sans épingle sur la carte. Touches solarpunk sur la carte, étendues au PDF le 1er novembre : lumière dorée, épingle au soleil, bosquets dans la vue Territoire, toitures végétalisées et solaires des sites clés en main, panneaux aux angles doux | `reporting/app.py`, `app` |
+| Voisinage du site, à la demande par l'API Géorisques : argiles à l'adresse, cavités à moins de 500 m, établissements Seveso en exploitation à moins de 5 km (distance), installations classées sous autorisation ou enregistrement à moins de 1 km, sols pollués à moins de 500 m (SIS, SUP, sites en instruction, CASIAS) ; à Chilly-Mazarin : argiles fortes, SMCA (Seveso seuil bas) à 4,8 km, 2 installations classées, 11 anciens sites CASIAS | `GeorisquesClient.voisinage`, `completer_voisinage`, `lignes_voisinage` |
+| Charte commune : papier clair et encre bleu nuit, vert pour le favorable, orange pour « à vérifier », Spectral et Inter embarquées (OFL) dans la carte, le PDF et les graphiques ; le PDF garde ₂, ≥ et → | `reporting/charte.py`, `reporting/polices/` |
+| Carte du monde en tuiles : tous les pays en tuiles ternes, France et départements d'outre-mer en couleur et à leur place ; ouverture sur le monde, plongée vers l'adresse, tuile détaillée qui sort de la carte ; fiche en jauges et cartes chiffrées, détail et limites à la demande ; bâtiment 3D au liseré doré à la place de l'épingle, sans bandeau d'adresse ; vague de reverdissement et pousse des arbres, inspirées de Terra Nil, coupées si l'utilisateur limite les animations ; tuile dessinée en vectoriel en tête du PDF ; encre vert nuit, titres verts et ornement solarpunk jusque dans le PDF | `ingestion/hexagones.py`, `reporting/carte.html`, `reporting/tuile.py` |
+| Application locale : `app` sert la carte sur 127.0.0.1 et permet tout le parcours dans le navigateur : adresse, réglages du projet, adresse ambiguë résolue par le choix d'une commune, verdict épinglé, diagnostic (essentiel ou complet), rapport PDF, Markdown ou JSON téléchargé avec la commande qui le refait ; courbe de charge Enedis déposée dans « Projet » et comparaison de 2 à 6 adresses en tableau dans le panneau (CSV, Markdown, JSON), sans épingle sur la carte. Touches solarpunk sur la carte, reprises dans le PDF : lumière dorée, épingle au soleil, bosquets dans la vue Territoire, toitures végétalisées et solaires des sites clés en main, panneaux aux angles doux | `reporting/app.py`, `app` |
 | Sortie réduite à la réponse (journal sous `--verbose`) ; avant tout chargement, la commande `refresh` à lancer | `ingestion/cli.py` |
-| Phrase de mission et « pourquoi maintenant » en tête du README (étape 21, 31 octobre) : 33 GW en attente de raccordement, file « premier prêt, premier servi », carte RTE du 1er janvier 2027 | `README.md` |
-| Pannes des sources à la demande (T4, 9 novembre) : chacune des sept sources jouée contre huit pannes (délai dépassé, connexion coupée, 500, 404, corps vide, page de maintenance, JSON inattendu, liste vide) : le diagnostic aboutit, l'échec est dit dans sa section (pour les risques, par le repli sur l'export GASPAR), aucun critère du verdict ne change d'état ; mêmes pannes sur `diagnose`, `compare` et l'application entiers. Quatre lectures corrigées (urbanisme, bâtiment, autoroute, zones d'activité plantaient sur un JSON qui n'est pas un objet) ; un corps vide de Géorisques n'est plus lu comme « rien à signaler », sauf pour `rga` | `test_pannes.py` |
-| Matrice des cas d'usage (T3, 9 novembre) : 158 cas joués par la vraie ligne de commande sur la base synthétique, vérifiés sur des invariants : `essentiel` pour chaque activité à chaque palier de puissance (bornes de `seuils_raccordement` comprises), `diagnose` et `compare` dans tous leurs formats, les onze communes de la recette à 12 et 45 MW, chaque option, l'accise réduite selon l'activité, les projets refusés, le warehouse absent ; les quinze chaînes de chargement rejouées deux fois (rien de dupliqué, Parquet jamais écrasé) et les commandes d'entretien, `tempo`, `ecowatt`, `report` et `app` lancées par `cli.main` ; une consommation que la puissance ne permet pas (plus de 8 784 heures) est refusée en ligne de commande et dans l'application | `test_cas_usage.py`, `test_commandes.py`, `incoherence_projet` |
-| Couverture des tests mesurée (T1, 9 novembre) : `pytest --cov` en CI et dans `verifier.py`, lignes et branches, 92,8 % au relevé après T4, échec sous 91 % ; courbe de charge illisible refusée avec le numéro de la ligne fautive dans `essentiel`, `diagnose`, `compare` et l'application (T2) | `pyproject.toml` (`tool.coverage`), `ingestion/courbe.py` |
-| Sorties de référence (T6, 10 novembre) : douze sorties de `essentiel`, `diagnose` et `compare` et le rapport Markdown figés sur la base synthétique, comparés à chaque run ; un libellé changé fait échouer le test, `--maj-references` réécrit les références ; PDF relu par `pypdf` : pages, pied de page, sections, tuile, aucun caractère sans glyphe ; chaque maquette et chaque relief de la tuile dessinés (`reporting/tuile.py` de 65 à 98 %) ; couverture 94,4 %, plancher à 92,5 %. Essai réel : le PDF complet de Chilly-Mazarin (9 pages) n'a aucun caractère sans glyphe | `test_references.py`, `ingestion/tests/references/` |
-| Parcours du néophyte (10 novembre) : `app` ouvre une fenêtre d'accueil qui demande une adresse, une seconde si l'on veut comparer (deux au plus), le projet replié ; la carte s'ouvre cadrée sur les adresses (la tuile si elles la partagent, la région si elles en occupent deux bouts, le monde si l'une est outre-mer), chacune avec son bâtiment (liseré doré pour la première, vert pour la seconde) ; fiche adaptée : verdict et cartes chiffrées pour une adresse, mêmes lignes côte à côte et un onglet par adresse pour deux ; rapport PDF en un clic | `reporting/carte.html`, `reporting/app.py` |
-| PDF court et visuel (10 novembre) : 3 pages au lieu de 9 pour l'exemple de référence, environ sept fois moins de texte ; le verdict et sa tuile, puis une fiche par critère (échelle des domaines de tension, plans de prévention, jauge du carbone, parts de la facture et accise, distances et prix des locaux) avec trois phrases au plus, dont la limite qui pèse sur la décision et un conseil ; repères du site en tableau, deux graphiques du territoire | `reporting/implantation_pdf.py`, `reporting/visuels.py` |
-| Démonstration sans `refresh` (étape 25, 31 octobre) : `demo` construit une fois la base synthétique des tests dans `data/demo/` (une minute environ, sans réseau), répond `essentiel` pour un hub de recharge fictif de 2 MW à Lyon, chiffres dits fictifs en première ligne, et ouvre la carte ; environ 2 s ensuite | `ingestion/demo.py`, `demo` |
-| Commentaires épurés (P2, 10 novembre) : pipeline (extractions, bronze, warehouse, config, macros dbt) puis couche application (`diagnostic.py`, `georisques.py`, `reporting/`, `carte.html`) ; restent les règles métier, les pièges de source, les choix d'architecture et la forme des tuples documentée sur les champs | `ingestion/`, `reporting/`, `dbt/` |
+| Pannes des sources à la demande : chacune des sept sources jouée contre huit pannes (délai dépassé, connexion coupée, 500, 404, corps vide, page de maintenance, JSON inattendu, liste vide) : le diagnostic aboutit, l'échec est dit dans sa section (pour les risques, par le repli sur l'export GASPAR), aucun critère du verdict ne change d'état ; mêmes pannes sur `diagnose`, `compare` et l'application entiers. Un JSON qui n'est pas un objet est un échec de la source ; un corps vide de Géorisques n'est plus lu comme « rien à signaler », sauf pour `rga` | `test_pannes.py` |
+| Matrice des cas d'usage : 158 cas joués par la vraie ligne de commande sur la base synthétique, vérifiés sur des invariants : `essentiel` pour chaque activité à chaque palier de puissance (bornes de `seuils_raccordement` comprises), `diagnose` et `compare` dans tous leurs formats, les onze communes de la recette à 12 et 45 MW, chaque option, l'accise réduite selon l'activité, les projets refusés, le warehouse absent ; les quinze chaînes de chargement rejouées deux fois (rien de dupliqué, Parquet jamais écrasé) et les commandes d'entretien, `tempo`, `ecowatt`, `report` et `app` lancées par `cli.main` ; une consommation que la puissance ne permet pas (plus de 8 784 heures) est refusée en ligne de commande et dans l'application | `test_cas_usage.py`, `test_commandes.py`, `incoherence_projet` |
+| Sorties de référence : douze sorties de `essentiel`, `diagnose` et `compare` et le rapport Markdown figés sur la base synthétique, comparés à chaque run ; un libellé changé fait échouer le test, `--maj-references` réécrit les références ; PDF relu par `pypdf` : pages, pied de page, sections, tuile, aucun caractère sans glyphe ; chaque maquette et chaque relief de la tuile dessinés ; couverture mesurée à chaque run (`pytest --cov`, lignes et branches : 94,6 %), échec sous 92,5 % ; courbe de charge illisible refusée avec le numéro de la ligne fautive. Essai réel : le PDF complet de Chilly-Mazarin (9 pages) n'a aucun caractère sans glyphe | `test_references.py`, `ingestion/tests/references/` |
+| Parcours du néophyte : `app` ouvre une fenêtre d'accueil qui demande une adresse, une seconde si l'on veut comparer (deux au plus), le projet replié ; la carte s'ouvre cadrée sur les adresses (la tuile si elles la partagent, la région si elles en occupent deux bouts, le monde si l'une est outre-mer), chacune avec son bâtiment (liseré doré pour la première, vert pour la seconde) ; fiche adaptée : verdict et cartes chiffrées pour une adresse, mêmes lignes côte à côte et un onglet par adresse pour deux ; rapport PDF en un clic | `reporting/carte.html`, `reporting/app.py` |
+| PDF court et visuel : 3 pages pour l'exemple de référence ; le verdict et sa tuile, puis une fiche par critère (échelle des domaines de tension, plans de prévention, jauge du carbone, parts de la facture et accise, distances et prix des locaux) avec trois phrases au plus, dont la limite qui pèse sur la décision et un conseil ; repères du site en tableau, deux graphiques du territoire | `reporting/implantation_pdf.py`, `reporting/visuels.py` |
+| Démonstration sans `refresh` : `demo` construit une fois la base synthétique des tests dans `data/demo/` (une minute environ, sans réseau), répond `essentiel` pour un hub de recharge fictif de 2 MW à Lyon, chiffres dits fictifs en première ligne, et ouvre la carte ; environ 2 s ensuite | `ingestion/demo.py`, `demo` |
 
 **À surveiller** :
-- **Géorisques** : l'API, coupée du 24 au 28 octobre, répond de nouveau. Le 29 octobre au soir,
-  depuis Python (`httpx`), les points du voisinage (`installations_classees`, `ssp/*`, `rga`,
+- **Géorisques** : depuis Python (`httpx`), les points du voisinage (`installations_classees`, `ssp/*`, `rga`,
   `cavites`) répondent en moins d'une seconde ; le rapport à l'adresse
   (`resultats_rapport_risque`) reste instable (un 200 en 11 s, puis « Server disconnected ») et
   `urllib` est toujours coupé. Le repli sur l'export GASPAR (maille commune) et sur le zonage
@@ -142,45 +137,35 @@ voisinage du site (argiles, cavités, Seveso, installations classées, sols poll
 
 ## Suite
 
-Les étapes gardent leur numéro d'origine (l'ordre de prise est la colonne « Ordre »). Chacune
-n'est cochée qu'après ruff, pytest (dont `dbt build`) et un essai réel sur un projet de 1 à 50 MW
-(`python .claude/scripts/verifier.py`). Quatre lots : A, à prendre maintenant ; P, présenter le projet en ligne ; T, qualité des
-tests ; B, en attente d'une source, d'une date ou d'une décision.
-
-**État des lieux du 9 novembre** : 72 pull requests fusionnées, aucune ouverte ;
-toutes les étapes du lot A sauf la 29 sont closes ; ce qui bloque la suite n'est plus du code mais
-la mise en ligne de la démonstration (lot P) et la publication RTE du 1er janvier 2027 (étape 19).
+Les étapes gardent leur numéro. Chacune n'est cochée qu'après ruff, pytest (dont `dbt build`) et un
+essai réel sur un projet de 1 à 50 MW (`python .claude/scripts/verifier.py`). Trois lots : A, à
+prendre maintenant ; T, qualité des tests ; B, en attente d'une source, d'une date ou d'une
+décision.
 
 ### Prochaines étapes, dans l'ordre
 
-**Consignes du porteur (10 novembre)**, à appliquer à chaque étape :
-- **démonstration d'abord** : l'application doit marcher pour une présentation en entretien
-  d'embauche ; les fonctions jugées utiles et faisables passent vite, une activité trop longue
-  est reportée et notée ici ;
-- **identifiants personnels** : jamais dans le dépôt ni dans une image en ligne ; qui recharge
-  les données crée ses propres comptes (RTE pour Tempo et Ecowatt, les seuls à en demander) dans
-  `identifiants.local.txt`, ignoré par git ; l'application et le reste de `refresh` n'en
-  demandent aucun ;
+Le projet est un outil local, présenté à des recruteurs comme un travail de data engineering :
+- **il se lance sur son poste** : dépôt GitHub, `demo` pour le voir sans rien charger, `refresh`
+  pour les vraies données ; ni hébergement, ni exécution planifiée ;
+- **identifiants personnels** : jamais dans le dépôt ; qui recharge les données crée ses propres
+  comptes (RTE pour Tempo et Ecowatt, les seuls à en demander) dans `identifiants.local.txt`,
+  ignoré par git ; l'application et le reste de `refresh` n'en demandent aucun ;
 - **data engineering lisible** : médaillon (bronze Parquet + `MERGE`, silver et gold dbt) et
   schéma en étoile au-dessus du gold pour l'usage ; le code le moins verbeux possible ; un
   commentaire dit une règle métier, un piège de source ou un choix d'architecture, jamais ce que
-  fait une ligne ;
-- **pas de but lucratif** : modèle économique, entretiens, incubateurs et dossier vivent hors git,
-  dans `prive/` (ignoré) ; les choix vont au plus automatisable, au moindre effort du porteur.
+  fait une ligne.
 
-Le détail de chaque ligne est dans son lot, plus bas. « Porteur » : hors code, attend le porteur du
-projet ; « code » : se prend dans le dépôt.
+Le détail de chaque ligne est dans son lot, plus bas.
 
-| Ordre | Étape | Qui | Condition ou date |
-|---|---|---|---|
-| 1 | **P1** Mettre la démonstration en ligne gratuitement (Cloud Run, détail dans le lot P) | Code, puis porteur (compte Google Cloud) | Aucune ; une demi-journée de code |
-| 2 | **Lot T** Qualité des tests : essai réel élargi (T7), application simulée dans le navigateur (T5), CI sous Windows (T8) ; corriger le gestionnaire affiché en Corse et outre-mer | Code | T1 à T4 faites le 9 novembre, T6 le 10 ; T5 demande un choix du porteur ; le gestionnaire demande une source officielle |
-| 3 | **29** Main-d'œuvre qualifiée dans `diagnose` et `compare` | Code | Sources vérifiées le 9 novembre, trois choix du porteur avant de coder (sous le tableau du lot A) |
-| 4 | **P3** Étoile d'abord : l'application lit le schéma `etoile` quand le grain existe | Code | Long : après P1 |
-| 5 | **Carte, lot B** : prototype three.js r186 hors ligne (une demi-journée), puis lots C et D | Code | Le lot D épingle `compare` sur la carte |
-| 6 | **19** Capacité en soutirage de RTE ; seed `accise_electricite` de 2027 | Code | 1er janvier 2027 (publication RTE), 1er janvier et 1er février (accise) |
-| 7 | Trier les « Manques repérés et pistes » du lot A | Porteur et code | Garder l'utile et faisable vite, reporter le long |
-| 8 | **8, 30, S, 6** Prix au-delà de 150 GWh, modèle prédictif, ambiance sonore, international | Code | Chacune sa condition (lot B) ; l'international en dernier |
+| Ordre | Étape | Condition ou date |
+|---|---|---|
+| 1 | **Lot T** Qualité des tests : essai réel élargi (T7), application simulée dans le navigateur (T5), CI sous Windows (T8) ; corriger le gestionnaire affiché en Corse et outre-mer | T5 demande un choix (`pytest-playwright` ou essai à la main) ; le gestionnaire demande une source officielle |
+| 2 | **29** Main-d'œuvre qualifiée dans `diagnose` et `compare` | Sources vérifiées, trois choix avant de coder (sous le tableau du lot A) |
+| 3 | **Étoile d'abord** : chaque nouveau fait gold a ses clés vers `dim_commune` et `dim_date` ; l'application lit le schéma `etoile` là où le grain existe | Sorties de référence inchangées |
+| 4 | **Carte, lot B** : prototype three.js r186 hors ligne (une demi-journée), puis lots C et D | Le lot D épingle `compare` sur la carte |
+| 5 | **19** Capacité en soutirage de RTE ; seed `accise_electricite` de 2027 | 1er janvier 2027 (publication RTE), 1er janvier et 1er février (accise) |
+| 6 | Trier les « Manques repérés et pistes » du lot A | Garder l'utile et faisable vite, reporter le long |
+| 7 | **8, 30, S, 6** Prix au-delà de 150 GWh, modèle prédictif, ambiance sonore, international | Chacune sa condition (lot B) ; l'international en dernier |
 
 
 ### Lot A : à prendre maintenant
@@ -191,7 +176,7 @@ Les sources existent ; il reste à lire un texte, à tester une API ou à finir 
 |---|---|---|---|---|
 | 1 | **29** Main-d'œuvre qualifiée (à faire) | Une ligne d'information dans `diagnose` et `compare`, sans effet sur le verdict : **nombre de diplômés du supérieur à moins de 45 min en voiture** ([base Diplômes-Formation 2023](https://www.insee.fr/fr/statistiques/9006527), Insee, sommée sur les communes de l'[isochrone de la Géoplateforme](https://geoservices.ign.fr/node/1612)), repli sur la [zone d'emploi](https://www.insee.fr/fr/information/4652957) si l'appel échoue ; en regard, les projets de recrutement et leur difficulté pour les métiers techniques du bassin d'emploi ([BMO](https://www.data.gouv.fr/datasets/561fa564c751df4f2acdbb48), France Travail) ; limite au seed `limites_methodologiques`, Mayotte « non disponible » | Exploiter un site demande des électriciens et techniciens CVC autant que des ingénieurs ; un stock accessible dit plus qu'une part, et la région est trop vaste pour un trajet quotidien | Dictionnaire du fichier : champ de 15 ans ou plus non scolarisés, retraités compris (corrigé par l'Insee le 21 juillet 2026) ; présence du diplôme dans le [fichier détail par zone d'emploi](https://www.insee.fr/fr/statistiques/9004788) pour se limiter aux actifs ; 45 min est une hypothèse, à contrôler sur les [flux domicile-travail](https://www.insee.fr/fr/statistiques/8582949) ; familles de métiers BMO à retenir ; profil voiture de l'isochrone |
 
-**Étape 29, sources vérifiées le 9 novembre** (fichiers réels lus, rien de codé) :
+**Étape 29, sources vérifiées** (fichiers réels lus le 9 novembre 2026, rien de codé) :
 - **Diplômes (Insee)** : `DS_RP_DIPLOMES_PRINC_2023_CSV_FR.zip` (25 Mo, CSV de 213 Mo, 3 257 982
   lignes, séparateur « ; », millésimes 2012, 2017 et 2023) ; maille commune (34 858 communes en
   2023, arrondissements municipaux à part sous `ARM`, Paris, Lyon et Marseille aussi en commune
@@ -212,37 +197,34 @@ Les sources existent ; il reste à lire un texte, à tester une API ou à finir 
   installé (le classeur se lit aussi avec la bibliothèque standard).
 - **Pas encore vérifié** : le fichier détail par zone d'emploi (pour se limiter aux actifs), les
   flux domicile-travail (pour contrôler les 45 min).
-- **Trois choix du porteur avant de coder** : compter aussi les CAP-BEP et les bacs, puisque les
+- **Trois choix avant de coder** : compter aussi les CAP-BEP et les bacs, puisque les
   électriciens et techniciens que l'étape veut mesurer n'ont pas tous un diplôme du supérieur ;
   BMO au département (colonne `Dept` du fichier), au bassin si une table de passage officielle
   est trouvée, ou écarté ; lecture du xlsx par la bibliothèque standard ou par `openpyxl`.
 
-**Application et ligne de commande** (parité relevée le 9 novembre). L'application couvre
+**Application et ligne de commande.** L'application couvre
 `essentiel`, `diagnose`, `compare`, `carte` et toutes les options de projet, `--courbe` comprise.
 Restent hors de l'application, à dessein :
 
 | Commande | Pourquoi elle reste en ligne de commande | Quand la reprendre |
 |---|---|---|
-| `compare` au-delà de deux adresses | L'application épingle et compare deux adresses (10 novembre) ; six côte à côte ne tiennent pas dans la fiche | Lot D de la carte, si le besoin se confirme |
+| `compare` au-delà de deux adresses | L'application épingle et compare deux adresses ; six côte à côte ne tiennent pas dans la fiche | Lot D de la carte, si le besoin se confirme |
 | `europe` | Moyennes nationales seulement, hors du diagnostic à l'adresse | Avec l'étape 6, en dernier |
 | `refresh` | Une vingtaine de minutes et un seul writer DuckDB : l'application affiche la date des données et la commande à lancer | Pas prévu |
-| `tempo`, `ecowatt`, `report` | Comptes RTE requis ; rapport mensuel hérité du persona des bureaux, sans rôle dans le choix d'un site | Pas prévu ; à retirer s'il ne sert pas |
-| `demo` | Une commande pour un jury, sans adresse à saisir | Pas prévu |
+| `tempo`, `ecowatt`, `report` | Comptes RTE requis ; rapport mensuel sans rôle dans le choix d'un site | Pas prévu ; à retirer s'il ne sert pas |
+| `demo` | Une commande pour voir l'outil sans rien charger, sans adresse à saisir | Pas prévu |
 
-Fins d'étapes closes, gardées en limite plutôt qu'en étape : l'étape 17 est terminée (la composante
-d'injection-soutirage est une option réservée au stockage ; une alimentation de secours dépend de
-la partie dédiée propre au site, seul son tarif de réservation est cité) ; l'étape 18 est terminée (le tarif
-réduit des secteurs exposés à la concurrence internationale, fixés par arrêté, n'est pas
-identifié par l'outil) ; l'échangeur autoroutier de
-l'étape 13 n'est pas identifiable dans la BD TOPO (bretelles sans classement) et la Géoplateforme
-n'a pas de profil poids lourd ; l'étape 14 (urbanisme, friches, zones d'activité) est terminée ;
-l'étape 16 est terminée (la structure des toitures n'est pas publique : la BDNB, Licence Ouverte
-2.0, donne au mieux le matériau ; la surface du parking n'est pas connue de l'outil) ; l'étape 20
-est terminée (le débit ou le niveau de nappe du jour face à une référence d'étiage reste hors
-de l'outil : Hub'Eau ne publie aucune référence, le QMNA5 se calcule station par station).
+**Limites gardées**, faute de source : la composante d'injection-soutirage du TURPE est une option
+réservée au stockage, et une alimentation de secours dépend de la partie dédiée propre au site
+(seul son tarif de réservation est cité) ; le tarif réduit d'accise des secteurs exposés à la
+concurrence internationale, fixés par arrêté, n'est pas identifié par l'outil ; l'échangeur
+autoroutier n'est pas identifiable dans la BD TOPO (bretelles sans classement) et la Géoplateforme
+n'a pas de profil poids lourd ; la structure des toitures n'est pas publique (la BDNB, Licence
+Ouverte 2.0, donne au mieux le matériau) et la surface du parking n'est pas connue de l'outil ; le
+débit ou le niveau de nappe du jour face à une référence d'étiage reste hors de l'outil (Hub'Eau
+ne publie aucune référence, le QMNA5 se calcule station par station).
 
-**Manques repérés et pistes** (recherche du 29 octobre, imagerie ajoutée le 1er novembre ; à trier
-rien n'est décidé) :
+**Manques repérés et pistes** (à trier, rien n'est décidé) :
 
 | Manque | Piste | Condition |
 |---|---|---|
@@ -252,35 +234,14 @@ rien n'est décidé) :
 | Zones « prêtes à raccorder » de RTE (ports de Dunkerque, du Havre, de Fos et cinq zones moyennes) | Une couche de plus dans « Raccorder » | Périmètres publiés par RTE |
 | Maturité du projet pour la file « premier prêt, premier servi » | Pièces d'un dossier de raccordement (autorisations, maîtrise du foncier) en liste de vérification | Relecture de la procédure RTE de 2026 et de la délibération CRE 2026-32 |
 | Artificialisation (zéro artificialisation nette) de la commune | Ligne « enveloppe restante » du guide de la DGE ; couverture, usage et artificialisation à l'adresse par [OCS GE](https://www.data.gouv.fr/datasets/ocs-ge) (IGN, Licence Ouverte 2.0), à prendre en premier | Portail de l'artificialisation des sols (Cerema), licence ; OCS GE : pas de couche nationale trouvée en WFS, téléchargement par département ou WMTS, tuiles non testées |
-| Friches déclaratives, aucune vue récente du site | Image datée du site dans le rapport, à la demande et sans stockage : [ORTHO-SAT](https://www.data.gouv.fr/datasets/ortho-sat/informations) (IGN, Pléiades et SPOT 6/7, Licence Ouverte 2.0), puis [BD ORTHO](https://www.data.gouv.fr/datasets/bd-ortho-r) (aérien, 20 cm) si plus fine | Tuiles Pléiades 2025 et SPOT 2014 servies sans compte le 1er novembre (HTTP 200, images non regardées) ; couverture annuelle de Pléiades à vérifier ; avant toute vente, confirmation écrite de l'IGN (la fiche dit aussi SPOT « accessible librement aux acteurs institutionnels ») |
-| Mouvements du sol, en plus des argiles et des cavités | [EGMS Ortho](https://land.copernicus.eu/en/products/european-ground-motion-service) (Copernicus, radar Sentinel-1, grille de 100 m, [accès libre, source à citer](https://land.copernicus.eu/en/data-policy)) | Accès programmatique : téléchargement annoncé par l'Explorer seulement ; usage commercial non cité par le texte |
-| Inondation à l'adresse quand le rapport Géorisques ne répond pas | Inondations observées : [GFM](https://extwiki.eodc.eu/GFM/PDD/Introduction) et [Rapid Mapping](https://mapping.emergency.copernicus.eu/terms-and-conditions/) (Copernicus, Sentinel-1), dites observées au passage du satellite : une absence ne prouve pas l'absence de risque | Licence de GFM non lue ; usage commercial de Rapid Mapping non cité par le texte |
+| Friches déclaratives, aucune vue récente du site | Image datée du site dans le rapport, à la demande et sans stockage : [ORTHO-SAT](https://www.data.gouv.fr/datasets/ortho-sat/informations) (IGN, Pléiades et SPOT 6/7, Licence Ouverte 2.0), puis [BD ORTHO](https://www.data.gouv.fr/datasets/bd-ortho-r) (aérien, 20 cm) si plus fine | Tuiles Pléiades 2025 et SPOT 2014 servies sans compte le 1er novembre (HTTP 200, images non regardées) ; couverture annuelle de Pléiades à vérifier ; la fiche dit aussi SPOT « accessible librement aux acteurs institutionnels » |
+| Mouvements du sol, en plus des argiles et des cavités | [EGMS Ortho](https://land.copernicus.eu/en/products/european-ground-motion-service) (Copernicus, radar Sentinel-1, grille de 100 m, [accès libre, source à citer](https://land.copernicus.eu/en/data-policy)) | Accès programmatique : téléchargement annoncé par l'Explorer seulement |
+| Inondation à l'adresse quand le rapport Géorisques ne répond pas | Inondations observées : [GFM](https://extwiki.eodc.eu/GFM/PDD/Introduction) et [Rapid Mapping](https://mapping.emergency.copernicus.eu/terms-and-conditions/) (Copernicus, Sentinel-1), dites observées au passage du satellite : une absence ne prouve pas l'absence de risque | Licence de GFM non lue |
 | Pente et bâti fin d'un terrain | Dérivés du [LiDAR HD](https://www.data.gouv.fr/datasets/nuages-de-points-lidar-hd) (IGN, Licence Ouverte 2.0) | Dalles de 0,5 à 2 Go chacune : à limiter à la demande ; couverture à l'adresse à vérifier |
 | Refroidissement des data centers | Température de surface [Landsat Level-2](https://catalog.data.gov/dataset/landsat-level-2-surface-temperature-collection-2) (USGS, 30 m), repère seulement : température du sol, pas de l'air | Politique de données de l'USGS à lire (domaine public selon ses pages) ; méthode de lecture à sourcer |
 | Besoin de recharge poids lourds au dépôt | Situer l'adresse dans une zone logistique à fort besoin de puissance (étude Enedis de décembre 2025) | Maille des zones logistiques (SDES), licence |
-| Version 2 de l'étude du 28 octobre | Photovoltaïque existant (OpenPVMapper, CC-BY, ~75 % de précision), bassin d'emploi (passé à l'étape 29), détection de changement sur l'ortho | Licences du LiDAR HD et de l'OCS GE : Licence Ouverte 2.0 selon data.gouv.fr (lu le 1er novembre) ; OpenPVMapper reste une prépublication sans producteur officiel, hors de la règle du 25 octobre |
-| Version 3 de l'étude du 28 octobre | Projections climatiques (DRIAS, Explore2) | Licence de DRIAS ; date de la carte RGA 2026 |
-
-### Lot P : présenter le projet en ligne
-
-**Recherche du 10 novembre** (pages officielles lues sauf mention « relayé ») :
-
-| Hébergeur | Gratuit | Ce qui compte ici | Verdict |
-|---|---|---|---|
-| [Google Cloud Run](https://cloud.google.com/run/pricing) | Chaque mois 180 000 vCPU-s, 360 000 GiB-s et 2 millions de requêtes, dans us-central1, us-east1 ou us-west1 ; compte de facturation obligatoire (relayé : page de tarifs illisible par l'outil le 10 novembre, à relire avant de déployer) | Facturé à la requête, rien au repos ; jusqu'à 32 GiB : la base et le PDF tiennent ; à 2 GiB, 50 h de calcul actif par mois | **Retenu** : 2 GiB, une instance au plus, alerte budgétaire à 1 € |
-| [Render](https://render.com/docs/free) | 750 h par mois, endormi après 15 min sans trafic (réveil en une minute environ), disque éphémère | Mémoire non affichée sur la page officielle, 512 Mo relayé : juste pour DuckDB et le PDF | Repli si Cloud Run ne convient pas |
-| [Hugging Face Spaces](https://huggingface.co/docs/hub/en/spaces-overview) | Seuls les Spaces statiques ; Docker et Gradio exigent un plan payant | L'application a un serveur Python | Écarté |
-| Fly.io, Heroku | Plus d'offre gratuite (relayé) | | Écarté |
-
-| Étape | Contenu | Critère |
-|---|---|---|
-| **P1** Démonstration en ligne | `HOTE` et `PORT` lus dans l'environnement (`0.0.0.0` et `$PORT` en conteneur, 127.0.0.1 par défaut) ; commande `publier` qui copie dans `data/public.duckdb` les schémas `gold` et `etoile`, plus `silver.prix_entreprises`, `silver.tempo_jours`, `silver.ecowatt_jours` et la date du dernier chargement de chaque table bronze (lus par l'application) ; `Dockerfile` sans PySpark ni Java (seule l'ingestion en a besoin) qui embarque cette base ; `gcloud run deploy --source .` lancé à la main, jamais planifié ; la date des données s'affiche, `refresh` ne tourne jamais en ligne | Les parcours de l'application marchent sur l'URL publique ; aucune variable `ECO2MIX_RTE_*` ni `ECO2MIX_ECOWATT_*` dans l'image ; taille de la base publique mesurée |
-| **P3** Étoile d'abord | Chaque nouveau fait gold a ses clés vers `dim_commune` et `dim_date` ; l'application lit `etoile` là où le grain existe | Sorties de référence inchangées |
-
-Licences de la base publique : Licence Ouverte et CC BY permettent la diffusion en citant la source
-(déjà fait à chaque chiffre) ; DVF interdit la réidentification, d'où aucune vente unitaire (le
-silver `ventes_locaux` reste hors de la base) ; les chantiers rail-route de SNCF Réseau (ODbL)
-imposent de diffuser la base dérivée sous la même licence.
+| Photovoltaïque déjà installé, changements récents du site | Photovoltaïque existant (OpenPVMapper, CC-BY, ~75 % de précision), détection de changement sur l'ortho | OpenPVMapper reste une prépublication sans producteur officiel, hors de la règle des sources |
+| Climat futur du site | Projections climatiques (DRIAS, Explore2) | Licence de DRIAS ; date de la carte RGA 2026 |
 
 ### Lot T : qualité des tests
 
@@ -288,13 +249,13 @@ But : que chaque cas d'usage du persona soit joué par un test sans réseau, et 
 soit essayée par une machine plutôt qu'à la main. Chaque étape a son critère ; aucune n'ajoute de
 tâche planifiée.
 
-**Constat du 10 novembre**, après T1 à T4 et T6 :
-- 914 tests sans réseau (12 min 44 s au relevé du 10 novembre avec la couverture, contre 4 min 34 s
-  le 9 et 2 min 30 s avant le lot : à mesurer de nouveau, poste au repos, avant T5 et T8) ;
+**Constat** :
+- 914 tests sans réseau (12 min 44 s avec la couverture : à mesurer de nouveau, poste au repos,
+  avant T5 et T8) ;
   couverture **94,6 %** des lignes et des branches
   d'`ingestion/` et de `reporting/`, plancher à 92,5 % ;
-- reste sous 90 % : `ingestion/pipeline.py` à 86 % ; `reporting/tuile.py` est passé de 65 à 98 % ;
-- **défaut trouvé par la matrice, non corrigé** : en Corse et outre-mer, le verdict annonce
+- reste sous 90 % : `ingestion/pipeline.py` à 86 % ;
+- **défaut connu, non corrigé** : en Corse et outre-mer, le verdict annonce
   « HTA, Enedis (ou ELD) » puis « HTB, RTE » et « étude RTE indispensable », alors que la section
   « Tension du réseau » dit que le réseau n'y est pas exploité par RTE ; le seed
   `seuils_raccordement` ne connaît pas les zones non interconnectées. À corriger après lecture
@@ -308,12 +269,12 @@ tâche planifiée.
 
 | Ordre | Étape | Contenu | Critère |
 |---|---|---|---|
-| T5 | Application simulée dans le navigateur | Un navigateur piloté par les tests, sur `app` lancé contre la base de démonstration, réseau coupé : fenêtre d'accueil → adresse → verdict épinglé → PDF ; adresse ambiguë → choix d'une commune ; deux adresses → côte à côte → tableau détaillé → CSV ; courbe déposée → gardée après rechargement → retirée ; serveur arrêté → message ; page ouverte en `file://` → lecture seule ; aucune erreur dans la console | Les six parcours passent en local et en CI ; **choix du porteur** : `pytest-playwright` (Microsoft, Apache 2.0, télécharge Chromium, groupe de dépendances `e2e` à part) ou rester à l'essai à la main |
+| T5 | Application simulée dans le navigateur | Un navigateur piloté par les tests, sur `app` lancé contre la base de démonstration, réseau coupé : fenêtre d'accueil → adresse → verdict épinglé → PDF ; adresse ambiguë → choix d'une commune ; deux adresses → côte à côte → tableau détaillé → CSV ; courbe déposée → gardée après rechargement → retirée ; serveur arrêté → message ; page ouverte en `file://` → lecture seule ; aucune erreur dans la console | Les six parcours passent en local et en CI ; **choix à faire** : `pytest-playwright` (Microsoft, Apache 2.0, télécharge Chromium, groupe de dépendances `e2e` à part) ou rester à l'essai à la main |
 | T7 | Essai réel élargi | `verifier.py` joue, en plus : `diagnose --sans-risques` à 45 MW (HTB), `compare` de deux adresses, une adresse en Corse, un appel à `/api/analyse` de l'application ; `--complet` ajoute un `diagnose` avec les sources à la demande | Moins d'une minute sans `--complet` ; chaque cas dit ce qu'il attend (domaine de tension, système électrique) |
 | T8 | CI sous Windows | Un second job `windows-latest` (Java 17, mêmes commandes) | Vert sur une PR ; les pièges d'encodage sont pris avant le poste |
 
-T1 à T4 et T6 sont faites (voir « État »). Ordre : T7, en relevant le plancher de
-couverture ensuite ; T5 et T8 après le choix du porteur et une mesure du temps de CI. Hors périmètre : tests
+Ordre : T7, en relevant le plancher de couverture ensuite ; T5 et T8 après le choix de l'outil
+et une mesure du temps de CI. Hors périmètre : tests
 de charge (un seul utilisateur, en local) et tests sur les API réelles en CI (elles tombent sans
 prévenir : l'essai réel reste lancé à la main).
 
@@ -324,11 +285,11 @@ Rien à coder tant que la condition n'est pas levée.
 | Étape | Pourquoi pour ce persona | Condition pour s'y mettre |
 |---|---|---|
 | **19** Capacité d'accueil en soutirage : carte des capacités de RTE, nouveau Caparéseau ; ce qu'Enedis publie en HTA | Première question du persona, sans réponse publique aujourd'hui | Publication RTE attendue au 1er janvier 2027 (délibération CRE 2026-173) ; capacité Enedis réservée au portail client |
-| **Carte** Refonte (lots B à F, voir plus bas) | Une carte lisible imprimée, qui montre ce que la puissance demandée change | Lots 0 et A faits (29 et 30 octobre) ; suite : lot B, prototype three.js r186 hors ligne |
-| **S** Ambiance sonore de la tuile (demande du 29 octobre) : un son discret qui rappelle le facteur le plus marquant de la case (par exemple un bourdonnement électrique si le nucléaire domine), aucun s'il n'y a pas de facteur dominant | Rendre la carte plus parlante sans texte de plus ; le son n'est jamais une information en soi | Lot A de la carte fait le 30 octobre. Prérequis restants : règle du facteur dominant écrite à partir des critères déjà calculés, « aucun » possible ; sons libres de droits (CC0 ou domaine public, licence et auteur notés dans le dépôt) ; lecture après un geste de l'utilisateur, volume bas, bouton de coupure, sans effet sur le rapport imprimé ; vérification par le skill `essai-carte` |
-| **8** Repère de prix au-delà de 150 000 MWh/an, après la fin de l'ARENH | Un projet de 20 MW constant dépasse la dernière tranche Eurostat (IG, sans borne) | Une source officielle et ouverte d'un prix à terme ; le classement pondéré dans `compare` reste écarté (décision du 15 octobre) |
-| **30** Modèle prédictif d'implantation (demande du 1er novembre, cadrage plus bas) : par zone d'emploi, probabilité d'implantations nouvelles à 3 ans, apprise sur l'historique | Signaler tôt les territoires qui montent, en complément des faits à l'adresse ; il dira où les projets vont, pas où ils seraient rentables ni si la puissance est disponible | Données fiabilisées (critères à écrire) ; décision du porteur face à « comparaison sans classement » (15 octobre) ; historique de la capacité en soutirage, absent à ce jour |
-| **6** Extension internationale, voir plus bas | En dernier (décision du 25 octobre) | Jeton ENTSO-E et contours des zones de prix |
+| **Carte** Refonte (lots B à F, voir plus bas) | Une carte lisible imprimée, qui montre ce que la puissance demandée change | Lot B d'abord : prototype three.js r186 hors ligne |
+| **S** Ambiance sonore de la tuile : un son discret qui rappelle le facteur le plus marquant de la case (par exemple un bourdonnement électrique si le nucléaire domine), aucun s'il n'y a pas de facteur dominant | Rendre la carte plus parlante sans texte de plus ; le son n'est jamais une information en soi | Règle du facteur dominant écrite à partir des critères déjà calculés, « aucun » possible ; sons libres de droits (CC0 ou domaine public, licence et auteur notés dans le dépôt) ; lecture après un geste de l'utilisateur, volume bas, bouton de coupure, sans effet sur le rapport imprimé ; vérification par le skill `essai-carte` |
+| **8** Repère de prix au-delà de 150 000 MWh/an, après la fin de l'ARENH | Un projet de 20 MW constant dépasse la dernière tranche Eurostat (IG, sans borne) | Une source officielle et ouverte d'un prix à terme ; le classement pondéré dans `compare` reste écarté |
+| **30** Modèle prédictif d'implantation (cadrage plus bas) : par zone d'emploi, probabilité d'implantations nouvelles à 3 ans, apprise sur l'historique | Signaler tôt les territoires qui montent, en complément des faits à l'adresse ; il dira où les projets vont, pas où ils seraient rentables ni si la puissance est disponible | Données fiabilisées (critères à écrire) ; à concilier avec la « comparaison sans classement » ; historique de la capacité en soutirage, absent à ce jour |
+| **6** Extension internationale, voir plus bas | En dernier | Jeton ENTSO-E et contours des zones de prix |
 
 ### Échéances à guetter
 
@@ -354,7 +315,7 @@ L'UE-27 à la maille pays est faite (`europe`). Ensuite, dans cet ordre :
 2. Royaume-Uni (intensité régionale officielle) et États-Unis (EIA, eGRID), où prix et carbone
    dépendent vraiment de l'adresse.
 
-**Europe de l'Ouest, pays par pays (étude du 24 octobre)** : ordre à suivre pour étendre le
+**Europe de l'Ouest, pays par pays** : ordre à suivre pour étendre le
 diagnostic par adresse, du pays où les données se récoltent le plus facilement au plus difficile.
 Critères : adresses géocodables en open data, codes et contours communaux, prix (Eurostat ou
 mieux), carbone (Ember, ou par zone si le pays en a plusieurs), capacité de raccordement publiée,
@@ -377,9 +338,9 @@ Inondations.
 | 11 | Italie | Données Terna ouvertes ; risques ISPRA (IdroGEO) | Seulement ~5 % des numéros ANNCSU géolocalisés ; sept zones de prix ; Econnextion donne les demandes, pas la capacité |
 | — | Monaco, Liechtenstein, Andorre | Monaco et le Liechtenstein suivent les réseaux français et suisse | Ni adresses ouvertes ni prix fiables (Eurostat ne donne que des zéros sur une tranche du Liechtenstein) : à traiter avec le pays voisin, en dernier |
 
-## Refonte de la carte et direction artistique (étude du 28 octobre, à valider)
+## Refonte de la carte et direction artistique
 
-Lots 0 et A faits (29 et 30 octobre) ; le reste est une proposition. Elle garde les décisions en
+La charte commune est en place ; le reste est une proposition. Elle garde les règles en
 vigueur : ligne de commande, local, page HTML autonome qui s'ouvre hors ligne (pas de site web,
 pas de CDN), données publiques sourcées, « non disponible » plutôt qu'un chiffre inventé.
 
@@ -391,15 +352,15 @@ maquettes, deux vues) mais en **r128 (2021)** ; la version courante est la **r18
 automatique), shaders en JavaScript (TSL), `BatchedMesh` pour des milliers de maquettes en un appel
 de dessin. La vue par défaut « Raccorder » (zones RTE, sites clés en main, postes 400 kV) parle
 déjà au persona ; il lui manque de montrer ce que la puissance demandée change : domaine de
-tension, gestionnaire, délai. Les briques du 29 octobre (friches, zones d'activité, desserte,
-eau) ne sont aujourd'hui que dans `diagnose`, pas sur la carte (lot F).
+tension, gestionnaire, délai. Friches, zones d'activité, desserte et eau
+ne sont aujourd'hui que dans `diagnose`, pas sur la carte (lot F).
 
 ### Direction artistique : « le relevé »
 
 Ce que l'outil promeut : une décision d'implantation d'un projet de 1 à 50 MW fondée sur des faits
 publics, vérifiables, avec leurs limites, et une électricité bas-carbone ; le lecteur est un
 développeur de data center, un opérateur de recharge, un industriel ou un logisticien, souvent
-ingénieur, qui présente le site à un comité d'investissement. La direction qui en découle est celle d'une
+ingénieur, qui présente le site à un comité de direction. La direction qui en découle est celle d'une
 **carte d'état-major moderne** : relief ombré à la manière des cartes IGN et suisses (Imhof), encre
 et papier, chiffres en avant, chaque couche signée de sa source comme un cartouche. Ni jeu vidéo,
 ni tableau de bord néon : la sobriété est le message (le carbone, la péréquation, la capacité non
@@ -409,22 +370,14 @@ les cartes en relief de la presse de données.
 
 | Élément | Proposition | Pourquoi |
 |---|---|---|
-| Nom | « Où brancher mon entreprise » partout ; « Brancher ici ? » réservé au verdict | Fait le 29 octobre (lot 0) : la carte s'appelait « Atlas électrique », sa légende « Où se brancher » |
-| Fond | **Fait le 30 octobre** : papier clair (`#F4F1EA`), encre bleu nuit (`#14202B`), mer en bleu gris désaturé. Reste au lot E : relief en ombrage gris chaud, pas de cônes | Même identité que le PDF (fond clair) ; lisible imprimé et en capture pour un comité de direction |
-| Accent | Un seul : vert « décarboné » (`#2E7D5B`) pour ce qui est favorable et sourcé ; orange brûlé (`#C2571A`) pour « à vérifier » | Le vert porte le message bas-carbone ; l'or et le parchemin actuels évoquent un jeu de stratégie |
-| Note des cases | Écartée le 30 octobre : le rouge → blanc → vert est gardé (décision du porteur), malgré sa lecture difficile pour environ 8 % des hommes | — |
-| Typographie | **Fait le 30 octobre** : **Spectral** (Production Type, Paris ; SIL OFL) pour les titres, **Inter** (OFL, chiffres tabulaires) pour le texte et les nombres ; embarquées en base64 dans la page et enregistrées dans reportlab pour le PDF | Trajan Pro n'est installé presque nulle part (rendu différent d'un poste à l'autre) ; Helvetica du PDF n'a pas « ₂ » ni « ≥ », d'où la table de remplacement de `reporting/implantation_pdf.py` |
+| Fond | En place : papier clair, encre vert nuit, mer en bleu gris désaturé (`reporting/charte.py`). Reste au lot E : relief en ombrage gris chaud | Même identité que le PDF (fond clair) ; lisible imprimé et en capture pour un comité de direction |
+| Accent | Un seul : vert « décarboné » pour ce qui est favorable et sourcé ; orange brûlé pour « à vérifier » ; l'échelle rouge → blanc → vert reste réservée à la note des cases | Le vert porte le message bas-carbone |
+| Typographie | En place : **Spectral** (Production Type, Paris ; SIL OFL) pour les titres, **Inter** (OFL, chiffres tabulaires) pour le texte et les nombres ; embarquées en base64 dans la page et enregistrées dans reportlab pour le PDF | Même rendu d'un poste à l'autre ; « ₂ », « ≥ » et « → » présents dans le PDF |
 | Maquettes | Gardées (centrales, fret, sites) mais en « maquette d'architecte » : blanc cassé mat, une seule couleur de filière en touche, ombres douces | Elles restent la signature de la carte ; moins de couleurs, plus de lisibilité |
 | Mouvement | Une arrivée de caméra (France → adresse, 1,5 s), transitions entre vues ; tout coupé sous `prefers-reduced-motion` | L'effet « avant-gardiste » vient de la mise en scène, pas de l'accumulation d'effets |
 | Interdits | Ni Marianne, ni bloc-marque, ni police Marianne du système de design de l'État | Réservés à l'État (charte de la marque État, loi de 1918 sur les sceaux) : l'outil n'est pas un service public |
 
-Source unique des couleurs et polices : un module `reporting/charte.py` (constantes), injecté dans
-`carte.html` en variables CSS et lu par `pdf.py`, `charts.py` et `implantation_charts.py`, au lieu
-des trois jeux de couleurs actuels (navy et or de la carte, gris et bleu du PDF, palette Tempo).
-
-Décidé le 30 octobre : fond clair, Spectral et Inter, échelle rouge → blanc → vert gardée.
-Faits au lot A : `reporting/charte.py` et les polices ; pas encore : les maquettes en « maquette
-d'architecte » et l'arrivée de caméra.
+Pas encore faits : les maquettes en « maquette d'architecte » et l'arrivée de caméra continue.
 
 ### three.js : ce qui sert le persona
 
@@ -434,12 +387,12 @@ Chaque effet doit répondre à une question du persona ; sinon il n'entre pas.
 |---|---|---|---|
 | « Raccorder » selon la puissance | Autour de l'épingle, un anneau par domaine de tension (HTA, zone grise, HTB) teinté selon `--puissance` ; zones RTE en colonnes de lumière dont la hauteur dit l'année de capacité ; contraintes RTE en voile sur les cases | Qui raccorde mes 12 MW, et quand ? | existant (`seuils_raccordement`, SDDR, contraintes) |
 | Capacité en soutirage (étape 19) | Cases teintées par capacité restante dès que RTE la publie ; d'ici là, rien d'inventé | La puissance est-elle là ? | RTE, 1er janvier 2027 |
-| `compare` sur la carte | Plusieurs épingles numérotées ; caméra qui passe d'un site à l'autre ; fiches côte à côte, **sans classement** (décision du 15 octobre) | Le persona présélectionne 2 à 6 sites | existant |
-| Foncier et contraintes | Sites clés en main, friches et zones d'activité en maquettes ; ICPE et Seveso (étape 15) en marqueurs discrets | Le terrain est-il prêt et constructible ? | `fct_friches`, `ingestion/zones_activite.py`, étape 15 |
+| `compare` sur la carte | Plusieurs épingles numérotées ; caméra qui passe d'un site à l'autre ; fiches côte à côte, **sans classement** | Le persona présélectionne 2 à 6 sites | existant |
+| Foncier et contraintes | Sites clés en main, friches et zones d'activité en maquettes ; ICPE et Seveso en marqueurs discrets | Le terrain est-il prêt et constructible ? | `fct_friches`, `ingestion/zones_activite.py`, voisinage Géorisques |
 | Desserte | Temps vers le port, l'aéroport, le rail-route, tracés en arcs depuis l'épingle | Logistique et industrie | `ingestion/acces_routier.py` |
 | Relief continu | Un maillage de terrain par système électrique tiré de l'altimétrie IGN déjà chargée, ombrage calculé dans le shader, hexagones projetés dessus en filet | Remplace les cônes de montagne ; donne la lecture « carte d'état-major » | existant (`ingestion/hexagones.py`) |
 | Carbone heure par heure (Corse, outre-mer) | Curseur de 24 h : lumière du soleil et couleur du réseau suivent `fct_carbone_horaire_zni` | Seul cas où l'heure de consommation change le carbone | existant |
-| Export d'image | Bouton « Image » : PNG haute définition de la vue, avec cartouche (adresse, date, sources) | La carte finit dans un support de comité | — |
+| Export d'image | Bouton « Image » : PNG haute définition de la vue, avec cartouche (adresse, date, sources) | La carte finit dans une présentation | — |
 | Sans WebGL | La fiche « Brancher ici ? » et les critères s'affichent quand même, carte remplacée par un message | Aujourd'hui un poste sans WebGL n'a qu'un message d'erreur | — |
 
 Hors de propos : globe terrestre, particules, néons, post-traitements lourds (bloom, profondeur de
@@ -472,15 +425,13 @@ mise à jour dans `docs/exemples/`.
 
 | Lot | Contenu | Validation |
 |---|---|---|
-| 0 | **Fait le 29 octobre** : captures et PDF pour 12 MW à Chilly-Mazarin, courbe d'exemple HTA, un seul nom, bandeau d'aide sur fond | relecture README et PLAN, `essentiel` sur les exemples |
-| A | **Fait le 30 octobre** : `reporting/charte.py` ; polices embarquées ; PDF et graphiques sur la charte ; carte sur la charte en r128 | polices chargées par le navigateur et non par le poste ; PDF sans caractère remplacé |
 | B | Prototype puis passage à three.js r186 (`WebGLRenderer`, `BatchedMesh` pour les maquettes) | carte sans requête réseau ; 60 images/s sur la métropole |
 | C | « Raccorder » selon la puissance : anneaux des domaines de tension, zones RTE en colonnes datées | 1, 12, 30 et 50 MW à Chilly-Mazarin et Dunkerque : gestionnaire conforme à `seuils_raccordement` |
-| D | `compare` épinglé sur la carte (le tableau est dans l'application depuis le 9 novembre) ; export d'image ; fiche sans WebGL | `compare` à 3 sites |
+| D | `compare` épinglé sur la carte (le tableau est déjà dans l'application) ; export d'image ; fiche sans WebGL | `compare` à 3 sites |
 | E | Relief continu et ombrage ; curseur horaire des îles | Ajaccio : 522 g vers 13 h, 681 g vers 5 h |
-| F | Couches friches, zones d'activité et desserte (déjà calculées), puis étapes 15 et 19 à leur arrivée | une adresse contrôlée à la main par couche |
+| F | Couches friches, zones d'activité et desserte (déjà calculées), voisinage Géorisques, puis capacité en soutirage à sa publication | une adresse contrôlée à la main par couche |
 
-## Besoins des porteurs de projets : recherche du 29 octobre
+## Besoins des porteurs de projets
 
 Recherche documentaire pour le persona (1 à 50 MW). Niveau de preuve noté à chaque ligne :
 **P** = document du producteur lu (RTE, Enedis, DGE, DGFiP), **S** = chiffre relayé par la presse
@@ -504,12 +455,10 @@ manques qui en découlent sont dans « Suite », lot A.
 | Prix | Fin de l'ARENH le 31 décembre 2025, remplacé par le versement nucléaire universel (redistribution au-delà de 78 €/MWh) ; contrats de livraison 2026 entre 57 et 75 €/MWh selon les articles | S | [Selectra](https://entreprises.selectra.info/energie/electricite/arenh), [Optima](https://www.optima-energie.fr/blog/actualites/prix-de-lelectricite-et-du-gaz-evolution/) |
 
 Trous de la recherche : aucun rapport récent de Cushman & Wakefield, CBRE, Gerlog ou de l'ADEME n'a
-été trouvé (requêtes sans résultat) ; Yottar reste introuvable en source publique ; l'état des
-obligations de l'ADEME et de l'Arcep sur le WUE et la chaleur fatale n'est pas établi ; les taux
-réduits d'accise ont depuis été lus dans le formulaire 2040-TIC-SD et le texte consolidé du CIBS
-(étape 18, décision du 29 octobre).
+été trouvé (requêtes sans résultat) ; l'état des obligations de l'ADEME et de l'Arcep sur le WUE
+et la chaleur fatale n'est pas établi.
 
-## Ce que les études ont établi (9 octobre au 1er novembre)
+## Ce que les recherches ont établi
 
 - **Les besoins des entreprises**, dans l'ordre : de la puissance disponible à une date connue
   (premier critère des gros projets ; zones RTE P1 dès fin 2028, P2 dès 2029) ; du foncier
@@ -520,7 +469,7 @@ réduits d'accise ont depuis été lus dans le formulaire 2040-TIC-SD et le text
 - **Limites de l'open data** : capacité de raccordement non publiée ; postes RTE sans
   coordonnées (maille du département seulement) ; ~40 % des IRIS sous secret statistique
   depuis 2022.
-- **Sources de données (étude du 25 octobre, toutes intégrées)** : RTE a retiré les coordonnées
+- **Sources de données (toutes intégrées)** : RTE a retiré les coordonnées
   GPS de ses postes et de ses lignes « pour des raisons de sécurité publique » (jeux ODRÉ au 16 juin
   2026), et EDF a fait de même pour ses postes sources ; le seul jeu de postes sources Enedis
   géolocalisés est local (agglomération du Puy-en-Velay). Toute distance à un poste est donc
@@ -528,21 +477,21 @@ réduits d'accise ont depuis été lus dans le formulaire 2040-TIC-SD et le text
   (`/data-fair/api/v1/datasets`) : l'ancienne API répond 410. La capacité en soutirage d'Enedis
   reste réservée au portail client entreprise ; l'outil Toprac de RTE, cité par la CRE, n'a pas de
   version publique trouvée.
-- **Ce qui peut bouger (étude du 24 octobre)** : la CRE impose à RTE de refondre Caparéseau
+- **Ce qui peut bouger** : la CRE impose à RTE de refondre Caparéseau
   d'ici le 1er janvier 2027 et RTE étudie une carte de ses capacités en soutirage (délibération
   CRE 2026-173) : à intégrer dès sa publication. Enedis publie ses postes HTA/BT géolocalisés
   (licence ouverte) ; pas de jeu national des postes sources géolocalisés (voir ci-dessus).
-- **Données géographiques (étude du 28 octobre, étapes 13 à 16, conclusions seulement)** : trois
+- **Données géographiques (étapes 13 à 16, conclusions seulement)** : trois
   manques sans source ouverte, les loyers et annonces de locaux, la capacité d'accueil en
   soutirage, les parcelles et leurs propriétaires (fichiers fonciers du Cerema, réservés aux ayants
   droit sous convention). Imagerie 100 % ouverte au lancement (BD ORTHO 20 cm, LiDAR HD) ;
   l'imagerie commerciale (Pléiades Neo, 22 à 33 $/km² chez un revendeur) ne se justifie que pour un
-  site précis. Suites version 2 et 3 dans les pistes du lot A.
-- **Prix des locaux (étude du 28 octobre, étape 12)** : il n'existe pas de jeu officiel et ouvert
+  site précis.
+- **Prix des locaux (étape 12)** : il n'existe pas de jeu officiel et ouvert
   des loyers d'activité par commune (la carte des loyers du ministère et de l'ANIL ne couvre que le
   logement ; Cushman & Wakefield, Geolocaux et Ayming sont privés) ; DVF (DGFiP) est la seule
   source officielle des prix de l'immobilier d'activité, d'où le prix de vente seul.
-- **Imagerie satellite ouverte (étude du 1er novembre, pistes dans le lot A)** : aucune image ne dit
+- **Imagerie satellite ouverte (pistes dans le lot A)** : aucune image ne dit
   la capacité de raccordement ; elle peut renforcer le foncier, l'artificialisation et les risques.
   Les produits déjà dérivés passent avant les images brutes, qui demandent une chaîne de traitement.
   Ordre proposé : OCS GE, ORTHO-SAT à la demande, puis EGMS. Hors de France (étape 6) :
@@ -554,7 +503,7 @@ réduits d'accise ont depuis été lus dans le formulaire 2040-TIC-SD et le text
   extrait), OSO ([fiche sans fichier](https://www.data.gouv.fr/datasets/cartographie-de-loccupation-du-sol-oso),
   licence à confirmer auprès de Theia), SPOT World Heritage (licence contradictoire selon les pages,
   pas d'image récente), ESA WorldCover (2020 et 2021 seulement dans les résultats trouvés).
-- **Main-d'œuvre qualifiée (étude du 1er novembre, étape 29)** : aucune source officielle française
+- **Main-d'œuvre qualifiée (étape 29)** : aucune source officielle française
   ne fixe de métrique ni de temps de trajet ; le décompte par temps de route et niveau de diplôme
   est une pratique de profils d'attractivité britanniques
   ([Cheshire West, 45 min](https://www.cheshirewestandchester.gov.uk/asset-library/statistics/labour-market-profiles/Labour-Market-Overview-Chester-2020.pdf),
@@ -562,12 +511,11 @@ réduits d'accise ont depuis été lus dans le formulaire 2040-TIC-SD et le text
   petite commune très diplômée pèse autant qu'un grand bassin), les
   [cadres des fonctions métropolitaines](https://www.insee.fr/fr/statistiques/1893116) (emplois
   « stratégiques », loin des métiers d'exploitation). La métrique compte des résidents, pas des
-  candidats disponibles : ni concurrence entre employeurs, ni spécialité du diplôme. Réutilisation
-  commerciale permise, en citant la source : [Insee](https://www.insee.fr/fr/information/2008466)
-  (Licence Ouverte 2.0), BMO (Licence Ouverte). Besoin des data centers en électriciens et
+  candidats disponibles : ni concurrence entre employeurs, ni spécialité du diplôme. Licences :
+  [Insee](https://www.insee.fr/fr/information/2008466) (Licence Ouverte 2.0), BMO (Licence Ouverte). Besoin des data centers en électriciens et
   techniciens CVC : [communiqué de Data4](https://data4group.com/wp-content/uploads/2024/11/D4FDCstudy_France-Best-Place-to-build-AI-ready-DC.pdf)
   et offres d'emploi, sans chiffre public français.
-- **Modèle prédictif (cadrage du 1er novembre, étape 30, rien de décidé)** : « le plus intéressant »
+- **Modèle prédictif (étape 30, rien de décidé)** : « le plus intéressant »
   n'est pas observable ; la cible mesurable est l'implantation constatée. Cible candidate : surface
   de locaux non résidentiels autorisée à 3 ans ([Sitadel](https://www.data.gouv.fr/datasets/689c42fa521ccf80ce954f83/),
   depuis 2013, Licence Ouverte ; champs de surface et de destination à vérifier), recoupée avec les
@@ -584,90 +532,77 @@ réduits d'accise ont depuis été lus dans le formulaire 2040-TIC-SD et le text
   donc un passé peu représentatif ; trop peu de data centers pour les apprendre seuls (huit raccordés
   à RTE, chiffre relayé). Une méthode publiée propre à ce sujet n'a pas été trouvée.
 
-## Décisions en vigueur
+## Règles en vigueur
 
-| Date | Décision |
-|---|---|
-| 12 oct. | Prix historiques par tranche Eurostat, pas de prix horaire ; scénarios à 3 ans |
-| 15 oct. | Comparaison sans classement |
-| 16 oct. | MVP recentré sur deux réponses, prix moyen et verdict carbone ; sans `--conso`, tranche IA |
-| 16 oct. | Verdict sur le facteur ADEME en cycle de vie, au seuil de 100 gCO₂e/kWh de la taxonomie |
-| 16 oct. | Local et à la demande uniquement : aucune exécution planifiée |
-| 18 oct. | Commentaires limités à la logique (le pourquoi) ; documentation en français ; licence MIT |
-| 18 oct. | Sécurité : CI en lecture seule, actions figées par commit, HTTPS seulement, identifiants dans `identifiants.local.txt` (ignoré par git) |
-| 18 oct. | Carte : page HTML autonome, three.js embarqué, grille hexagonale maison plutôt que H3 |
-| 23 oct. | Outils Python et PySpark privilégiés : ingestion en PySpark (Java 17 requis, en local et en CI), silver et gold en dbt-duckdb |
-| 23 oct. | `--ca` sans seuil : le statut d'électro-intensif se juge sur la valeur ajoutée ; `--ca` exige `--conso` |
-| 23 oct. | Documentation réduite à deux fichiers : README et ce plan |
-| 24 oct. | Adresse refusée plutôt que devinée : score BAN sous 0,65, deux communes à moins de 0,05 l'une de l'autre, ou code postal demandé absent des résultats |
-| 24 oct. | Risques : rapport Géorisques à l'adresse d'abord, puis export GASPAR local (maille commune), puis API commune |
-| 24 oct. | Critère risques : « attention » seulement si un plan de prévention (PPRN, PPRT, PPRM) approuvé, anticipé, prescrit ou prorogé couvre la commune (export GASPAR, plans caducs écartés) ; sinon « info » avec les risques recensés ; « inconnu » si les plans ne sont pas chargés |
-| 24 oct. | Chaque sortie donne la date de chargement de ses sources ; au-delà de 45 jours, elle demande un `refresh` |
-| 24 oct. | Une étape n'est validée qu'après un test complet : ruff, pytest (dont `dbt build`), essai réel |
-| 24 oct. | `--va` : électro-intensité = consommation × accise au tarif normal du seed (26,35 €/MWh depuis le 1er août 2026, voir 29 oct.) ÷ valeur ajoutée, paliers 0,5 %, 2,25 % et 6,75 % depuis le 1er janvier 2026 (CIBS L312-65, L312-71) ; taux réduits chiffrés le 29 oct. |
-| 24 oct. | `--courbe` : export Enedis lu en Python à la demande, jamais stocké ; horodate = fin du pas ; tient lieu de `--conso` et `--puissance` s'ils manquent ; coût au barème HP/HC en vigueur, seulement jusqu'à 36 kW |
-| 24 oct. | Carbone horaire des îles : profil de la part thermique calé sur le facteur ADEME annuel, plutôt que des facteurs par filière non sourcés ; imports de la Corse comptés non thermiques |
-| 24 oct. | UE-27 : moyennes nationales seulement (Eurostat depuis 2024-S1, deux derniers semestres ; Ember, dernière année, production sans échanges) ; jointure des trois codes pays par le seed `dim_pays_ue` ; hors UE refusé |
-| 24 oct. | Commandes de question : journal masqué (niveau WARNING, message seul), chemins des fichiers écrits sur stderr ; warehouse absent ou gold incomplet → `DonneesAbsentesError` et commande `refresh` à lancer |
-| 24 oct. | Carte : décor (villes, forêts) et lentilles Terrain et Réseau retirés ; prix et compteurs hors de la barre du haut ; la fiche de l'adresse donne le verdict |
-| 24 oct. | Carte : une carte par système électrique, placées à 600 unités l'une de l'autre dans la même scène (le brouillard cache les autres) plutôt qu'une page par territoire |
-| 24 oct. | Pôles de production : registre ODRÉ agrégé à la source par commune et filière (installations en service d'au moins 10 MW ; les noms « Confidentiel » interdisent une clé par installation), centre de la commune comme position ; seuil 200 MW sur le continent, 20 MW en Corse et outre-mer ; stockage hors barrages exclu |
-| 24 oct. | Après le MVP, extension par adresse en Europe de l'Ouest dans l'ordre de facilité des données : Pays-Bas, Belgique, Espagne, Autriche, Luxembourg, Suisse, Portugal, Allemagne, Royaume-Uni, Irlande, Italie, puis les micro-États (détail dans « Suite ») |
-| 24 oct. | `main` protégée par un ruleset GitHub : PR obligatoire (sans approbation), job CI `ruff + pytest + dbt build` vert sur une branche à jour, ni force-push ni suppression, aucun contournement |
-| 25 oct. | Carte : deux vues au lieu de quatre ; « Raccorder » note chaque case de -1 à +1 (zone RTE à moins de 3 cases, site clé en main à moins de 2, poste 400 kV, contraintes RTE au-delà de la médiane, relief, carbone au-dessus de 100 g, équilibre régional), note indicative ; « Territoire » réunit industrie (hauteur), équilibre (couleur, violet → bleu pour ne pas se confondre avec le rouge et le vert de la note) et production (maquettes) |
-| 25 oct. | Accise au tarif normal dans le seed daté `accise_electricite` (ligne sans `date_fin` = barème en vigueur) ; passé le 1er février suivant sa date d'effet, `--va` demande de le mettre à jour |
-| 25 oct. | Fourchette de prix à 3 ans élargie pour contenir toujours le prix des 12 derniers mois ; dite « indicative » tant que moins de 20 périodes sont contrôlées sur le passé (variable dbt `prix_nb_periodes_validation`) |
-| 25 oct. | Bronze : un Parquet n'est jamais écrasé ; un même `run_id` le même jour prend le suffixe `-2`, `-3`… (deux mois Tempo chargés à la suite écrasaient le premier) |
-| 25 oct. | Tempo hors `refresh` : il demande un compte RTE, que les autres commandes n'exigent pas ; `tempo --month` se lance avant `report` |
-| 25 oct. | L'extension internationale (étape 6) passe en dernier |
-| 25 oct. | Nouvelles sources : producteur officiel et licence ouverte seulement, méthode publiée ou bibliothèque maintenue et testée ; une copie tierce sert au mieux de repli signalé |
-| 25 oct. | Chaque nouvelle source suit l'architecture médaillon : extraction vers un Parquet bronze immuable puis `MERGE` DuckDB, silver nettoyé et gold en dbt, limite dans `limites_methodologiques` |
-| 25 oct. | Enedis par adresse : pages CSV data-fair de 10 000 lignes (le JSON prenait 9 min pour une année), dernière année publiée seulement ; adresse rapprochée sur « numéro + voie » normalisés, seulement si la BAN trouve le numéro ; une consommation à l'adresse prouve un raccordement, pas une puissance disponible |
-| 26 oct. | Carte : fausses couleurs réservées à « Raccorder » (rouge → blanc → vert, sans cônes de montagne) ; « Territoire » revient aux couleurs réelles et au relief IGN, l'encart donne carbone et prix moyen par tranche (`fct_prix_entreprise_tranche`) ; frontières régionales en gris sombre plutôt qu'en couleurs |
-| 26 oct. | Carte : sites clés en main en maquette posée sur la case (dalle, hangar, bureaux, mât au drapeau doré) au lieu d'un losange flottant ; centrales en maquettes aussi dans « Raccorder » ; survol d'un site : son nom |
-| 26 oct. | Acheminement : TURPE 7 HTA-BT (HTA à pointe fixe, BT > 36 kVA ; le tarif bleu l'inclut déjà), étendu au HTB le 29 oct. ; une même puissance souscrite dans toutes les classes ; énergie répartie sur la courbe de charge, sinon sur toutes les heures de l'année ; heures creuses 22 h – 6 h, pointe 9 h – 11 h et 18 h – 20 h de décembre à février hors dimanche ; version courte ou longue utilisation au moindre coût ; gestion en contrat unique (Rf inclus), comptage communicant. Montant donné comme part déjà comprise dans le prix moyen Eurostat |
-| 26 oct. | Zonage sismique : couche WFS de Géorisques plutôt qu'un seed (le tableur de planseisme.fr n'est plus en ligne, le fichier wpd reste écarté) ; zone trouvée par l'adresse dans son polygone, ce qui évite le recalage sur le code officiel géographique ; pages triées par `gid` (sans tri, 84 polygones perdus) et nombre de polygones contrôlé contre le total annoncé ; sur une limite, la zone la plus forte ; le critère « risques » du verdict reste réglé par les seuls plans de prévention |
-| 26 oct. | Continuité d'alimentation : jeu d'Enedis, producteur, plutôt que la copie de l'Agence ORE ; colonnes d'années lues dans le schéma du jeu (une de plus par publication) ; comparaison au seuil de 3 % de l'arrêté du 24 décembre 2007 (article 3) et à la médiane des départements publiés la même année ; repère dans la section « Raccordement » de `diagnose`, sans entrer dans le verdict (moyenne départementale, pas la ligne du site) |
-| 26 oct. | Pôles de fret : ports sur les marchandises hors tare de la dernière année publiée (SDES), seuil 5 Mt sur le continent et 0,5 Mt en Corse et outre-mer ; aéroports sur le fret et la poste de la dernière année complète (DGAC), 20 000 t et 3 000 t ; chantiers rail-route de SNCF Réseau (ODbL, figé au 23 mars 2022) sur au moins 2 km de voies de manutention, dit repère de capacité (aucun tonnage publié) ; HAROPA placé au Havre ; ports et aéroports au centre de leur commune ; ports fluviaux écartés (pas de maille port). Carte seulement, sans ligne dans `limites_methodologiques` (réservées aux chiffres de `diagnose`) |
-| 26 oct. | Seeds recréés à chaque `dbt build` (`+full_refresh`) : un seed qui gagne une colonne bloquait le warehouse existant |
-| 28 oct. | **Pivot du persona** : les projets de **1 à 50 MW** (data centers, bornes de recharge, industrie, sites logistiques), modèle de Yottar ; le persona des bureaux est abandonné (le prix de l'électricité, identique partout, ne départage pas leurs villes). L'ordre des étapes suit désormais : puissance et délai, coût complet (TURPE HTB, au-delà de 150 GWh, accise selon l'activité), foncier constructible, risques et eau, desserte. Les projets de plus de 50 MW restent servis |
-| 28 oct. | Prix de vente des locaux d'activité (étape 12, DVF) gardé en information, plus prioritaire ; **pas de loyer** (aucune source officielle et ouverte) ; « non disponible » sans ventes, jamais de chiffre inventé |
-| 28 oct. | DVF : ventes de locaux d'activité d'un seul bien (ni logement, ni plusieurs dispositions), surfaces de 15 à 5 000 m² et prix de 100 à 15 000 €/m² (variables dbt `locaux_*`) ; médiane sur les cinq dernières années de ventes, fiable à partir de 5 ventes (`locaux_min_ventes`), sinon le département ; arrondissements de Paris, Lyon et Marseille ramenés à la commune ; fichiers annuels lus en flux (~100 Mo chacun), le pilote Spark passe à 3 Go (400 000 lignes saturaient 1 Go) ; Bourg-en-Bresse 1 179 €/m², Lyon 3 298, Paris 7 760 |
-| 28 oct. | Commentaires réservés à la logique du code (règle, piège d'une source, raison d'un choix) : plus d'en-tête d'utilité au-dessus de chaque fonction ni de chaque modèle dbt ; code le plus simple possible, en Python, PySpark et dbt |
-| 28 oct. | Consolidation : `essentiel`, `diagnose` et `compare` partagent les mêmes options de projet (`--puissance`, `--conso`, `--ca`, `--va`, `--surface`, `--courbe`, puis `--activite`) et les mêmes messages d'erreur ; essai de bout en bout après `refresh` complet |
-| 28 oct. | Identifiants de l'application Ecowatt dans `identifiants.local.txt` (ignoré par git), sous `ECO2MIX_ECOWATT_*`, distincts de ceux de Tempo ; le secret a transité par la conversation : à régénérer si elle est partagée |
-| 29 oct. | Profils de charge réels (10.5) : agrégat Enedis `conso-sup36-region`, plage « total > 250 kVA » (P7), industrie et tertiaire, 12 derniers mois publiés, filtré à la source (843 072 demi-heures au lieu de 34,6 M) ; les courbes masquées par le secret statistique sont écartées ; journée type par heure locale, jours ouvrés et week-end (jours fériés comptés ouvrés), moyenne des régions pondérée par le nombre de points ; `puissance_flexible_kw` à zéro (Enedis ne dit rien de la flexibilité) ; ajoutés à `fct_cout_horaire_profil` à côté du seed, qui reste le profil par défaut |
-| 29 oct. | Ecowatt (10.6) : l'API répond (HTTP 200) depuis l'application Ecowatt ; elle ne publie que le jour et les trois suivants, sans historique : la commande `ecowatt` se lance à la main, hors `refresh` (compte RTE requis, comme `tempo`), et le dernier niveau relevé d'un jour remplace le précédent ; le rapport dit combien de jours ont été relevés plutôt que de les supposer verts |
-| 29 oct. | Accise selon l'activité (18), première partie : `--activite` (`data-center`, `irve`, `industrie`, `logistique`) choisit le profil de charge de l'acheminement (journée type Enedis > 250 kVA pour l'industrie, puissance constante dite telle pour les autres) et affiche les régimes d'accise de l'attestation 2040-TIC-ATT-E (codes E15, E16, E21, E23 à E25, E30 ; CIBS L312-64 à L312-72). Taux chiffrés le même jour (voir plus bas) |
-| 29 oct. | Accise au tarif normal corrigée : le formulaire DGFiP 2040-TIC-SD (2026) donne 26,35 €/MWh pour les entreprises à compter du 1er août 2026 (20,42 de tarif normal + 5,93 de majoration), après 26,58 du 1er février au 31 juillet 2026 ; `--va` s'appuie désormais sur 26,35. Les taux réduits du même formulaire ne sont pas chiffrés : l'extraction du PDF désaligne les libellés et les montants |
-| 29 oct. | TURPE 7 HTB (17) : grille HTB 1 à 3 du 1er août 2026 (délibération CRE 2026-104, annexe 2) en seed daté à côté de la HTA-BT, appliquée dès 40 MW avec HTB 1 par défaut ; calendrier horosaisonnier supposé identique à la HTA jusqu'à relecture de la délibération 2025-77 |
-| 29 oct. | Zonage d'urbanisme (14) : zone du point par l'API Carto de l'IGN (module GPU, sans clé), appelée à la demande par `diagnose` et `compare` sauf sous `--sans-risques` ; la plus contraignante des zones superposées (A ou N) passe devant ; type de zone seulement, la destination autorisée se lit au règlement (lien donné s'il est publié) ; zone A ou N : critère « foncier » à vérifier ; aucune zone : « document non publié ou non numérisé », jamais un chiffre inventé. Pas de stockage local (couverture et version du document changent) |
-| 29 oct. | Friches (14) : fichier national « Sites référencés dans Cartofriches » (data.gouv.fr, lien permanent de la ressource, Cerema, Licence Ouverte v2, Windows-1252, séparateur « ; », « NA » pour l'absent) chargé par `refresh` (étape `friches`) ; retenues : surface d'unité foncière d'au moins 1 ha (variable dbt `friches_surface_min_m2`) et statut autre que « friche reconvertie » ; sites sans surface écartés plutôt que supposés ; distance à vol d'oiseau, rayon de 10 km ; inventaire déclaratif et incomplet, dit comme tel ; les zones d'activité n'y figurent pas |
-| 29 oct. | Zones d'activité (14) : couche `zone_d_activite_ou_d_interet` de la BD TOPO (WFS de la Géoplateforme, Licence Ouverte), nature « Zone industrielle » (zones d'activité, industrielles et artisanales confondues) ; boîte de 5 km, distance au bord du polygone et surface calculées dans un plan local, plafond de 500 objets ; à la demande, comme le zonage ; ne vaut pas constructibilité ni disponibilité |
-| 29 oct. | Eau (20), première partie : VigiEau (API publique du ministère de la Transition écologique, sans clé, profil « entreprise ») à la demande, sous `--sans-risques` coupé comme Géorisques et l'urbanisme ; niveau le plus haut des zones en vigueur (vigilance, alerte, alerte renforcée, crise) ; situation du jour, pas un risque futur ; aucun arrêté : dit ; volumes BNPE écartés (ils ne mesurent pas la tension). Sans effet sur le verdict : la ressource réellement utilisée par un data center ne se déduit pas de l'adresse |
-| 29 oct. | Accès routier (13) : calcul d'itinéraire de la Géoplateforme (ressource `bdtopo-pgr`, profil voiture : `bdtopo-osrm`, cité auparavant, n'existe plus) vers les pôles de fret de `fct_poles_fret` (centre de la commune pour ports et aéroports, ordre de grandeur) ; pas de profil poids lourd, dit dans la limite ; l'échangeur autoroutier n'est pas identifiable dans la BD TOPO (bretelles sans classement) : seule la distance à vol d'oiseau jusqu'au tronçon « type autoroutier » classé autoroute (10 km au plus) est donnée ; à la demande |
-| 29 oct. | Bâtiment et solaire (16) : bâtiment de la BD TOPO à 60 m au plus de l'adresse (le plus proche si l'adresse n'est pas dessus) et PVGIS 5.3 (JRC) pour un kWc de panneaux fixes, inclinaison et orientation optimales, 14 % de pertes ; aucun dimensionnement de centrale déduit de l'emprise (hypothèses non sourcées) ; obligations de solarisation rappelées depuis le 8 novembre (voir cette date) |
-| 29 oct. | Étoile en schéma `etoile` au-dessus du gold, sans renommer les `fct_*` ; `dim_commune` reprend les communes des faits absentes du référentiel (clé étrangère jamais orpheline) |
-| 29 oct. | Accise réduite chiffrée (18, fin) : tarifs de la loi de finances 2026 (loi n° 2026-103) lus dans le formulaire DGFiP 2040-TIC-SD 2026, en mode « table » de pdftotext (le mode « layout » décalait d'une ligne libellés et montants ; alignement vérifié sur les tarifs normaux, dont le montant figure dans le libellé), et recoupés avec le texte consolidé du CIBS sur Légifrance : 5,5 €/MWh (grande consommatrice, dès 0,5 % d'électro-intensité), 3 (électro-sensible, dès 2,25 %), 0,5 (électro-intensive, dès 6,75 %), 0,5 (exposée à la concurrence internationale, L312-72), 10 pour les centres de stockage de données sur la fraction au-delà de 1 GWh par an (L312-64, L312-70) ; seed `accise_electricite` à une ligne par catégorie. Les paliers de `--va` passent de 3,375 % (bouclier tarifaire, fini le 31 décembre 2025) à 2,25 %. Tarif réduit total, sans majoration ZNI à part (le formulaire n'en déclare pas). Industriel : seulement sans `--activite` ou avec `industrie` (sections B à E de la NACE) ; data center : refusé quand `--va` montre moins de 2,25 % (condition 8 de L312-70), les sept autres conditions dites, pas vérifiées ; aucune réduction pour la recharge ni l'entrepôt. Montants donnés à côté du prix moyen Eurostat, sans l'en retrancher (on ignore la part d'accise réduite dans la moyenne de la tranche) |
-| 29 oct. | Cohérence (lot 0) : exemples du README refaits sur l'exemple de référence ; captures prises par Chrome sans interface (`--headless=new`, rendu WebGL logiciel SwiftShader), la vue « Territoire » par un appel à `setLens` ajouté à une copie de la page, jamais au gabarit ; courbe d'exemple tirée de `profils_charge_reels` (industrie > 250 kVA) et mise à l'échelle d'une pointe de 12 MW, dite comme telle, à la place de la courbe de bureau. Au-delà de 36 kVA, `--courbe` ne chiffre pas l'énergie heure par heure (aucun prix horaire public, décision du 12 octobre) : la ligne renvoie au prix de la tranche et à l'acheminement sur la courbe |
-| 29 oct. | Voisinage du site (15) : API Géorisques à la demande, coupée par `--sans-risques`, en plus du rapport à l'adresse et indépendante de lui (l'un peut répondre sans l'autre). Rayons choisis par l'outil, aucun texte n'en fixe : argiles au point, cavités et sols pollués à 500 m (filtre de l'API, sans distance : SIS, SUP et instructions n'ont qu'un polygone), installations classées à 1 km, Seveso à 5 km ; seules les installations sous autorisation ou enregistrement « en exploitation avec titre » sont retenues (« Non ICPE » et « Autres régimes » n'ont ni titre ni état) ; un ancien site CASIAS n'est pas un sol pollué avéré. Le critère « risques » du verdict reste réglé par les plans de prévention (un Seveso seuil haut impose un PPRT, déjà compté) : le voisinage complète son détail (Seveso le plus proche, SIS) sans changer son état |
-| 29 oct. | Prochaines étapes en lots (A maintenant, B en attente ; P et T ajoutés en novembre) ; une étape terminée quitte « Suite » et ne reste que dans « État » et les décisions |
-| 30 oct. | Carte, lot A : direction « le relevé » sur fond papier clair (`#F4F1EA`), encre `#14202B`, vert `#2E7D5B`, orange `#C2571A`, dans `reporting/charte.py`, seule source des couleurs de la carte (variables CSS injectées, lues par la scène), du PDF et des graphiques ; Tempo garde ses couleurs. Spectral (titres) et Inter (texte, chiffres), licence OFL, depuis le dépôt Google Fonts, réduites au latin par fontTools, en base64 dans la page (`font-src data:`) et enregistrées dans reportlab et matplotlib ; la table de remplacement des glyphes du PDF disparaît. L'échelle de note rouge → blanc → vert du 26 octobre est gardée ; anneau des zones RTE et lien vers la zone à l'encre, plus en cyan additif (invisible sur papier) |
-| 31 oct. | Application (`app`) : serveur `http.server` de la bibliothèque standard, sans nouvelle dépendance, lié à 127.0.0.1 et lancé à la main (ni tâche planifiée ni service) ; la carte reste une page autonome qui s'ouvre aussi en `file://`, en lecture seule. Après une analyse, le serveur épingle le verdict dans `carte.html` et la page se recharge, plutôt que de rejouer l'épingle en JavaScript ; une carte refaite (données ou gabarit plus récents) reprend l'épingle de la précédente. Port 8770 (8765 sert déjà l'essai des cartes). Les rapports reprennent `generer_rapport_implantation` ; le Markdown est rendu sans graphiques, pour un seul fichier à télécharger. Les appels à la demande de `diagnose` sont regroupés dans `completer_en_ligne`, partagé par `diagnose`, `compare` et l'application. Touches solarpunk à la demande du porteur, posées sur la direction « le relevé » sans la remplacer : `SOLEIL` et `FEUILLE` dans `reporting/charte.py`, réservés à la carte ; le PDF garde la sobriété du relevé. L'épingle de l'adresse quitte le rouge, réservé au défavorable dans la note des cases |
-| 31 oct. | Démonstration (25) : `demo` réutilise tel quel le jeu synthétique des tests (`ingestion/tests/medallion.py`), sans copie à tenir à jour ; base construite une fois dans `data/demo/`, effacée si la construction échoue. Projet fictif de 2 MW et 15 000 MWh à Lyon plutôt que l'exemple de référence : la base synthétique n'a ni Chilly-Mazarin ni la tranche IF. Aucun géocodage (adresse fixe) ni appel à la demande ; seule la carte télécharge contours et relief, et la commande réussit sans elle. La ligne « plus de 45 jours, relancer refresh » reste : l'avertissement de première ligne dit que la base est fictive |
-| 1er nov. | Calendrier HTB (17, fin) : l'hypothèse du 29 octobre (identique à la HTA) était fausse. Délibération CRE 2025-77, texte du tarif HTB 1 : week-ends et jours fériés entièrement creux ; jusqu'au 31 décembre 2026, creuses de 23 h à 7 h ; dès le 1er janvier 2027, 22 h - 6 h en saison haute, 2 h - 6 h et 12 h - 16 h en saison basse, sauf Nouvelle-Aquitaine et Occitanie (2 h - 4 h et 10 h - 16 h, puis 10 h - 18 h, pointe dès 7 h). Le régime suit la date de chaque heure : une année de grille à cheval sur le 1er janvier compte les deux, sans attendre la bascule. Les deux régimes de 2027 ont autant d'heures de chaque classe : à puissance constante, la région ne change rien ; seul un profil variable la fait apparaître. À 45 MW et 300 000 MWh : 3,79 M€ au lieu de 3,83 M€. Délibération 2026-33 lue en recherche de ces plages : elle ne touche qu'aux heures méridiennes de la HTA-BT. Jours fériés légaux, sans ceux d'Alsace-Moselle (la délibération 2025-77 ne les cite pas) ; HTA-BT inchangée |
-| 1er nov. | Monde en tuiles : Natural Earth 5.1.2 (`ne_50m_admin_0_countries`, domaine public, déjà au projet pour les terres), préféré aux limites officielles de la Banque mondiale (CC BY 4.0, mais fichiers lourds à tous les niveaux administratifs, sans adresse stable). Producteur non étatique et frontières de fait : acceptable pour un fond sans donnée, sans ligne dans `limites_methodologiques` puisqu'aucun chiffre n'en sort ; la limite est dite dans la légende et le README. Pays étudiés dans `PAYS_ETUDIES` : un code et une grille pour en ajouter un. Seuls les cinq départements d'outre-mer ont des données ; les collectivités restent ternes. Antarctique exclu. Encarts d'outre-mer à leur vraie position, décalés au sud s'ils se chevauchent, en Mercator calé sur la métropole. Tuile du PDF dessinée en vectoriel par reportlab, sans capture de la 3D ni réseau. Captures de `docs/exemples/` : Chrome sans interface avec `--force-prefers-reduced-motion` et `--virtual-time-budget`, pour ne pas saisir l'animation en cours |
-| 8 nov. | Obligations de solarisation (16, fin) : textes lus sur Légifrance le 8 novembre (CCH L171-4 dans sa version du 28 mai 2026, loi n° 2026-403 ; L171-5 à venir au 1er janvier 2028 ; loi APER art. 40 dans sa version du 28 novembre 2025, loi n° 2025-1129 ; décret n° 2025-802 pour les seuils d'outre-mer). La loi du 26 novembre 2025 n'a pas reporté les échéances des parkings : elle admet les procédés mixtes (ombrières sur 35 % de la moitié, le reste végétalisé). Règles en constantes datées dans `ingestion/solaire.py` plutôt qu'en seed : quelques dates et seuils, lus par le seul diagnostic. Usages BD TOPO soumis : « Commercial et services », « Industriel », « Sportif » ; « Indifférencié » dit inconnu. Rappel de la règle sans effet sur le verdict ni avis juridique : exonérations motivées, exclusion possible des installations classées par arrêté et cas du data center, non cité en tant que tel, dits dans la limite. Structure des toitures écartée : aucune source publique de capacité portante ; BDNB (CSTB, Licence Ouverte 2.0) non intégrée, elle ne donne qu'un matériau. `compare` : seuil du parking et bâtiment existant au tableau, règle des toitures neuves une fois sous le tableau |
-| 8 nov. | Tension sur l'eau (20, fin) : référence retenue, les zones de répartition des eaux (code de l'environnement, R211-71 : ressource structurellement insuffisante face aux besoins, désignée par arrêté du préfet coordonnateur de bassin), couche WFS `sa:ZRE` du référentiel ZRPE du Sandre (Licence Ouverte), plutôt que des débits Hub'Eau rapportés à un QMNA5 que l'outil devrait calculer lui-même (aucune référence publiée par l'API). Zonage stable et national : chargé par `refresh` en médaillon, point dans polygone en Python, comme le zonage sismique ; une seule page (118 zones), nombre contrôlé contre le total annoncé. Conséquence lue sur Légifrance : en ZRE, un prélèvement non domestique est soumis à autorisation dès 8 m³/h de capacité, à déclaration en dessous (R214-1, rubrique 1.3.1.0, version du 29 août 2025). Sans effet sur le verdict, comme VigiEau : le prélèvement d'un data center ne se déduit pas de l'adresse. Une zone souterraine vise un aquifère précis (Albien, parfois profond), dit dans la limite. `compare` n'est pas touché (lignes de l'eau confiées à une autre branche) |
-| 9 nov. | Application : `compare` et `--courbe` y entrent. La courbe est lue par le navigateur et envoyée en texte avec le projet, jamais stockée par le serveur ; gardée dans la session de l'onglet pour le rapport, oubliée si elle dépasse son quota. La comparaison calcule les diagnostics une fois et rend les trois fichiers (CSV, Markdown, JSON) avec le tableau ; une adresse ambiguë ou introuvable est nommée et tout s'arrête, comme en ligne de commande ; la carte garde l'épingle de la dernière analyse. `europe`, `refresh`, `tempo`, `ecowatt`, `report` et `demo` restent en ligne de commande (raisons dans « Suite ») |
-| 9 nov. | Tests : couverture mesurée par `pytest-cov` (lignes et branches, tests exclus), plancher dans `pyproject.toml` (`fail_under`), un point et demi sous le relevé parce que la mesure est faite sous Windows et que la CI tourne sous Ubuntu, où elle reste à relever ; il se relève à la main après chaque étape du lot T, jamais à la baisse. `verifier.py` ne mesure que la suite entière (un sous-ensemble de tests passerait sous le plancher). `cli.main` reconfigure la sortie en UTF-8 avec `errors="replace"` : sous pytest, ce flux relit la sortie des processus enfants, écrite dans la page de code de la console |
-| 9 nov. | Matrice des cas d'usage : des invariants, pas des valeurs (verdict à cinq critères, gestionnaire conforme au seed, parts de l'acheminement qui font le total, prix absent dit « non publié »). La base synthétique reste sans tranche IF, exprès : c'est elle qui joue le cas « non disponible ». Les tests qui écrivent un Parquet se passent de la fixture `no_network` (PySpark parle à sa JVM par une socket locale) et remplacent chaque extraction. Un défaut connu et pas encore corrigé s'écrit en `xfail` strict, avec sa raison |
-| 9 nov. | Projet incohérent refusé : consommation annuelle supérieure à la puissance × 8 784 heures (année bissextile), avant tout calcul, avec le plafond dans le message ; même règle dans `essentiel`, `diagnose`, `compare` et l'application |
-| 9 nov. | Pannes des sources à la demande : une réponse qui n'est pas l'objet JSON attendu est un échec de la source, dit dans sa section, jamais une trace Python ni un « rien à signaler ». Géorisques : corps vide accepté pour `rga` seulement (carte des argiles absente hors du continent), refusé pour les installations classées, les cavités et les sols pollués, où il ferait afficher zéro à tort. Une panne ne change l'état d'aucun critère du verdict |
-| 10 nov. | Sorties de référence (T6) : douze sorties de la vraie ligne de commande figées dans `ingestion/tests/references/` (`essentiel`, `diagnose` et `compare` de l'exemple de référence à Lyon, dans chaque format, plus un hub de recharge de 2 MW et une industrie de 45 MW pour les libellés que la tranche IF, absente de la base synthétique, ne montre pas) et le rapport Markdown. Le jour est figé au 15 juillet 2026 (fraîcheur des données, barèmes à revérifier, échéances solaires en dépendent). Les JSON sont comparés à dix chiffres significatifs : le dernier bit d'une somme peut différer entre Windows et la CI. Mise à jour par `--maj-references`, jamais en silence : le diff des références se relit dans la PR. Le PDF n'est pas figé (son texte extrait dépend de la mise en page) : nombre de pages borné, pied de page sur chaque page, titres de section du rapport Markdown retrouvés, chaque caractère présent dans Inter ou Spectral (un glyphe absent s'imprime en carré vide sans que l'extraction le montre). `pypdf` (BSD) entre au groupe `dev`, pour les tests seulement |
-| 10 nov. | Application pour un néophyte, à la demande du porteur : deux adresses au plus (la ligne de commande garde 2 à 6) ; tout part d'une fenêtre d'accueil, la barre de recherche et le panneau « Projet » disparaissent ; la seconde adresse voyage dans la ligne de la première (`autre`), pour que la page générée garde une seule ligne à remplacer ; la caméra cadre les adresses sans rien retirer de la carte ; `/api/analyse` rend une entrée par adresse et désigne par son rang celle qui est ambiguë |
-| 10 nov. | PDF, à la demande du porteur : un rapport qui se regarde. Il ne garde que la limite qui pèse sur chacun des cinq critères, avec un conseil (`CONSEILS`, trois phrases au plus par critère) ; la règle « tout chiffre a sa limite » reste tenue par les sorties texte, Markdown et JSON, auxquelles le PDF renvoie. Visuels vectoriels reportlab, sans dépendance nouvelle ; les domaines de tension viennent du seed `seuils_raccordement`. Le profil type de bureau (36 kVA) quitte le PDF : hérité de l'ancien persona |
-| 10 nov. | Prix le plus haut et le plus bas d'une tranche : à prix égal, le semestre le plus récent (`fct_prix_entreprise_tranche`) ; sans ordre, DuckDB départageait au hasard, ce que les sorties de référence ont montré |
+| Règle |
+|---|
+| Prix historiques par tranche Eurostat, pas de prix horaire ; scénarios à 3 ans |
+| Comparaison sans classement |
+| Verdict sur le facteur ADEME en cycle de vie, au seuil de 100 gCO₂e/kWh de la taxonomie |
+| Local et à la demande uniquement : aucune exécution planifiée, aucun hébergement ; le projet se présente depuis le dépôt GitHub et se lance sur son poste |
+| Sécurité : CI en lecture seule, actions figées par commit, HTTPS seulement, identifiants dans `identifiants.local.txt` (ignoré par git) |
+| Carte : page HTML autonome, three.js embarqué, grille hexagonale maison plutôt que H3 |
+| Outils Python et PySpark privilégiés : ingestion en PySpark (Java 17 requis, en local et en CI), silver et gold en dbt-duckdb |
+| `--ca` sans seuil : le statut d'électro-intensif se juge sur la valeur ajoutée ; `--ca` exige `--conso` |
+| Adresse refusée plutôt que devinée : score BAN sous 0,65, deux communes à moins de 0,05 l'une de l'autre, ou code postal demandé absent des résultats |
+| Risques : rapport Géorisques à l'adresse d'abord, puis export GASPAR local (maille commune), puis API commune |
+| Critère risques : « attention » seulement si un plan de prévention (PPRN, PPRT, PPRM) approuvé, anticipé, prescrit ou prorogé couvre la commune (export GASPAR, plans caducs écartés) ; sinon « info » avec les risques recensés ; « inconnu » si les plans ne sont pas chargés |
+| Chaque sortie donne la date de chargement de ses sources ; au-delà de 45 jours, elle demande un `refresh` |
+| Une étape n'est validée qu'après un test complet : ruff, pytest (dont `dbt build`), essai réel |
+| `--va` : électro-intensité = consommation × accise au tarif normal du seed (26,35 €/MWh depuis le 1er août 2026) ÷ valeur ajoutée, paliers 0,5 %, 2,25 % et 6,75 % depuis le 1er janvier 2026 (CIBS L312-65, L312-71) |
+| `--courbe` : export Enedis lu en Python à la demande, jamais stocké ; horodate = fin du pas ; tient lieu de `--conso` et `--puissance` s'ils manquent ; coût au barème HP/HC en vigueur, seulement jusqu'à 36 kW |
+| Carbone horaire des îles : profil de la part thermique calé sur le facteur ADEME annuel, plutôt que des facteurs par filière non sourcés ; imports de la Corse comptés non thermiques |
+| UE-27 : moyennes nationales seulement (Eurostat depuis 2024-S1, deux derniers semestres ; Ember, dernière année, production sans échanges) ; jointure des trois codes pays par le seed `dim_pays_ue` ; hors UE refusé |
+| Commandes de question : journal masqué (niveau WARNING, message seul), chemins des fichiers écrits sur stderr ; warehouse absent ou gold incomplet → `DonneesAbsentesError` et commande `refresh` à lancer |
+| Carte : une carte par système électrique, placées à 600 unités l'une de l'autre dans la même scène (le brouillard cache les autres) plutôt qu'une page par territoire |
+| Pôles de production : registre ODRÉ agrégé à la source par commune et filière (installations en service d'au moins 10 MW ; les noms « Confidentiel » interdisent une clé par installation), centre de la commune comme position ; seuil 200 MW sur le continent, 20 MW en Corse et outre-mer ; stockage hors barrages exclu |
+| `main` protégée par un ruleset GitHub : PR obligatoire (sans approbation), job CI `ruff + pytest + dbt build` vert sur une branche à jour, ni force-push ni suppression, aucun contournement |
+| Accise au tarif normal dans le seed daté `accise_electricite` (ligne sans `date_fin` = barème en vigueur) ; passé le 1er février suivant sa date d'effet, `--va` demande de le mettre à jour |
+| Fourchette de prix à 3 ans élargie pour contenir toujours le prix des 12 derniers mois ; dite « indicative » tant que moins de 20 périodes sont contrôlées sur le passé (variable dbt `prix_nb_periodes_validation`) |
+| Bronze : un Parquet n'est jamais écrasé ; un même `run_id` le même jour prend le suffixe `-2`, `-3`… |
+| Tempo hors `refresh` : il demande un compte RTE, que les autres commandes n'exigent pas ; `tempo --month` se lance avant `report` |
+| Nouvelles sources : producteur officiel et licence ouverte seulement, méthode publiée ou bibliothèque maintenue et testée ; une copie tierce sert au mieux de repli signalé |
+| Chaque nouvelle source suit l'architecture médaillon : extraction vers un Parquet bronze immuable puis `MERGE` DuckDB, silver nettoyé et gold en dbt, limite dans `limites_methodologiques` |
+| Enedis par adresse : pages CSV data-fair de 10 000 lignes (le JSON prenait 9 min pour une année), dernière année publiée seulement ; adresse rapprochée sur « numéro + voie » normalisés, seulement si la BAN trouve le numéro ; une consommation à l'adresse prouve un raccordement, pas une puissance disponible |
+| Carte : fausses couleurs réservées à « Raccorder » (rouge → blanc → vert, sans cônes de montagne) ; « Territoire » revient aux couleurs réelles et au relief IGN, l'encart donne carbone et prix moyen par tranche (`fct_prix_entreprise_tranche`) ; frontières régionales en gris sombre |
+| Carte : sites clés en main en maquette posée sur la case (dalle, hangar, bureaux, mât au drapeau doré) ; centrales en maquettes aussi dans « Raccorder » ; survol d'un site : son nom |
+| Acheminement : TURPE 7 HTA-BT (HTA à pointe fixe, BT > 36 kVA ; le tarif bleu l'inclut déjà) et HTB 1 à 3 (délibération CRE 2026-104, appliquée dès 40 MW, HTB 1 par défaut) ; une même puissance souscrite dans toutes les classes ; énergie répartie sur la courbe de charge, sinon sur toutes les heures de l'année ; heures creuses 22 h – 6 h, pointe 9 h – 11 h et 18 h – 20 h de décembre à février hors dimanche ; version courte ou longue utilisation au moindre coût ; gestion en contrat unique (Rf inclus), comptage communicant. Montant donné comme part déjà comprise dans le prix moyen Eurostat |
+| Zonage sismique : couche WFS de Géorisques plutôt qu'un seed (le tableur de planseisme.fr n'est plus en ligne, le fichier wpd reste écarté) ; zone trouvée par l'adresse dans son polygone, ce qui évite le recalage sur le code officiel géographique ; pages triées par `gid` (sans tri, 84 polygones perdus) et nombre de polygones contrôlé contre le total annoncé ; sur une limite, la zone la plus forte ; le critère « risques » du verdict reste réglé par les seuls plans de prévention |
+| Continuité d'alimentation : jeu d'Enedis, producteur, plutôt que la copie de l'Agence ORE ; colonnes d'années lues dans le schéma du jeu (une de plus par publication) ; comparaison au seuil de 3 % de l'arrêté du 24 décembre 2007 (article 3) et à la médiane des départements publiés la même année ; repère dans la section « Raccordement » de `diagnose`, sans entrer dans le verdict (moyenne départementale, pas la ligne du site) |
+| Pôles de fret : ports sur les marchandises hors tare de la dernière année publiée (SDES), seuil 5 Mt sur le continent et 0,5 Mt en Corse et outre-mer ; aéroports sur le fret et la poste de la dernière année complète (DGAC), 20 000 t et 3 000 t ; chantiers rail-route de SNCF Réseau (ODbL, figé au 23 mars 2022) sur au moins 2 km de voies de manutention, dit repère de capacité (aucun tonnage publié) ; HAROPA placé au Havre ; ports et aéroports au centre de leur commune ; ports fluviaux écartés (pas de maille port). Carte seulement, sans ligne dans `limites_methodologiques` (réservées aux chiffres de `diagnose`) |
+| Seeds recréés à chaque `dbt build` (`+full_refresh`) : un seed qui gagne une colonne bloquerait sinon le warehouse existant |
+| Prix de vente des locaux d'activité (DVF) gardé en information ; **pas de loyer** (aucune source officielle et ouverte) ; « non disponible » sans ventes, jamais de chiffre inventé |
+| DVF : ventes de locaux d'activité d'un seul bien (ni logement, ni plusieurs dispositions), surfaces de 15 à 5 000 m² et prix de 100 à 15 000 €/m² (variables dbt `locaux_*`) ; médiane sur les cinq dernières années de ventes, fiable à partir de 5 ventes (`locaux_min_ventes`), sinon le département ; arrondissements de Paris, Lyon et Marseille ramenés à la commune ; fichiers annuels lus en flux (~100 Mo chacun), le pilote Spark passe à 3 Go (400 000 lignes saturaient 1 Go) ; Bourg-en-Bresse 1 179 €/m², Lyon 3 298, Paris 7 760 |
+| Documentation en français, dans README et ce plan seulement ; licence MIT. Commentaires réservés à la logique du code (règle, piège d'une source, raison d'un choix) : plus d'en-tête d'utilité au-dessus de chaque fonction ni de chaque modèle dbt ; code le plus simple possible, en Python, PySpark et dbt |
+| Consolidation : `essentiel`, `diagnose` et `compare` partagent les mêmes options de projet (`--puissance`, `--conso`, `--ca`, `--va`, `--surface`, `--courbe`, puis `--activite`) et les mêmes messages d'erreur ; essai de bout en bout après `refresh` complet |
+| Profils de charge réels : agrégat Enedis `conso-sup36-region`, plage « total > 250 kVA » (P7), industrie et tertiaire, 12 derniers mois publiés, filtré à la source (843 072 demi-heures au lieu de 34,6 M) ; les courbes masquées par le secret statistique sont écartées ; journée type par heure locale, jours ouvrés et week-end (jours fériés comptés ouvrés), moyenne des régions pondérée par le nombre de points ; `puissance_flexible_kw` à zéro (Enedis ne dit rien de la flexibilité) ; ajoutés à `fct_cout_horaire_profil` à côté du seed, qui reste le profil par défaut |
+| Ecowatt : l'API répond (HTTP 200) depuis l'application Ecowatt ; elle ne publie que le jour et les trois suivants, sans historique : la commande `ecowatt` se lance à la main, hors `refresh` (compte RTE requis, comme `tempo`), et le dernier niveau relevé d'un jour remplace le précédent ; le rapport dit combien de jours ont été relevés plutôt que de les supposer verts |
+| Accise au tarif normal : le formulaire DGFiP 2040-TIC-SD (2026) donne 26,35 €/MWh pour les entreprises à compter du 1er août 2026 (20,42 de tarif normal + 5,93 de majoration), après 26,58 du 1er février au 31 juillet 2026 |
+| Zonage d'urbanisme : zone du point par l'API Carto de l'IGN (module GPU, sans clé), appelée à la demande par `diagnose` et `compare` sauf sous `--sans-risques` ; la plus contraignante des zones superposées (A ou N) passe devant ; type de zone seulement, la destination autorisée se lit au règlement (lien donné s'il est publié) ; zone A ou N : critère « foncier » à vérifier ; aucune zone : « document non publié ou non numérisé », jamais un chiffre inventé. Pas de stockage local (couverture et version du document changent) |
+| Friches : fichier national « Sites référencés dans Cartofriches » (data.gouv.fr, lien permanent de la ressource, Cerema, Licence Ouverte v2, Windows-1252, séparateur « ; », « NA » pour l'absent) chargé par `refresh` (étape `friches`) ; retenues : surface d'unité foncière d'au moins 1 ha (variable dbt `friches_surface_min_m2`) et statut autre que « friche reconvertie » ; sites sans surface écartés plutôt que supposés ; distance à vol d'oiseau, rayon de 10 km ; inventaire déclaratif et incomplet, dit comme tel ; les zones d'activité n'y figurent pas |
+| Zones d'activité : couche `zone_d_activite_ou_d_interet` de la BD TOPO (WFS de la Géoplateforme, Licence Ouverte), nature « Zone industrielle » (zones d'activité, industrielles et artisanales confondues) ; boîte de 5 km, distance au bord du polygone et surface calculées dans un plan local, plafond de 500 objets ; à la demande, comme le zonage ; ne vaut pas constructibilité ni disponibilité |
+| Eau, arrêtés du jour : VigiEau (API publique du ministère de la Transition écologique, sans clé, profil « entreprise ») à la demande, sous `--sans-risques` coupé comme Géorisques et l'urbanisme ; niveau le plus haut des zones en vigueur (vigilance, alerte, alerte renforcée, crise) ; situation du jour, pas un risque futur ; aucun arrêté : dit ; volumes BNPE écartés (ils ne mesurent pas la tension). Sans effet sur le verdict : la ressource réellement utilisée par un data center ne se déduit pas de l'adresse |
+| Accès routier : calcul d'itinéraire de la Géoplateforme (ressource `bdtopo-pgr`, profil voiture) vers les pôles de fret de `fct_poles_fret` (centre de la commune pour ports et aéroports, ordre de grandeur) ; pas de profil poids lourd, dit dans la limite ; l'échangeur autoroutier n'est pas identifiable dans la BD TOPO (bretelles sans classement) : seule la distance à vol d'oiseau jusqu'au tronçon « type autoroutier » classé autoroute (10 km au plus) est donnée ; à la demande |
+| Bâtiment et solaire : bâtiment de la BD TOPO à 60 m au plus de l'adresse (le plus proche si l'adresse n'est pas dessus) et PVGIS 5.3 (JRC) pour un kWc de panneaux fixes, inclinaison et orientation optimales, 14 % de pertes ; aucun dimensionnement de centrale déduit de l'emprise (hypothèses non sourcées) |
+| Étoile en schéma `etoile` au-dessus du gold, sans renommer les `fct_*` ; `dim_commune` reprend les communes des faits absentes du référentiel (clé étrangère jamais orpheline) |
+| Accise réduite selon l'activité : `--activite` choisit aussi le profil de charge de l'acheminement (journée type Enedis > 250 kVA pour l'industrie, puissance constante dite telle pour les autres) ; tarifs de la loi de finances 2026 (loi n° 2026-103) lus dans le formulaire DGFiP 2040-TIC-SD 2026, en mode « table » de pdftotext (le mode « layout » décalait d'une ligne libellés et montants ; alignement vérifié sur les tarifs normaux, dont le montant figure dans le libellé), et recoupés avec le texte consolidé du CIBS sur Légifrance : 5,5 €/MWh (grande consommatrice, dès 0,5 % d'électro-intensité), 3 (électro-sensible, dès 2,25 %), 0,5 (électro-intensive, dès 6,75 %), 0,5 (exposée à la concurrence internationale, L312-72), 10 pour les centres de stockage de données sur la fraction au-delà de 1 GWh par an (L312-64, L312-70) ; seed `accise_electricite` à une ligne par catégorie. Tarif réduit total, sans majoration ZNI à part (le formulaire n'en déclare pas). Industriel : seulement sans `--activite` ou avec `industrie` (sections B à E de la NACE) ; data center : refusé quand `--va` montre moins de 2,25 % (condition 8 de L312-70), les sept autres conditions dites, pas vérifiées ; aucune réduction pour la recharge ni l'entrepôt. Montants donnés à côté du prix moyen Eurostat, sans l'en retrancher (on ignore la part d'accise réduite dans la moyenne de la tranche) |
+| Voisinage du site : API Géorisques à la demande, coupée par `--sans-risques`, en plus du rapport à l'adresse et indépendante de lui (l'un peut répondre sans l'autre). Rayons choisis par l'outil, aucun texte n'en fixe : argiles au point, cavités et sols pollués à 500 m (filtre de l'API, sans distance : SIS, SUP et instructions n'ont qu'un polygone), installations classées à 1 km, Seveso à 5 km ; seules les installations sous autorisation ou enregistrement « en exploitation avec titre » sont retenues (« Non ICPE » et « Autres régimes » n'ont ni titre ni état) ; un ancien site CASIAS n'est pas un sol pollué avéré. Le critère « risques » du verdict reste réglé par les plans de prévention (un Seveso seuil haut impose un PPRT, déjà compté) : le voisinage complète son détail (Seveso le plus proche, SIS) sans changer son état |
+| Charte : direction « le relevé » sur fond papier clair (`#F4F1EA`), encre `#14202B`, vert `#2E7D5B`, orange `#C2571A`, dans `reporting/charte.py`, seule source des couleurs de la carte (variables CSS injectées, lues par la scène), du PDF et des graphiques ; Tempo garde ses couleurs. Spectral (titres) et Inter (texte, chiffres), licence OFL, depuis le dépôt Google Fonts, réduites au latin par fontTools, en base64 dans la page (`font-src data:`) et enregistrées dans reportlab et matplotlib ; l'échelle de note rouge → blanc → vert est gardée ; anneau des zones RTE et lien vers la zone à l'encre, plus en cyan additif (invisible sur papier) |
+| Application (`app`) : serveur `http.server` de la bibliothèque standard, sans nouvelle dépendance, lié à 127.0.0.1 et lancé à la main (ni tâche planifiée ni service) ; la carte reste une page autonome qui s'ouvre aussi en `file://`, en lecture seule. Après une analyse, le serveur épingle le verdict dans `carte.html` et la page se recharge, plutôt que de rejouer l'épingle en JavaScript ; une carte refaite (données ou gabarit plus récents) reprend l'épingle de la précédente. Port 8770. Les rapports reprennent `generer_rapport_implantation` ; le Markdown est rendu sans graphiques, pour un seul fichier à télécharger. Les appels à la demande de `diagnose` sont regroupés dans `completer_en_ligne`, partagé par `diagnose`, `compare` et l'application. Touches solarpunk posées sur la direction « le relevé » sans la remplacer (`SOLEIL` et `FEUILLE` dans `reporting/charte.py`). L'épingle de l'adresse quitte le rouge, réservé au défavorable dans la note des cases |
+| Démonstration : `demo` réutilise tel quel le jeu synthétique des tests (`ingestion/tests/medallion.py`), sans copie à tenir à jour ; base construite une fois dans `data/demo/`, effacée si la construction échoue. Projet fictif de 2 MW et 15 000 MWh à Lyon plutôt que l'exemple de référence : la base synthétique n'a ni Chilly-Mazarin ni la tranche IF. Aucun géocodage (adresse fixe) ni appel à la demande ; seule la carte télécharge contours et relief, et la commande réussit sans elle. La ligne « plus de 45 jours, relancer refresh » reste : l'avertissement de première ligne dit que la base est fictive |
+| Calendrier HTB, distinct de la HTA (délibération CRE 2025-77, texte du tarif HTB 1) : week-ends et jours fériés entièrement creux ; jusqu'au 31 décembre 2026, creuses de 23 h à 7 h ; dès le 1er janvier 2027, 22 h - 6 h en saison haute, 2 h - 6 h et 12 h - 16 h en saison basse, sauf Nouvelle-Aquitaine et Occitanie (2 h - 4 h et 10 h - 16 h, puis 10 h - 18 h, pointe dès 7 h). Le régime suit la date de chaque heure : une année de grille à cheval sur le 1er janvier compte les deux, sans attendre la bascule. Les deux régimes de 2027 ont autant d'heures de chaque classe : à puissance constante, la région ne change rien ; seul un profil variable la fait apparaître. À 45 MW et 300 000 MWh : 3,79 M€. Délibération 2026-33 lue en recherche de ces plages : elle ne touche qu'aux heures méridiennes de la HTA-BT. Jours fériés légaux, sans ceux d'Alsace-Moselle (la délibération 2025-77 ne les cite pas) ; HTA-BT inchangée |
+| Monde en tuiles : Natural Earth 5.1.2 (`ne_50m_admin_0_countries`, domaine public, déjà au projet pour les terres), préféré aux limites officielles de la Banque mondiale (CC BY 4.0, mais fichiers lourds à tous les niveaux administratifs, sans adresse stable). Producteur non étatique et frontières de fait : acceptable pour un fond sans donnée, sans ligne dans `limites_methodologiques` puisqu'aucun chiffre n'en sort ; la limite est dite dans la légende et le README. Pays étudiés dans `PAYS_ETUDIES` : un code et une grille pour en ajouter un. Seuls les cinq départements d'outre-mer ont des données ; les collectivités restent ternes. Antarctique exclu. Encarts d'outre-mer à leur vraie position, décalés au sud s'ils se chevauchent, en Mercator calé sur la métropole. Tuile du PDF dessinée en vectoriel par reportlab, sans capture de la 3D ni réseau. Captures de `docs/exemples/` : Chrome sans interface avec `--force-prefers-reduced-motion` et `--virtual-time-budget`, pour ne pas saisir l'animation en cours |
+| Obligations de solarisation : textes lus sur Légifrance le 8 novembre (CCH L171-4 dans sa version du 28 mai 2026, loi n° 2026-403 ; L171-5 à venir au 1er janvier 2028 ; loi APER art. 40 dans sa version du 28 novembre 2025, loi n° 2025-1129 ; décret n° 2025-802 pour les seuils d'outre-mer). La loi du 26 novembre 2025 n'a pas reporté les échéances des parkings : elle admet les procédés mixtes (ombrières sur 35 % de la moitié, le reste végétalisé). Règles en constantes datées dans `ingestion/solaire.py` plutôt qu'en seed : quelques dates et seuils, lus par le seul diagnostic. Usages BD TOPO soumis : « Commercial et services », « Industriel », « Sportif » ; « Indifférencié » dit inconnu. Rappel de la règle sans effet sur le verdict ni avis juridique : exonérations motivées, exclusion possible des installations classées par arrêté et cas du data center, non cité en tant que tel, dits dans la limite. Structure des toitures écartée : aucune source publique de capacité portante ; BDNB (CSTB, Licence Ouverte 2.0) non intégrée, elle ne donne qu'un matériau. `compare` : seuil du parking et bâtiment existant au tableau, règle des toitures neuves une fois sous le tableau |
+| Tension sur l'eau : référence retenue, les zones de répartition des eaux (code de l'environnement, R211-71 : ressource structurellement insuffisante face aux besoins, désignée par arrêté du préfet coordonnateur de bassin), couche WFS `sa:ZRE` du référentiel ZRPE du Sandre (Licence Ouverte), plutôt que des débits Hub'Eau rapportés à un QMNA5 que l'outil devrait calculer lui-même (aucune référence publiée par l'API). Zonage stable et national : chargé par `refresh` en médaillon, point dans polygone en Python, comme le zonage sismique ; une seule page (118 zones), nombre contrôlé contre le total annoncé. Conséquence lue sur Légifrance : en ZRE, un prélèvement non domestique est soumis à autorisation dès 8 m³/h de capacité, à déclaration en dessous (R214-1, rubrique 1.3.1.0, version du 29 août 2025). Sans effet sur le verdict, comme VigiEau : le prélèvement d'un data center ne se déduit pas de l'adresse. Une zone souterraine vise un aquifère précis (Albien, parfois profond), dit dans la limite. |
+| Application, comparaison et courbe : la courbe est lue par le navigateur et envoyée en texte avec le projet, jamais stockée par le serveur ; gardée dans la session de l'onglet pour le rapport, oubliée si elle dépasse son quota. La comparaison calcule les diagnostics une fois et rend les trois fichiers (CSV, Markdown, JSON) avec le tableau ; une adresse ambiguë ou introuvable est nommée et tout s'arrête, comme en ligne de commande ; la carte garde l'épingle de la dernière analyse. `europe`, `refresh`, `tempo`, `ecowatt`, `report` et `demo` restent en ligne de commande (raisons dans « Suite ») |
+| Tests : couverture mesurée par `pytest-cov` (lignes et branches, tests exclus), plancher dans `pyproject.toml` (`fail_under`), sous le relevé parce que la mesure est faite sous Windows et que la CI tourne sous Ubuntu ; il se relève à la main après chaque étape du lot T, jamais à la baisse. `verifier.py` ne mesure que la suite entière (un sous-ensemble de tests passerait sous le plancher). `cli.main` reconfigure la sortie en UTF-8 avec `errors="replace"` : sous pytest, ce flux relit la sortie des processus enfants, écrite dans la page de code de la console |
+| Matrice des cas d'usage : des invariants, pas des valeurs (verdict à cinq critères, gestionnaire conforme au seed, parts de l'acheminement qui font le total, prix absent dit « non publié »). La base synthétique reste sans tranche IF, exprès : c'est elle qui joue le cas « non disponible ». Les tests qui écrivent un Parquet se passent de la fixture `no_network` (PySpark parle à sa JVM par une socket locale) et remplacent chaque extraction. Un défaut connu et pas encore corrigé s'écrit en `xfail` strict, avec sa raison |
+| Projet incohérent refusé : consommation annuelle supérieure à la puissance × 8 784 heures (année bissextile), avant tout calcul, avec le plafond dans le message ; même règle dans `essentiel`, `diagnose`, `compare` et l'application |
+| Pannes des sources à la demande : une réponse qui n'est pas l'objet JSON attendu est un échec de la source, dit dans sa section, jamais une trace Python ni un « rien à signaler ». Géorisques : corps vide accepté pour `rga` seulement (carte des argiles absente hors du continent), refusé pour les installations classées, les cavités et les sols pollués, où il ferait afficher zéro à tort. Une panne ne change l'état d'aucun critère du verdict |
+| Sorties de référence : douze sorties de la vraie ligne de commande figées dans `ingestion/tests/references/` (`essentiel`, `diagnose` et `compare` de l'exemple de référence à Lyon, dans chaque format, plus un hub de recharge de 2 MW et une industrie de 45 MW pour les libellés que la tranche IF, absente de la base synthétique, ne montre pas) et le rapport Markdown. Le jour est figé au 15 juillet 2026 (fraîcheur des données, barèmes à revérifier, échéances solaires en dépendent). Les JSON sont comparés à dix chiffres significatifs : le dernier bit d'une somme peut différer entre Windows et la CI. Mise à jour par `--maj-references`, jamais en silence : le diff des références se relit dans la PR. Le PDF n'est pas figé (son texte extrait dépend de la mise en page) : nombre de pages borné, pied de page sur chaque page, titres de section du rapport Markdown retrouvés, chaque caractère présent dans Inter ou Spectral (un glyphe absent s'imprime en carré vide sans que l'extraction le montre). `pypdf` (BSD) entre au groupe `dev`, pour les tests seulement |
+| Application pour un néophyte : deux adresses au plus (la ligne de commande garde 2 à 6) ; tout part d'une fenêtre d'accueil ; la seconde adresse voyage dans la ligne de la première (`autre`), pour que la page générée garde une seule ligne à remplacer ; la caméra cadre les adresses sans rien retirer de la carte ; `/api/analyse` rend une entrée par adresse et désigne par son rang celle qui est ambiguë |
+| PDF : un rapport qui se regarde. Il ne garde que la limite qui pèse sur chacun des cinq critères, avec un conseil (`CONSEILS`, trois phrases au plus par critère) ; la règle « tout chiffre a sa limite » reste tenue par les sorties texte, Markdown et JSON, auxquelles le PDF renvoie. Visuels vectoriels reportlab, sans dépendance nouvelle ; les domaines de tension viennent du seed `seuils_raccordement`. |
+| Prix le plus haut et le plus bas d'une tranche : à prix égal, le semestre le plus récent (`fct_prix_entreprise_tranche`) (sans ordre, DuckDB départage au hasard) |
 
 ## Écarté
 
@@ -678,9 +613,8 @@ réduits d'accise ont depuis été lus dans le formulaire 2040-TIC-SD et le text
 | Capacité de raccordement chiffrée, distance au poste RTE | Absentes de l'open data |
 | Distance aux postes sources et aux lignes, y compris par détection sur images | Coordonnées retirées par RTE et EDF en 2026 (sécurité publique), qu'une détection contournerait ; jeu Enedis seulement local |
 | Zonage sismique national publié par wpd (data.gouv.fr, 2018) | Producteur non officiel (un développeur éolien) : le décret et planseisme.fr font foi |
-| Loyer des locaux d'activité, y compris estimé par un rendement brut | Aucune source officielle et ouverte ; l'hypothèse de rendement n'a pas de source (28 oct.) |
-| Classement pondéré des sites dans `compare` | Contraire à la comparaison sans classement (15 oct.) |
+| Loyer des locaux d'activité, y compris estimé par un rendement brut | Aucune source officielle et ouverte ; l'hypothèse de rendement n'a pas de source |
+| Classement pondéré des sites dans `compare` | Contraire à la comparaison sans classement |
 | Ports fluviaux parmi les pôles de fret | Pas de maille port dans les données VNF du SDES |
-| Persona des bureaux | Pour quelques dizaines de MWh, le prix est le même partout et le raccordement rarement un sujet (28 oct.) |
 | Spark pour silver et gold | dbt-duckdb suffit à ce volume |
-| Exécution planifiée, Airflow, `refresh` en ligne | Hors périmètre : tout se lance à la main ; la démonstration en ligne (lot P) sert une base figée |
+| Exécution planifiée, Airflow, application hébergée en ligne | Hors périmètre : tout se lance à la main, sur son poste |
