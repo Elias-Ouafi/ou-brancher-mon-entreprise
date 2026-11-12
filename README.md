@@ -266,11 +266,17 @@ flowchart LR
 - **Silver et gold en dbt-duckdb**, reconstruits à chaque run (quelques secondes). Jointures par
   code INSEE ; énergie = puissance × durée (jours de 23 ou 25 h) ; verdict carbone en cycle de vie.
 - **Étoile** (schéma `etoile`, `dbt/models/etoile/`) : modèle dimensionnel bâti sur le gold, pour
-  l'analyse en SQL ou en outil de BI. Dimensions `dim_commune` (commune, département, région aplatis),
-  `dim_date` (2010-2035) et `dim_risque` ; faits `fait_conso_entreprises` (commune × année),
-  `fait_prix_locaux` (commune), `fait_risque_commune` (commune × risque) et `fait_mix_journalier`
-  (jour). Les clés étrangères sont contrôlées par des tests `relationships` ; les `fct_*` restent
-  la source des commandes.
+  l'analyse en SQL ou en outil de BI, et lu par le diagnostic là où le grain existe.
+  Dimensions `dim_commune` (commune, département, région aplatis, centre de la commune),
+  `dim_departement_region`, `dim_date` (1930-2035), `dim_risque` et `dim_naf` ; faits
+  `fait_conso_entreprises` (commune × année), `fait_prix_locaux` (commune), `fait_risque_commune`
+  (commune × risque), `fait_plan_prevention` (commune × procédure), `fait_diplomes_commune`
+  (commune), `fait_recrutements_techniques` et `fait_continuite_departement` (département),
+  `fait_mix_journalier` (jour). Les clés étrangères sont contrôlées par des tests `relationships`.
+  `diagnose` lit dans l'étoile les entreprises de la commune, les risques et les plans de
+  prévention, la continuité, les recrutements et les diplômés ; les tables sans grain commune,
+  département ou jour (polygones, distances, repli de la commune sur le département) restent
+  lues dans le gold.
 - **Gold principal** : `fct_diagnostic_territoire` (une ligne par département),
   `fct_prix_entreprise_tranche`, `fct_carbone_territoire`, `fct_carbone_horaire_zni`,
   `fct_risques_commune`, `fct_plans_prevention_commune`, `fct_zonage_sismique`, `fct_prix_locaux`, `fct_sites_production`, `fct_poles_fret`, `fct_pays_ue`,
