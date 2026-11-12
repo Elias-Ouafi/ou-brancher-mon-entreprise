@@ -98,6 +98,8 @@ def ecran(page: Page, erreurs_attendues: list[str]) -> Iterator[Page]:
     page.on("console", lambda m: erreurs.append(m.text) if m.type == "error" else None)
     page.on("pageerror", lambda e: erreurs.append(str(e)))
     page.set_default_timeout(20_000)
+    # Les assertions attendent comme les actions : deux adresses s'analysent en 6 à 7 s sous Windows
+    expect.set_options(timeout=20_000)
     yield page
     assert not dehors, f"requêtes hors de la machine : {dehors}"
     inattendues = [e for e in erreurs if not any(a in e for a in erreurs_attendues)]
