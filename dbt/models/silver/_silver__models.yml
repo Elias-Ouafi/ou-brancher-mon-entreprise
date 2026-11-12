@@ -12,6 +12,15 @@ models:
         data_tests: [unique, not_null]
       - name: surface_m2
         data_tests: [not_null]
+  - name: reseaux_chaleur
+    description: Points des réseaux de chaleur du dernier chargement France Chaleur Urbaine.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [reseau_id, rang]
+    columns:
+      - name: latitude
+        data_tests: [not_null]
   - name: diplomes_commune
     description: Diplôme le plus élevé des 15 ans ou plus par commune (Insee).
     columns:
