@@ -22,9 +22,11 @@ en sort pour devenir une ligne de « État » (skill `cloturer-etape`).
 1. `ruff check .` et `ruff format --check .`
 2. `pytest` (914 tests sans réseau, couverture mesurée, plancher 92,5 %, dont un `dbt build` sur base synthétique ;
    sorties de référence réécrites par `pytest ingestion/tests/test_references.py --maj-references`)
-3. essai réel : `essentiel` à Chilly-Mazarin, 12 MW et 70 000 MWh (warehouse et réseau requis)
+3. essai réel, cinq cas avec leur attendu (warehouse et réseau requis) : `essentiel` à
+   Chilly-Mazarin (12 MW et 70 000 MWh), `diagnose` à 45 MW, `compare`, Ajaccio, `/api/analyse`
 
-`--rapide` saute pytest, `--sans-essai` saute l'essai réel. Une étape du plan n'est cochée qu'après
+`--rapide` saute pytest, `--sans-essai` saute l'essai réel, `--complet` ajoute un `diagnose` avec
+les sources à la demande. Une étape du plan n'est cochée qu'après
 les trois, sur un projet de 1 à 50 MW.
 
 ## Règles du projet
