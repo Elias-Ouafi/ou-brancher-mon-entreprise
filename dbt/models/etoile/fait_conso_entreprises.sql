@@ -8,5 +8,9 @@ select
     consommation_mwh,
     consommation_industrie_mwh,
     consommation_tertiaire_mwh,
-    consommation_agriculture_mwh
+    consommation_agriculture_mwh,
+    code_naf2_principal,
+    consommation_naf2_principal_mwh,
+    rang_industrie_departement,
+    nb_communes_departement
 from {{ ref('fct_conso_entreprises_commune') }}
