@@ -40,6 +40,11 @@ report = [
     "matplotlib>=3.8",
     "reportlab>=4.0",
 ]
+# Parcours de l'application dans Chromium (`playwright install chromium`) ; sans ce groupe,
+# test_navigateur.py est sauté
+e2e = [
+    "pytest-playwright>=0.7",
+]
 
 [build-system]
 requires = ["hatchling"]
