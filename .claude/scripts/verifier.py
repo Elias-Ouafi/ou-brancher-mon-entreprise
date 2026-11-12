@@ -111,7 +111,6 @@ ESSAIS: list[Essai] = [
         ),
         {"communes": ["Chilly-Mazarin", "Lyon"]},
     ),
-    # Le gestionnaire affiché en Corse est un défaut connu du plan : il n'est pas attendu ici
     (
         "essentiel, 12 MW à Ajaccio",
         lambda: cli(
@@ -121,7 +120,12 @@ ESSAIS: list[Essai] = [
             *PROJET_12_MW,
             "--sans-carte",
         ),
-        {"domaine de tension": "hta", "système électrique": "Corse", "décarbonée": False},
+        {
+            "domaine de tension": "hta",
+            "raccordement": "HTA, EDF SEI",
+            "système électrique": "Corse",
+            "décarbonée": False,
+        },
     ),
     ("application, /api/analyse à 12 MW", api_analyse, HTA | CONTINENT),
 ]

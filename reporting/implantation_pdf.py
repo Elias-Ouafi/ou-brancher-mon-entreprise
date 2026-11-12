@@ -189,7 +189,11 @@ def _visuel_raccordement(d: Diagnostic, comparaisons: Comparaisons) -> list:
     if not comparaisons.seuils:
         return []
     puissance = d.seuil.puissance_mw if d.seuil else None
-    return [visuels.echelle_raccordement(comparaisons.seuils, puissance, LARGEUR_VISUEL)]
+    seuils = comparaisons.seuils
+    # Corse et outre-mer : un seul gestionnaire insulaire sur toute l'échelle, jamais RTE
+    if d.seuil is not None and d.seuil.est_zni:
+        seuils = [(dom, a, b, d.seuil.gestionnaire) for dom, a, b, _ in seuils]
+    return [visuels.echelle_raccordement(seuils, puissance, LARGEUR_VISUEL)]
 
 
 def _visuel_risques(d: Diagnostic, _: Comparaisons) -> list:

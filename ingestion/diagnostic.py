@@ -79,11 +79,25 @@ left join gold.fct_pression_industrielle_commune as commune
 where territoire.code_departement = $departement
 """
 
+# Corse et outre-mer : le gestionnaire insulaire tient tous les domaines de tension, RTE aucun
 _SEUIL_SQL = """
-select domaine_tension, gestionnaire, commentaire, domaine_turpe
-from gold.seuils_raccordement
-where $puissance >= puissance_min_mw
-  and (puissance_max_mw is null or $puissance < puissance_max_mw)
+select
+    seuil.domaine_tension,
+    coalesce(zni.gestionnaire, seuil.gestionnaire) as gestionnaire,
+    case
+        when zni.gestionnaire is null then seuil.commentaire
+        else 'Réseau insulaire géré par ' || zni.gestionnaire || ', sans RTE : domaine de'
+            || ' tension, capacité et délai fixés par son étude'
+    end as commentaire,
+    seuil.domaine_turpe,
+    zni.gestionnaire is not null as est_zni
+from gold.seuils_raccordement as seuil
+left join etoile.dim_departement_region as departement
+    on departement.code_departement = $departement
+left join gold.gestionnaires_zni as zni
+    on zni.code_insee_region = departement.code_insee_region
+where $puissance >= seuil.puissance_min_mw
+  and (seuil.puissance_max_mw is null or $puissance < seuil.puissance_max_mw)
 """
 
 
@@ -520,6 +534,7 @@ class Seuil:
     commentaire: str
     # Grille TURPE du domaine : `bt_inf36`, `bt_sup36`, `hta` ou `htb1`
     domaine_turpe: str
+    est_zni: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -987,7 +1002,9 @@ def lire_diagnostic(
             ligne = _une_ligne(
                 connection, _DIAGNOSTIC_SQL, {"commune": commune, "departement": departement}
             )
-            seuil = _seuil(connection, puissance_mw) if puissance_mw is not None else None
+            seuil = (
+                _seuil(connection, puissance_mw, departement) if puissance_mw is not None else None
+            )
             profil_charge = ACTIVITES[activite].profil_charge if activite else None
             journee_type = (
                 {
@@ -1215,10 +1232,14 @@ def _une_ligne(
     return dict(zip([d[0] for d in result.description], row, strict=True))
 
 
-def _seuil(connection: duckdb.DuckDBPyConnection, puissance_mw: float) -> Seuil | None:
+def _seuil(
+    connection: duckdb.DuckDBPyConnection, puissance_mw: float, departement: str | None = None
+) -> Seuil | None:
     if puissance_mw < 0:
         raise ValueError("la puissance du projet doit etre positive")
-    ligne = _une_ligne(connection, _SEUIL_SQL, {"puissance": puissance_mw})
+    ligne = _une_ligne(
+        connection, _SEUIL_SQL, {"puissance": puissance_mw, "departement": departement}
+    )
     return None if ligne is None else Seuil(puissance_mw=puissance_mw, **ligne)
 
 
@@ -1610,6 +1631,14 @@ def _critere_raccordement(d: Diagnostic) -> Critere:
             "Préciser --puissance (en MW) pour savoir qui raccorde : Enedis ou RTE.",
         )
     valeur = f"{d.seuil.domaine_tension}, {d.seuil.gestionnaire}"
+    if d.seuil.est_zni and (d.seuil.domaine_turpe == "htb1" or "grise" in d.seuil.domaine_tension):
+        return Critere(
+            "Raccordement",
+            "attention",
+            valeur,
+            f"Réseau insulaire géré par {d.seuil.gestionnaire}, sans RTE : à cette puissance, son"
+            " étude fixe la capacité disponible et le délai ; elle est indispensable.",
+        )
     if "RTE" not in d.seuil.gestionnaire:
         return Critere(
             "Raccordement",

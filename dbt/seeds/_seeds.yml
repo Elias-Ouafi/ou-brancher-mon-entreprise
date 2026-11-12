@@ -104,6 +104,27 @@ seeds:
                 to: ref('dim_region')
                 field: code_insee_region
 
+  - name: gestionnaires_zni
+    description: >
+      Gestionnaire du réseau public d'électricité de chaque zone non interconnectée
+      (code de l'énergie, art. L111-52, 3°) : EDF, par sa direction Systèmes énergétiques
+      insulaires, en Corse et dans les DROM ; Électricité de Mayotte à Mayotte (art. L151-2).
+      RTE n'y exploite aucun réseau : il remplace le gestionnaire de `seuils_raccordement`.
+    config:
+      column_types:
+        code_insee_region: varchar
+    columns:
+      - name: code_insee_region
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_region')
+                field: code_insee_region
+      - name: gestionnaire
+        data_tests: [not_null]
+
   - name: seuils_raccordement
     description: >
       Domaine de tension et gestionnaire de réseau selon la puissance du projet,
