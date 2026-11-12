@@ -484,6 +484,15 @@ models:
         data_tests: [not_null]
       - name: surface_m2
         data_tests: [not_null]
+  - name: fct_reseaux_chaleur
+    description: >
+      Réseaux de chaleur de France Chaleur Urbaine, un point tous les 100 m de tracé ; le
+      diagnostic cherche le plus proche de l'adresse, débouché possible de la chaleur fatale.
+    columns:
+      - name: reseau_id
+        data_tests: [not_null]
+      - name: longitude
+        data_tests: [not_null]
   - name: fct_prix_locaux
     description: >
       Prix de vente au m² des locaux d'activité (DVF) sur les cinq dernières années de ventes :

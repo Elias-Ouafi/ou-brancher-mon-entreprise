@@ -27,6 +27,7 @@ from ingestion.pipeline import (
     run_prix_entreprises_ingestion,
     run_production_ingestion,
     run_profils_charge_ingestion,
+    run_reseaux_chaleur_ingestion,
     run_zonage_sismique_ingestion,
     run_zones_repartition_ingestion,
 )
@@ -112,6 +113,10 @@ def run_refresh(
         ("fret", lambda: run_fret_ingestion(settings=settings, run_id=run_id)),
         ("locaux", lambda: run_locaux_ingestion(settings=settings, run_id=run_id)),
         ("friches", lambda: run_friches_ingestion(settings=settings, run_id=run_id)),
+        (
+            "reseaux-chaleur",
+            lambda: run_reseaux_chaleur_ingestion(settings=settings, run_id=run_id),
+        ),
         ("main-oeuvre", lambda: run_main_oeuvre_ingestion(settings=settings, run_id=run_id)),
         ("europe", lambda: run_europe_ingestion(settings=settings, run_id=run_id)),
         (
