@@ -146,7 +146,9 @@
     "solaire": "Le productible est celui d'un kWc de panneaux fixes à l'inclinaison et à l'orientation optimales avec 14 % de pertes : un ordre de grandeur annuel, ni une étude d'ombrage ni le productible d'une toiture réelle (pente, orientation et structure à relever). L'emprise est celle du bâtiment le plus proche de l'adresse géocodée, qui peut ne pas être celui du projet ; la BD TOPO ne dit rien de la toiture ni de la structure. PVGIS limite les appels à 30 par seconde et par adresse IP.",
     "voisinage_site": "Les rayons sont un choix de l'outil, aucun texte n'en fixe : un établissement Seveso proche ne dit pas si l'adresse est dans le périmètre de son plan de prévention technologique, que donnent les plans de prévention de la commune. Les distances des installations sont à vol d'oiseau depuis le point déclaré par l'inspection ; les sols pollués et les cavités sont comptés dans le rayon que filtre l'API, sans distance. Seules les installations sous autorisation ou enregistrement en exploitation sont retenues (la déclaration n'est pas recensée). Un ancien site CASIAS n'est pas un sol pollué avéré. Là où l'API ne renvoie aucune exposition aux argiles (outre-mer, et Ajaccio lors de l'essai du 29 octobre), le territoire est dit non couvert. Une installation dont le code postal et le code commune ne sont pas dans le même département est écartée : sa position n'est pas fiable (une fiche de Rouen placée au centre de Paris, constat du 29 octobre 2026), au prix des rares communes dont le code postal relève du département voisin. Ce n'est ni l'état des risques réglementaire ni une étude de sol.",
     "obligations_solaires": "Rappel de la règle, pas un avis juridique. La surface du parking n'est pas connue de l'outil : l'obligation est donnée par seuil. Un data center n'est pas cité en tant que tel parmi les usages : à qualifier avec le service instructeur. Le texte prévoit des exonérations motivées (contraintes techniques, de sécurité, architecturales ou patrimoniales, coût économiquement inacceptable, parking ombragé par des arbres) et un arrêté peut écarter ou adapter l'obligation pour une installation classée. La part de toiture des bâtiments existants est fixée par décret, non chiffrée ici. La capacité portante de la toiture n'est pas publique : la BDNB (CSTB, Licence Ouverte 2.0) donne au mieux le matériau de toiture, pas la structure.",
-    "zones_repartition_eaux": "Une zone de répartition des eaux dit un déficit structurel reconnu par arrêté, pas le débit ni le niveau de nappe du jour (voir les restrictions d'eau). Une zone souterraine vise un aquifère précis, parfois profond (Albien en Île-de-France) : le prélèvement n'est concerné que s'il puise dans cet aquifère. Hors zone, un prélèvement peut rester soumis à déclaration ou autorisation selon son volume (autres rubriques de R214-1) et aux arrêtés de restriction. La liste des communes classées est arrêtée par chaque préfet de département (R211-72) : le contour du Sandre peut en différer à la marge. Aucune zone n'est publiée en outre-mer dans ce référentiel."
+    "zones_repartition_eaux": "Une zone de répartition des eaux dit un déficit structurel reconnu par arrêté, pas le débit ni le niveau de nappe du jour (voir les restrictions d'eau). Une zone souterraine vise un aquifère précis, parfois profond (Albien en Île-de-France) : le prélèvement n'est concerné que s'il puise dans cet aquifère. Hors zone, un prélèvement peut rester soumis à déclaration ou autorisation selon son volume (autres rubriques de R214-1) et aux arrêtés de restriction. La liste des communes classées est arrêtée par chaque préfet de département (R211-72) : le contour du Sandre peut en différer à la marge. Aucune zone n'est publiée en outre-mer dans ce référentiel.",
+    "main_oeuvre": "Compte des résidents de 15 ans ou plus non scolarisés selon leur diplôme le plus élevé, retraités compris : ni des actifs, ni des candidats disponibles ; la concurrence entre employeurs et la spécialité du diplôme ne sont pas connues. Une commune compte entière dès que son centre est dans l'isochrone. Les 45 minutes sont une hypothèse de l'outil (aucun texte français ne fixe ce temps), en voiture et sans embouteillage. Mayotte n'est pas dans le fichier de l'Insee.",
+    "recrutements_techniques": "Intentions d'embauche déclarées par les employeurs pour l'année, pas des embauches réalisées. Métiers retenus par l'outil (électricité, froid et conditionnement d'air, maintenance : seed metiers_techniques_bmo). Le département remplace le bassin d'emploi, faute de table officielle du bassin vers la commune ; les bassins sous secret statistique ne sont pas comptés, ce qui minore les projets."
   },
   "risques": null,
   "risques_erreur": null,
@@ -167,7 +169,9 @@
     "enedis_continuite_alimentation": "2026-07-01",
     "ventes_locaux": "2026-07-01",
     "friches": "2026-07-01",
-    "zones_repartition_eaux": "2026-07-01"
+    "zones_repartition_eaux": "2026-07-01",
+    "diplomes_commune": "2026-07-01",
+    "recrutements_bmo": "2026-07-01"
   },
   "courbe": null,
   "plans_prevention": [
@@ -312,6 +316,17 @@
       "ressource": "eaux souterraines"
     }
   ],
+  "recrutements": {
+    "code_departement": "69",
+    "annee": "2026",
+    "projets": 400.0,
+    "projets_difficiles": 300.0,
+    "part_difficiles": 0.75,
+    "nb_lignes_secretes": 1.0,
+    "nb_lignes": 4.0
+  },
+  "main_oeuvre": null,
+  "main_oeuvre_erreur": null,
   "commune_a_des_sites": true,
   "part_chiffre_affaires": null,
   "part_valeur_ajoutee": null,

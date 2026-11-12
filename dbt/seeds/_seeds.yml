@@ -1,6 +1,15 @@
 version: 2
 
 seeds:
+  - name: metiers_techniques_bmo
+    description: >
+      Métiers BMO (France Travail) qui exploitent un site de 1 à 50 MW : électricité, froid et
+      conditionnement d'air, maintenance. Choix de l'outil, aucun texte ne fixe cette liste ;
+      libellés de l'enquête BMO 2026.
+    columns:
+      - name: code_metier
+        data_tests: [unique, not_null]
+
   - name: dim_filiere
     description: >
       Référentiel des filières de production : famille, caractère renouvelable

@@ -35,6 +35,7 @@ SOURCES = [
     ("completer_solaire", "solaire_erreur"),
     ("completer_acces_routier", "acces_routier_erreur"),
     ("completer_zones_activite", "zones_activite_erreur"),
+    ("completer_main_oeuvre", "main_oeuvre_erreur"),
 ]
 
 

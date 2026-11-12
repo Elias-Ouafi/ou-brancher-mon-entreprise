@@ -12,6 +12,16 @@ models:
         data_tests: [unique, not_null]
       - name: surface_m2
         data_tests: [not_null]
+  - name: diplomes_commune
+    description: Diplôme le plus élevé des 15 ans ou plus par commune (Insee).
+    columns:
+      - name: code_insee_commune
+        data_tests: [unique, not_null]
+  - name: recrutements_departement
+    description: Projets de recrutement par département et métier BMO (France Travail).
+    columns:
+      - name: code_departement
+        data_tests: [not_null]
   - name: ventes_locaux
     description: >
       Ventes de locaux d'activité seuls, avec prix au m² ; les arrondissements de Paris, Lyon et

@@ -98,13 +98,14 @@ voisinage du site (argiles, cavités, Seveso, installations classées, sols poll
 | Carte du monde en tuiles : tous les pays en tuiles ternes, France et départements d'outre-mer en couleur et à leur place ; ouverture sur le monde, plongée vers l'adresse, tuile détaillée qui sort de la carte ; fiche en jauges et cartes chiffrées, détail et limites à la demande ; bâtiment 3D au liseré doré à la place de l'épingle, sans bandeau d'adresse ; vague de reverdissement et pousse des arbres, inspirées de Terra Nil, coupées si l'utilisateur limite les animations ; tuile dessinée en vectoriel en tête du PDF ; encre vert nuit, titres verts et ornement solarpunk jusque dans le PDF | `ingestion/hexagones.py`, `reporting/carte.html`, `reporting/tuile.py` |
 | Application locale : `app` sert la carte sur 127.0.0.1 et permet tout le parcours dans le navigateur : adresse, réglages du projet, adresse ambiguë résolue par le choix d'une commune, verdict épinglé, diagnostic (essentiel ou complet), rapport PDF, Markdown ou JSON téléchargé avec la commande qui le refait ; courbe de charge Enedis déposée dans « Projet » et comparaison de 2 à 6 adresses en tableau dans le panneau (CSV, Markdown, JSON), sans épingle sur la carte. Touches solarpunk sur la carte, reprises dans le PDF : lumière dorée, épingle au soleil, bosquets dans la vue Territoire, toitures végétalisées et solaires des sites clés en main, panneaux aux angles doux | `reporting/app.py`, `app` |
 | Sortie réduite à la réponse (journal sous `--verbose`) ; avant tout chargement, la commande `refresh` à lancer | `ingestion/cli.py` |
-| Pannes des sources à la demande : chacune des sept sources jouée contre huit pannes (délai dépassé, connexion coupée, 500, 404, corps vide, page de maintenance, JSON inattendu, liste vide) : le diagnostic aboutit, l'échec est dit dans sa section (pour les risques, par le repli sur l'export GASPAR), aucun critère du verdict ne change d'état ; mêmes pannes sur `diagnose`, `compare` et l'application entiers. Un JSON qui n'est pas un objet est un échec de la source ; un corps vide de Géorisques n'est plus lu comme « rien à signaler », sauf pour `rga` | `test_pannes.py` |
+| Pannes des sources à la demande : chacune des huit sources jouée contre huit pannes (délai dépassé, connexion coupée, 500, 404, corps vide, page de maintenance, JSON inattendu, liste vide) : le diagnostic aboutit, l'échec est dit dans sa section (pour les risques, par le repli sur l'export GASPAR), aucun critère du verdict ne change d'état ; mêmes pannes sur `diagnose`, `compare` et l'application entiers. Un JSON qui n'est pas un objet est un échec de la source ; un corps vide de Géorisques n'est plus lu comme « rien à signaler », sauf pour `rga` | `test_pannes.py` |
 | Matrice des cas d'usage : 158 cas joués par la vraie ligne de commande sur la base synthétique, vérifiés sur des invariants : `essentiel` pour chaque activité à chaque palier de puissance (bornes de `seuils_raccordement` comprises), `diagnose` et `compare` dans tous leurs formats, les onze communes de la recette à 12 et 45 MW, chaque option, l'accise réduite selon l'activité, les projets refusés, le warehouse absent ; les quinze chaînes de chargement rejouées deux fois (rien de dupliqué, Parquet jamais écrasé) et les commandes d'entretien, `tempo`, `ecowatt`, `report` et `app` lancées par `cli.main` ; une consommation que la puissance ne permet pas (plus de 8 784 heures) est refusée en ligne de commande et dans l'application | `test_cas_usage.py`, `test_commandes.py`, `incoherence_projet` |
 | Sorties de référence : douze sorties de `essentiel`, `diagnose` et `compare` et le rapport Markdown figés sur la base synthétique, comparés à chaque run ; un libellé changé fait échouer le test, `--maj-references` réécrit les références ; PDF relu par `pypdf` : pages, pied de page, sections, tuile, aucun caractère sans glyphe ; chaque maquette et chaque relief de la tuile dessinés ; couverture mesurée à chaque run (`pytest --cov`, lignes et branches : 94,6 %), échec sous 92,5 % ; courbe de charge illisible refusée avec le numéro de la ligne fautive. Essai réel : le PDF complet de Chilly-Mazarin (9 pages) n'a aucun caractère sans glyphe | `test_references.py`, `ingestion/tests/references/` |
 | Parcours du néophyte : `app` ouvre une fenêtre d'accueil qui demande une adresse, une seconde si l'on veut comparer (deux au plus), le projet replié ; la carte s'ouvre cadrée sur les adresses (la tuile si elles la partagent, la région si elles en occupent deux bouts, le monde si l'une est outre-mer), chacune avec son bâtiment (liseré doré pour la première, vert pour la seconde) ; fiche adaptée : verdict et cartes chiffrées pour une adresse, mêmes lignes côte à côte et un onglet par adresse pour deux ; rapport PDF en un clic | `reporting/carte.html`, `reporting/app.py` |
 | PDF court et visuel : 3 pages pour l'exemple de référence ; le verdict et sa tuile, puis une fiche par critère (échelle des domaines de tension, plans de prévention, jauge du carbone, parts de la facture et accise, distances et prix des locaux) avec trois phrases au plus, dont la limite qui pèse sur la décision et un conseil ; repères du site en tableau, deux graphiques du territoire | `reporting/implantation_pdf.py`, `reporting/visuels.py` |
 | Essai réel élargi : `verifier.py` joue cinq cas sur le warehouse réel en 15 s environ et dit pour chacun ce qu'il attend (domaine de tension, raccordement du verdict, système électrique) : `essentiel` à 12 MW à Chilly-Mazarin (HTA), `diagnose --sans-risques` à 45 MW (HTB 1, RTE), `compare` de Chilly-Mazarin et Lyon, `essentiel` à Ajaccio (Corse, au-dessus du seuil carbone), `/api/analyse` du vrai serveur de l'application ; `--complet` ajoute un `diagnose` avec les sources à la demande et nomme celle qui ne répond pas | `.claude/scripts/verifier.py` |
 | Application jouée dans un navigateur : six parcours dans Chromium (`pytest-playwright`, groupe `e2e`, sautés sans le paquet) contre le vrai serveur de `app` et la base synthétique, seul le géocodage simulé, réseau coupé : accueil → adresse → verdict épinglé → PDF ; adresse ambiguë → choix d'une commune ; deux adresses → côte à côte → tableau détaillé → CSV ; courbe déposée → gardée après rechargement → retirée ; serveur arrêté → message ; page en `file://` → lecture seule. Une erreur de console ou une requête hors de la machine fait échouer le parcours | `test_navigateur.py` |
+| Main-d'œuvre dans `diagnose` et `compare`, sans effet sur le verdict : diplômés du supérieur et titulaires d'un CAP-BEP ou d'un bac des communes dont le centre est à moins de 45 min en voiture (isochrone de la Géoplateforme à la demande, base Diplômes-Formation 2023 de l'Insee) ; projets de recrutement et part jugée difficile des métiers de l'électricité, du froid et de la maintenance au département (BMO 2026, France Travail). À Chilly-Mazarin : 457 communes, 3,3 millions de diplômés du supérieur, 1,9 million de CAP-BEP ou bac ; 1 068 projets dans l'Essonne, dont 70,3 % difficiles. Mayotte « non disponible » (absente du fichier de l'Insee) | `ingestion/extract_main_oeuvre.py`, `ingestion/main_oeuvre.py`, `fct_diplomes_commune`, `fct_recrutements_techniques_departement`, seed `metiers_techniques_bmo` |
 | Démonstration sans `refresh` : `demo` construit une fois la base synthétique des tests dans `data/demo/` (une minute environ, sans réseau), répond `essentiel` pour un hub de recharge fictif de 2 MW à Lyon, chiffres dits fictifs en première ligne, et ouvre la carte ; environ 2 s ensuite | `ingestion/demo.py`, `demo` |
 
 **À surveiller** :
@@ -165,48 +166,18 @@ Le détail de chaque ligne est dans son lot, plus bas.
 
 | Ordre | Étape | Condition ou date |
 |---|---|---|
-| 1 | **Lot T** Qualité des tests : CI sous Windows (T8) ; corriger le gestionnaire affiché en Corse et outre-mer | Le gestionnaire demande une source officielle |
-| 2 | **29** Main-d'œuvre qualifiée dans `diagnose` et `compare` | Sources vérifiées, trois choix avant de coder (sous le tableau du lot A) |
-| 3 | **Étoile d'abord** : chaque nouveau fait gold a ses clés vers `dim_commune` et `dim_date` ; l'application lit le schéma `etoile` là où le grain existe | Sorties de référence inchangées |
-| 4 | **Carte, lot B** : prototype three.js r186 hors ligne (une demi-journée), puis lots C et D | Le lot D épingle `compare` sur la carte |
-| 5 | **19** Capacité en soutirage de RTE ; seed `accise_electricite` de 2027 | 1er janvier 2027 (publication RTE), 1er janvier et 1er février (accise) |
-| 6 | Trier les « Manques repérés et pistes » du lot A | Garder l'utile et faisable vite, reporter le long |
-| 7 | **8, 30, S, 6** Prix au-delà de 150 GWh, modèle prédictif, ambiance sonore, international | Chacune sa condition (lot B) ; l'international en dernier |
+| 1 | **Étoile d'abord** : chaque nouveau fait gold a ses clés vers `dim_commune` et `dim_date` ; l'application lit le schéma `etoile` là où le grain existe | Sorties de référence inchangées |
+| 2 | **Lot T** Qualité des tests : CI sous Windows (T8) ; corriger le gestionnaire affiché en Corse et outre-mer | Le gestionnaire demande une source officielle |
+| 3 | **Carte, lot B** : prototype three.js r186 hors ligne (une demi-journée), puis lots C et D | Le lot D épingle `compare` sur la carte |
+| 4 | Trier les « Manques repérés et pistes » du lot A | Garder l'utile et faisable vite, reporter le long |
+| 5 | **8, 30, S, 6** Prix au-delà de 150 GWh, modèle prédictif, ambiance sonore, international | Chacune sa condition (lot B) ; l'international en dernier |
 
+Pas à faire maintenant : l'étape **19** (capacité en soutirage de RTE) et les mises à jour des barèmes et des sources attendent leur date, listée dans « À se rappeler aux dates ».
 
 ### Lot A : à prendre maintenant
 
-Les sources existent ; il reste à lire un texte, à tester une API ou à finir une étape commencée.
-
-| Ordre | Étape | Reste à faire | Pourquoi pour ce persona | À vérifier avant de coder |
-|---|---|---|---|---|
-| 1 | **29** Main-d'œuvre qualifiée (à faire) | Une ligne d'information dans `diagnose` et `compare`, sans effet sur le verdict : **nombre de diplômés du supérieur à moins de 45 min en voiture** ([base Diplômes-Formation 2023](https://www.insee.fr/fr/statistiques/9006527), Insee, sommée sur les communes de l'[isochrone de la Géoplateforme](https://geoservices.ign.fr/node/1612)), repli sur la [zone d'emploi](https://www.insee.fr/fr/information/4652957) si l'appel échoue ; en regard, les projets de recrutement et leur difficulté pour les métiers techniques du bassin d'emploi ([BMO](https://www.data.gouv.fr/datasets/561fa564c751df4f2acdbb48), France Travail) ; limite au seed `limites_methodologiques`, Mayotte « non disponible » | Exploiter un site demande des électriciens et techniciens CVC autant que des ingénieurs ; un stock accessible dit plus qu'une part, et la région est trop vaste pour un trajet quotidien | Dictionnaire du fichier : champ de 15 ans ou plus non scolarisés, retraités compris (corrigé par l'Insee le 21 juillet 2026) ; présence du diplôme dans le [fichier détail par zone d'emploi](https://www.insee.fr/fr/statistiques/9004788) pour se limiter aux actifs ; 45 min est une hypothèse, à contrôler sur les [flux domicile-travail](https://www.insee.fr/fr/statistiques/8582949) ; familles de métiers BMO à retenir ; profil voiture de l'isochrone |
-
-**Étape 29, sources vérifiées** (fichiers réels lus le 9 novembre 2026, rien de codé) :
-- **Diplômes (Insee)** : `DS_RP_DIPLOMES_PRINC_2023_CSV_FR.zip` (25 Mo, CSV de 213 Mo, 3 257 982
-  lignes, séparateur « ; », millésimes 2012, 2017 et 2023) ; maille commune (34 858 communes en
-  2023, arrondissements municipaux à part sous `ARM`, Paris, Lyon et Marseille aussi en commune
-  entière) et zone d'emploi (`ZE2020`) dans le même fichier ; Guadeloupe, Martinique, Guyane et
-  La Réunion présentes, **Mayotte absente** ; un seul champ, les 15 ans ou plus (`Y_GE15`), sans
-  distinction des actifs ; diplôme du supérieur = `500T702_RP` ; à filtrer à la lecture
-  (`GEO_OBJECT`, `TIME_PERIOD`, `SEX = _T`) comme DVF. Chilly-Mazarin : 5 226 diplômés du supérieur
-  sur 14 307, et 2 817 CAP-BEP, 2 933 bacs.
-- **Isochrone (Géoplateforme)** : `data.geopf.fr/navigation/isochrone`, ressource
-  `bdtopo-valhalla`, profil `car`, 2 700 s, sens « arrivée » : polygone GeoJSON en 1 s à
-  Chilly-Mazarin, sans clé ; `bdtopo-osrm` ne fait pas d'isochrone.
-- **BMO 2026 (France Travail, Licence Ouverte)** : classeur xlsx seulement (3,8 Mo, 53 786 lignes
-  métier × bassin), colonnes `met` (projets), `xmet` (difficiles), `smet` (saisonniers) ; métiers
-  utiles présents (`C2X70` techniciens en électricité, `G1X74` froid et conditionnement d'air,
-  `G0A41`, `G1X72` maintenance). Trois pièges : la maille est le bassin d'emploi de France Travail
-  (`BE26`), pas la zone d'emploi de l'Insee, et aucune table commune → bassin n'a été trouvée sur
-  data.gouv.fr ; 43 899 lignes portent un « * » de secret statistique ; `openpyxl` n'est pas
-  installé (le classeur se lit aussi avec la bibliothèque standard).
-- **Pas encore vérifié** : le fichier détail par zone d'emploi (pour se limiter aux actifs), les
-  flux domicile-travail (pour contrôler les 45 min).
-- **Trois choix avant de coder** : compter aussi les CAP-BEP et les bacs, puisque les
-  électriciens et techniciens que l'étape veut mesurer n'ont pas tous un diplôme du supérieur ;
-  BMO au département (colonne `Dept` du fichier), au bassin si une table de passage officielle
-  est trouvée, ou écarté ; lecture du xlsx par la bibliothèque standard ou par `openpyxl`.
+L'étape « Étoile d'abord » tient dans sa ligne ci-dessus. Restent ici les commandes gardées hors
+de l'application, les limites gardées faute de source et les manques à trier.
 
 **Application et ligne de commande.** L'application couvre
 `essentiel`, `diagnose`, `compare`, `carte` et toutes les options de projet, `--courbe` comprise.
@@ -256,7 +227,7 @@ soit essayée par une machine plutôt qu'à la main. Chaque étape a son critèr
 tâche planifiée.
 
 **Constat** :
-- 920 tests sans réseau, dont six parcours dans Chromium ;
+- 938 tests sans réseau, dont six parcours dans Chromium ;
   couverture **94,6 %** des lignes et des branches
   d'`ingestion/` et de `reporting/`, plancher à 92,5 % ;
 - reste sous 90 % : `ingestion/pipeline.py` à 86 % ;
@@ -268,7 +239,10 @@ tâche planifiée.
   `test_cas_usage.py`, qui échouera le jour où c'est corrigé) ;
 - le rendu 3D de la carte (vues, tuile, animations) n'est vérifié qu'à la main (skill
   `essai-carte`) : les parcours du navigateur contrôlent la fiche et les panneaux, pas l'image ;
-- la CI ne tourne que sous Ubuntu alors que le poste est sous Windows (console cp1252, chemins).
+- la CI ne tourne que sous Ubuntu alors que le poste est sous Windows (console cp1252, chemins) ;
+- sous Windows, le parcours « deux adresses » de `test_navigateur.py` échoue : l'analyse des deux
+  adresses dépasse le délai de 5 s de Playwright avant que la fiche côte à côte ne s'affiche. À
+  rendre robuste avec T8.
 
 | Ordre | Étape | Contenu | Critère |
 |---|---|---|---|
@@ -284,24 +258,27 @@ Rien à coder tant que la condition n'est pas levée.
 
 | Étape | Pourquoi pour ce persona | Condition pour s'y mettre |
 |---|---|---|
-| **19** Capacité d'accueil en soutirage : carte des capacités de RTE, nouveau Caparéseau ; ce qu'Enedis publie en HTA | Première question du persona, sans réponse publique aujourd'hui | Publication RTE attendue au 1er janvier 2027 (délibération CRE 2026-173) ; capacité Enedis réservée au portail client |
 | **Carte** Refonte (lots B à F, voir plus bas) | Une carte lisible imprimée, qui montre ce que la puissance demandée change | Lot B d'abord : prototype three.js r186 hors ligne |
 | **S** Ambiance sonore de la tuile : un son discret qui rappelle le facteur le plus marquant de la case (par exemple un bourdonnement électrique si le nucléaire domine), aucun s'il n'y a pas de facteur dominant | Rendre la carte plus parlante sans texte de plus ; le son n'est jamais une information en soi | Règle du facteur dominant écrite à partir des critères déjà calculés, « aucun » possible ; sons libres de droits (CC0 ou domaine public, licence et auteur notés dans le dépôt) ; lecture après un geste de l'utilisateur, volume bas, bouton de coupure, sans effet sur le rapport imprimé ; vérification par le skill `essai-carte` |
 | **8** Repère de prix au-delà de 150 000 MWh/an, après la fin de l'ARENH | Un projet de 20 MW constant dépasse la dernière tranche Eurostat (IG, sans borne) | Une source officielle et ouverte d'un prix à terme ; le classement pondéré dans `compare` reste écarté |
 | **30** Modèle prédictif d'implantation (cadrage plus bas) : par zone d'emploi, probabilité d'implantations nouvelles à 3 ans, apprise sur l'historique | Signaler tôt les territoires qui montent, en complément des faits à l'adresse ; il dira où les projets vont, pas où ils seraient rentables ni si la puissance est disponible | Données fiabilisées (critères à écrire) ; à concilier avec la « comparaison sans classement » ; historique de la capacité en soutirage, absent à ce jour |
 | **6** Extension internationale, voir plus bas | En dernier | Jeton ENTSO-E et contours des zones de prix |
 
-### Échéances à guetter
+### À se rappeler aux dates
 
-À lancer à la main, aucune planification :
-- 1er janvier 2027 : refonte de Caparéseau et éventuelle carte des capacités en soutirage de RTE
-  (délibération CRE 2026-173), à intégrer dès publication (étape 19). Le nouveau calendrier HTB de
+Rien à faire avant ces dates ; le moment venu, à lancer à la main (aucune planification) :
+- 1er janvier 2027, **étape 19**, capacité d'accueil en soutirage, première question du persona et sans réponse publique aujourd'hui : refonte de Caparéseau et éventuelle carte des
+  capacités en soutirage de RTE (délibération CRE 2026-173), à intégrer dès publication ; la
+  capacité d'Enedis en HTA reste réservée à son portail client. Le nouveau calendrier HTB de
   la même date est déjà codé : rien à faire ;
 - 1er janvier et 1er février 2027 : tarifs réduits de la loi de finances 2027 et indexation du tarif
   normal de l'accise, lignes à clore et à ajouter au seed `accise_electricite` ;
 - 1er août 2027 : nouvelle grille TURPE 7 HTA-BT et HTB, à reporter dans les seeds
   `turpe_soutirage` et `turpe_gestion_comptage` (les sorties le signalent une fois la date passée) ;
 - avril et octobre : actualisation de DVF, puis `refresh` ;
+- à chaque nouvelle publication de la base Diplômes-Formation (Insee) et de l'enquête BMO
+  (France Travail, chaque printemps) : changer le millésime dans `diplomes_url` et `bmo_url`
+  (`ingestion/config.py`), puis `refresh` ;
 - quand EDF SEI publiera 2025 : `refresh` pour recaler le carbone horaire des îles ;
 - chaque mois : `ecowatt` (jours à venir) pour garder l'historique du signal Ecowatt, qui n'est pas
   rejouable ; `refresh` rafraîchit aussi les profils de charge Enedis (12 mois glissants).
@@ -503,7 +480,7 @@ et la chaleur fatale n'est pas établi.
   extrait), OSO ([fiche sans fichier](https://www.data.gouv.fr/datasets/cartographie-de-loccupation-du-sol-oso),
   licence à confirmer auprès de Theia), SPOT World Heritage (licence contradictoire selon les pages,
   pas d'image récente), ESA WorldCover (2020 et 2021 seulement dans les résultats trouvés).
-- **Main-d'œuvre qualifiée (étape 29)** : aucune source officielle française
+- **Main-d'œuvre qualifiée** : aucune source officielle française
   ne fixe de métrique ni de temps de trajet ; le décompte par temps de route et niveau de diplôme
   est une pratique de profils d'attractivité britanniques
   ([Cheshire West, 45 min](https://www.cheshirewestandchester.gov.uk/asset-library/statistics/labour-market-profiles/Labour-Market-Overview-Chester-2020.pdf),
@@ -602,6 +579,7 @@ et la chaleur fatale n'est pas établi.
 | Sorties de référence : douze sorties de la vraie ligne de commande figées dans `ingestion/tests/references/` (`essentiel`, `diagnose` et `compare` de l'exemple de référence à Lyon, dans chaque format, plus un hub de recharge de 2 MW et une industrie de 45 MW pour les libellés que la tranche IF, absente de la base synthétique, ne montre pas) et le rapport Markdown. Le jour est figé au 15 juillet 2026 (fraîcheur des données, barèmes à revérifier, échéances solaires en dépendent). Les JSON sont comparés à dix chiffres significatifs : le dernier bit d'une somme peut différer entre Windows et la CI. Mise à jour par `--maj-references`, jamais en silence : le diff des références se relit dans la PR. Le PDF n'est pas figé (son texte extrait dépend de la mise en page) : nombre de pages borné, pied de page sur chaque page, titres de section du rapport Markdown retrouvés, chaque caractère présent dans Inter ou Spectral (un glyphe absent s'imprime en carré vide sans que l'extraction le montre). `pypdf` (BSD) entre au groupe `dev`, pour les tests seulement |
 | Application pour un néophyte : deux adresses au plus (la ligne de commande garde 2 à 6) ; tout part d'une fenêtre d'accueil ; la seconde adresse voyage dans la ligne de la première (`autre`), pour que la page générée garde une seule ligne à remplacer ; la caméra cadre les adresses sans rien retirer de la carte ; `/api/analyse` rend une entrée par adresse et désigne par son rang celle qui est ambiguë |
 | PDF : un rapport qui se regarde. Il ne garde que la limite qui pèse sur chacun des cinq critères, avec un conseil (`CONSEILS`, trois phrases au plus par critère) ; la règle « tout chiffre a sa limite » reste tenue par les sorties texte, Markdown et JSON, auxquelles le PDF renvoie. Visuels vectoriels reportlab, sans dépendance nouvelle ; les domaines de tension viennent du seed `seuils_raccordement`. |
+| Main-d'œuvre : diplômés comptés dans les communes dont le centre est dans l'isochrone de 45 minutes en voiture, sens « arrivée » (Géoplateforme, ressource `bdtopo-valhalla`, à la demande, coupée par `--sans-risques`), sur la base Diplômes-Formation de l'Insee chargée par `refresh` (communes entières, tous sexes, dernier millésime ; valeur vide comptée zéro, car incluse dans une autre catégorie) ; deux chiffres, supérieur et CAP-BEP ou bac, parce que les électriciens et techniciens d'exploitation n'ont pas tous un diplôme du supérieur. Isochrone injoignable : dit dans la section, sans repli. Recrutements : enquête BMO de France Travail sommée au département (colonne `Dept`), faute de table officielle du bassin d'emploi vers la commune ; bassins sous secret statistique non comptés mais dénombrés ; classeur lu par `openpyxl` (MIT). Métiers retenus dans le seed `metiers_techniques_bmo`. Sans effet sur le verdict |
 | Prix le plus haut et le plus bas d'une tranche : à prix égal, le semestre le plus récent (`fct_prix_entreprise_tranche`) (sans ordre, DuckDB départage au hasard) |
 
 ## Écarté

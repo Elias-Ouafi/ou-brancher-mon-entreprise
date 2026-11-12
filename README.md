@@ -174,7 +174,7 @@ Toutes s'écrivent `.\.venv\Scripts\python.exe -m ingestion.cli <commande>`.
 | Commande | Effet |
 |---|---|
 | `essentiel --adresse "…" [--puissance MW] [--conso MWh] [--activite data-center\|irve\|industrie\|logistique] [--courbe CSV] [--ca €] [--va €] [--surface m²] [--format json]` | Réponse courte : prix, carbone, prix de vente des locaux d'activité (DVF) et verdict « brancher ici ? » ; avec `--puissance` et `--conso` au-delà de 36 kVA, la part acheminement (TURPE 7) de la facture ; `--courbe` lit l'export Enedis, `--ca` donne la part de la facture dans le chiffre d'affaires, `--va` l'électro-intensité fiscale (taux réduit d'accise dès 0,5 % de la valeur ajoutée), `--activite` le profil de charge (journée type mesurée par Enedis pour l'industrie, puissance constante sinon) et le régime d'accise de l'activité ; avec `--va` ou `--activite`, l'accise au tarif réduit de la loi de finances 2026 face au tarif normal (10 €/MWh au-delà du premier GWh pour un data center, 5,5, 3 ou 0,5 €/MWh selon le palier d'électro-intensité pour l'industrie), sous conditions |
-| `diagnose --adresse "…" [--puissance MW] [--conso MWh] [--activite data-center\|irve\|industrie\|logistique] [--courbe CSV] [--ca €] [--va €] [--surface m²] [--format pdf\|md\|json]` | Diagnostic complet : industrie locale, réseau, raccordement (dont la qualité de fourniture du département), prix, acheminement, carbone, risques et sismicité, voisinage (argiles, cavités à 500 m, Seveso à 5 km, installations classées à 1 km, sols pollués à 500 m), foncier (zone d'urbanisme, friches à moins de 10 km, zones d'activité à moins de 5 km, prix des locaux), eau (arrêtés de restriction du jour, zone de répartition des eaux), desserte (temps vers le fret, autoroute), bâtiment et productible solaire, obligations de solarisation (toiture neuve ou existante, parking extérieur), puis le verdict « brancher ici ? » critère par critère ; `--sans-risques` coupe tous les appels à la demande (Géorisques, urbanisme, eau, solaire, desserte, zones d'activité) |
+| `diagnose --adresse "…" [--puissance MW] [--conso MWh] [--activite data-center\|irve\|industrie\|logistique] [--courbe CSV] [--ca €] [--va €] [--surface m²] [--format pdf\|md\|json]` | Diagnostic complet : industrie locale, réseau, raccordement (dont la qualité de fourniture du département), prix, acheminement, carbone, risques et sismicité, voisinage (argiles, cavités à 500 m, Seveso à 5 km, installations classées à 1 km, sols pollués à 500 m), foncier (zone d'urbanisme, friches à moins de 10 km, zones d'activité à moins de 5 km, prix des locaux), eau (arrêtés de restriction du jour, zone de répartition des eaux), desserte (temps vers le fret, autoroute), main-d'œuvre (diplômés à moins de 45 min en voiture, recrutements techniques du département), bâtiment et productible solaire, obligations de solarisation (toiture neuve ou existante, parking extérieur), puis le verdict « brancher ici ? » critère par critère ; `--sans-risques` coupe tous les appels à la demande (Géorisques, urbanisme, eau, solaire, desserte, zones d'activité, isochrone de la main-d'œuvre) |
 | `compare --adresse "A" --adresse "B" … [mêmes options que diagnose]` | 2 à 6 adresses côte à côte, sans classement, avec le prix des locaux, une ligne courte par source consultée à la demande (zonage, friches, zones d'activité, accès routier, bâtiment et solaire, eau, risques ; « — » pour l'adresse qui ne l'a pas été), le parking et la toiture à solariser et le verdict « brancher ici ? » de chacune ; `texte`, `md`, `csv`, `json` |
 | `app [--port 8770] [--sans-ouvrir]` | Application locale dans le navigateur : fenêtre d'accueil pour une ou deux adresses et le projet (courbe de charge comprise), carte cadrée sur les adresses, verdict ou comparaison côte à côte, rapport PDF en un clic, Markdown ou JSON |
 | `carte [--adresse "…"] [--puissance MW] [--reconstruire] [--sans-ouvrir] [--output FICHIER]` | Carte 3D hors ligne (`data/reports/carte.html` par défaut) |
@@ -248,7 +248,7 @@ raisons, celui d'un pôle sa puissance et sa production, celui d'un pôle de fre
 
 ```mermaid
 flowchart LR
-    SRC[("ODRÉ · Eurostat · RTE · Enedis · GASPAR · Sandre · EDF SEI · Ember · DVF · Cartofriches · SDES · DGAC · geo.api")] -->|"ingestion/ (PySpark)"| B["Bronze : Parquet + DuckDB (MERGE)"]
+    SRC[("ODRÉ · Eurostat · RTE · Enedis · GASPAR · Sandre · EDF SEI · Ember · DVF · Cartofriches · Insee · France Travail · SDES · DGAC · geo.api")] -->|"ingestion/ (PySpark)"| B["Bronze : Parquet + DuckDB (MERGE)"]
     B -->|dbt| S["Silver : nettoyé, codes INSEE"]
     S -->|dbt| G["Gold : prix, carbone, risques, diagnostic"]
     SEEDS[("Seeds : ADEME, tarifs, référentiels, limites")] --> G
@@ -297,9 +297,15 @@ flowchart LR
   vient des mêmes API Géorisques, à la demande, et complète le détail du critère sans en changer
   l'état.
 - **Sources à la demande** : ce qui dépend du point et change sans prévenir (zone d'urbanisme,
-  arrêtés sur l'eau, zones d'activité, itinéraires, bâtiment, productible solaire) est appelé au
+  arrêtés sur l'eau, zones d'activité, itinéraires, isochrone, bâtiment, productible solaire) est appelé au
   moment de la question, jamais stocké ; un appel qui échoue est signalé dans sa section sans
   bloquer le reste du diagnostic.
+- **Main-d'œuvre** : les diplômés (supérieur, puis CAP-BEP ou bac) des communes dont le centre est
+  dans l'isochrone de 45 minutes en voiture de l'adresse (Géoplateforme, à la demande) sont sommés
+  à partir de la base Diplômes-Formation de l'Insee ; les projets de recrutement des métiers de
+  l'électricité, du froid et de la maintenance (seed `metiers_techniques_bmo`) viennent de
+  l'enquête BMO de France Travail, ramenée au département faute de table du bassin d'emploi vers
+  la commune. Une ligne d'information, sans effet sur le verdict.
 - **Prix des locaux** : les ventes de locaux d'activité des cinq dernières années publiées (DVF, un fichier de ~100 Mo par année, lu en flux) donnent la médiane au m² par commune, le département en repli sous 5 ventes ; DVF ne sépare pas les bureaux des commerces et entrepôts, ne contient aucun loyer et ignore l'Alsace, la Moselle et Mayotte.
 - **Charte** : couleurs et polices de la carte, du PDF et des graphiques viennent d'un seul module,
   `reporting/charte.py` (papier clair, encre vert nuit, titres verts, vert pour le favorable, orange pour « à
@@ -323,7 +329,7 @@ quart de minute, chacun avec ce qu'il attend (domaine de tension, raccordement, 
 électrique) : `essentiel` à 12 MW à Chilly-Mazarin, `diagnose` à 45 MW, `compare` de deux adresses,
 une adresse en Corse et un appel à `/api/analyse` de l'application. `--rapide` saute `pytest`,
 `--sans-essai` saute l'essai réel, `--complet` y ajoute un `diagnose` avec les sources à la
-demande et nomme celle qui ne répond pas. 920 tests sans réseau, dont un
+demande et nomme celle qui ne répond pas. 938 tests sans réseau, dont un
 `dbt build` complet sur une base synthétique qui reproduit les pièges des sources, plus les tests de
 données dbt. La couverture est mesurée à chaque run complet (`pytest --cov`, lignes et branches : 94,6 % le 10 novembre 2026) et la suite échoue sous 92,5 %. Une matrice joue chaque activité à chaque palier de puissance, dans chaque territoire et chaque format, par la vraie ligne de commande, et chaque source à la demande est jouée contre huit pannes. Les sorties de `essentiel`, `diagnose` et `compare` sont comparées à des références figées (`ingestion/tests/references/`) : après un changement de libellé voulu, `pytest ingestion/tests/test_references.py --maj-references` les réécrit, et leur diff se relit avant de commiter. Six parcours de l'application sont joués dans Chromium par `pytest-playwright` (`test_navigateur.py`, sautés si le paquet n'est pas installé) contre le vrai serveur et la base synthétique, réseau coupé : accueil, adresse, verdict et PDF ; adresse ambiguë ; deux adresses, tableau et CSV ; courbe gardée puis retirée ; serveur arrêté ; page ouverte en `file://`. Toute erreur de console ou requête hors de la machine fait échouer le parcours. La CI GitHub Actions joue `ruff` et `pytest` à chaque PR.
 
@@ -347,6 +353,8 @@ données dbt. La couverture est mesurée à chaque run complet (`pytest --cov`, 
 [chantiers de transport combiné de SNCF Réseau](https://www.data.gouv.fr/datasets/chantiers-de-transport-combines) (ODbL) ·
 [ventes immobilières DVF](https://www.data.gouv.fr/en/datasets/dvf) (DGFiP, Licence Ouverte 2.0) ·
 [Cartofriches](https://cartofriches.cerema.fr) (Cerema, Licence Ouverte 2.0) ·
+[base Diplômes-Formation du recensement](https://www.insee.fr/fr/statistiques/9006527) (Insee, Licence Ouverte 2.0) ·
+[enquête Besoins en main-d'œuvre](https://www.data.gouv.fr/datasets/561fa564c751df4f2acdbb48) (France Travail, Licence Ouverte) ·
 [BD TOPO et calcul d'itinéraire de la Géoplateforme](https://geoservices.ign.fr) (IGN, Licence Ouverte) ·
 [VigiEau](https://vigieau.gouv.fr) (ministère de la Transition écologique) ·
 [zones de répartition des eaux du Sandre](https://www.sandre.eaufrance.fr/atlas/srv/api/records/e5325942-18f6-472c-973a-1f35bb207eb0) (référentiel ZRPE, Licence Ouverte) ·
