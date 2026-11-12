@@ -20,7 +20,7 @@ en sort pour devenir une ligne de « État » (skill `cloturer-etape`).
 `python .claude/scripts/verifier.py` joue dans l'ordre ce que la CI joue, puis l'essai réel :
 
 1. `ruff check .` et `ruff format --check .`
-2. `pytest` (938 tests sans réseau, dont six parcours de l'application dans Chromium, couverture mesurée, plancher 92,5 %, dont un `dbt build` sur base synthétique ;
+2. `pytest` (939 tests sans réseau, dont sept parcours de l'application dans Chromium, couverture mesurée, plancher 92,5 %, dont un `dbt build` sur base synthétique ;
    sorties de référence réécrites par `pytest ingestion/tests/test_references.py --maj-references`)
 3. essai réel, cinq cas avec leur attendu (warehouse et réseau requis) : `essentiel` à
    Chilly-Mazarin (12 MW et 70 000 MWh), `diagnose` à 45 MW, `compare`, Ajaccio, `/api/analyse`
