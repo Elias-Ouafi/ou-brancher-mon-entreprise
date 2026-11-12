@@ -105,6 +105,11 @@ class Settings(BaseSettings):
     # Lien permanent data.gouv.fr : il suit la dernière version publiée de Cartofriches
     friches_url: str = "https://www.data.gouv.fr/fr/datasets/r/74feb3ed-5f9f-4ef8-8fab-b0128d569a99"
 
+    # Fiche du jeu, pas une ressource : l'archive change de nom à chaque publication mensuelle
+    reseaux_chaleur_jeu_url: str = (
+        "https://www.data.gouv.fr/api/1/datasets/64f05d3568e4d575eb454ffe/"
+    )
+
     altimetrie_base_url: str = "https://data.geopf.fr/altimetrie"
 
     # Base Diplômes-Formation du recensement (Insee) et enquête BMO (France Travail) : le

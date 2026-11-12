@@ -35,6 +35,7 @@ from ingestion.datasets import (
     POSTES_RTE,
     PROFILS_CHARGE_SUP36,
     RECRUTEMENTS_BMO,
+    RESEAUX_CHALEUR,
     RTE_ECOWATT,
     RTE_TEMPO,
     SITES_PRODUCTION,
@@ -776,6 +777,44 @@ def friches() -> list[dict[str, Any]]:
     ]
 
 
+# Réseaux de chaleur autour de Lyon (45.75 N, 4.85 E) : un tracé à 1 et 1,5 km (classé), un réseau
+# sans identifiant ni tracé à 3 km à l'est, un réseau à cheval sur deux départements à 6 km, un
+# autre à 12 km, hors rayon ; le chargement précédent avait un point à 200 m, retiré depuis
+def reseaux_chaleur(ancien: bool = False) -> list[dict[str, Any]]:
+    def point(reseau_id, rang, nord_km, est_km=0.0, **autres):
+        return {
+            "reseau_id": reseau_id,
+            "rang": str(rang),
+            "nom_reseau": f"Réseau {reseau_id}",
+            "communes": "Lyon",
+            "departements": "Rhône",
+            "gestionnaire": "Exploitant",
+            "a_trace": "oui",
+            "classe": "non",
+            "taux_enr_pct": 50.0,
+            "latitude": 45.75 + nord_km / 111.0,
+            "longitude": 4.85 + est_km / (111.0 * 0.698),
+        } | autres
+
+    if ancien:
+        return [point("6901C", 3, 0.2)]
+    return [
+        point("6901C", 1, 1.0, nom_reseau="Lyon Centre", classe="oui", taux_enr_pct=65.0),
+        point("6901C", 2, 1.5, nom_reseau="Lyon Centre", classe="oui", taux_enr_pct=65.0),
+        point(
+            "sans-id:Chaufferie Est",
+            1,
+            0.0,
+            3.0,
+            nom_reseau="Chaufferie Est",
+            a_trace="non",
+            taux_enr_pct=None,
+        ),
+        point("6902C", 1, 0.0, -6.0, departements="Rhône, Ain"),
+        point("6903C", 1, 12.0),
+    ]
+
+
 # Lyon et Colombier-Saugnieu (69) et L'Abergement-Clémenciat (01) autour de Lyon, Ajaccio à part ;
 # Bouguenais n'a pas de diplômes : la commune est absente du fichier comme Mayotte
 def diplomes_commune() -> list[dict[str, Any]]:
@@ -820,9 +859,12 @@ def recrutements_bmo() -> list[dict[str, Any]]:
 
 
 def load_bronze(
-    database: Path, tmp_path: Path, spec: DatasetSpec, records: list[dict[str, Any]]
+    database: Path,
+    tmp_path: Path,
+    spec: DatasetSpec,
+    records: list[dict[str, Any]],
+    ingested_at: datetime = datetime(2026, 7, 1, 3, 0, tzinfo=UTC),
 ) -> None:
-    ingested_at = datetime(2026, 7, 1, 3, 0, tzinfo=UTC)
     table = records_to_table(records, spec=spec, ingested_at=ingested_at)
     path = write_parquet(
         table,
@@ -884,6 +926,14 @@ def build_warehouse(tmp_path: Path, *, with_tempo: bool = True) -> Path:
     load_bronze(database, tmp_path, CONTINUITE_ALIMENTATION, continuite_alimentation())
     load_bronze(database, tmp_path, VENTES_LOCAUX, ventes_locaux())
     load_bronze(database, tmp_path, FRICHES, friches())
+    load_bronze(
+        database,
+        tmp_path,
+        RESEAUX_CHALEUR,
+        reseaux_chaleur(ancien=True),
+        datetime(2026, 6, 1, 3, 0, tzinfo=UTC),
+    )
+    load_bronze(database, tmp_path, RESEAUX_CHALEUR, reseaux_chaleur())
     load_bronze(database, tmp_path, DIPLOMES_COMMUNE, diplomes_commune())
     load_bronze(database, tmp_path, RECRUTEMENTS_BMO, recrutements_bmo())
     ensure_bronze_tables(settings=Settings(_env_file=None, duckdb_path=database))
