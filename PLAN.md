@@ -233,10 +233,7 @@ tâche planifiée.
   `test_cas_usage.py`, qui échouera le jour où c'est corrigé) ;
 - le rendu 3D de la carte (vues, tuile, animations) n'est vérifié qu'à la main (skill
   `essai-carte`) : les parcours du navigateur contrôlent la fiche et les panneaux, pas l'image ;
-- la CI ne tourne que sous Ubuntu alors que le poste est sous Windows (console cp1252, chemins) ;
-- sous Windows, le parcours « deux adresses » de `test_navigateur.py` échoue par intermittence : l'analyse des deux
-  adresses dépasse le délai de 5 s de Playwright avant que la fiche côte à côte ne s'affiche. À
-  rendre robuste avec T8.
+- la CI ne tourne que sous Ubuntu alors que le poste est sous Windows (console cp1252, chemins).
 
 | Ordre | Étape | Contenu | Critère |
 |---|---|---|---|
