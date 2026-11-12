@@ -17,6 +17,8 @@ dependencies = [
     "pydantic-settings>=2.2",
     # zoneinfo n'a pas de base de fuseaux sur Windows ni dans les images slim
     "tzdata>=2024.1",
+    # classeur xlsx de l'enquête BMO (France Travail), seul format publié
+    "openpyxl>=3.1",
 ]
 
 [project.scripts]

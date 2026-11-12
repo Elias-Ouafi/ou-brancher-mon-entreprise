@@ -12,6 +12,7 @@ from ingestion.datasets import (
     CHANTIERS_RAIL_ROUTE,
     COMMUNES_CENTRES,
     CONTINUITE_ALIMENTATION,
+    DIPLOMES_COMMUNE,
     EDF_SEI_PRODUCTION,
     EMBER_INTENSITE_CARBONE,
     ENEDIS_CONSO_ENTREPRISES,
@@ -23,6 +24,7 @@ from ingestion.datasets import (
     NATIONAL_TR,
     PORTS_FRET,
     PROFILS_CHARGE_SUP36,
+    RECRUTEMENTS_BMO,
     RTE_ECOWATT,
     RTE_TEMPO,
     SITES_PRODUCTION,
@@ -43,6 +45,7 @@ from ingestion.extract_eurostat import EurostatClient
 from ingestion.extract_fret import telecharger_aeroports, telecharger_chantiers, telecharger_ports
 from ingestion.extract_friches import telecharger_friches
 from ingestion.extract_gaspar import lire_export, lire_plans, telecharger_archive
+from ingestion.extract_main_oeuvre import telecharger_diplomes, telecharger_recrutements
 from ingestion.extract_odre import ExtractionWindow, OdreClient
 from ingestion.extract_production import telecharger_centres, telecharger_sites
 from ingestion.extract_rte import DayRange, RteEcowattClient, RteTempoClient
@@ -541,6 +544,21 @@ def run_friches_ingestion(
 ) -> tuple[ExtractionOutcome, LoadResult]:
     settings = settings or get_settings()
     return _charger_fichier(telecharger_friches(settings=settings), FRICHES, settings, run_id, now)
+
+
+def run_main_oeuvre_ingestion(
+    *,
+    settings: Settings | None = None,
+    run_id: str = "manual",
+    now: datetime | None = None,
+) -> tuple[ExtractionOutcome, LoadResult]:
+    settings = settings or get_settings()
+    _charger_fichier(
+        telecharger_diplomes(settings=settings), DIPLOMES_COMMUNE, settings, run_id, now
+    )
+    return _charger_fichier(
+        telecharger_recrutements(settings=settings), RECRUTEMENTS_BMO, settings, run_id, now
+    )
 
 
 def run_edf_sei_ingestion(

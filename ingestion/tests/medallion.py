@@ -19,6 +19,7 @@ from ingestion.datasets import (
     CONTINUITE_ALIMENTATION,
     CONTRAINTES_OUVRAGES,
     CONTRAINTES_REGIONALES,
+    DIPLOMES_COMMUNE,
     EDF_SEI_PRODUCTION,
     EMBER_INTENSITE_CARBONE,
     ENEDIS_CONSO_ENTREPRISES,
@@ -33,6 +34,7 @@ from ingestion.datasets import (
     PORTS_FRET,
     POSTES_RTE,
     PROFILS_CHARGE_SUP36,
+    RECRUTEMENTS_BMO,
     RTE_ECOWATT,
     RTE_TEMPO,
     SITES_PRODUCTION,
@@ -774,6 +776,49 @@ def friches() -> list[dict[str, Any]]:
     ]
 
 
+# Lyon et Colombier-Saugnieu (69) et L'Abergement-Clémenciat (01) autour de Lyon, Ajaccio à part ;
+# Bouguenais n'a pas de diplômes : la commune est absente du fichier comme Mayotte
+def diplomes_commune() -> list[dict[str, Any]]:
+    return [
+        {
+            "code_commune": commune,
+            "millesime": "2023",
+            "nb_cap_bep": cap,
+            "nb_bac": bac,
+            "nb_superieur": sup,
+            "nb_15_ans_plus": total,
+        }
+        for commune, cap, bac, sup, total in [
+            ("69123", 40_000.0, 60_000.0, 250_000.0, 450_000.0),
+            ("69299", 500.0, 600.0, 700.0, 2_500.0),
+            ("01001", 150.0, 120.0, 80.0, 600.0),
+            ("2A004", 6_000.0, 7_000.0, 12_000.0, 30_000.0),
+        ]
+    ]
+
+
+# Rhône : deux métiers techniques du seed (l'un avec un bassin sous secret) et un métier hors seed
+def recrutements_bmo() -> list[dict[str, Any]]:
+    def ligne(departement, metier, projets, difficiles, bassins=1.0, secrets=0.0):
+        return {
+            "code_departement": departement,
+            "code_metier": metier,
+            "libelle_metier": f"Métier {metier}",
+            "annee": "2026",
+            "projets": projets,
+            "projets_difficiles": difficiles,
+            "nb_bassins": bassins,
+            "nb_bassins_secrets": secrets,
+        }
+
+    return [
+        ligne("69", "G1X74", 300.0, 240.0),
+        ligne("69", "C2X70", 100.0, 60.0, bassins=3.0, secrets=1.0),
+        ligne("69", "A0X40", 5_000.0, 1_000.0),
+        ligne("2A", "B2X32", 40.0, 30.0),
+    ]
+
+
 def load_bronze(
     database: Path, tmp_path: Path, spec: DatasetSpec, records: list[dict[str, Any]]
 ) -> None:
@@ -839,6 +884,8 @@ def build_warehouse(tmp_path: Path, *, with_tempo: bool = True) -> Path:
     load_bronze(database, tmp_path, CONTINUITE_ALIMENTATION, continuite_alimentation())
     load_bronze(database, tmp_path, VENTES_LOCAUX, ventes_locaux())
     load_bronze(database, tmp_path, FRICHES, friches())
+    load_bronze(database, tmp_path, DIPLOMES_COMMUNE, diplomes_commune())
+    load_bronze(database, tmp_path, RECRUTEMENTS_BMO, recrutements_bmo())
     ensure_bronze_tables(settings=Settings(_env_file=None, duckdb_path=database))
     dbt_build(database, tmp_path)
     return database

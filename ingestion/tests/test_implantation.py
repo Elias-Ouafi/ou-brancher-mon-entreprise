@@ -16,6 +16,7 @@ from ingestion.config import Settings
 from ingestion.diagnostic import CoutProfil, Diagnostic, lire_diagnostic
 from ingestion.eau import SituationEau
 from ingestion.georisques import Voisinage, lire_rapport
+from ingestion.main_oeuvre import MainOeuvre
 from ingestion.solaire import Productible
 from ingestion.tests.conftest import FIXTURES_DIR
 from ingestion.tests.medallion import DBT_BIN
@@ -81,6 +82,7 @@ def _lyon(medallion_db: Path) -> Diagnostic:
         acces_routier=[],
         productible=Productible(1100.0, None, None),
         solaire_consulte=True,
+        main_oeuvre=MainOeuvre(45, 2, 250_700.0, 101_100.0, 452_500.0, "2023"),
     )
 
 

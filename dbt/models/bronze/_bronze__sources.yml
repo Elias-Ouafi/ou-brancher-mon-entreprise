@@ -239,6 +239,26 @@ sources:
             data_tests: [unique, not_null]
           - name: latitude
             data_tests: [not_null]
+      - name: diplomes_commune
+        description: >
+          Diplôme le plus élevé des 15 ans ou plus non scolarisés, retraités compris, par commune
+          (Insee, base Diplômes-Formation du recensement, Licence Ouverte 2.0), dernier
+          millésime du fichier : CAP-BEP, bac (général, technologique, professionnel, brevet
+          professionnel), supérieur, et la population de 15 ans ou plus. Paris, Lyon et
+          Marseille en commune entière ; Mayotte absente du fichier.
+        columns:
+          - name: code_commune
+            data_tests: [unique, not_null]
+      - name: recrutements_bmo
+        description: >
+          Enquête Besoins en main-d'œuvre (France Travail, Licence Ouverte) : projets de
+          recrutement et projets jugés difficiles par département et par métier BMO, sommés sur
+          les bassins d'emploi du département. Les bassins sous secret statistique (« * ») ne
+          sont pas comptés, mais leur nombre est gardé (`nb_bassins_secrets`).
+        data_tests:
+          - unique_combination:
+              arguments:
+                columns: [code_departement, code_metier]
       - name: enedis_continuite_alimentation
         description: >
           Indicateur réglementaire de continuité d'alimentation (Enedis, data-fair, licence

@@ -107,6 +107,18 @@ class Settings(BaseSettings):
 
     altimetrie_base_url: str = "https://data.geopf.fr/altimetrie"
 
+    # Base Diplômes-Formation du recensement (Insee) et enquête BMO (France Travail) : le
+    # millésime est dans l'adresse, à changer à chaque publication
+    diplomes_url: str = (
+        "https://www.insee.fr/fr/statistiques/fichier/9006527/DS_RP_DIPLOMES_PRINC_2023_CSV_FR.zip"
+    )
+    bmo_url: str = (
+        "https://www.francetravail.org/files/live/sites/peorg/files/documents/"
+        "Statistiques-et-analyses/Open-data/BMO/Base-open-data-BMO-2026.xlsx"
+    )
+    isochrone_url: str = "https://data.geopf.fr/navigation/isochrone"
+    isochrone_ressource: str = "bdtopo-valhalla"
+
     rte_client_id: str | None = None
     rte_client_secret: SecretStr | None = None
     ecowatt_client_id: str | None = None
