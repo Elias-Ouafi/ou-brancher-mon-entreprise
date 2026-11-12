@@ -19,8 +19,14 @@ env:
 
 jobs:
   lint-test:
-    name: ruff + pytest + dbt build
-    runs-on: ubuntu-latest
+    # Le nom Ubuntu reste celui exigé par la protection de main ; Windows est le poste de
+    # développement : console cp1252 et chemins y piègent ce qu'Ubuntu laisse passer
+    name: ruff + pytest + dbt build${{ matrix.os == 'windows-latest' && ' (Windows)' || '' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       # Actions figées sur un commit : un tag déplacé ne peut pas injecter de code
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -38,7 +44,7 @@ jobs:
           java-version: "17"
 
       - name: Install uv
-        run: pip install "uv==${UV_VERSION}"
+        run: pip install "uv==${{ env.UV_VERSION }}"
 
       # dbt et report activent les tests de bout en bout
       - name: Install dependencies
