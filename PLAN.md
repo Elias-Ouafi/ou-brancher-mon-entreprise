@@ -91,7 +91,7 @@ voisinage du site (argiles, cavités, Seveso, installations classées, sols poll
 | Rapport mensuel carbone et créneaux Tempo, sur le calendrier réel de l'API RTE (vérifié le 25 octobre sur septembre 2026 et janvier 2026) | `tempo`, `report` |
 | Profils de charge réels des points de plus de 250 kVA, industrie et tertiaire (Enedis, 12 mois, 843 072 demi-heures chargées le 29 octobre) : journée type pondérée par le nombre de points, chiffrée heure par heure comme le profil du seed | `ingestion/extract_enedis.py`, `profils_charge_sup36`, `profils_charge_reels`, `fct_cout_horaire_profil` |
 | Signal Ecowatt (J à J+3) relevé à la demande par `ecowatt`, jours orange et rouges dans le rapport mensuel | `RteEcowattClient`, `rte_ecowatt`, `ecowatt_jours`, `ligne_ecowatt` |
-| Modèle en étoile : 3 dimensions (`dim_commune`, `dim_date`, `dim_risque`) et 4 faits (conso des entreprises, prix des locaux, risques, mix journalier), clés étrangères testées sur le warehouse réel | `dbt/models/etoile/` |
+| Modèle en étoile : 5 dimensions (`dim_commune` avec le centre de la commune, `dim_departement_region`, `dim_date` de 1930 à 2035, `dim_risque`, `dim_naf`) et 8 faits (conso des entreprises, prix des locaux, risques, plans de prévention, diplômés, recrutements techniques, continuité, mix journalier), clés étrangères testées sur le warehouse réel ; `diagnose`, `compare` et l'application y lisent les entreprises de la commune, risques et plans, continuité, recrutements et diplômés (sorties de référence inchangées) | `dbt/models/etoile/` |
 | Exemples du README sur le persona : captures des deux vues et PDF de `diagnose` pour 12 MW et 70 000 MWh à Chilly-Mazarin, courbe d'exemple HTA de 12 MW (journée type Enedis de l'industrie mise à l'échelle) ; un seul nom, « Où brancher mon entreprise », sur la carte | `docs/exemples/` |
 | Voisinage du site, à la demande par l'API Géorisques : argiles à l'adresse, cavités à moins de 500 m, établissements Seveso en exploitation à moins de 5 km (distance), installations classées sous autorisation ou enregistrement à moins de 1 km, sols pollués à moins de 500 m (SIS, SUP, sites en instruction, CASIAS) ; à Chilly-Mazarin : argiles fortes, SMCA (Seveso seuil bas) à 4,8 km, 2 installations classées, 11 anciens sites CASIAS | `GeorisquesClient.voisinage`, `completer_voisinage`, `lignes_voisinage` |
 | Charte commune : papier clair et encre bleu nuit, vert pour le favorable, orange pour « à vérifier », Spectral et Inter embarquées (OFL) dans la carte, le PDF et les graphiques ; le PDF garde ₂, ≥ et → | `reporting/charte.py`, `reporting/polices/` |
@@ -166,18 +166,18 @@ Le détail de chaque ligne est dans son lot, plus bas.
 
 | Ordre | Étape | Condition ou date |
 |---|---|---|
-| 1 | **Étoile d'abord** : chaque nouveau fait gold a ses clés vers `dim_commune` et `dim_date` ; l'application lit le schéma `etoile` là où le grain existe | Sorties de référence inchangées |
-| 2 | **Lot T** Qualité des tests : CI sous Windows (T8) ; corriger le gestionnaire affiché en Corse et outre-mer | Le gestionnaire demande une source officielle |
-| 3 | **Carte, lot B** : prototype three.js r186 hors ligne (une demi-journée), puis lots C et D | Le lot D épingle `compare` sur la carte |
-| 4 | Trier les « Manques repérés et pistes » du lot A | Garder l'utile et faisable vite, reporter le long |
-| 5 | **8, 30, S, 6** Prix au-delà de 150 GWh, modèle prédictif, ambiance sonore, international | Chacune sa condition (lot B) ; l'international en dernier |
+| 1 | **Lot T** Qualité des tests : CI sous Windows (T8) ; corriger le gestionnaire affiché en Corse et outre-mer | Le gestionnaire demande une source officielle |
+| 2 | **Carte, lot B** : prototype three.js r186 hors ligne (une demi-journée), puis lots C et D | Le lot D épingle `compare` sur la carte |
+| 3 | Trier les « Manques repérés et pistes » du lot A | Garder l'utile et faisable vite, reporter le long |
+| 4 | **8, 30, S, 6** Prix au-delà de 150 GWh, modèle prédictif, ambiance sonore, international | Chacune sa condition (lot B) ; l'international en dernier |
 
 Pas à faire maintenant : l'étape **19** (capacité en soutirage de RTE) et les mises à jour des barèmes et des sources attendent leur date, listée dans « À se rappeler aux dates ».
 
 ### Lot A : à prendre maintenant
 
-L'étape « Étoile d'abord » tient dans sa ligne ci-dessus. Restent ici les commandes gardées hors
-de l'application, les limites gardées faute de source et les manques à trier.
+Les commandes gardées hors de l'application, les limites gardées faute de source et les manques
+à trier. Règle pour toute nouvelle source : son fait gold entre dans l'étoile avec ses clés vers
+`dim_commune` (ou `dim_departement_region`) et `dim_date`.
 
 **Application et ligne de commande.** L'application couvre
 `essentiel`, `diagnose`, `compare`, `carte` et toutes les options de projet, `--courbe` comprise.
@@ -240,7 +240,7 @@ tâche planifiée.
 - le rendu 3D de la carte (vues, tuile, animations) n'est vérifié qu'à la main (skill
   `essai-carte`) : les parcours du navigateur contrôlent la fiche et les panneaux, pas l'image ;
 - la CI ne tourne que sous Ubuntu alors que le poste est sous Windows (console cp1252, chemins) ;
-- sous Windows, le parcours « deux adresses » de `test_navigateur.py` échoue : l'analyse des deux
+- sous Windows, le parcours « deux adresses » de `test_navigateur.py` échoue par intermittence : l'analyse des deux
   adresses dépasse le délai de 5 s de Playwright avant que la fiche côte à côte ne s'affiche. À
   rendre robuste avec T8.
 
@@ -561,7 +561,7 @@ et la chaleur fatale n'est pas établi.
 | Eau, arrêtés du jour : VigiEau (API publique du ministère de la Transition écologique, sans clé, profil « entreprise ») à la demande, sous `--sans-risques` coupé comme Géorisques et l'urbanisme ; niveau le plus haut des zones en vigueur (vigilance, alerte, alerte renforcée, crise) ; situation du jour, pas un risque futur ; aucun arrêté : dit ; volumes BNPE écartés (ils ne mesurent pas la tension). Sans effet sur le verdict : la ressource réellement utilisée par un data center ne se déduit pas de l'adresse |
 | Accès routier : calcul d'itinéraire de la Géoplateforme (ressource `bdtopo-pgr`, profil voiture) vers les pôles de fret de `fct_poles_fret` (centre de la commune pour ports et aéroports, ordre de grandeur) ; pas de profil poids lourd, dit dans la limite ; l'échangeur autoroutier n'est pas identifiable dans la BD TOPO (bretelles sans classement) : seule la distance à vol d'oiseau jusqu'au tronçon « type autoroutier » classé autoroute (10 km au plus) est donnée ; à la demande |
 | Bâtiment et solaire : bâtiment de la BD TOPO à 60 m au plus de l'adresse (le plus proche si l'adresse n'est pas dessus) et PVGIS 5.3 (JRC) pour un kWc de panneaux fixes, inclinaison et orientation optimales, 14 % de pertes ; aucun dimensionnement de centrale déduit de l'emprise (hypothèses non sourcées) |
-| Étoile en schéma `etoile` au-dessus du gold, sans renommer les `fct_*` ; `dim_commune` reprend les communes des faits absentes du référentiel (clé étrangère jamais orpheline) |
+| Étoile en schéma `etoile` au-dessus du gold, sans renommer les `fct_*` ; `dim_commune` reprend les communes des faits absentes du référentiel (clé étrangère jamais orpheline) et porte le centre de la commune. Le diagnostic lit l'étoile quand le grain est la commune, le département ou le jour ; il garde le gold pour les polygones, les distances et le repli du prix des locaux sur le département. Une année publiée devient le 1er janvier de l'année (`jour_reference`) pour sa clé vers `dim_date`. Dimension des départements nommée `dim_departement_region` : le seed `dim_departement` porte déjà le nom |
 | Accise réduite selon l'activité : `--activite` choisit aussi le profil de charge de l'acheminement (journée type Enedis > 250 kVA pour l'industrie, puissance constante dite telle pour les autres) ; tarifs de la loi de finances 2026 (loi n° 2026-103) lus dans le formulaire DGFiP 2040-TIC-SD 2026, en mode « table » de pdftotext (le mode « layout » décalait d'une ligne libellés et montants ; alignement vérifié sur les tarifs normaux, dont le montant figure dans le libellé), et recoupés avec le texte consolidé du CIBS sur Légifrance : 5,5 €/MWh (grande consommatrice, dès 0,5 % d'électro-intensité), 3 (électro-sensible, dès 2,25 %), 0,5 (électro-intensive, dès 6,75 %), 0,5 (exposée à la concurrence internationale, L312-72), 10 pour les centres de stockage de données sur la fraction au-delà de 1 GWh par an (L312-64, L312-70) ; seed `accise_electricite` à une ligne par catégorie. Tarif réduit total, sans majoration ZNI à part (le formulaire n'en déclare pas). Industriel : seulement sans `--activite` ou avec `industrie` (sections B à E de la NACE) ; data center : refusé quand `--va` montre moins de 2,25 % (condition 8 de L312-70), les sept autres conditions dites, pas vérifiées ; aucune réduction pour la recharge ni l'entrepôt. Montants donnés à côté du prix moyen Eurostat, sans l'en retrancher (on ignore la part d'accise réduite dans la moyenne de la tranche) |
 | Voisinage du site : API Géorisques à la demande, coupée par `--sans-risques`, en plus du rapport à l'adresse et indépendante de lui (l'un peut répondre sans l'autre). Rayons choisis par l'outil, aucun texte n'en fixe : argiles au point, cavités et sols pollués à 500 m (filtre de l'API, sans distance : SIS, SUP et instructions n'ont qu'un polygone), installations classées à 1 km, Seveso à 5 km ; seules les installations sous autorisation ou enregistrement « en exploitation avec titre » sont retenues (« Non ICPE » et « Autres régimes » n'ont ni titre ni état) ; un ancien site CASIAS n'est pas un sol pollué avéré. Le critère « risques » du verdict reste réglé par les plans de prévention (un Seveso seuil haut impose un PPRT, déjà compté) : le voisinage complète son détail (Seveso le plus proche, SIS) sans changer son état |
 | Charte : direction « le relevé » sur fond papier clair (`#F4F1EA`), encre `#14202B`, vert `#2E7D5B`, orange `#C2571A`, dans `reporting/charte.py`, seule source des couleurs de la carte (variables CSS injectées, lues par la scène), du PDF et des graphiques ; Tempo garde ses couleurs. Spectral (titres) et Inter (texte, chiffres), licence OFL, depuis le dépôt Google Fonts, réduites au latin par fontTools, en base64 dans la page (`font-src data:`) et enregistrées dans reportlab et matplotlib ; l'échelle de note rouge → blanc → vert est gardée ; anneau des zones RTE et lien vers la zone à l'encre, plus en cyan additif (invisible sur papier) |

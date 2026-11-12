@@ -5,7 +5,9 @@ with referentiel as (
     select
         code_commune as code_insee_commune,
         nom as commune,
-        code_departement
+        code_departement,
+        longitude,
+        latitude
     from {{ source('bronze', 'communes_centres') }}
 ),
 
@@ -15,6 +17,10 @@ communes_des_faits as (
     select code_zone from {{ ref('fct_prix_locaux') }} where niveau = 'commune'
     union
     select code_insee_commune from {{ ref('fct_risques_commune') }}
+    union
+    select code_insee_commune from {{ ref('fct_plans_prevention_commune') }}
+    union
+    select code_insee_commune from {{ ref('fct_diplomes_commune') }}
 ),
 
 toutes as (
@@ -24,7 +30,9 @@ toutes as (
         coalesce(
             referentiel.code_departement,
             {{ code_departement('code_insee_commune') }}
-        ) as code_departement
+        ) as code_departement,
+        referentiel.longitude,
+        referentiel.latitude
     from communes_des_faits
     full join referentiel using (code_insee_commune)
 )
@@ -36,7 +44,10 @@ select
     departements.departement,
     departements.code_insee_region,
     regions.region,
-    regions.est_zni
+    regions.est_zni,
+    -- Centre de la commune (geo.api.gouv.fr) ; nul pour une commune absente du référentiel
+    toutes.longitude,
+    toutes.latitude
 from toutes
 left join {{ ref('dim_departement') }} as departements
     on departements.code_departement = toutes.code_departement
