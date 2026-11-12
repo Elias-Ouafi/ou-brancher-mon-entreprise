@@ -223,6 +223,9 @@ def test_page_en_file_reste_en_lecture_seule(ecran: Page, reglages: Settings) ->
     chemin = carte.generer_carte(settings=reglages)
     ecran.goto(chemin.resolve().as_uri())
 
+    # Les modules embarqués s'importent en file://, sans requête (la fixture `ecran` le vérifie)
+    ecran.wait_for_function("() => window.THREE && THREE.REVISION === '186'")
+    expect(ecran.locator("#scene canvas")).to_be_visible()
     expect(ecran.locator("#city")).to_contain_text("python -m ingestion.cli app")
     expect(ecran.locator("#accueil")).to_be_hidden()
     expect(ecran.locator("#nouvelle")).to_be_hidden()
@@ -235,6 +238,8 @@ def test_ambiance_sonore_coupee_puis_selon_la_filiere_dominante(
     ecran.goto(carte.generer_carte(settings=reglages).resolve().as_uri())
     son = ecran.locator("#son")
     expect(son).to_have_attribute("aria-pressed", "false")
+    # Le script de la carte ne s'exécute qu'après l'import de three.js
+    ecran.wait_for_function("() => window.sonDominant")
 
     # Plus de la moitié de la puissance de la case, sinon aucun son ; le solaire est silencieux
     regles = ecran.evaluate(

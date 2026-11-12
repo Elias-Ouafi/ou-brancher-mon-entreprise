@@ -378,7 +378,7 @@ SDDR 2025 de RTE · barèmes et grille TURPE 7 de la CRE ·
 [formulaire 2040-TIC-SD](https://www.impots.gouv.fr/sites/default/files/formulaires/2040-tic-sd/2026/2040-tic-sd_5321.pdf) (DGFiP) pour l'accise.
 
 Code sous [licence MIT](LICENSE) ; les données restent sous la licence de leurs producteurs.
-[three.js](https://threejs.org) r128, embarqué dans `reporting/vendor/`, est sous licence MIT.
+[three.js](https://threejs.org) r186, embarqué dans `reporting/vendor/`, est sous licence MIT.
 Les polices [Spectral](https://github.com/productiontype/Spectral) (Production Type) et
 [Inter](https://github.com/rsms/inter), embarquées dans `reporting/polices/`, sont sous licence
 SIL Open Font License 1.1 (fichiers `OFL-*.txt`).
