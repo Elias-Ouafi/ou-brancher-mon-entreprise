@@ -545,6 +545,24 @@ EUROSTAT_PRIX_ENTREPRISES = DatasetSpec(
 )
 
 
+# Diplôme le plus élevé des 15 ans ou plus par commune (recensement, Insee), dernier millésime
+DIPLOMES_COMMUNE = DatasetSpec(
+    dataset_id="diplomes-commune",
+    keys=(code("code_commune"),),
+    attributes=(period("millesime"),),
+    measures=measures("nb_cap_bep", "nb_bac", "nb_superieur", "nb_15_ans_plus"),
+    description="Diplôme le plus élevé des 15 ans ou plus par commune (Insee, recensement)",
+)
+
+# Projets de recrutement par département et métier (BMO, France Travail), bassins sommés
+RECRUTEMENTS_BMO = DatasetSpec(
+    dataset_id="recrutements-bmo",
+    keys=(code("code_departement"), code("code_metier")),
+    attributes=(label("libelle_metier"), period("annee")),
+    measures=measures("projets", "projets_difficiles", "nb_bassins", "nb_bassins_secrets"),
+    description="Projets de recrutement par département et métier (BMO, France Travail)",
+)
+
 SPECS: dict[str, DatasetSpec] = {
     spec.dataset_id: spec
     for spec in (
@@ -591,6 +609,8 @@ BRONZE_SPECS: tuple[DatasetSpec, ...] = (
     CONTINUITE_ALIMENTATION,
     VENTES_LOCAUX,
     FRICHES,
+    DIPLOMES_COMMUNE,
+    RECRUTEMENTS_BMO,
     *TERRITORIAL_SPECS,
 )
 

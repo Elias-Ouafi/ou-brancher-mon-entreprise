@@ -79,6 +79,7 @@ def test_rows_depend_on_the_address_only(medallion_db: Path) -> None:
         "Électricité décarbonée",
         "Locaux d'activité (vente DVF)",
         "Friches (Cartofriches)",
+        "Recrutements techniques (BMO)",
         "Parking à solariser (APER)",
         "Brancher ici ?",
     ]

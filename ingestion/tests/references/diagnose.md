@@ -95,12 +95,16 @@
 
 > **Limite.** Une zone de répartition des eaux dit un déficit structurel reconnu par arrêté, pas le débit ni le niveau de nappe du jour (voir les restrictions d'eau). Une zone souterraine vise un aquifère précis, parfois profond (Albien en Île-de-France) : le prélèvement n'est concerné que s'il puise dans cet aquifère. Hors zone, un prélèvement peut rester soumis à déclaration ou autorisation selon son volume (autres rubriques de R214-1) et aux arrêtés de restriction. La liste des communes classées est arrêtée par chaque préfet de département (R211-72) : le contour du Sandre peut en différer à la marge. Aucune zone n'est publiée en outre-mer dans ce référentiel.
 
-## 7. Foncier, desserte et prix des locaux d'activité (DVF)
+## 7. Foncier, desserte, main-d'œuvre et prix des locaux d'activité (DVF)
 
 - Obligation solaire : bâtiment neuf, extension ou rénovation lourde de plus de 500 m² au sol (industrie, entrepôt, commerce, bureaux) : énergie renouvelable ou végétalisation sur 40 % de la toiture au moins, 50 % à compter du 1er juillet 2027 (CCH L171-4)
 - Obligation solaire : parc de stationnement extérieur de plus de 1 500 m² : ombrières d'énergie renouvelable sur la moitié de sa surface (ou ombrières sur 35 % de cette moitié, le reste végétalisé), au plus tard le 1er juillet 2026 dès 10 000 m², le 1er juillet 2028 en dessous (loi APER, art. 40, modifiée le 26 novembre 2025)
 
 > **Limite.** Rappel de la règle, pas un avis juridique. La surface du parking n'est pas connue de l'outil : l'obligation est donnée par seuil. Un data center n'est pas cité en tant que tel parmi les usages : à qualifier avec le service instructeur. Le texte prévoit des exonérations motivées (contraintes techniques, de sécurité, architecturales ou patrimoniales, coût économiquement inacceptable, parking ombragé par des arbres) et un arrêté peut écarter ou adapter l'obligation pour une installation classée. La part de toiture des bâtiments existants est fixée par décret, non chiffrée ici. La capacité portante de la toiture n'est pas publique : la BDNB (CSTB, Licence Ouverte 2.0) donne au mieux le matériau de toiture, pas la structure.
+
+- Recrutements : 400 projets de recrutement en 2026 pour les métiers de l'électricité, du froid et de la maintenance dans le département, dont 75,0 % jugés difficiles par les employeurs ; 1 des 4 croisements bassin-métier sont sous secret statistique et ne sont pas comptés
+
+> **Limite.** Intentions d'embauche déclarées par les employeurs pour l'année, pas des embauches réalisées. Métiers retenus par l'outil (électricité, froid et conditionnement d'air, maintenance : seed metiers_techniques_bmo). Le département remplace le bassin d'emploi, faute de table officielle du bassin vers la commune ; les bassins sous secret statistique ne sont pas comptés, ce qui minore les projets.
 
 - Friches : 2 friches de 1 ha ou plus à moins de 10 km ; les plus proches : Site F1 à Lyon (friche industrielle, 5,0 ha, zone U, friche sans projet) à 2 km ; Site F2 à Lyon (friche industrielle, 3,0 ha, zone U, friche avec projet) à 4 km
 

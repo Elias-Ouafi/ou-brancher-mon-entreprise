@@ -22,7 +22,9 @@
     "enedis_continuite_alimentation": "2026-07-01",
     "ventes_locaux": "2026-07-01",
     "friches": "2026-07-01",
-    "zones_repartition_eaux": "2026-07-01"
+    "zones_repartition_eaux": "2026-07-01",
+    "diplomes_commune": "2026-07-01",
+    "recrutements_bmo": "2026-07-01"
   },
   "prix": null,
   "acheminement": {

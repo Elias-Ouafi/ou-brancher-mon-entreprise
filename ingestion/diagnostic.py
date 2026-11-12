@@ -32,6 +32,13 @@ from ingestion.georisques import (
     lire_zonage,
     risques_gaspar,
 )
+from ingestion.main_oeuvre import (
+    MINUTES_TRAJET,
+    MainOeuvre,
+    MainOeuvreError,
+    Recrutements,
+    lire_zone_trajet,
+)
 from ingestion.solaire import (
     ECHEANCE_EXISTANTS,
     ECHEANCE_GRAND_PARKING,
@@ -352,6 +359,21 @@ order by gid
 # répartition des eaux, autorisation dès 8 m³/h de capacité de prélèvement, déclaration sinon
 SEUIL_AUTORISATION_ZRE_M3H = 8
 
+_RECRUTEMENTS_SQL = """
+select
+    code_departement, annee, projets, projets_difficiles, part_difficiles, nb_lignes_secretes,
+    nb_lignes
+from gold.fct_recrutements_techniques_departement
+where code_departement = $departement
+"""
+
+# Communes dans l'emprise de l'isochrone ; le test point dans polygone se fait en Python
+_DIPLOMES_SQL = """
+select longitude, latitude, nb_superieur, nb_cap_bep_bac, nb_15_ans_plus, millesime
+from gold.fct_diplomes_commune
+where longitude between $lon_min and $lon_max and latitude between $lat_min and $lat_max
+"""
+
 # Friches d'au moins 1 ha à moins de 10 km à vol d'oiseau, les plus proches d'abord
 RAYON_FRICHES_KM = 10
 NB_FRICHES_AFFICHEES = 3
@@ -406,6 +428,8 @@ SOURCES_CHARGEES: dict[str, str] = {
     "ventes_locaux": "ventes de locaux DVF",
     "friches": "friches Cartofriches",
     "zones_repartition_eaux": "zones de répartition des eaux",
+    "diplomes_commune": "diplômes Insee",
+    "recrutements_bmo": "recrutements BMO",
 }
 # Au-delà, une source n'a pas été rechargée depuis plus d'un cycle mensuel de `refresh`
 AGE_MAX_JOURS = 45
@@ -816,6 +840,11 @@ class Diagnostic:
     friches: list[Friche] = field(default_factory=list)
     # Zones de répartition des eaux qui contiennent l'adresse ; `None` si elles ne sont pas chargées
     zones_repartition: list[ZoneRepartition] | None = None
+    # Métiers techniques du département (BMO) ; diplômés à moins de 45 min, calculés à la
+    # demande par `completer_main_oeuvre`
+    recrutements: Recrutements | None = None
+    main_oeuvre: MainOeuvre | None = None
+    main_oeuvre_erreur: str | None = None
 
     @property
     def commune_a_des_sites(self) -> bool:
@@ -1021,6 +1050,11 @@ def lire_diagnostic(
                 if "ventes_locaux" in chargements
                 else None
             )
+            recrutements = (
+                _une_ligne(connection, _RECRUTEMENTS_SQL, {"departement": departement})
+                if "recrutements_bmo" in chargements
+                else None
+            )
             poles_proches = connection.execute(
                 _POLES_PROCHES_SQL,
                 {
@@ -1096,6 +1130,7 @@ def lire_diagnostic(
         nb_friches=None if friches_proches is None else len(friches_proches),
         friches=(friches_proches or [])[:NB_FRICHES_AFFICHEES],
         zones_repartition=zones_repartition,
+        recrutements=None if recrutements is None else Recrutements(**recrutements),
         **ligne,
     )
 
@@ -1728,6 +1763,45 @@ def ligne_zones_repartition(zones: list[ZoneRepartition]) -> str:
         " autorisation dès"
         f" {SEUIL_AUTORISATION_ZRE_M3H} m³/h, à déclaration en dessous (R214-1, rubrique 1.3.1.0)"
     )
+
+
+def ligne_main_oeuvre(m: MainOeuvre) -> str:
+    if not m.nb_communes:
+        return (
+            f"non disponible : aucune commune recensée par l'Insee à moins de {m.minutes} min"
+            " en voiture"
+        )
+    communes = "commune" if m.nb_communes == 1 else f"{m.nb_communes} communes"
+    return (
+        f"{_nombre(round(m.nb_superieur, -2))} diplômés du supérieur et"
+        f" {_nombre(round(m.nb_cap_bep_bac, -2))} titulaires d'un CAP-BEP ou d'un bac, parmi"
+        f" {_nombre(round(m.nb_15_ans_plus, -2))} habitants de 15 ans ou plus ({communes} à"
+        f" moins de {m.minutes} min en voiture, recensement {m.millesime})"
+    )
+
+
+def ligne_recrutements(r: Recrutements) -> str:
+    if not r.projets:
+        ligne = (
+            f"aucun projet de recrutement déclaré en {r.annee} pour les métiers de l'électricité,"
+            " du froid et de la maintenance dans le département"
+        )
+    else:
+        difficiles = (
+            ""
+            if r.part_difficiles is None
+            else f", dont {_pourcentage(r.part_difficiles)} jugés difficiles par les employeurs"
+        )
+        ligne = (
+            f"{_nombre(r.projets)} projets de recrutement en {r.annee} pour les métiers de"
+            f" l'électricité, du froid et de la maintenance dans le département{difficiles}"
+        )
+    if r.nb_lignes_secretes:
+        ligne += (
+            f" ; {_nombre(r.nb_lignes_secretes)} des {_nombre(r.nb_lignes)} croisements"
+            " bassin-métier sont sous secret statistique et ne sont pas comptés"
+        )
+    return ligne
 
 
 def ligne_eau(eau: SituationEau) -> str:
@@ -2468,7 +2542,7 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
     if d.zones_repartition is not None:
         texte(s, f"Tension sur la ressource : {ligne_zones_repartition(d.zones_repartition)}")
         limite(s, "zones_repartition_eaux")
-    s = bloc("7. Foncier, desserte et prix des locaux d'activité (DVF)")
+    s = bloc("7. Foncier, desserte, main-d'œuvre et prix des locaux d'activité (DVF)")
     if d.urbanisme is not None:
         texte(s, f"Zonage d'urbanisme : {ligne_urbanisme(d.urbanisme)}")
         limite(s, "zonage_urbanisme")
@@ -2501,6 +2575,14 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
         limite(s, "acces_routier")
     elif d.acces_routier_erreur is not None:
         texte(s, f"Accès routier non évalué : {d.acces_routier_erreur}")
+    if d.main_oeuvre is not None:
+        texte(s, f"Main-d'œuvre : {ligne_main_oeuvre(d.main_oeuvre)}")
+        limite(s, "main_oeuvre")
+    elif d.main_oeuvre_erreur is not None:
+        texte(s, f"Main-d'œuvre non évaluée : {d.main_oeuvre_erreur}")
+    if d.recrutements is not None:
+        texte(s, f"Recrutements : {ligne_recrutements(d.recrutements)}")
+        limite(s, "recrutements_techniques")
     if d.nb_zones_activite is not None:
         texte(
             s, f"Zones d'activité : {ligne_zones_activite(d.nb_zones_activite, d.zones_activite)}"
@@ -2677,6 +2759,41 @@ def completer_zones_activite(
     return replace(diagnostic, nb_zones_activite=nb, zones_activite=zones)
 
 
+def completer_main_oeuvre(
+    diagnostic: Diagnostic, *, settings: Settings | None = None
+) -> Diagnostic:
+    if "diplomes_commune" not in diagnostic.chargements:
+        return diagnostic
+    t = diagnostic.territoire
+    try:
+        zone = lire_zone_trajet(latitude=t.latitude, longitude=t.longitude, settings=settings)
+    except MainOeuvreError as error:
+        logger.warning("main-d'oeuvre non evaluee : %s", error)
+        return replace(diagnostic, main_oeuvre_erreur=str(error))
+    points = [point for poly in zone for anneau in poly for point in anneau]
+    emprise = {
+        "lon_min": min(x for x, _ in points),
+        "lon_max": max(x for x, _ in points),
+        "lat_min": min(y for _, y in points),
+        "lat_max": max(y for _, y in points),
+    }
+    path = (settings or get_settings()).duckdb_path
+    with duckdb.connect(str(path), read_only=True) as connection:
+        candidates = connection.execute(_DIPLOMES_SQL, emprise).fetchall()
+    dedans = [c for c in candidates if contient(zone, c[0], c[1])]
+    return replace(
+        diagnostic,
+        main_oeuvre=MainOeuvre(
+            minutes=MINUTES_TRAJET,
+            nb_communes=len(dedans),
+            nb_superieur=sum(c[2] for c in dedans),
+            nb_cap_bep_bac=sum(c[3] for c in dedans),
+            nb_15_ans_plus=sum(c[4] for c in dedans),
+            millesime=max((c[5] for c in dedans), default=""),
+        ),
+    )
+
+
 def completer_eau(diagnostic: Diagnostic, *, settings: Settings | None = None) -> Diagnostic:
     t = diagnostic.territoire
     try:
@@ -2697,6 +2814,7 @@ def completer_en_ligne(diagnostic: Diagnostic, *, settings: Settings | None = No
         completer_solaire,
         completer_acces_routier,
         completer_zones_activite,
+        completer_main_oeuvre,
     ):
         diagnostic = completer(diagnostic, settings=settings)
     return diagnostic
