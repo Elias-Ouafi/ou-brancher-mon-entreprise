@@ -191,6 +191,12 @@ def test_etoile_facts_join_their_dimensions(warehouse: duckdb.DuckDBPyConnection
         "fait_prix_locaux",
         "fait_risque_commune",
         "fait_mix_journalier",
+        "dim_departement_region",
+        "dim_naf",
+        "fait_plan_prevention",
+        "fait_diplomes_commune",
+        "fait_recrutements_techniques",
+        "fait_continuite_departement",
     } <= tables
     # Étoile : région et département se lisent par la dimension commune, sans jointure en cascade
     lyon = _rows(
@@ -204,3 +210,15 @@ def test_etoile_facts_join_their_dimensions(warehouse: duckdb.DuckDBPyConnection
         "LEFT JOIN etoile.dim_date d USING (jour) WHERE d.jour IS NULL",
     )
     assert orphelins == [(0,)]
+    # Les diplômés se placent par la dimension commune, les recrutements par celle du département
+    assert _rows(
+        warehouse,
+        "SELECT c.longitude, f.nb_superieur FROM etoile.fait_diplomes_commune f"
+        " JOIN etoile.dim_commune c USING (code_insee_commune) WHERE code_insee_commune = '69123'",
+    ) == [(4.8351, 250_000.0)]
+    assert _rows(
+        warehouse,
+        "SELECT d.region, f.projets FROM etoile.fait_recrutements_techniques f"
+        " JOIN etoile.dim_departement_region d USING (code_departement)"
+        " WHERE code_departement = '69'",
+    ) == [("Auvergne-Rhône-Alpes", 400.0)]

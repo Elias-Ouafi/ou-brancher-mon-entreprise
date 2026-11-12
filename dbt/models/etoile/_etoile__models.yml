@@ -43,6 +43,12 @@ models:
               arguments:
                 to: ref('dim_date')
                 field: jour
+      - name: code_naf2_principal
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_naf')
+                field: code_naf2
 
   - name: fait_prix_locaux
     description: Prix de vente au m² des locaux d'activité, par commune (cinq dernières années DVF).
@@ -90,6 +96,99 @@ models:
         data_tests:
           - unique
           - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: jour
+
+  - name: dim_departement_region
+    description: Départements, avec leur région et le caractère non interconnecté du territoire.
+    columns:
+      - name: code_departement
+        data_tests: [unique, not_null]
+
+  - name: dim_naf
+    description: Divisions de la nomenclature d'activités française (NAF rév. 2, deux chiffres).
+    columns:
+      - name: code_naf2
+        data_tests: [unique, not_null]
+
+  - name: fait_plan_prevention
+    description: Plans de prévention des risques en vigueur par commune (dernier export GASPAR).
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [code_insee_commune, code_procedure]
+    columns:
+      - name: code_insee_commune
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_commune')
+                field: code_insee_commune
+      - name: jour_prescription
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: jour
+      - name: jour_approbation
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: jour
+
+  - name: fait_diplomes_commune
+    description: Diplômés du supérieur et titulaires d'un CAP-BEP ou d'un bac par commune (Insee).
+    columns:
+      - name: code_insee_commune
+        data_tests:
+          - not_null
+          - unique
+          - relationships:
+              arguments:
+                to: ref('dim_commune')
+                field: code_insee_commune
+      - name: jour_reference
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: jour
+
+  - name: fait_recrutements_techniques
+    description: Projets de recrutement des métiers techniques par département (BMO).
+    columns:
+      - name: code_departement
+        data_tests:
+          - not_null
+          - unique
+          - relationships:
+              arguments:
+                to: ref('dim_departement_region')
+                field: code_departement
+      - name: jour_reference
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: jour
+
+  - name: fait_continuite_departement
+    description: Qualité de fourniture du département, dernière année publiée par Enedis.
+    columns:
+      - name: code_departement
+        data_tests:
+          - not_null
+          - unique
+          - relationships:
+              arguments:
+                to: ref('dim_departement_region')
+                field: code_departement
+      - name: jour_reference
+        data_tests:
           - relationships:
               arguments:
                 to: ref('dim_date')

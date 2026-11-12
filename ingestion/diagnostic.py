@@ -209,12 +209,13 @@ select
     consommation_industrie_mwh / 1000 as consommation_industrie_gwh,
     nb_sites_industrie,
     code_naf2_principal,
-    libelle_naf2_principal,
+    naf.libelle_naf2 as libelle_naf2_principal,
     consommation_naf2_principal_mwh / 1000 as consommation_naf2_principal_gwh,
     rang_industrie_departement,
     nb_communes_departement
-from gold.fct_conso_entreprises_commune
-where code_insee_commune = $commune
+from etoile.fait_conso_entreprises as conso
+left join etoile.dim_naf as naf on naf.code_naf2 = conso.code_naf2_principal
+where conso.code_insee_commune = $commune
 """
 
 _ENTREPRISES_ADRESSE_SQL = """
@@ -317,23 +318,25 @@ where code_tranche = $code
 
 # Plans en vigueur, approuvés d'abord, puis du plus récent au plus ancien
 _PLANS_SQL = """
-select code_procedure, type_plan, libelle_plan, risques, etat, date_prescription, date_approbation
-from gold.fct_plans_prevention_commune
+select
+    code_procedure, type_plan, libelle_plan, risques, etat,
+    jour_prescription as date_prescription, jour_approbation as date_approbation
+from etoile.fait_plan_prevention
 where code_insee_commune in (select unnest($codes))
-order by etat, coalesce(date_approbation, date_prescription) desc nulls last, libelle_plan
+order by etat, coalesce(jour_approbation, jour_prescription) desc nulls last, libelle_plan
 """
 
 
 # Qualité de fourniture du département, publiée par Enedis sur son seul territoire
 _CONTINUITE_SQL = """
 select
-    derniere_annee,
+    year(jour_reference) as derniere_annee,
     part_mal_alimentes_pct,
     moyenne_5_ans_pct,
     annees_au_dela_seuil_5_ans,
     mediane_nationale_pct,
     depasse_seuil
-from gold.fct_continuite_departement
+from etoile.fait_continuite_departement
 where code_departement = $departement
 """
 
@@ -361,17 +364,26 @@ SEUIL_AUTORISATION_ZRE_M3H = 8
 
 _RECRUTEMENTS_SQL = """
 select
-    code_departement, annee, projets, projets_difficiles, part_difficiles, nb_lignes_secretes,
-    nb_lignes
-from gold.fct_recrutements_techniques_departement
+    code_departement, strftime(jour_reference, '%Y') as annee, projets, projets_difficiles,
+    part_difficiles, nb_lignes_secretes, nb_lignes
+from etoile.fait_recrutements_techniques
 where code_departement = $departement
 """
 
-# Communes dans l'emprise de l'isochrone ; le test point dans polygone se fait en Python
+# Communes dans l'emprise de l'isochrone, placées par la dimension commune ; le test point dans
+# polygone se fait en Python
 _DIPLOMES_SQL = """
-select longitude, latitude, nb_superieur, nb_cap_bep_bac, nb_15_ans_plus, millesime
-from gold.fct_diplomes_commune
-where longitude between $lon_min and $lon_max and latitude between $lat_min and $lat_max
+select
+    communes.longitude,
+    communes.latitude,
+    diplomes.nb_superieur,
+    diplomes.nb_cap_bep_bac,
+    diplomes.nb_15_ans_plus,
+    strftime(diplomes.jour_reference, '%Y') as millesime
+from etoile.fait_diplomes_commune as diplomes
+inner join etoile.dim_commune as communes using (code_insee_commune)
+where communes.longitude between $lon_min and $lon_max
+    and communes.latitude between $lat_min and $lat_max
 """
 
 # Friches d'au moins 1 ha à moins de 10 km à vol d'oiseau, les plus proches d'abord
@@ -2613,10 +2625,11 @@ def _liste_risques(risques: list[Risque]) -> str:
 
 
 _GASPAR_SQL = """
-select code_insee_commune, num_risque, libelle_risque, millesime
-from gold.fct_risques_commune
-where code_insee_commune in (select unnest(?))
-order by code_insee_commune, num_risque
+select risques.code_insee_commune, risques.num_risque, types.libelle_risque, risques.jour_millesime
+from etoile.fait_risque_commune as risques
+inner join etoile.dim_risque as types using (num_risque)
+where risques.code_insee_commune in (select unnest(?))
+order by risques.code_insee_commune, risques.num_risque
 """
 
 
