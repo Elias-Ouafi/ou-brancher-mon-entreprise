@@ -237,19 +237,32 @@ def test_diagnose_dans_chaque_territoire(
 
 # Défaut connu (9 novembre 2026) : en Corse et outre-mer, le réseau n'est pas exploité par RTE,
 # ce que la section « Tension du réseau » dit déjà ; le verdict annonce pourtant « HTB, RTE »
-@pytest.mark.xfail(strict=True, reason="gestionnaire des zones non interconnectées à sourcer")
-def test_raccordement_hors_rte_en_zone_non_interconnectee(commande: Commande) -> None:
+# Corse et outre-mer : le gestionnaire insulaire raccorde à toute puissance (code de l'énergie,
+# art. L111-52, 3°), jamais RTE
+@pytest.mark.parametrize(
+    ("adresse", "mw", "attendu", "etat"),
+    [
+        ("97411|Saint-Denis", 45, "HTB, EDF SEI", "attention"),
+        (AJACCIO, 12, "HTA, EDF SEI", "ok"),
+        ("97611|Mamoudzou", 30, "HTA – zone grise, Électricité de Mayotte", "attention"),
+    ],
+)
+def test_raccordement_hors_rte_en_zone_non_interconnectee(
+    commande: Commande, adresse: str, mw: float, attendu: str, etat: str
+) -> None:
     code, sortie = commande(
         "essentiel",
         "--adresse",
-        "97411|Saint-Denis",
-        *_projet(45, 300_000, None),
+        adresse,
+        *_projet(mw, mw * 5_000, None),
         "--sans-carte",
         "--format",
         "json",
     )
     assert code == 0
-    assert "RTE" not in _criteres(json.loads(sortie)["verdict"])["Raccordement"]["valeur"]
+    raccordement = _criteres(json.loads(sortie)["verdict"])["Raccordement"]
+    assert (raccordement["valeur"], raccordement["etat"]) == (attendu, etat)
+    assert "RTE" not in raccordement["detail"].replace("sans RTE", "")
 
 
 # Commune absente des jeux locaux : le diagnostic se replie sur le département, sans échouer
