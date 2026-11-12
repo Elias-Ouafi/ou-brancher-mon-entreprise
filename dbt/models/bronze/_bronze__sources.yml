@@ -239,6 +239,16 @@ sources:
             data_tests: [unique, not_null]
           - name: latitude
             data_tests: [not_null]
+      - name: reseaux_chaleur
+        description: >
+          Réseaux de chaleur recensés par France Chaleur Urbaine (Licence Ouverte 2.0), un point
+          tous les 100 m de tracé (Lambert-93 converti en WGS84) ; un réseau sans tracé publié
+          n'a qu'un point, au centre de sa commune.
+        columns:
+          - name: reseau_id
+            data_tests: [not_null]
+          - name: latitude
+            data_tests: [not_null]
       - name: diplomes_commune
         description: >
           Diplôme le plus élevé des 15 ans ou plus non scolarisés, retraités compris, par commune
