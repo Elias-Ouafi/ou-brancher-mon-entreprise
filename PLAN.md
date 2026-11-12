@@ -103,6 +103,7 @@ voisinage du site (argiles, cavités, Seveso, installations classées, sols poll
 | Sorties de référence : douze sorties de `essentiel`, `diagnose` et `compare` et le rapport Markdown figés sur la base synthétique, comparés à chaque run ; un libellé changé fait échouer le test, `--maj-references` réécrit les références ; PDF relu par `pypdf` : pages, pied de page, sections, tuile, aucun caractère sans glyphe ; chaque maquette et chaque relief de la tuile dessinés ; couverture mesurée à chaque run (`pytest --cov`, lignes et branches : 94,6 %), échec sous 92,5 % ; courbe de charge illisible refusée avec le numéro de la ligne fautive. Essai réel : le PDF complet de Chilly-Mazarin (9 pages) n'a aucun caractère sans glyphe | `test_references.py`, `ingestion/tests/references/` |
 | Parcours du néophyte : `app` ouvre une fenêtre d'accueil qui demande une adresse, une seconde si l'on veut comparer (deux au plus), le projet replié ; la carte s'ouvre cadrée sur les adresses (la tuile si elles la partagent, la région si elles en occupent deux bouts, le monde si l'une est outre-mer), chacune avec son bâtiment (liseré doré pour la première, vert pour la seconde) ; fiche adaptée : verdict et cartes chiffrées pour une adresse, mêmes lignes côte à côte et un onglet par adresse pour deux ; rapport PDF en un clic | `reporting/carte.html`, `reporting/app.py` |
 | PDF court et visuel : 3 pages pour l'exemple de référence ; le verdict et sa tuile, puis une fiche par critère (échelle des domaines de tension, plans de prévention, jauge du carbone, parts de la facture et accise, distances et prix des locaux) avec trois phrases au plus, dont la limite qui pèse sur la décision et un conseil ; repères du site en tableau, deux graphiques du territoire | `reporting/implantation_pdf.py`, `reporting/visuels.py` |
+| Essai réel élargi : `verifier.py` joue cinq cas sur le warehouse réel en 15 s environ et dit pour chacun ce qu'il attend (domaine de tension, raccordement du verdict, système électrique) : `essentiel` à 12 MW à Chilly-Mazarin (HTA), `diagnose --sans-risques` à 45 MW (HTB 1, RTE), `compare` de Chilly-Mazarin et Lyon, `essentiel` à Ajaccio (Corse, au-dessus du seuil carbone), `/api/analyse` du vrai serveur de l'application ; `--complet` ajoute un `diagnose` avec les sources à la demande et nomme celle qui ne répond pas | `.claude/scripts/verifier.py` |
 | Démonstration sans `refresh` : `demo` construit une fois la base synthétique des tests dans `data/demo/` (une minute environ, sans réseau), répond `essentiel` pour un hub de recharge fictif de 2 MW à Lyon, chiffres dits fictifs en première ligne, et ouvre la carte ; environ 2 s ensuite | `ingestion/demo.py`, `demo` |
 
 **À surveiller** :
@@ -132,6 +133,10 @@ voisinage du site (argiles, cavités, Seveso, installations classées, sols poll
   chaque échéance (règles codées en constantes datées dans `ingestion/solaire.py`) ;
 - zones de répartition des eaux : aucune n'est publiée en outre-mer dans le référentiel ZRPE du
   Sandre, et 31 des 118 zones n'ont pas de nom (8 novembre) ;
+- **API Carto (urbanisme)** : le 12 novembre, tout `apicarto.ign.fr` répond 404 (module GPU,
+  cadastre, documentation), sans annonce trouvée de l'IGN : panne ou déménagement, à éclaircir. Le
+  diagnostic dit « zonage d'urbanisme non consulté » et le critère « foncier » reste « pour
+  information » ; `verifier.py --complet` le signale ;
 - EDF SEI publie jusqu'à fin 2024 seulement (2021-2024 « estimé »), sans Mayotte ; le jeu a
   quitté `opendata-corse-outremer.edf.fr` pour `opendata.edf.fr` (API data-fair).
 
@@ -159,7 +164,7 @@ Le détail de chaque ligne est dans son lot, plus bas.
 
 | Ordre | Étape | Condition ou date |
 |---|---|---|
-| 1 | **Lot T** Qualité des tests : essai réel élargi (T7), application simulée dans le navigateur (T5), CI sous Windows (T8) ; corriger le gestionnaire affiché en Corse et outre-mer | T5 demande un choix (`pytest-playwright` ou essai à la main) ; le gestionnaire demande une source officielle |
+| 1 | **Lot T** Qualité des tests : application simulée dans le navigateur (T5), CI sous Windows (T8) ; corriger le gestionnaire affiché en Corse et outre-mer | T5 demande un choix (`pytest-playwright` ou essai à la main) ; le gestionnaire demande une source officielle |
 | 2 | **29** Main-d'œuvre qualifiée dans `diagnose` et `compare` | Sources vérifiées, trois choix avant de coder (sous le tableau du lot A) |
 | 3 | **Étoile d'abord** : chaque nouveau fait gold a ses clés vers `dim_commune` et `dim_date` ; l'application lit le schéma `etoile` là où le grain existe | Sorties de référence inchangées |
 | 4 | **Carte, lot B** : prototype three.js r186 hors ligne (une demi-journée), puis lots C et D | Le lot D épingle `compare` sur la carte |
@@ -250,8 +255,7 @@ soit essayée par une machine plutôt qu'à la main. Chaque étape a son critèr
 tâche planifiée.
 
 **Constat** :
-- 914 tests sans réseau (12 min 44 s avec la couverture : à mesurer de nouveau, poste au repos,
-  avant T5 et T8) ;
+- 914 tests sans réseau (4 min 55 s avec la couverture, poste au repos) ;
   couverture **94,6 %** des lignes et des branches
   d'`ingestion/` et de `reporting/`, plancher à 92,5 % ;
 - reste sous 90 % : `ingestion/pipeline.py` à 86 % ;
@@ -264,17 +268,15 @@ tâche planifiée.
 - le JavaScript de `reporting/carte.html` n'est exécuté par aucun test : fenêtre d'accueil,
   adresse ambiguë, deux adresses, courbe gardée et téléchargements ne sont vérifiés qu'à la main
   (skill `essai-carte`) ; les tests de l'application s'arrêtent au serveur ;
-- l'essai réel de `verifier.py` ne joue qu'un cas : `essentiel`, 12 MW, Chilly-Mazarin ;
 - la CI ne tourne que sous Ubuntu alors que le poste est sous Windows (console cp1252, chemins).
 
 | Ordre | Étape | Contenu | Critère |
 |---|---|---|---|
 | T5 | Application simulée dans le navigateur | Un navigateur piloté par les tests, sur `app` lancé contre la base de démonstration, réseau coupé : fenêtre d'accueil → adresse → verdict épinglé → PDF ; adresse ambiguë → choix d'une commune ; deux adresses → côte à côte → tableau détaillé → CSV ; courbe déposée → gardée après rechargement → retirée ; serveur arrêté → message ; page ouverte en `file://` → lecture seule ; aucune erreur dans la console | Les six parcours passent en local et en CI ; **choix à faire** : `pytest-playwright` (Microsoft, Apache 2.0, télécharge Chromium, groupe de dépendances `e2e` à part) ou rester à l'essai à la main |
-| T7 | Essai réel élargi | `verifier.py` joue, en plus : `diagnose --sans-risques` à 45 MW (HTB), `compare` de deux adresses, une adresse en Corse, un appel à `/api/analyse` de l'application ; `--complet` ajoute un `diagnose` avec les sources à la demande | Moins d'une minute sans `--complet` ; chaque cas dit ce qu'il attend (domaine de tension, système électrique) |
 | T8 | CI sous Windows | Un second job `windows-latest` (Java 17, mêmes commandes) | Vert sur une PR ; les pièges d'encodage sont pris avant le poste |
 
-Ordre : T7, en relevant le plancher de couverture ensuite ; T5 et T8 après le choix de l'outil
-et une mesure du temps de CI. Hors périmètre : tests
+Ordre : relever le plancher de couverture ; T5 et T8 après le choix de l'outil et une mesure du
+temps de CI. Hors périmètre : tests
 de charge (un seul utilisateur, en local) et tests sur les API réelles en CI (elles tombent sans
 prévenir : l'essai réel reste lancé à la main).
 
