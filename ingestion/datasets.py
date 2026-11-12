@@ -563,6 +563,24 @@ RECRUTEMENTS_BMO = DatasetSpec(
     description="Projets de recrutement par département et métier (BMO, France Travail)",
 )
 
+# Réseaux de chaleur recensés par France Chaleur Urbaine, un point tous les 100 m de tracé
+RESEAUX_CHALEUR = DatasetSpec(
+    dataset_id="reseaux_chaleur",
+    keys=(code("reseau_id"), code("rang")),
+    attributes=(
+        label("nom_reseau"),
+        label("communes"),
+        label("departements"),
+        label("gestionnaire"),
+        label("a_trace"),
+        label("classe"),
+    ),
+    measures=measures(
+        "taux_enr_pct", "contenu_co2_kg_kwh", "livraisons_mwh", "latitude", "longitude"
+    ),
+    description="Réseaux de chaleur (France Chaleur Urbaine, Licence Ouverte 2.0)",
+)
+
 SPECS: dict[str, DatasetSpec] = {
     spec.dataset_id: spec
     for spec in (
@@ -609,6 +627,7 @@ BRONZE_SPECS: tuple[DatasetSpec, ...] = (
     CONTINUITE_ALIMENTATION,
     VENTES_LOCAUX,
     FRICHES,
+    RESEAUX_CHALEUR,
     DIPLOMES_COMMUNE,
     RECRUTEMENTS_BMO,
     *TERRITORIAL_SPECS,

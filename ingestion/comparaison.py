@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from ingestion.diagnostic import (
     LIBELLES_ACCES,
     RAYON_FRICHES_KM,
+    RAYON_RESEAUX_CHALEUR_KM,
     Diagnostic,
     _distance,
     _euros_arrondis,
@@ -250,6 +251,15 @@ def _friches(d: Diagnostic) -> str:
     )
 
 
+def _reseaux_chaleur(d: Diagnostic) -> str:
+    if d.reseaux_chaleur is None:
+        return "—"
+    if not d.reseaux_chaleur:
+        return f"aucun à moins de {RAYON_RESEAUX_CHALEUR_KM} km"
+    proche = d.reseaux_chaleur[0]
+    return f"{proche.nom}, {_distance(proche.distance_km)}"
+
+
 def _main_oeuvre(d: Diagnostic) -> str:
     if d.main_oeuvre_erreur is not None:
         return "non évaluée (isochrone injoignable)"
@@ -309,6 +319,10 @@ def lignes(diagnostics: list[Diagnostic]) -> list[Ligne]:
         resultat.append(ligne("Zonage d'urbanisme", _urbanisme, "zonage_urbanisme"))
     if consultee("nb_friches"):
         resultat.append(ligne("Friches (Cartofriches)", _friches, "friches"))
+    if consultee("reseaux_chaleur"):
+        resultat.append(
+            ligne("Réseau de chaleur (France Chaleur Urbaine)", _reseaux_chaleur, "reseaux_chaleur")
+        )
     if consultee("nb_zones_activite", "zones_activite_erreur"):
         resultat.append(ligne("Zones d'activité (BD TOPO)", _zones_activite, "zones_activite"))
     if consultee("acces_routier", "acces_routier_erreur"):

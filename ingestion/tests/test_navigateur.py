@@ -227,3 +227,26 @@ def test_page_en_file_reste_en_lecture_seule(ecran: Page, reglages: Settings) ->
     expect(ecran.locator("#accueil")).to_be_hidden()
     expect(ecran.locator("#nouvelle")).to_be_hidden()
     assert "app" not in (ecran.locator("body").get_attribute("class") or "").split()
+
+
+def test_ambiance_sonore_coupee_puis_selon_la_filiere_dominante(
+    ecran: Page, reglages: Settings
+) -> None:
+    ecran.goto(carte.generer_carte(settings=reglages).resolve().as_uri())
+    son = ecran.locator("#son")
+    expect(son).to_have_attribute("aria-pressed", "false")
+
+    # Plus de la moitié de la puissance de la case, sinon aucun son ; le solaire est silencieux
+    regles = ecran.evaluate(
+        """() => [
+            sonDominant([{ f: "Nucléaire", mw: 2600 }, { f: "Solaire", mw: 12 }]),
+            sonDominant([{ f: "Eolien", mw: 50 }, { f: "Hydraulique", mw: 50 }]),
+            sonDominant([{ f: "Solaire", mw: 300 }]),
+            sonDominant([]),
+        ]"""
+    )
+    assert regles == ["bourdonnement", None, None, None]
+
+    son.click()
+    expect(son).to_have_attribute("aria-pressed", "true")
+    expect(son).to_have_text("Son")
