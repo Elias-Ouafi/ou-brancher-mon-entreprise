@@ -310,8 +310,12 @@ flowchart LR
 .\.venv\Scripts\python.exe .claude/scripts/verifier.py
 ```
 
-Le script joue `ruff`, `pytest`, puis un essai réel à Chilly-Mazarin (warehouse et réseau requis) ;
-`--rapide` saute `pytest`, `--sans-essai` saute l'essai réel. 914 tests sans réseau, dont un
+Le script joue `ruff`, `pytest`, puis un essai réel (warehouse et réseau requis) : cinq cas en un
+quart de minute, chacun avec ce qu'il attend (domaine de tension, raccordement, système
+électrique) : `essentiel` à 12 MW à Chilly-Mazarin, `diagnose` à 45 MW, `compare` de deux adresses,
+une adresse en Corse et un appel à `/api/analyse` de l'application. `--rapide` saute `pytest`,
+`--sans-essai` saute l'essai réel, `--complet` y ajoute un `diagnose` avec les sources à la
+demande et nomme celle qui ne répond pas. 914 tests sans réseau, dont un
 `dbt build` complet sur une base synthétique qui reproduit les pièges des sources, plus les tests de
 données dbt. La couverture est mesurée à chaque run complet (`pytest --cov`, lignes et branches : 94,6 % le 10 novembre 2026) et la suite échoue sous 92,5 %. Une matrice joue chaque activité à chaque palier de puissance, dans chaque territoire et chaque format, par la vraie ligne de commande, et chaque source à la demande est jouée contre huit pannes. Les sorties de `essentiel`, `diagnose` et `compare` sont comparées à des références figées (`ingestion/tests/references/`) : après un changement de libellé voulu, `pytest ingestion/tests/test_references.py --maj-references` les réécrit, et leur diff se relit avant de commiter. La CI GitHub Actions joue `ruff` et `pytest` à chaque PR.
 
