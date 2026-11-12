@@ -98,7 +98,8 @@
     "domaine_tension": "HTA",
     "gestionnaire": "Enedis (ou ELD)",
     "commentaire": "Raccordement en moyenne tension (20 kV), souvent sur un départ dédié au-delà de quelques MW",
-    "domaine_turpe": "hta"
+    "domaine_turpe": "hta",
+    "est_zni": false
   },
   "conso_mwh": 70000.0,
   "prix": null,
@@ -119,7 +120,7 @@
     "pression_industrielle": "Ne compte que les sites raccordés au réseau de transport (HTB) : les consommateurs raccordés à Enedis n'y figurent pas. Depuis 2022, environ 40 % des IRIS sont masqués par le secret statistique : le millésime retenu est donc le dernier publié en entier, au prix de quelques années d'ancienneté.",
     "equilibre_regional": "Le réseau est interconnecté : une région déficitaire importe sans difficulté de ses voisines. Le solde décrit une dépendance structurelle, pas une pénurie ni un risque de coupure.",
     "contraintes_reseau": "Contraintes d'évacuation de la production renouvelable (injection), données à titre indicatif par RTE. Elles ne mesurent pas la capacité disponible pour un consommateur (soutirage). Pas de donnée pour la Corse ni l'outre-mer.",
-    "seuil_raccordement": "Indicatif : 1 kVA est assimilé à 1 kW. Le domaine de tension réel est fixé par le gestionnaire lors de l'étude de raccordement.",
+    "seuil_raccordement": "Indicatif : 1 kVA est assimilé à 1 kW. Le domaine de tension réel est fixé par le gestionnaire lors de l'étude de raccordement. En Corse et outre-mer, le gestionnaire est EDF SEI ou Électricité de Mayotte (code de l'énergie, art. L111-52) ; les seuils de 20 et 40 MW, propres au réseau continental, y restent indicatifs.",
     "capacite_raccordement": "La capacité de raccordement disponible pour la consommation n'est pas publiée en open data (Caparéseau ne couvre que l'injection). Seule une étude de raccordement RTE ou Enedis fait foi.",
     "cout_profil": "Le prix est identique en tout point du territoire (péréquation tarifaire) : ce coût ne dépend pas de l'adresse. Profil illustratif, heures creuses supposées de 22 h à 6 h (en réalité fixées localement par le gestionnaire de réseau), jours fériés comptés comme ouvrés, abonnement exclu. Carbone : intensité nationale, faute d'intensité régionale opposable.",
     "prix_entreprise": "Prix moyen national constaté pour la tranche, hors TVA et taxes récupérables : identique en tout point du territoire (péréquation), il ne dépend pas de l'adresse. C'est une moyenne déclarée par les fournisseurs : un contrat donné peut s'en écarter nettement selon sa date de signature, sa durée et le profil du site. Les scénarios à 3 ans ne sont pas une prévision : le scénario central applique au prix des 12 derniers mois la variation médiane observée sur la tranche, et la fourchette reprend les erreurs passées de cette méthode (10e centile, médiane, 90e centile de l'écart entre prix réel et scénario central), crise de 2022-2023 comprise, élargie au besoin pour contenir le prix actuel. Tant que le contrôle sur le passé compte moins de 20 périodes, qui se chevauchent et tiennent souvent dans la même crise, la fourchette est dite indicative. Une rupture jamais observée la dépasserait encore.",

@@ -156,7 +156,7 @@
     "reseaux_chaleur": "Distance à vol d'oiseau au tracé, à 50 m près : ni la capacité du réseau à reprendre de la chaleur, ni la température acceptée, ni l'accord de l'exploitant ne sont connus. Un réseau sans tracé publié est placé au centre de sa commune ; les réseaux en construction et de froid ne sont pas retenus. La source ne recense aucun réseau en outre-mer et un seul en Corse (Haute-Corse). Pour un data center, l'accise réduite (L312-70) demande de valoriser la chaleur : à vérifier avec l'exploitant.",
     "recrutements_techniques": "Intentions d'embauche déclarées par les employeurs pour l'année, pas des embauches réalisées. Métiers retenus par l'outil (électricité, froid et conditionnement d'air, maintenance : seed metiers_techniques_bmo). Le département remplace le bassin d'emploi, faute de table officielle du bassin vers la commune ; les bassins sous secret statistique ne sont pas comptés, ce qui minore les projets.",
     "obligations_solaires": "Rappel de la règle, pas un avis juridique. La surface du parking n'est pas connue de l'outil : l'obligation est donnée par seuil. Un data center n'est pas cité en tant que tel parmi les usages : à qualifier avec le service instructeur. Le texte prévoit des exonérations motivées (contraintes techniques, de sécurité, architecturales ou patrimoniales, coût économiquement inacceptable, parking ombragé par des arbres) et un arrêté peut écarter ou adapter l'obligation pour une installation classée. La part de toiture des bâtiments existants est fixée par décret, non chiffrée ici. La capacité portante de la toiture n'est pas publique : la BDNB (CSTB, Licence Ouverte 2.0) donne au mieux le matériau de toiture, pas la structure.",
-    "seuil_raccordement": "Indicatif : 1 kVA est assimilé à 1 kW. Le domaine de tension réel est fixé par le gestionnaire lors de l'étude de raccordement.",
+    "seuil_raccordement": "Indicatif : 1 kVA est assimilé à 1 kW. Le domaine de tension réel est fixé par le gestionnaire lors de l'étude de raccordement. En Corse et outre-mer, le gestionnaire est EDF SEI ou Électricité de Mayotte (code de l'énergie, art. L111-52) ; les seuils de 20 et 40 MW, propres au réseau continental, y restent indicatifs.",
     "capacite_raccordement": "La capacité de raccordement disponible pour la consommation n'est pas publiée en open data (Caparéseau ne couvre que l'injection). Seule une étude de raccordement RTE ou Enedis fait foi.",
     "prix_entreprise": "Prix moyen national constaté pour la tranche, hors TVA et taxes récupérables : identique en tout point du territoire (péréquation), il ne dépend pas de l'adresse. C'est une moyenne déclarée par les fournisseurs : un contrat donné peut s'en écarter nettement selon sa date de signature, sa durée et le profil du site. Les scénarios à 3 ans ne sont pas une prévision : le scénario central applique au prix des 12 derniers mois la variation médiane observée sur la tranche, et la fourchette reprend les erreurs passées de cette méthode (10e centile, médiane, 90e centile de l'écart entre prix réel et scénario central), crise de 2022-2023 comprise, élargie au besoin pour contenir le prix actuel. Tant que le contrôle sur le passé compte moins de 20 périodes, qui se chevauchent et tiennent souvent dans la même crise, la fourchette est dite indicative. Une rupture jamais observée la dépasserait encore.",
     "cout_profil": "Le prix est identique en tout point du territoire (péréquation tarifaire) : ce coût ne dépend pas de l'adresse. Profil illustratif, heures creuses supposées de 22 h à 6 h (en réalité fixées localement par le gestionnaire de réseau), jours fériés comptés comme ouvrés, abonnement exclu. Carbone : intensité nationale, faute d'intensité régionale opposable."
@@ -262,7 +262,8 @@
         "domaine_tension": "HTA",
         "gestionnaire": "Enedis (ou ELD)",
         "commentaire": "Raccordement en moyenne tension (20 kV), souvent sur un départ dédié au-delà de quelques MW",
-        "domaine_turpe": "hta"
+        "domaine_turpe": "hta",
+        "est_zni": false
       },
       "conso_mwh": 70000.0,
       "prix": null,
@@ -283,7 +284,7 @@
         "pression_industrielle": "Ne compte que les sites raccordés au réseau de transport (HTB) : les consommateurs raccordés à Enedis n'y figurent pas. Depuis 2022, environ 40 % des IRIS sont masqués par le secret statistique : le millésime retenu est donc le dernier publié en entier, au prix de quelques années d'ancienneté.",
         "equilibre_regional": "Le réseau est interconnecté : une région déficitaire importe sans difficulté de ses voisines. Le solde décrit une dépendance structurelle, pas une pénurie ni un risque de coupure.",
         "contraintes_reseau": "Contraintes d'évacuation de la production renouvelable (injection), données à titre indicatif par RTE. Elles ne mesurent pas la capacité disponible pour un consommateur (soutirage). Pas de donnée pour la Corse ni l'outre-mer.",
-        "seuil_raccordement": "Indicatif : 1 kVA est assimilé à 1 kW. Le domaine de tension réel est fixé par le gestionnaire lors de l'étude de raccordement.",
+        "seuil_raccordement": "Indicatif : 1 kVA est assimilé à 1 kW. Le domaine de tension réel est fixé par le gestionnaire lors de l'étude de raccordement. En Corse et outre-mer, le gestionnaire est EDF SEI ou Électricité de Mayotte (code de l'énergie, art. L111-52) ; les seuils de 20 et 40 MW, propres au réseau continental, y restent indicatifs.",
         "capacite_raccordement": "La capacité de raccordement disponible pour la consommation n'est pas publiée en open data (Caparéseau ne couvre que l'injection). Seule une étude de raccordement RTE ou Enedis fait foi.",
         "cout_profil": "Le prix est identique en tout point du territoire (péréquation tarifaire) : ce coût ne dépend pas de l'adresse. Profil illustratif, heures creuses supposées de 22 h à 6 h (en réalité fixées localement par le gestionnaire de réseau), jours fériés comptés comme ouvrés, abonnement exclu. Carbone : intensité nationale, faute d'intensité régionale opposable.",
         "prix_entreprise": "Prix moyen national constaté pour la tranche, hors TVA et taxes récupérables : identique en tout point du territoire (péréquation), il ne dépend pas de l'adresse. C'est une moyenne déclarée par les fournisseurs : un contrat donné peut s'en écarter nettement selon sa date de signature, sa durée et le profil du site. Les scénarios à 3 ans ne sont pas une prévision : le scénario central applique au prix des 12 derniers mois la variation médiane observée sur la tranche, et la fourchette reprend les erreurs passées de cette méthode (10e centile, médiane, 90e centile de l'écart entre prix réel et scénario central), crise de 2022-2023 comprise, élargie au besoin pour contenir le prix actuel. Tant que le contrôle sur le passé compte moins de 20 périodes, qui se chevauchent et tiennent souvent dans la même crise, la fourchette est dite indicative. Une rupture jamais observée la dépasserait encore.",
@@ -629,9 +630,10 @@
       "seuil": {
         "puissance_mw": 12.0,
         "domaine_tension": "HTA",
-        "gestionnaire": "Enedis (ou ELD)",
-        "commentaire": "Raccordement en moyenne tension (20 kV), souvent sur un départ dédié au-delà de quelques MW",
-        "domaine_turpe": "hta"
+        "gestionnaire": "EDF SEI",
+        "commentaire": "Réseau insulaire géré par EDF SEI, sans RTE : domaine de tension, capacité et délai fixés par son étude",
+        "domaine_turpe": "hta",
+        "est_zni": true
       },
       "conso_mwh": 70000.0,
       "prix": null,
@@ -749,7 +751,7 @@
         "pression_industrielle": "Ne compte que les sites raccordés au réseau de transport (HTB) : les consommateurs raccordés à Enedis n'y figurent pas. Depuis 2022, environ 40 % des IRIS sont masqués par le secret statistique : le millésime retenu est donc le dernier publié en entier, au prix de quelques années d'ancienneté.",
         "equilibre_regional": "Le réseau est interconnecté : une région déficitaire importe sans difficulté de ses voisines. Le solde décrit une dépendance structurelle, pas une pénurie ni un risque de coupure.",
         "contraintes_reseau": "Contraintes d'évacuation de la production renouvelable (injection), données à titre indicatif par RTE. Elles ne mesurent pas la capacité disponible pour un consommateur (soutirage). Pas de donnée pour la Corse ni l'outre-mer.",
-        "seuil_raccordement": "Indicatif : 1 kVA est assimilé à 1 kW. Le domaine de tension réel est fixé par le gestionnaire lors de l'étude de raccordement.",
+        "seuil_raccordement": "Indicatif : 1 kVA est assimilé à 1 kW. Le domaine de tension réel est fixé par le gestionnaire lors de l'étude de raccordement. En Corse et outre-mer, le gestionnaire est EDF SEI ou Électricité de Mayotte (code de l'énergie, art. L111-52) ; les seuils de 20 et 40 MW, propres au réseau continental, y restent indicatifs.",
         "capacite_raccordement": "La capacité de raccordement disponible pour la consommation n'est pas publiée en open data (Caparéseau ne couvre que l'injection). Seule une étude de raccordement RTE ou Enedis fait foi.",
         "cout_profil": "Le prix est identique en tout point du territoire (péréquation tarifaire) : ce coût ne dépend pas de l'adresse. Profil illustratif, heures creuses supposées de 22 h à 6 h (en réalité fixées localement par le gestionnaire de réseau), jours fériés comptés comme ouvrés, abonnement exclu. Carbone : intensité nationale, faute d'intensité régionale opposable.",
         "prix_entreprise": "Prix moyen national constaté pour la tranche, hors TVA et taxes récupérables : identique en tout point du territoire (péréquation), il ne dépend pas de l'adresse. C'est une moyenne déclarée par les fournisseurs : un contrat donné peut s'en écarter nettement selon sa date de signature, sa durée et le profil du site. Les scénarios à 3 ans ne sont pas une prévision : le scénario central applique au prix des 12 derniers mois la variation médiane observée sur la tranche, et la fourchette reprend les erreurs passées de cette méthode (10e centile, médiane, 90e centile de l'écart entre prix réel et scénario central), crise de 2022-2023 comprise, élargie au besoin pour contenir le prix actuel. Tant que le contrôle sur le passé compte moins de 20 périodes, qui se chevauchent et tiennent souvent dans la même crise, la fourchette est dite indicative. Une rupture jamais observée la dépasserait encore.",
@@ -902,7 +904,7 @@
           {
             "nom": "Raccordement",
             "etat": "ok",
-            "valeur": "HTA, Enedis (ou ELD)",
+            "valeur": "HTA, EDF SEI",
             "detail": "Raccordement courant au réseau de distribution ; délai et coût fixés par l'étude du gestionnaire."
           },
           {

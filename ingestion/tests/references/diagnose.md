@@ -46,7 +46,7 @@
 
 - Puissance 12 MW → HTA, Enedis (ou ELD) : Raccordement en moyenne tension (20 kV), souvent sur un départ dédié au-delà de quelques MW
 
-> **Limite.** Indicatif : 1 kVA est assimilé à 1 kW. Le domaine de tension réel est fixé par le gestionnaire lors de l'étude de raccordement.
+> **Limite.** Indicatif : 1 kVA est assimilé à 1 kW. Le domaine de tension réel est fixé par le gestionnaire lors de l'étude de raccordement. En Corse et outre-mer, le gestionnaire est EDF SEI ou Électricité de Mayotte (code de l'énergie, art. L111-52) ; les seuils de 20 et 40 MW, propres au réseau continental, y restent indicatifs.
 
 - Acheminement, détail : 437 000 € pour la puissance souscrite, 932 000 € pour l'énergie, 833 € de gestion et comptage par an
 
