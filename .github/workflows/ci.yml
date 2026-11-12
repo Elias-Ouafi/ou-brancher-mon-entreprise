@@ -42,7 +42,11 @@ jobs:
 
       # dbt et report activent les tests de bout en bout
       - name: Install dependencies
-        run: uv sync --group dev --group dbt --group report
+        run: uv sync --group dev --group dbt --group report --group e2e
+
+      # Navigateur des parcours de l'application (test_navigateur.py)
+      - name: Install Chromium
+        run: uv run playwright install --with-deps chromium
 
       - name: Lint
         run: uv run ruff check .
