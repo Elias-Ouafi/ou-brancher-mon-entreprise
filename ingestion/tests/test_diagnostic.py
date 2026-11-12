@@ -382,7 +382,7 @@ def test_every_figure_comes_with_its_limit(medallion_db: Path, warehouse: Any) -
     limites = [
         limite for (limite,) in _rows(warehouse, "SELECT limite FROM gold.limites_methodologiques")
     ]
-    assert len(limites) == 33
+    assert len(limites) == 34
     for limite in limites:
         assert limite in texte
 
@@ -543,6 +543,7 @@ def test_essentiel_command_answers_price_and_carbon(
         "prix_entreprise",
         "carbone_territoire",
         "friches",
+        "reseaux_chaleur",
         "zones_repartition_eaux",
     }
     assert "carbone" in reponse["verdict"]["phrase"]

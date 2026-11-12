@@ -68,6 +68,20 @@ models:
                 to: ref('dim_date')
                 field: jour
 
+  - name: fait_reseau_chaleur
+    description: Réseaux de chaleur par département traversé (France Chaleur Urbaine).
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [reseau_id, code_departement]
+    columns:
+      - name: code_departement
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_departement_region')
+                field: code_departement
+
   - name: fait_risque_commune
     description: Risques recensés par commune (dernier export GASPAR).
     data_tests:

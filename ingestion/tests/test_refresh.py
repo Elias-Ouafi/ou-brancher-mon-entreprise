@@ -42,6 +42,9 @@ def appels(monkeypatch: pytest.MonkeyPatch) -> list[str]:
     monkeypatch.setattr(refresh, "run_locaux_ingestion", lambda **_: journal.append("locaux"))
     monkeypatch.setattr(refresh, "run_friches_ingestion", lambda **_: journal.append("friches"))
     monkeypatch.setattr(
+        refresh, "run_reseaux_chaleur_ingestion", lambda **_: journal.append("chaleur")
+    )
+    monkeypatch.setattr(
         refresh, "run_main_oeuvre_ingestion", lambda **_: journal.append("main-oeuvre")
     )
     monkeypatch.setattr(refresh, "run_europe_ingestion", lambda **_: journal.append("europe"))
@@ -63,13 +66,13 @@ def test_toutes_les_sources_puis_dbt_malgre_une_panne(
 ) -> None:
     bilan = refresh.run_refresh(settings=settings, months=180)
 
-    attendus = len(TERRITORIAL_SPECS) + 18
+    attendus = len(TERRITORIAL_SPECS) + 19
     assert len(bilan) == attendus
     assert appels[0] == "eco2mix-national-cons-def:180"
     assert appels[1] == "eco2mix-national-tr"
-    assert appels[-14:] == [
+    assert appels[-15:] == [
         "gaspar", "sismique", "zre", "edf-sei", "production", "fret", "locaux", "friches",
-        "main-oeuvre", "europe", "entreprises", "profils-charge", "continuite", "dbt",
+        "chaleur", "main-oeuvre", "europe", "entreprises", "profils-charge", "continuite", "dbt",
     ]  # fmt: skip
     assert [e.nom for e in bilan if not e.reussie] == ["postes-electriques-rte"]
     assert bilan[-1].reussie

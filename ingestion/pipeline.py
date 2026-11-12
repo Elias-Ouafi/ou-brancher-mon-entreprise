@@ -25,6 +25,7 @@ from ingestion.datasets import (
     PORTS_FRET,
     PROFILS_CHARGE_SUP36,
     RECRUTEMENTS_BMO,
+    RESEAUX_CHALEUR,
     RTE_ECOWATT,
     RTE_TEMPO,
     SITES_PRODUCTION,
@@ -48,6 +49,7 @@ from ingestion.extract_gaspar import lire_export, lire_plans, telecharger_archiv
 from ingestion.extract_main_oeuvre import telecharger_diplomes, telecharger_recrutements
 from ingestion.extract_odre import ExtractionWindow, OdreClient
 from ingestion.extract_production import telecharger_centres, telecharger_sites
+from ingestion.extract_reseaux_chaleur import telecharger_reseaux_chaleur
 from ingestion.extract_rte import DayRange, RteEcowattClient, RteTempoClient
 from ingestion.extract_sismique import telecharger_zonage
 from ingestion.extract_zre import telecharger_zones
@@ -544,6 +546,18 @@ def run_friches_ingestion(
 ) -> tuple[ExtractionOutcome, LoadResult]:
     settings = settings or get_settings()
     return _charger_fichier(telecharger_friches(settings=settings), FRICHES, settings, run_id, now)
+
+
+# Réseaux de chaleur : le débouché de la chaleur fatale d'un data center (accise réduite, L312-70)
+def run_reseaux_chaleur_ingestion(
+    *,
+    settings: Settings | None = None,
+    run_id: str = "manual",
+    now: datetime | None = None,
+) -> tuple[ExtractionOutcome, LoadResult]:
+    settings = settings or get_settings()
+    lignes = telecharger_reseaux_chaleur(settings=settings)
+    return _charger_fichier(lignes, RESEAUX_CHALEUR, settings, run_id, now)
 
 
 def run_main_oeuvre_ingestion(

@@ -412,6 +412,26 @@ order by distance_km
 """
 
 
+# Réseaux de chaleur à moins de 10 km : distance au point le plus proche de chaque tracé
+RAYON_RESEAUX_CHALEUR_KM = 10
+NB_RESEAUX_CHALEUR_AFFICHES = 3
+
+_RESEAUX_CHALEUR_SQL = f"""
+select nom_reseau, communes, gestionnaire, a_trace, classe, taux_enr_pct, min(distance_km)
+from (
+    select *, {_DISTANCE_KM_SQL} as distance_km
+    from gold.fct_reseaux_chaleur
+    where abs(latitude - $latitude) < {RAYON_RESEAUX_CHALEUR_KM} / 111.0
+      and abs(longitude - $longitude)
+        < {RAYON_RESEAUX_CHALEUR_KM} / (111.0 * cos(radians($latitude)))
+)
+where distance_km <= {RAYON_RESEAUX_CHALEUR_KM}
+group by all
+order by min(distance_km), nom_reseau
+limit {NB_RESEAUX_CHALEUR_AFFICHES}
+"""
+
+
 class DiagnosticIndisponibleError(RuntimeError):
     pass
 
@@ -439,6 +459,7 @@ SOURCES_CHARGEES: dict[str, str] = {
     "enedis_continuite_alimentation": "continuité Enedis",
     "ventes_locaux": "ventes de locaux DVF",
     "friches": "friches Cartofriches",
+    "reseaux_chaleur": "réseaux de chaleur",
     "zones_repartition_eaux": "zones de répartition des eaux",
     "diplomes_commune": "diplômes Insee",
     "recrutements_bmo": "recrutements BMO",
@@ -705,6 +726,18 @@ class Friche:
 
 
 @dataclass(frozen=True, slots=True)
+class ReseauChaleur:
+    nom: str
+    communes: str | None
+    gestionnaire: str | None
+    # Sans tracé publié, le réseau est placé au centre de sa commune
+    a_trace: bool
+    classe: bool | None
+    taux_enr_pct: float | None
+    distance_km: float
+
+
+@dataclass(frozen=True, slots=True)
 class PartChiffreAffaires:
     chiffre_affaires_eur: float
     facture_eur: float
@@ -850,6 +883,9 @@ class Diagnostic:
     # `None` si Cartofriches n'est pas chargé
     nb_friches: int | None = None
     friches: list[Friche] = field(default_factory=list)
+    # Réseaux de chaleur les plus proches à moins de `RAYON_RESEAUX_CHALEUR_KM` ; `None` s'ils
+    # ne sont pas chargés
+    reseaux_chaleur: list[ReseauChaleur] | None = None
     # Zones de répartition des eaux qui contiennent l'adresse ; `None` si elles ne sont pas chargées
     zones_repartition: list[ZoneRepartition] | None = None
     # Métiers techniques du département (BMO) ; diplômés à moins de 45 min, calculés à la
@@ -1087,6 +1123,17 @@ def lire_diagnostic(
                 if "friches" in chargements
                 else None
             )
+            reseaux_chaleur = (
+                [
+                    ReseauChaleur(*ligne)
+                    for ligne in connection.execute(
+                        _RESEAUX_CHALEUR_SQL,
+                        {"latitude": territoire.latitude, "longitude": territoire.longitude},
+                    ).fetchall()
+                ]
+                if "reseaux_chaleur" in chargements
+                else None
+            )
             zones_repartition = (
                 [
                     ZoneRepartition(nom, ressource)
@@ -1141,6 +1188,7 @@ def lire_diagnostic(
         poles_proches=poles_proches,
         nb_friches=None if friches_proches is None else len(friches_proches),
         friches=(friches_proches or [])[:NB_FRICHES_AFFICHEES],
+        reseaux_chaleur=reseaux_chaleur,
         zones_repartition=zones_repartition,
         recrutements=None if recrutements is None else Recrutements(**recrutements),
         **ligne,
@@ -1983,6 +2031,24 @@ def ligne_friches(nb: int, friches: list[Friche]) -> str:
     )
 
 
+def ligne_reseaux_chaleur(reseaux: list[ReseauChaleur]) -> str:
+    if not reseaux:
+        return f"aucun réseau recensé à moins de {RAYON_RESEAUX_CHALEUR_KM} km"
+    details = []
+    for r in reseaux:
+        lieu = f" ({r.communes})" if r.communes and r.communes != r.nom else ""
+        precisions = [] if r.a_trace else ["tracé non publié, centre de la commune"]
+        if r.taux_enr_pct is not None:
+            precisions.append(
+                f"{_nombre(r.taux_enr_pct)} % d'énergies renouvelables et de récupération"
+            )
+        if r.classe:
+            precisions.append("classé")
+        suite = f", {', '.join(precisions)}" if precisions else ""
+        details.append(f"{r.nom}{lieu} {_distance(r.distance_km)}{suite}")
+    return f"le plus proche, {' ; puis '.join(details)}"
+
+
 def _critere_foncier(d: Diagnostic) -> Critere:
     site = d.site_cle_en_main
     if site is None:
@@ -2123,6 +2189,13 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
             "plus_proches": [asdict(f) for f in d.friches],
             "source": "Cartofriches (Cerema)",
         },
+        "reseaux_chaleur": None
+        if d.reseaux_chaleur is None
+        else {
+            "rayon_km": RAYON_RESEAUX_CHALEUR_KM,
+            "plus_proches": [asdict(r) for r in d.reseaux_chaleur],
+            "source": "France Chaleur Urbaine",
+        },
         "locaux": None
         if d.prix_locaux is None
         else {**asdict(d.prix_locaux), "surface_m2": d.surface_m2, "source": "DVF (DGFiP)"},
@@ -2145,6 +2218,7 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
                 ("entreprises_enedis", d.entreprises_adresse is not None),
                 ("prix_locaux", d.prix_locaux is not None),
                 ("friches", d.nb_friches is not None),
+                ("reseaux_chaleur", d.reseaux_chaleur is not None),
                 ("acces_routier", d.acces_routier is not None),
                 ("solaire", d.solaire_consulte and d.productible is not None),
                 ("zones_activite", d.nb_zones_activite is not None),
@@ -2605,6 +2679,9 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
     if d.nb_friches is not None:
         texte(s, f"Friches : {ligne_friches(d.nb_friches, d.friches)}")
         limite(s, "friches")
+    if d.reseaux_chaleur is not None:
+        texte(s, f"Réseaux de chaleur : {ligne_reseaux_chaleur(d.reseaux_chaleur)}")
+        limite(s, "reseaux_chaleur")
     if d.prix_locaux is not None:
         texte(s, ligne_locaux(d.prix_locaux, d.surface_m2, d.territoire.commune))
         limite(s, "prix_locaux")
