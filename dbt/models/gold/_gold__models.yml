@@ -454,6 +454,25 @@ models:
           - accepted_values:
               arguments:
                 values: [eaux superficielles, eaux souterraines, eaux superficielles et souterraines]
+  - name: fct_diplomes_commune
+    description: >
+      Diplômés du supérieur et titulaires d'un CAP-BEP ou d'un bac par commune (Insee), avec
+      le centre de la commune ; le diagnostic somme les communes à moins de 45 minutes en
+      voiture de l'adresse.
+    columns:
+      - name: code_insee_commune
+        data_tests: [unique, not_null]
+      - name: latitude
+        data_tests: [not_null]
+  - name: fct_recrutements_techniques_departement
+    description: >
+      Projets de recrutement et part jugée difficile pour les métiers techniques du seed
+      `metiers_techniques_bmo`, par département (BMO, France Travail).
+    columns:
+      - name: code_departement
+        data_tests: [unique, not_null]
+      - name: projets
+        data_tests: [not_null]
   - name: fct_friches
     description: >
       Friches de Cartofriches (Cerema) d'au moins 1 ha et pas encore reconverties, avec leur

@@ -17,6 +17,7 @@ from ingestion.diagnostic import (
     _liste_risques,
     _nombre,
     _nombre_court,
+    _pourcentage,
     diagnostic_en_dict,
     ligne_chargements,
     lignes_obligations_solaires,
@@ -249,6 +250,27 @@ def _friches(d: Diagnostic) -> str:
     )
 
 
+def _main_oeuvre(d: Diagnostic) -> str:
+    if d.main_oeuvre_erreur is not None:
+        return "non évaluée (isochrone injoignable)"
+    if (m := d.main_oeuvre) is None:
+        return "—"
+    if not m.nb_communes:
+        return "non disponible"
+    return (
+        f"{_nombre(round(m.nb_superieur, -2))} du supérieur,"
+        f" {_nombre(round(m.nb_cap_bep_bac, -2))} CAP-BEP ou bac"
+    )
+
+
+def _recrutements(d: Diagnostic) -> str:
+    if (r := d.recrutements) is None:
+        return "—"
+    if not r.projets or r.part_difficiles is None:
+        return "aucun projet déclaré"
+    return f"{_nombre(r.projets)} projets, {_pourcentage(r.part_difficiles)} difficiles"
+
+
 def _brancher_ici(d: Diagnostic) -> str:
     return phrase_verdict(verdict(d))
 
@@ -291,6 +313,12 @@ def lignes(diagnostics: list[Diagnostic]) -> list[Ligne]:
         resultat.append(ligne("Zones d'activité (BD TOPO)", _zones_activite, "zones_activite"))
     if consultee("acces_routier", "acces_routier_erreur"):
         resultat.append(ligne("Accès routier (voiture)", _acces, "acces_routier"))
+    if consultee("main_oeuvre", "main_oeuvre_erreur"):
+        resultat.append(ligne("Main-d'œuvre à 45 min", _main_oeuvre, "main_oeuvre"))
+    if consultee("recrutements"):
+        resultat.append(
+            ligne("Recrutements techniques (BMO)", _recrutements, "recrutements_techniques")
+        )
     if any(d.solaire_consulte for d in diagnostics) or consultee("solaire_erreur"):
         resultat.append(ligne("Bâtiment et solaire (PVGIS)", _solaire, "solaire"))
     resultat.append(ligne("Parking à solariser (APER)", _parking, "obligations_solaires"))
