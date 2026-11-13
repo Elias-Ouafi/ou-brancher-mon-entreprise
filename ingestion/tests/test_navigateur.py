@@ -97,9 +97,11 @@ def ecran(page: Page, erreurs_attendues: list[str]) -> Iterator[Page]:
     page.route("**/*", filtrer)
     page.on("console", lambda m: erreurs.append(m.text) if m.type == "error" else None)
     page.on("pageerror", lambda e: erreurs.append(str(e)))
-    page.set_default_timeout(20_000)
+    # Large : sur le runner Windows de la CI, le PDF a déjà mis plus de 20 s
+    # à arriver ; un parcours qui passe n'attend pas plus longtemps pour autant
+    page.set_default_timeout(60_000)
     # Les assertions attendent comme les actions : deux adresses s'analysent en 6 à 7 s sous Windows
-    expect.set_options(timeout=20_000)
+    expect.set_options(timeout=60_000)
     yield page
     assert not dehors, f"requêtes hors de la machine : {dehors}"
     inattendues = [e for e in erreurs if not any(a in e for a in erreurs_attendues)]
@@ -223,6 +225,9 @@ def test_page_en_file_reste_en_lecture_seule(ecran: Page, reglages: Settings) ->
     chemin = carte.generer_carte(settings=reglages)
     ecran.goto(chemin.resolve().as_uri())
 
+    # Les modules embarqués s'importent en file://, sans requête (la fixture `ecran` le vérifie)
+    ecran.wait_for_function("() => window.THREE && THREE.REVISION === '186'")
+    expect(ecran.locator("#scene canvas")).to_be_visible()
     expect(ecran.locator("#city")).to_contain_text("python -m ingestion.cli app")
     expect(ecran.locator("#accueil")).to_be_hidden()
     expect(ecran.locator("#nouvelle")).to_be_hidden()
@@ -235,6 +240,8 @@ def test_ambiance_sonore_coupee_puis_selon_la_filiere_dominante(
     ecran.goto(carte.generer_carte(settings=reglages).resolve().as_uri())
     son = ecran.locator("#son")
     expect(son).to_have_attribute("aria-pressed", "false")
+    # Le script de la carte ne s'exécute qu'après l'import de three.js
+    ecran.wait_for_function("() => window.sonDominant")
 
     # Plus de la moitié de la puissance de la case, sinon aucun son ; le solaire est silencieux
     regles = ecran.evaluate(

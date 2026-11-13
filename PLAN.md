@@ -171,7 +171,7 @@ Le détail de chaque ligne est dans son lot, plus bas.
 
 | Ordre | Étape | Condition ou date |
 |---|---|---|
-| 1 | **Carte, lot B** : prototype three.js r186 hors ligne (une demi-journée), puis lots C et D | Le lot D épingle `compare` sur la carte |
+| 1 | **Carte, lot B** : maquettes en `BatchedMesh` (three.js r186 est embarqué), puis lots C et D | Le lot D épingle `compare` sur la carte |
 | 2 | **Pistes retenues du lot A** : image datée du site, pièces du dossier de raccordement | Dans cet ordre ; chacune sa source, déjà lue ou à relire |
 | 3 | **8, 30, 6** Prix au-delà de 150 GWh, modèle prédictif, international | Chacune sa condition (lot B) ; l'international en dernier |
 
@@ -240,7 +240,7 @@ Rien à coder tant que la condition n'est pas levée.
 
 | Étape | Pourquoi pour ce persona | Condition pour s'y mettre |
 |---|---|---|
-| **Carte** Refonte (lots B à F, voir plus bas) | Une carte lisible imprimée, qui montre ce que la puissance demandée change | Lot B d'abord : prototype three.js r186 hors ligne |
+| **Carte** Refonte (lots B à F, voir plus bas) | Une carte lisible imprimée, qui montre ce que la puissance demandée change | Lot B d'abord : maquettes en `BatchedMesh` |
 | **8** Repère de prix au-delà de 150 000 MWh/an, après la fin de l'ARENH | Un projet de 20 MW constant dépasse la dernière tranche Eurostat (IG, sans borne) | Une source officielle et ouverte d'un prix à terme ; le classement pondéré dans `compare` reste écarté |
 | **30** Modèle prédictif d'implantation (cadrage plus bas) : par zone d'emploi, probabilité d'implantations nouvelles à 3 ans, apprise sur l'historique | Signaler tôt les territoires qui montent, en complément des faits à l'adresse ; il dira où les projets vont, pas où ils seraient rentables ni si la puissance est disponible | Données fiabilisées (critères à écrire) ; à concilier avec la « comparaison sans classement » ; historique de la capacité en soutirage, absent à ce jour |
 | **6** Extension internationale, voir plus bas | En dernier | Jeton ENTSO-E et contours des zones de prix |
@@ -316,13 +316,10 @@ La charte commune est en place ; le reste est une proposition. Elle garde les r�
 vigueur : ligne de commande, local, page HTML autonome qui s'ouvre hors ligne (pas de site web,
 pas de CDN), données publiques sourcées, « non disponible » plutôt qu'un chiffre inventé.
 
-**Constat.** three.js est déjà au cœur de la carte (`reporting/carte.html`, grille hexagonale,
-maquettes, deux vues) mais en **r128 (2021)** ; la version courante est la **r186** (septembre
-2026). Depuis environ la r160, three.js ne publie plus de fichier unique à charger par `<script>` :
-`three.module.js` et `three.webgpu.js` importent `three.core.js`, ce qui casse l'embarquement actuel
-(`SCRIPTS` dans `reporting/carte.py`). Les nouveautés utiles : `WebGPURenderer` (repli WebGL 2
-automatique), shaders en JavaScript (TSL), `BatchedMesh` pour des milliers de maquettes en un appel
-de dessin. La vue par défaut « Raccorder » (zones RTE, sites clés en main, postes 400 kV) parle
+**Constat.** three.js **r186** (septembre 2026) est au cœur de la carte (`reporting/carte.html`,
+grille hexagonale, maquettes, deux vues), avec `WebGLRenderer`. Les nouveautés utiles :
+`WebGPURenderer` (repli WebGL 2 automatique), shaders en JavaScript (TSL), `BatchedMesh` pour des
+milliers de maquettes en un appel de dessin. La vue par défaut « Raccorder » (zones RTE, sites clés en main, postes 400 kV) parle
 déjà au persona ; il lui manque de montrer ce que la puissance demandée change : domaine de
 tension, gestionnaire, délai. Friches, zones d'activité, desserte et eau
 ne sont aujourd'hui que dans `diagnose`, pas sur la carte (lot F).
@@ -373,21 +370,20 @@ champ), WebXR. `WebGPURenderer` n'est retenu que si le `WebGLRenderer` de la r18
 
 ### Embarquer three.js r186 hors ligne
 
-La page doit rester un fichier unique, ouvert en `file://` par `essentiel` et `diagnose`. Les
-modules ES ne se chargent pas en `file://` par une URL relative, et une carte d'import vers des
-URL `data:` n'est confirmée par aucune source : à prouver par un prototype avant tout.
+La page reste un fichier unique, ouvert en `file://` par `essentiel` et `diagnose`. three.js ne
+publie plus de fichier à charger par `<script>` (`three.module.js` importe `three.core.js`, sans
+version minifiée dans le paquet npm) et un module ES ne s'importe pas en `file://` par une URL
+relative. `three-r186.core.js`, `three-r186.module.js` et `OrbitControls-r186.js` (licence MIT, la
+version figée dans le nom) sont donc dans `reporting/vendor/`, insérés en texte inerte par
+`carte.py` ; l'amorce en fin de `carte.html` crée une URL `blob:` par module, réécrit les imports
+vers ces URL, puis lance le script de la carte. La politique de sécurité de la page autorise
+`blob:` pour les scripts, rien d'autre.
 
-1. **Prototype (une demi-journée)** : `three.core.js`, `three.module.js` et `OrbitControls.js`
-   (r186, licence MIT) dans `reporting/vendor/`, insérés en texte par `carte.py` ; un amorçage de
-   quelques lignes crée une URL `blob:` par module, réécrit les imports relatifs vers ces URL, puis
-   `import()`. Critère : Chrome, Edge et Firefox à jour, en `file://`, sans serveur ni réseau.
-2. Repli si le prototype échoue : un paquet unique déjà assemblé (IIFE) versionné dans
-   `reporting/vendor/`, avec la commande qui l'a produit dans le README ; l'outil d'assemblage
-   (Node) ne sert qu'à la mise à jour de three.js, jamais à l'exécution.
-3. Dernier recours : rester en r128 et appliquer seulement la direction artistique.
-
-La version est figée dans le nom du fichier vendu (`three-r186.core.js`) ; un test vérifie que la
-page générée ne contient aucune URL `http`.
+Vérifié dans Chromium et Chrome, en `file://` et réseau coupé : aucune requête, console vide,
+rendu identique à la r128 ; les parcours dans Chromium refusent toute requête hors de la machine.
+Non vérifié : Firefox et Edge, absents du poste. Repli si l'un d'eux refuse l'import `blob:` : un
+paquet unique déjà assemblé (IIFE) versionné dans `reporting/vendor/`, l'outil d'assemblage (Node)
+ne servant qu'à la mise à jour de three.js.
 
 ### Lots, dans l'ordre
 
@@ -397,7 +393,7 @@ mise à jour dans `docs/exemples/`.
 
 | Lot | Contenu | Validation |
 |---|---|---|
-| B | Prototype puis passage à three.js r186 (`WebGLRenderer`, `BatchedMesh` pour les maquettes) | carte sans requête réseau ; 60 images/s sur la métropole |
+| B | `BatchedMesh` pour les maquettes (le passage à three.js r186 est fait, sans requête réseau) | 60 images/s sur la métropole ; 45 mesurées en r186 contre 33 en r128 (Chrome sans fenêtre, Intel UHD, une seule mesure) |
 | C | « Raccorder » selon la puissance : anneaux des domaines de tension, zones RTE en colonnes datées | 1, 12, 30 et 50 MW à Chilly-Mazarin et Dunkerque : gestionnaire conforme à `seuils_raccordement` |
 | D | `compare` épinglé sur la carte (le tableau est déjà dans l'application) ; export d'image ; fiche sans WebGL | `compare` à 3 sites |
 | E | Relief continu et ombrage ; curseur horaire des îles | Ajaccio : 522 g vers 13 h, 681 g vers 5 h |

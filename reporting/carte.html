@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Où brancher mon entreprise</title>
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src data:; connect-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' blob:; style-src 'unsafe-inline'; img-src data:; font-src data:; connect-src 'self'">
 <style>
 /* Plein écran : carte 3D au fond, verdict ou fiche en bas à gauche, lentilles en bas à droite */
 /*__CHARTE__*/
@@ -324,7 +324,7 @@ table.cote tbody th { font-weight: 500; color: var(--parch-dim); }
 <div class="tip frame" id="tip" hidden></div>
 
 <!--__SCRIPTS__-->
-<script>
+<script type="text/plain" id="carte">
 const DATA = /*__DONNEES__*/null;
 DATA.adresse = /*__ADRESSE__*/null;
 // Vrai seulement quand `app` sert la page : en file://, la carte reste en lecture seule
@@ -332,12 +332,11 @@ const APP = /*__APP__*/false;
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const fmt = (v, d = 0) => v == null ? "n.d." : Number(v).toLocaleString("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d });
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-if (!window.THREE) document.body.insertAdjacentHTML("beforeend", '<div class="erreur frame">WebGL ou three.js indisponible : ouvrir la carte dans un navigateur récent.</div>');
 
 const REGION_COLORS = { "11": "#f2cf4a", "24": "#c0663f", "27": "#8e5fc2", "28": "#4a8fd9", "32": "#d94f4f", "44": "#3fb59c", "52": "#58c4e6", "53": "#ece6d2", "75": "#e3892b", "76": "#c73f8a", "84": "#7bc043", "93": "#f08a7a", "94": "#a9a948", "01": "#e8c547", "02": "#e8c547", "03": "#e8c547", "04": "#e8c547", "06": "#e8c547" };
 const MEDITERRANEE = new Set(["06", "11", "13", "30", "34", "66", "83", "84", "2A", "2B"]);
 
-const col = h => new THREE.Color(h).convertSRGBToLinear();
+const col = h => new THREE.Color(h);
 const CHARTE = n => getComputedStyle(document.documentElement).getPropertyValue("--" + n).trim();
 const DEP = Object.fromEntries(DATA.departements.map(d => [d.c, d]));
 const GR = DATA.grilles, R = DATA.rayonScene, HW = Math.sqrt(3) * R, DZ = 1.5 * R, PS = R / 1.5;
@@ -384,8 +383,8 @@ for (const t of land) {
 // Scène
 const host = document.getElementById("scene");
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.outputEncoding = THREE.sRGBEncoding;
-renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
 host.appendChild(renderer.domElement);
 const DISTANCE_MONDE = 2100, SEUIL_MONDE = 320;
 const scene = new THREE.Scene(); scene.background = col(CHARTE("papier")); scene.fog = new THREE.Fog(col(CHARTE("papier")), 120, 280);
@@ -397,8 +396,8 @@ controls.enableDamping = true; controls.dampingFactor = .08; controls.screenSpac
 controls.minDistance = 10; controls.maxDistance = DISTANCE_MONDE * 1.25; controls.minPolarAngle = .3; controls.maxPolarAngle = 1.08;
 controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
 controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE };
-scene.add(new THREE.HemisphereLight(col("#e4efd6"), col("#4a3b2a"), .72));
-const sun = new THREE.DirectionalLight(col("#ffd9a3"), 1.1); sun.position.set(-45, 90, 35); sun.target.position.set(-45, 0, 0); scene.add(sun.target);
+scene.add(new THREE.HemisphereLight(col("#e4efd6"), col("#4a3b2a"), .72 * Math.PI));
+const sun = new THREE.DirectionalLight(col("#ffd9a3"), 1.1 * Math.PI); sun.position.set(-45, 90, 35); sun.target.position.set(-45, 0, 0); scene.add(sun.target);
 sun.castShadow = true; Object.assign(sun.shadow.camera, { left: -130, right: 130, top: 90, bottom: -90, near: 10, far: 260 });
 sun.shadow.mapSize.set(4096, 4096); sun.shadow.bias = -.0008; scene.add(sun);
 const seabed = new THREE.Mesh(new THREE.PlaneGeometry(16000, 16000), new THREE.MeshStandardMaterial({ color: col(CHARTE("mer")), roughness: .9 }));
@@ -1005,8 +1004,8 @@ const v3 = new THREE.Vector3();
 // La tuile de l'encart : un îlot détaillé calculé pour cette seule case à l'ouverture, jamais pour toute la carte.
 // Le décor (parcelles, chemin, arbres) est figuratif ; couleur, relief et maquettes viennent des données de la case
 const tuile3d = { el: $("tuile3d"), renderer: null, scene: new THREE.Scene(), camera: new THREE.PerspectiveCamera(26, 1, .1, 200), groupe: null, jetables: [], decor: null, rotor: [], taille: 0, active: false };
-tuile3d.scene.add(new THREE.HemisphereLight(col("#f2f5e4"), col("#6a5a42"), .8));
-const soleilTuile = new THREE.DirectionalLight(col("#ffe0ad"), 1.25); soleilTuile.position.set(-3 * R, 6 * R, 3.4 * R); soleilTuile.castShadow = true; soleilTuile.shadow.mapSize.set(1536, 1536); soleilTuile.shadow.bias = -.0006;
+tuile3d.scene.add(new THREE.HemisphereLight(col("#f2f5e4"), col("#6a5a42"), .8 * Math.PI));
+const soleilTuile = new THREE.DirectionalLight(col("#ffe0ad"), 1.25 * Math.PI); soleilTuile.position.set(-3 * R, 6 * R, 3.4 * R); soleilTuile.castShadow = true; soleilTuile.shadow.mapSize.set(1536, 1536); soleilTuile.shadow.bias = -.0006;
 Object.assign(soleilTuile.shadow.camera, { left: -2 * R, right: 2 * R, top: 2.4 * R, bottom: -2.4 * R, near: .1, far: 14 * R }); tuile3d.scene.add(soleilTuile, soleilTuile.target);
 const copie = g => { const c = new THREE.Group(); c.position.copy(g.position); c.rotation.copy(g.rotation); c.scale.copy(g.scale); for (const o of g.children) c.add(o.clone()); return c; };
 function cacherTuile() { tuile3d.el.hidden = true; tuile3d.active = false; ambiance(null); }
@@ -1039,7 +1038,7 @@ const ondule = (x, z) => bruit(x, z) * .6 + bruit(x * 2.1 + 7, z * 2.1 + 3) * .2
 const lisse = (a, b, x) => { const k = Math.max(0, Math.min(1, (x - a) / (b - a))); return k * k * (3 - 2 * k); };
 // 1 sur le bord de l'hexagone, dont les sommets sont sur l'axe z comme ceux des cases
 const horsHex = (x, z) => Math.max(...[30, 90, 150].map(a => Math.abs(x * Math.sin(a * Math.PI / 180) + z * Math.cos(a * Math.PI / 180)))) / (R * Math.cos(Math.PI / 6));
-const srgb = c => "#" + c.clone().convertLinearToSRGB().getHexString();
+const srgb = c => "#" + c.getHexString();
 // Le sol peint : parcelles en plaine, roche en altitude, dalles sous les maquettes et un chemin qui les dessert
 function solTuile(t, dalles, chemin) { const N = 1024, cv = document.createElement("canvas"); cv.width = cv.height = N; const c = cv.getContext("2d"), px = v => (v + R) / (2 * R) * N, pas = N / (2 * R); let n = 0, alea = () => hash(t.c + ++n * .37, t.r + n * .11);
   // Verts plus francs que sur la carte : le rendu peint de Terra Nil, à l'échelle de la seule tuile
@@ -1059,7 +1058,7 @@ function solTuile(t, dalles, chemin) { const N = 1024, cv = document.createEleme
   const trait = (couleur, l) => { c.strokeStyle = couleur; c.lineWidth = l * pas; c.lineCap = c.lineJoin = "round"; c.beginPath(); chemin.forEach((p, k) => c[k ? "lineTo" : "moveTo"](px(p.x), px(p.z))); c.stroke(); };
   trait("#8c806a", .085 * R); trait("#d9cfb6", .06 * R);
   for (const d of dalles) { c.fillStyle = "rgba(60,50,35,.25)"; c.beginPath(); c.arc(px(d.x), px(d.z), (d.r + .03 * R) * pas, 0, 7); c.fill(); c.fillStyle = "#dcd7c8"; c.beginPath(); c.arc(px(d.x), px(d.z), d.r * pas, 0, 7); c.fill(); }
-  const tex = new THREE.CanvasTexture(cv); tex.encoding = THREE.sRGBEncoding; tex.anisotropy = 4; return tex; }
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4; return tex; }
 // Dessous en îlot : terre, argile puis roche qui s'effile, facettes irrégulières sur les six côtés
 function flancsTuile(t, H, herbe) { const parCote = 14, n = 6 * parCote, pos = [], cl = [], tourne = k => { const a = Math.floor(k / parCote) * Math.PI / 3, b = a + Math.PI / 3, u = (k % parCote) / parCote; return [Math.sin(a) * (1 - u) + Math.sin(b) * u, Math.cos(a) * (1 - u) + Math.cos(b) * u]; };
   const NIVEAUX = [[H, 1, herbe], [H - .1 * R, 1, col("#5e4a31")], [H - .34 * R, .97, col("#8a6a45")], [H * .52, .8, col("#a39585")], [H * .24, .52, col("#7f776c")], [0, .14, col("#655f57")]];
@@ -1075,7 +1074,7 @@ function animerPousse(age) { const ressort = u => { const k = Math.min(1, u); re
       matricePousse.position.set(o.x, o.sol + (o.y - o.sol) * s, o.z); matricePousse.rotation.set(0, o.ry || 0, 0); matricePousse.scale.set(o.sx * s + 1e-4, o.sy * s + 1e-4, o.sx * s + 1e-4); matricePousse.updateMatrix(); m.setMatrixAt(n, matricePousse.matrix); }); m.instanceMatrix.needsUpdate = true; }
   if (age > 2.2) tuile3d.fini = true; }
 function montrerTuile(t) {
-  if (!tuile3d.renderer) { tuile3d.renderer = new THREE.WebGLRenderer({ canvas: tuile3d.el, antialias: true, alpha: true }); tuile3d.renderer.outputEncoding = THREE.sRGBEncoding; tuile3d.renderer.setClearColor(0, 0); tuile3d.renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); tuile3d.renderer.shadowMap.enabled = true; tuile3d.renderer.shadowMap.type = THREE.PCFSoftShadowMap; }
+  if (!tuile3d.renderer) { tuile3d.renderer = new THREE.WebGLRenderer({ canvas: tuile3d.el, antialias: true, alpha: true }); tuile3d.renderer.setClearColor(0, 0); tuile3d.renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); tuile3d.renderer.shadowMap.enabled = true; tuile3d.renderer.shadowMap.type = THREE.PCFShadowMap; }
   if (tuile3d.groupe) { tuile3d.scene.remove(tuile3d.groupe); tuile3d.jetables.forEach(o => o.dispose()); tuile3d.jetables = []; tuile3d.decor.traverse(o => { if (o.material) o.material.dispose(); }); }
   const g = tuile3d.groupe = new THREE.Group(), decor = tuile3d.decor = new THREE.Group(), H = R * 1.05 + t.baseH * .2; g.add(decor);
   // Maquettes un peu agrandies : sur la tuile seule, elles ne masquent plus rien
@@ -1177,6 +1176,23 @@ else if (!VERDICT) showDep(DATA.adresse.departement, adresseTile);
 if (DEUX) { if (REDUCED) vueAdresses(true); else { showCote(); setTimeout(() => vueAdresses(false, 2400), 700); } }
 else if (adresseTile) { if (REDUCED) vueAdresse(true); else { if (VERDICT) showVerdict(true); setTimeout(() => VERDICT ? vueAdresse(false, 2400) : allerA(adresseTile.x, adresseTile.z, 26, false, { duree: 2400, apres: sortirTuile }), 700); } }
 requestAnimationFrame(tick);
+</script>
+<script type="module">
+// three.js ne se charge plus par <script> et un module ne s'importe pas en file:// : chaque module
+// embarqué en texte devient une URL blob:, ses imports réécrits vers l'URL du module dont il dépend
+const texte = id => document.getElementById(id).textContent;
+const module = code => URL.createObjectURL(new Blob([code], { type: "text/javascript" }));
+try {
+  const coeur = module(texte("three-core"));
+  const three = module(texte("three-module").replaceAll("'./three.core.js'", `'${coeur}'`));
+  const orbite = module(texte("three-orbit").replace("from 'three'", `from '${three}'`));
+  window.THREE = { ...await import(three), ...await import(orbite) };
+} catch (e) {
+  console.error(e);
+  document.body.insertAdjacentHTML("beforeend", '<div class="erreur frame">three.js indisponible : ouvrir la carte dans un navigateur récent.</div>');
+}
+// En script classique, ses fonctions restent globales
+if (window.THREE) document.body.append(Object.assign(document.createElement("script"), { textContent: texte("carte") }));
 </script>
 </body>
 </html>

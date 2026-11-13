@@ -53,7 +53,12 @@ logger = logging.getLogger(__name__)
 
 GABARIT = Path(__file__).with_name("carte.html")
 VENDOR = Path(__file__).with_name("vendor")
-SCRIPTS = ("three.min.js", "OrbitControls.js")
+# Identifiant lu par l'amorce de carte.html, fichier dont le nom fige la version
+MODULES = {
+    "three-core": "three-r186.core.js",
+    "three-module": "three-r186.module.js",
+    "three-orbit": "OrbitControls-r186.js",
+}
 MARQUEUR_DONNEES = "/*__DONNEES__*/null"
 MARQUEUR_SCRIPTS = "<!--__SCRIPTS__-->"
 MARQUEUR_CHARTE = "/*__CHARTE__*/"
@@ -327,8 +332,11 @@ def _json(valeur: Any) -> str:
 def rendre_html(donnees: dict[str, Any]) -> str:
     donnees = dict(donnees)
     adresse = donnees.pop("adresse", None)
+    # En texte inerte : un module ES ne s'importe pas en file://, l'amorce en fait des URL blob:
     scripts = "\n".join(
-        f"<script>\n{(VENDOR / nom).read_text(encoding='utf-8')}\n</script>" for nom in SCRIPTS
+        f'<script type="text/plain" id="{identifiant}">\n'
+        f"{(VENDOR / nom).read_text(encoding='utf-8')}\n</script>"
+        for identifiant, nom in MODULES.items()
     )
     gabarit = GABARIT.read_text(encoding="utf-8")
     html = gabarit.replace(MARQUEUR_SCRIPTS, scripts).replace(MARQUEUR_DONNEES, _json(donnees))
@@ -419,7 +427,7 @@ def generer_carte(
 def carte_a_jour(path: Path, settings: Settings) -> bool:
     if not path.exists() or MARQUEUR_ADRESSE not in path.read_text(encoding="utf-8"):
         return False
-    sources = [Path(settings.duckdb_path), GABARIT, *(VENDOR / nom for nom in SCRIPTS)]
+    sources = [Path(settings.duckdb_path), GABARIT, *(VENDOR / nom for nom in MODULES.values())]
     sources += [Path(charte.__file__), *(charte.police(f, g) for f, g in charte.FICHIERS)]
     jeux = (CONTOURS_JEU, TERRES_JEU, PAYS_JEU)
     sources += [p for jeu in jeux if (p := dernier_geojson(jeu, settings))]
