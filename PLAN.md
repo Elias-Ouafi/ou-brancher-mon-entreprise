@@ -98,6 +98,8 @@ voisinage du site (argiles, cavités, Seveso, installations classées, sols poll
 | Voisinage du site, à la demande par l'API Géorisques : argiles à l'adresse, cavités à moins de 500 m, établissements Seveso en exploitation à moins de 5 km (distance), installations classées sous autorisation ou enregistrement à moins de 1 km, sols pollués à moins de 500 m (SIS, SUP, sites en instruction, CASIAS) ; à Chilly-Mazarin : argiles fortes, SMCA (Seveso seuil bas) à 4,8 km, 2 installations classées, 11 anciens sites CASIAS | `GeorisquesClient.voisinage`, `completer_voisinage`, `lignes_voisinage` |
 | Charte commune : papier clair et encre bleu nuit, vert pour le favorable, orange pour « à vérifier », Spectral et Inter embarquées (OFL) dans la carte, le PDF et les graphiques ; le PDF garde ₂, ≥ et → | `reporting/charte.py`, `reporting/polices/` |
 | Carte du monde en tuiles : tous les pays en tuiles ternes, France et départements d'outre-mer en couleur et à leur place ; ouverture sur le monde, plongée vers l'adresse, tuile détaillée qui sort de la carte ; fiche en jauges et cartes chiffrées, détail et limites à la demande ; bâtiment 3D au liseré doré à la place de l'épingle, sans bandeau d'adresse ; vague de reverdissement et pousse des arbres, inspirées de Terra Nil, coupées si l'utilisateur limite les animations ; tuile dessinée en vectoriel en tête du PDF ; encre vert nuit, titres verts et ornement solarpunk jusque dans le PDF | `ingestion/hexagones.py`, `reporting/carte.html`, `reporting/tuile.py` |
+| Carte à 60 images/s sur la métropole, dans les deux vues : maquettes en `BatchedMesh` (150 appels de dessin dans « Raccorder », contre 3 168), carte d'ombres refaite seulement quand le relief ou le soleil bougent, vague d'ouverture bornée à 20 s ; mesuré dans Chrome sans fenêtre, Intel UHD, 1600 × 900, une mesure par vue, vague passée | `reporting/carte.html` |
+| « Raccorder » selon la puissance : autour de l'adresse, un anneau par domaine de tension (HTA, zone grise, HTB), celui du projet teinté selon le critère Raccordement et nommé avec sa puissance et son gestionnaire (insulaire en Corse et outre-mer) ; chaque zone RTE porte une colonne d'autant plus haute que sa capacité arrive tôt. Contrôlé à 1, 12, 30 et 50 MW à Chilly-Mazarin et Dunkerque : HTA Enedis, HTA Enedis, zone grise Enedis ou RTE, HTB RTE | `reporting/carte.py`, `reporting/carte.html`, seed `seuils_raccordement` |
 | Ambiance sonore de la tuile ouverte, coupée à l'ouverture : bourdonnement à 50 Hz (thermique, nucléaire, bioénergies, géothermie), souffle (éolien), eau (hydraulique), ressac (énergies marines) quand la filière porte plus de la moitié de la puissance en service sur la case ; rien sinon, ni pour le solaire. Sons synthétisés par Web Audio, sans fichier ni requête, volume bas, suspendus quand l'onglet est caché ; aucun effet sur le PDF | `reporting/carte.html`, `test_navigateur.py` |
 | Application locale : `app` sert la carte sur 127.0.0.1 et permet tout le parcours dans le navigateur : adresse, réglages du projet, adresse ambiguë résolue par le choix d'une commune, verdict épinglé, diagnostic (essentiel ou complet), rapport PDF, Markdown ou JSON téléchargé avec la commande qui le refait ; courbe de charge Enedis déposée dans « Projet » et comparaison de 2 à 6 adresses en tableau dans le panneau (CSV, Markdown, JSON), sans épingle sur la carte. Touches solarpunk sur la carte, reprises dans le PDF : lumière dorée, épingle au soleil, bosquets dans la vue Territoire, toitures végétalisées et solaires des sites clés en main, panneaux aux angles doux | `reporting/app.py`, `app` |
 | Sortie réduite à la réponse (journal sous `--verbose`) ; avant tout chargement, la commande `refresh` à lancer | `ingestion/cli.py` |
@@ -171,7 +173,7 @@ Le détail de chaque ligne est dans son lot, plus bas.
 
 | Ordre | Étape | Condition ou date |
 |---|---|---|
-| 1 | **Carte, lot B** : maquettes en `BatchedMesh` (three.js r186 est embarqué), puis lots C et D | Le lot D épingle `compare` sur la carte |
+| 1 | **Carte, lot D** : `compare` épinglé sur la carte, export d'image, fiche sans WebGL ; puis lots E et F | Le lot D épingle `compare` sur la carte |
 | 2 | **Pistes retenues du lot A** : image datée du site, pièces du dossier de raccordement | Dans cet ordre ; chacune sa source, déjà lue ou à relire |
 | 3 | **8, 30, 6** Prix au-delà de 150 GWh, modèle prédictif, international | Chacune sa condition (lot B) ; l'international en dernier |
 
@@ -239,7 +241,7 @@ Rien à coder tant que la condition n'est pas levée.
 
 | Étape | Pourquoi pour ce persona | Condition pour s'y mettre |
 |---|---|---|
-| **Carte** Refonte (lots B à F, voir plus bas) | Une carte lisible imprimée, qui montre ce que la puissance demandée change | Lot B d'abord : maquettes en `BatchedMesh` |
+| **Carte** Refonte (lots D à F, voir plus bas) | Une carte lisible imprimée, qui finit dans une présentation | Lot D d'abord : `compare` épinglé sur la carte |
 | **8** Repère de prix au-delà de 150 000 MWh/an, après la fin de l'ARENH | Un projet de 20 MW constant dépasse la dernière tranche Eurostat (IG, sans borne) | Une source officielle et ouverte d'un prix à terme ; le classement pondéré dans `compare` reste écarté |
 | **30** Modèle prédictif d'implantation (cadrage plus bas) : par zone d'emploi, probabilité d'implantations nouvelles à 3 ans, apprise sur l'historique | Signaler tôt les territoires qui montent, en complément des faits à l'adresse ; il dira où les projets vont, pas où ils seraient rentables ni si la puissance est disponible | Données fiabilisées (critères à écrire) ; à concilier avec la « comparaison sans classement » ; historique de la capacité en soutirage, absent à ce jour |
 | **6** Extension internationale, voir plus bas | En dernier | Jeton ENTSO-E et contours des zones de prix |
@@ -303,10 +305,10 @@ pas de CDN), données publiques sourcées, « non disponible » plutôt qu'un ch
 
 **Constat.** three.js **r186** (septembre 2026) est au cœur de la carte (`reporting/carte.html`,
 grille hexagonale, maquettes, deux vues), avec `WebGLRenderer`. Les nouveautés utiles :
-`WebGPURenderer` (repli WebGL 2 automatique), shaders en JavaScript (TSL), `BatchedMesh` pour des
-milliers de maquettes en un appel de dessin. La vue par défaut « Raccorder » (zones RTE, sites clés en main, postes 400 kV) parle
-déjà au persona ; il lui manque de montrer ce que la puissance demandée change : domaine de
-tension, gestionnaire, délai. Friches, zones d'activité, desserte et eau
+`WebGPURenderer` (repli WebGL 2 automatique), shaders en JavaScript (TSL), `BatchedMesh` (en place :
+les maquettes d'un calque en deux appels de dessin). La vue par défaut « Raccorder » (zones RTE, sites clés en main, postes 400 kV) parle
+déjà au persona et montre ce que la puissance demandée change (domaine de tension, gestionnaire,
+année de capacité des zones). Friches, zones d'activité, desserte et eau
 ne sont aujourd'hui que dans `diagnose`, pas sur la carte (lot F).
 
 ### Direction artistique : « le relevé »
@@ -339,7 +341,7 @@ Chaque effet doit répondre à une question du persona ; sinon il n'entre pas.
 
 | Fonction | Rendu three.js | Question servie | Données |
 |---|---|---|---|
-| « Raccorder » selon la puissance | Autour de l'épingle, un anneau par domaine de tension (HTA, zone grise, HTB) teinté selon `--puissance` ; zones RTE en colonnes de lumière dont la hauteur dit l'année de capacité ; contraintes RTE en voile sur les cases | Qui raccorde mes 12 MW, et quand ? | existant (`seuils_raccordement`, SDDR, contraintes) |
+| Contraintes RTE | Voile sur les cases selon les contraintes prévues du département | Où le réseau est-il tendu ? | existant (contraintes) |
 | Capacité en soutirage (étape 19) | Cases teintées par capacité restante dès que RTE la publie ; d'ici là, rien d'inventé | La puissance est-elle là ? | RTE, 1er janvier 2027 |
 | `compare` sur la carte | Plusieurs épingles numérotées ; caméra qui passe d'un site à l'autre ; fiches côte à côte, **sans classement** | Le persona présélectionne 2 à 6 sites | existant |
 | Foncier et contraintes | Sites clés en main, friches et zones d'activité en maquettes ; ICPE et Seveso en marqueurs discrets | Le terrain est-il prêt et constructible ? | `fct_friches`, `ingestion/zones_activite.py`, voisinage Géorisques |
@@ -350,7 +352,7 @@ Chaque effet doit répondre à une question du persona ; sinon il n'entre pas.
 | Sans WebGL | La fiche « Brancher ici ? » et les critères s'affichent quand même, carte remplacée par un message | Aujourd'hui un poste sans WebGL n'a qu'un message d'erreur | — |
 
 Hors de propos : globe terrestre, particules, néons, post-traitements lourds (bloom, profondeur de
-champ), WebXR. `WebGPURenderer` n'est retenu que si le `WebGLRenderer` de la r186 ne tient pas
+champ), WebXR. `WebGPURenderer` n'est pas retenu : le `WebGLRenderer` de la r186 tient
 60 images/s sur un portable de bureau ; TSL seulement pour l'ombrage du relief.
 
 ### Embarquer three.js r186 hors ligne
@@ -378,11 +380,9 @@ mise à jour dans `docs/exemples/`.
 
 | Lot | Contenu | Validation |
 |---|---|---|
-| B | `BatchedMesh` pour les maquettes (le passage à three.js r186 est fait, sans requête réseau) | 60 images/s sur la métropole ; 45 mesurées en r186 contre 33 en r128 (Chrome sans fenêtre, Intel UHD, une seule mesure) |
-| C | « Raccorder » selon la puissance : anneaux des domaines de tension, zones RTE en colonnes datées | 1, 12, 30 et 50 MW à Chilly-Mazarin et Dunkerque : gestionnaire conforme à `seuils_raccordement` |
 | D | `compare` épinglé sur la carte (le tableau est déjà dans l'application) ; export d'image ; fiche sans WebGL | `compare` à 3 sites |
 | E | Relief continu et ombrage ; curseur horaire des îles | Ajaccio : 522 g vers 13 h, 681 g vers 5 h |
-| F | Couches friches, zones d'activité et desserte (déjà calculées), voisinage Géorisques, puis capacité en soutirage à sa publication | une adresse contrôlée à la main par couche |
+| F | Couches friches, zones d'activité et desserte (déjà calculées), voisinage Géorisques, voile des contraintes RTE, puis capacité en soutirage à sa publication | une adresse contrôlée à la main par couche |
 
 ## Besoins des porteurs de projets
 
@@ -519,6 +519,9 @@ et la chaleur fatale n'est pas établi.
 | Enedis par adresse : pages CSV data-fair de 10 000 lignes (le JSON prenait 9 min pour une année), dernière année publiée seulement ; adresse rapprochée sur « numéro + voie » normalisés, seulement si la BAN trouve le numéro ; une consommation à l'adresse prouve un raccordement, pas une puissance disponible |
 | Carte : fausses couleurs réservées à « Raccorder » (rouge → blanc → vert, sans cônes de montagne) ; « Territoire » revient aux couleurs réelles et au relief IGN, l'encart donne carbone et prix moyen par tranche (`fct_prix_entreprise_tranche`) ; frontières régionales en gris sombre |
 | Carte : sites clés en main en maquette posée sur la case (dalle, hangar, bureaux, mât au drapeau doré) ; centrales en maquettes aussi dans « Raccorder » ; survol d'un site : son nom |
+| Carte : dans un lot `BatchedMesh`, la couleur passe par instance, l'émission l'éclaircit et le métal se perd (la tuile détaillée garde ses matériaux) ; ombres figées hors mouvement, donc ombre immobile sous les pales d'éolienne |
+| Carte : sur la case d'une adresse, le bâtiment de l'entreprise (tour hexagonale vrillée, halo doré qui tourne, serre sous dôme de verre, arbres solaires, aire de drones, parvis rond) prend le centre ; pôles et sites de la case s'écartent en couronne au bord, plus petits, pour ne pas être masqués |
+| Carte : les anneaux de tension sont des domaines, pas des distances (la légende le dit) ; sans `--puissance`, ou en basse tension, aucun anneau ; une zone RTE sans année publiée garde une colonne basse |
 | Carte : un son de tuile ne dit rien que la fiche ne dise ; il suit la filière dominante (plus de la moitié de la puissance en service sur la case), rien à défaut ; jamais de lecture sans clic sur « Son » |
 | Acheminement : TURPE 7 HTA-BT (HTA à pointe fixe, BT > 36 kVA ; le tarif bleu l'inclut déjà) et HTB 1 à 3 (délibération CRE 2026-104, appliquée dès 40 MW, HTB 1 par défaut) ; une même puissance souscrite dans toutes les classes ; énergie répartie sur la courbe de charge, sinon sur toutes les heures de l'année ; heures creuses 22 h – 6 h, pointe 9 h – 11 h et 18 h – 20 h de décembre à février hors dimanche ; version courte ou longue utilisation au moindre coût ; gestion en contrat unique (Rf inclus), comptage communicant. Montant donné comme part déjà comprise dans le prix moyen Eurostat |
 | Zonage sismique : couche WFS de Géorisques plutôt qu'un seed (le tableur de planseisme.fr n'est plus en ligne, le fichier wpd reste écarté) ; zone trouvée par l'adresse dans son polygone, ce qui évite le recalage sur le code officiel géographique ; pages triées par `gid` (sans tri, 84 polygones perdus) et nombre de polygones contrôlé contre le total annoncé ; sur une limite, la zone la plus forte ; le critère « risques » du verdict reste réglé par les seuls plans de prévention |
