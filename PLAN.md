@@ -213,8 +213,7 @@ identifiée, faisables sans chargement lourd.
 | 1 | Friches déclaratives, aucune vue récente du site | Image datée du site dans le rapport, à la demande et sans stockage : [ORTHO-SAT](https://www.data.gouv.fr/datasets/ortho-sat/informations) (IGN, Pléiades et SPOT 6/7), puis [BD ORTHO](https://www.data.gouv.fr/datasets/bd-ortho-r) (aérien, 20 cm) si plus fine | IGN, Licence Ouverte 2.0 ; tuiles servies sans compte le 1er novembre (HTTP 200, images non regardées) ; date de prise de vue de la tuile à lire, sans elle pas d'image |
 | 2 | Maturité du projet pour la file « premier prêt, premier servi » | Pièces d'un dossier de raccordement (autorisations, maîtrise du foncier) en liste de vérification, sans note | Procédure RTE de 2026 et délibération CRE 2026-32 à relire ; aucune donnée à charger |
 
-Les autres pistes attendent leur condition (lot B, « Pistes reportées ») ; le photovoltaïque
-détecté et la température de surface sont écartés.
+Le photovoltaïque détecté et la température de surface sont écartés.
 
 ### Lot T : qualité des tests
 
@@ -244,20 +243,6 @@ Rien à coder tant que la condition n'est pas levée.
 | **8** Repère de prix au-delà de 150 000 MWh/an, après la fin de l'ARENH | Un projet de 20 MW constant dépasse la dernière tranche Eurostat (IG, sans borne) | Une source officielle et ouverte d'un prix à terme ; le classement pondéré dans `compare` reste écarté |
 | **30** Modèle prédictif d'implantation (cadrage plus bas) : par zone d'emploi, probabilité d'implantations nouvelles à 3 ans, apprise sur l'historique | Signaler tôt les territoires qui montent, en complément des faits à l'adresse ; il dira où les projets vont, pas où ils seraient rentables ni si la puissance est disponible | Données fiabilisées (critères à écrire) ; à concilier avec la « comparaison sans classement » ; historique de la capacité en soutirage, absent à ce jour |
 | **6** Extension internationale, voir plus bas | En dernier | Jeton ENTSO-E et contours des zones de prix |
-
-**Pistes reportées**, tirées du lot A : chacune attend sa condition, aucune ne se code avant.
-
-| Manque | Piste | Condition |
-|---|---|---|
-| Taux de charge réel : `--conso` doit être donnée, rien n'est déduit de `--puissance` (un data center n'utilise qu'environ 20 % de la puissance demandée, chiffre relayé) | Consommation par défaut déduite de `--puissance` et `--activite`, dite hypothèse | Une source officielle du taux de charge par activité ; sans elle, rien |
-| Coût du raccordement, dont la réfaction des bornes de recharge (part prise en charge par le tarif) | Ordre de grandeur du coût selon le domaine de tension | Barème de raccordement d'Enedis et texte de la réfaction (arrêté et délibération CRE) ; rien sans texte |
-| Périmètre des zones « prêtes à raccorder » de RTE | Les zones sont déjà sur la carte et dans « Raccorder » par un point de référence (seed `zones_raccordement_rte`) ; le contour en plus | Périmètres publiés par RTE |
-| Artificialisation (zéro artificialisation nette) de la commune | Ligne « enveloppe restante » du guide de la DGE ; couverture et usage à l'adresse par [OCS GE](https://www.data.gouv.fr/datasets/ocs-ge) (IGN, Licence Ouverte 2.0) | Portail de l'artificialisation des sols (Cerema), licence ; OCS GE n'a pas de couche nationale en WFS (téléchargement par département, tuiles non testées) |
-| Mouvements du sol, en plus des argiles et des cavités | [EGMS Ortho](https://land.copernicus.eu/en/products/european-ground-motion-service) (Copernicus, radar Sentinel-1, grille de 100 m, [accès libre, source à citer](https://land.copernicus.eu/en/data-policy)) | Un accès programmatique ; le téléchargement passe par l'Explorer seulement |
-| Inondation à l'adresse quand le rapport Géorisques ne répond pas | Inondations observées : [GFM](https://extwiki.eodc.eu/GFM/PDD/Introduction) et [Rapid Mapping](https://mapping.emergency.copernicus.eu/terms-and-conditions/) (Copernicus, Sentinel-1), dites observées au passage du satellite : une absence ne prouve pas l'absence de risque | Licence de GFM à lire |
-| Pente et bâti fin d'un terrain | Dérivés du [LiDAR HD](https://www.data.gouv.fr/datasets/nuages-de-points-lidar-hd) (IGN, Licence Ouverte 2.0) | Dalles de 0,5 à 2 Go : un accès limité à l'adresse ; couverture à vérifier |
-| Besoin de recharge poids lourds au dépôt | Situer l'adresse dans une zone logistique à fort besoin de puissance (étude Enedis de décembre 2025) | Maille des zones logistiques (SDES) et sa licence |
-| Climat futur du site | Projections climatiques (DRIAS, Explore2) | Licence de DRIAS ; date de la carte RGA 2026 |
 
 ### À se rappeler aux dates
 
@@ -462,9 +447,9 @@ et la chaleur fatale n'est pas établi.
 - **Imagerie satellite ouverte (pistes dans le lot A)** : aucune image ne dit
   la capacité de raccordement ; elle peut renforcer le foncier, l'artificialisation et les risques.
   Les produits déjà dérivés passent avant les images brutes, qui demandent une chaîne de traitement.
-  Ordre proposé : OCS GE, ORTHO-SAT à la demande, puis EGMS. Hors de France (étape 6) :
+  Seule piste gardée : ORTHO-SAT à la demande. Hors de France (étape 6) :
   [HRL Imperméabilisation](https://land.copernicus.eu/en/products/high-resolution-layer-imperviousness)
-  et [GHS-BUILT-S](https://registry.opendata.aws/ghs-built-s/) (CC BY 4.0) à la place d'OCS GE.
+  et [GHS-BUILT-S](https://registry.opendata.aws/ghs-built-s/) (CC BY 4.0).
   [Sentinel-1 et 2](https://ewds.climate.copernicus.eu/licences/ec-sentinel) bruts seulement si aucun
   produit dérivé ne répond ([12 To sur 30 jours](https://documentation.dataspace.copernicus.eu/Quotas.html),
   compte requis pour ces quotas). Non retenus : Dinamis (utilisateurs non commerciaux, charte lue en
