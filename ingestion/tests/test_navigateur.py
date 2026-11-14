@@ -116,10 +116,15 @@ def _analyser(page: Page, adresse: str) -> None:
 
 def test_accueil_adresse_verdict_puis_pdf(ecran: Page, serveur: ThreadingHTTPServer) -> None:
     ecran.goto(app.url(serveur))
+    ecran.locator("#reglages").evaluate("e => e.open = true")
+    ecran.fill("#puissance_mw", "30")
     _analyser(ecran, "1 place Bellecour Lyon")
 
     fiche = ecran.locator("#city")
     expect(fiche).to_contain_text("Brancher ici ?")
+    # L'anneau du domaine de tension du projet porte la puissance et le gestionnaire
+    expect(ecran.locator(".banner.tension")).to_contain_text("30 MW")
+    expect(ecran.locator(".banner.tension")).to_contain_text("zone grise · Enedis ou RTE")
     expect(fiche).to_contain_text("Lyon")
     expect(ecran.locator("#accueil")).to_be_hidden()
     expect(ecran.locator("#nouvelle")).to_be_visible()

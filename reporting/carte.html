@@ -230,6 +230,9 @@ table.cote tbody th { font-weight: 500; color: var(--parch-dim); }
 .banner .pr { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 11px; color: var(--ink); background: var(--gold); }
 .banner.p2 .pr { background: var(--parch-dim); }
 .banner .by { color: var(--parch-dim); font-variant-numeric: tabular-nums; }
+.banner.tension { padding: 2px 10px; font-weight: 700; }
+.banner.tension.ok { border-color: var(--vert); }
+.banner.tension.attention { border-color: var(--orange); }
 .banner.cible { border-color: var(--vert); box-shadow: 0 0 0 3px color-mix(in srgb, var(--vert) 22%, transparent); }
 .banner.adresse { border-color: var(--soleil); box-shadow: 0 0 0 3px color-mix(in srgb, var(--soleil) 25%, transparent); padding: 3px 10px; font-weight: 700; max-width: 260px; }
 .banner.adresse span { overflow: hidden; text-overflow: ellipsis; }
@@ -385,6 +388,9 @@ const host = document.getElementById("scene");
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
+// Les ombres ne se recalculent que si le relief ou le soleil bougent : leur carte, refaite à chaque image, coûtait un tiers du débit.
+// L'ombre des pales d'éolienne reste donc immobile
+renderer.shadowMap.autoUpdate = false;
 host.appendChild(renderer.domElement);
 const DISTANCE_MONDE = 2100, SEUIL_MONDE = 320;
 const scene = new THREE.Scene(); scene.background = col(CHARTE("papier")); scene.fog = new THREE.Fog(col(CHARTE("papier")), 120, 280);
@@ -403,7 +409,7 @@ sun.shadow.mapSize.set(4096, 4096); sun.shadow.bias = -.0008; scene.add(sun);
 const seabed = new THREE.Mesh(new THREE.PlaneGeometry(16000, 16000), new THREE.MeshStandardMaterial({ color: col(CHARTE("mer")), roughness: .9 }));
 seabed.rotation.x = -Math.PI / 2; seabed.position.y = -.05; seabed.receiveShadow = true; scene.add(seabed);
 // Le soleil et ses ombres suivent la carte affichée
-const soleil = (x, z) => { sun.position.set(x - 45, 90, z + 35); sun.target.position.set(x, 0, z); };
+const soleil = (x, z) => { sun.position.set(x - 45, 90, z + 35); sun.target.position.set(x, 0, z); renderer.shadowMap.needsUpdate = true; };
 // Métropole et Corse forment une carte, chaque département d'outre-mer la sienne, posée à sa place sur le monde
 let carte = 0;
 const nomCarte = gi => GR[gi].code ? GR[gi].nom : "Métropole et Corse";
@@ -486,6 +492,13 @@ const ringMat = new THREE.MeshBasicMaterial({ color: col(CHARTE("encre")), trans
 const zoneObjs = DATA.zones.map(z => ({ z, t: caseDe(z.case) })).filter(o => o.t && o.t.land);
 for (const { t } of zoneObjs) { const m = new THREE.Mesh(new THREE.RingGeometry(R * .9, R * 1.12, 6), ringMat.clone()); m.rotation.x = -Math.PI / 2; m.rotation.z = Math.PI / 6;
   m.position.set(t.x, 0, t.z); m.userData = { i: t.i, dy: .08, ring: true }; markers.zones.add(m); followers.push(m); }
+// Chaque zone RTE porte une colonne d'autant plus haute que sa capacité arrive tôt ; sans année publiée, elle reste basse
+const voile = (() => { const cv = document.createElement("canvas"); cv.width = 1; cv.height = 64; const c = cv.getContext("2d"), g = c.createLinearGradient(0, 0, 0, 64); g.addColorStop(0, "#000"); g.addColorStop(1, "#fff"); c.fillStyle = g; c.fillRect(0, 0, 1, 64); return new THREE.CanvasTexture(cv); })();
+const colonneGeo = new THREE.CylinderGeometry(R * .93, R * .93, 1, 6, 1, true), colonneMat = new THREE.MeshBasicMaterial({ color: col(CHARTE("encre")), alphaMap: voile, transparent: true, opacity: .6, side: THREE.DoubleSide, depthWrite: false });
+colonneGeo.translate(0, .5, 0);
+const AN_MAX = Math.max(0, ...zoneObjs.map(o => o.z.a || 0));
+for (const o of zoneObjs) { o.h = (o.z.a ? 1.4 + .8 * (AN_MAX - o.z.a) : .5) * PS; const m = new THREE.Mesh(colonneGeo, colonneMat);
+  m.scale.y = o.h; m.position.set(o.t.x, 0, o.t.z); m.userData = { i: o.t.i }; markers.zones.add(m); followers.push(m); }
 for (const a of ADRESSES) a.tile = caseDe(a.case);
 const adresseTile = DATA.adresse ? DATA.adresse.tile : null;
 const autreTile = ADRESSES[1] && ADRESSES[1].tile !== adresseTile ? ADRESSES[1].tile : null;
@@ -507,6 +520,19 @@ const nomFiliere = f => NOM_FILIERE[f] || f;
 markers.production = new THREE.Group(); scene.add(markers.production);
 const mat = (c, extra) => new THREE.MeshStandardMaterial({ color: col(c), roughness: .75, flatShading: true, ...extra });
 const piece = (geo, m, x, y, z, sx = 1, sy = 1, sz = 1) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.scale.set(sx, sy, sz); o.castShadow = true; return o; };
+// Les maquettes d'un calque en deux appels de dessin (avec et sans ombre portée) au lieu d'un par pièce : chaque groupe reste
+// hors de la scène et ne sert qu'à poser ses pièces dans le lot. La couleur passe par instance, l'émission l'éclaircit, le métal se perd
+const maquettes = { production: [], fret: [], sites: [] }, plates = new Map();
+const plate = geo => { if (!plates.has(geo)) plates.set(geo, geo.index ? geo.toNonIndexed() : geo); return plates.get(geo); };
+const poser = g => { g.updateMatrixWorld(true); g.traverse(o => { if (o.lot) o.lot.setMatrixAt(o.idLot, o.matrixWorld); }); };
+function enLot(calque, sujet) { const pieces = [], teinte = new THREE.Color(); for (const g of maquettes[calque]) g.traverse(o => { if (o.isMesh) pieces.push(o); });
+  for (const ombre of [true, false]) { const ps = pieces.filter(o => o.castShadow === ombre); if (!ps.length) continue;
+    const geos = [...new Set(ps.map(o => plate(o.geometry)))], lot = new THREE.BatchedMesh(ps.length, geos.reduce((n, g) => n + g.attributes.position.count, 0), 0, new THREE.MeshStandardMaterial({ roughness: .75, flatShading: true }));
+    const ids = new Map(geos.map(g => [g, lot.addGeometry(g)])); lot.sortObjects = false; lot.castShadow = ombre; lot.sujets = [];
+    for (const o of ps) { o.lot = lot; o.idLot = lot.addInstance(ids.get(plate(o.geometry))); lot.sujets[o.idLot] = o.userData[sujet];
+      lot.setColorAt(o.idLot, teinte.copy(o.material.emissive).multiplyScalar(o.material.emissiveIntensity).add(o.material.color)); }
+    markers[calque].add(lot); }
+  maquettes[calque].forEach(poser); }
 const boite = new THREE.BoxGeometry(1, 1, 1), cyl = new THREE.CylinderGeometry(.5, .5, 1, 10), cone = new THREE.ConeGeometry(.5, 1, 5), fut = new THREE.CylinderGeometry(.3, .5, 1, 10);
 const dome = new THREE.SphereGeometry(.5, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), bulle = new THREE.IcosahedronGeometry(.5, 0);
 [boite, cyl, cone, fut].forEach(g => g.translate(0, .5, 0));
@@ -554,10 +580,14 @@ const MAX_MW = {}, nCase = {}; for (const p of DATA.production) { const t = case
 for (const s of [...DATA.sites, ...(DATA.fret || [])]) { const t = caseDe(s.case); if (t && t.land) nCase[t.i] = (nCase[t.i] || 0) + 1; }
 // Le bâtiment de chaque adresse prend sa place sur sa case, à côté de ce qu'elle porte déjà
 for (const t of [adresseTile, autreTile]) if (t && t.land) nCase[t.i] = (nCase[t.i] || 0) + 1;
-// Pôles, pôles de fret et sites clés en main d'une case se partagent les deux tiers, côte à côte sur un cercle
-const parCase = {}, prodObjs = [];
-const place = t => { const n = nCase[t.i], k = parCase[t.i] = (parCase[t.i] || 0) + 1, sin = Math.sin(Math.PI / n);
-  const d = n > 1 ? D_MAX / (1 + 1 / sin) : D_MAX, rayon = n > 1 ? d / (2 * sin) : 0, angle = k * 2 * Math.PI / n + hash(t.c, t.r) * 6;
+// Pôles, pôles de fret et sites clés en main d'une case se partagent les deux tiers, côte à côte sur un cercle.
+// Sur la case d'une adresse, le bâtiment de l'entreprise prend le centre et les autres s'écartent en couronne, au bord
+const parCase = {}, prodObjs = [], avecAdresse = new Set([adresseTile, autreTile].filter(t => t && t.land).map(t => t.i)), R_CASE = HW / 2 * .97;
+const place = (t, centre) => { const entoure = avecAdresse.has(t.i), n = nCase[t.i] - entoure;
+  if (centre) return { d: n ? R_CASE * 1.12 : D_MAX * 1.2, x: t.x, z: t.z };
+  const k = parCase[t.i] = (parCase[t.i] || 0) + 1, sin = Math.sin(Math.PI / n), angle = k * 2 * Math.PI / n + hash(t.c, t.r) * 6;
+  const rayon = entoure ? R_CASE * .78 : n > 1 ? D_MAX / (1 + 1 / sin) / (2 * sin) : 0;
+  const d = entoure ? Math.min(R_CASE * .44, n > 1 ? 1.9 * rayon * sin : Infinity) : n > 1 ? D_MAX / (1 + 1 / sin) : D_MAX;
   return { d, x: t.x + Math.cos(angle) * rayon, z: t.z + Math.sin(angle) * rayon }; };
 for (const p of DATA.production) { const t = caseDe(p.case); if (!t || !t.land) continue;
   const { d, x, z } = place(t), g = new THREE.Group(), s = d * (.45 + .55 * Math.sqrt(p.mw / MAX_MW[t.g]));
@@ -565,7 +595,8 @@ for (const p of DATA.production) { const t = caseDe(p.case); if (!t || !t.land) 
   const socle = piece(socleGeo, mat(FILIERES[p.f] || "#7fe3ff", { emissive: col(FILIERES[p.f] || "#7fe3ff"), emissiveIntensity: .25 }), 0, 0, 0); socle.castShadow = false; g.add(socle);
   g.position.set(x, 0, z); g.rotation.y = hash(t.c, t.r) * .8 - .4;
   g.userData = { ...g.userData, i: t.i, hub: p, ph: hash(t.r, t.c) * 6 }; g.traverse(o => o.userData.hub = p);
-  markers.production.add(g); followers.push(g); prodObjs.push({ p, t }); }
+  maquettes.production.push(g); followers.push(g); prodObjs.push({ p, t }); }
+enLot("production", "hub");
 
 // Pôles de fret en maquettes : port (quai, portique, conteneurs), aéroport (piste, tour, avion), chantier rail-route (voie, wagons, portique)
 const FRET = { port: "#3f8fd2", aeroport: "#8fa9c4", rail: "#9b7fd1" };
@@ -600,7 +631,8 @@ for (const p of DATA.fret || []) { const t = caseDe(p.case); if (!t || !t.land) 
   MAQUETTES_FRET[p.m](g); g.scale.set(s, s, s);
   const socle = piece(socleGeo, mat(FRET[p.m], { emissive: col(FRET[p.m]), emissiveIntensity: .25 }), 0, 0, 0); socle.castShadow = false; g.add(socle);
   g.position.set(x, 0, z); g.rotation.y = hash(t.r, t.c) * .8 - .4;
-  g.userData = { i: t.i }; g.traverse(o => o.userData.fret = p); markers.fret.add(g); followers.push(g); fretObjs.push({ p, t }); }
+  g.userData = { i: t.i }; g.traverse(o => o.userData.fret = p); maquettes.fret.push(g); followers.push(g); fretObjs.push({ p, t }); }
+enLot("fret", "fret");
 
 // Site clé en main en maquette posée sur sa case : dalle viabilisée, hangar, bureaux, mât au drapeau doré
 const SITE = { dalle: mat("#cdc6b0"), murs: mat("#b9c2c8"), toit: mat("#6E9F4E"), pv: mat("#2f5f8f", { metalness: .35, roughness: .4 }), bureaux: mat("#e9e4d6"), mat: mat("#d8d4cb"), or: mat("#f1c75b", { emissive: col("#7a5410"), emissiveIntensity: .6 }) };
@@ -611,7 +643,8 @@ for (const s of DATA.sites) { const t = caseDe(s.case); if (!t || !t.land) conti
     piece(boite, SITE.bureaux, .22, .055, -.14, .16, .12, .14), piece(cyl, SITE.mat, .3, .055, .18, .02, .42, .02), piece(boite, SITE.or, .37, .38, .18, .14, .08, .01));
   g.children[0].castShadow = false; g.scale.set(e, e, e);
   g.position.set(x, 0, z); g.rotation.y = hash(t.r, t.c) * .8 - .4;
-  g.userData = { i: t.i }; g.traverse(o => o.userData.site = s); markers.sites.add(g); followers.push(g); }
+  g.userData = { i: t.i }; g.traverse(o => o.userData.site = s); maquettes.sites.push(g); followers.push(g); }
+enLot("sites", "site");
 
 // Pollen et pétales qui flottent autour de l'adresse : seule cette case vit en continu
 const pointDoux = (() => { const cv = document.createElement("canvas"); cv.width = cv.height = 32; const c = cv.getContext("2d"), g = c.createRadialGradient(16, 16, 0, 16, 16, 16); g.addColorStop(0, "rgba(255,255,255,1)"); g.addColorStop(.45, "rgba(255,255,255,.75)"); g.addColorStop(1, "rgba(255,255,255,0)"); c.fillStyle = g; c.fillRect(0, 0, 32, 32); return new THREE.CanvasTexture(cv); })();
@@ -620,21 +653,36 @@ function nuagePollen(n, rayon, haut, taille) { const pos = [], cl = [], TEINTES_
   const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute("color", new THREE.Float32BufferAttribute(cl, 3));
   return new THREE.Points(geo, new THREE.PointsMaterial({ size: taille, map: pointDoux, vertexColors: true, transparent: true, depthWrite: false, opacity: .95 })); }
 
-// L'entreprise du visiteur : la seule maquette à liseré doré, immeuble vitré et aile basse, qu'on repère sans qu'elle écrase la carte
+// L'entreprise du visiteur, seule maquette à liseré doré, au centre de sa case : tour hexagonale vrillée ceinte d'un halo
+// qui tourne, serre sous dôme de verre reliée par une passerelle, arbres solaires, aire de drones, parvis rond et son bassin
+const hexa = new THREE.CylinderGeometry(.5, .5, 1, 6), anneau = new THREE.TorusGeometry(.5, .035, 6, 30); hexa.translate(0, .5, 0);
 let batimentAdresse = null, hautBatiment = 0;
-function poserEntreprise(t, teinte) { const or = col(teinte), { d, x, z } = place(t), g = new THREE.Group(), e = Math.max(d * 1.2, R * .92);
-  const beton = mat("#f3efe4"), verre = mat("#3f7396", { metalness: .45, roughness: .22 }), dore = mat(teinte, { emissive: or, emissiveIntensity: .5 }), jardin = mat(CHARTE("feuille")), dalle = mat("#ded9ca");
-  g.add(piece(socleGeo, dore, 0, 0, 0), piece(boite, dalle, 0, .035, 0, .84, .015, .66));
-  const etages = 8, pas = .118, tx = -.16, tz = -.1;
-  for (let k = 0; k < etages; k++) g.add(piece(boite, verre, tx, .05 + k * pas, tz, .34, pas - .02, .3), piece(boite, beton, tx, .05 + (k + 1) * pas - .02, tz, .37, .02, .33));
-  const sommet = .05 + etages * pas;
-  g.add(piece(boite, dore, tx, sommet, tz, .39, .03, .35), piece(boite, beton, tx + .05, sommet + .03, tz - .02, .13, .05, .1));
-  // Aile basse : bandeau de fenêtres, toit planté et panneaux solaires, auvent doré sur l'entrée
-  g.add(piece(boite, beton, .17, .05, .08, .44, .17, .36), piece(boite, verre, .17, .1, .08, .45, .055, .37), piece(boite, jardin, .17, .22, .08, .4, .012, .32));
-  for (const px of [.06, .17, .28]) { const p = piece(boite, SITE.pv, px, .24, .08, .09, .012, .22); p.rotation.z = -.3; g.add(p); }
-  g.add(piece(boite, dore, .17, .15, .28, .18, .014, .08));
+function poserEntreprise(t, teinte) { const or = col(teinte), { d: e, x, z } = place(t, true), g = new THREE.Group();
+  const blanc = mat("#f6f3ea"), verre = mat("#2f6f8f", { metalness: .55, roughness: .16 }), dore = mat(teinte, { emissive: or, emissiveIntensity: .5 }), bulleVerre = mat("#bfe6f2", { metalness: .2, roughness: .08, transparent: true, opacity: .42 });
+  const jardin = mat(CHARTE("feuille")), feuillage = mat("#3f8a3f"), tronc = mat("#6b4f2a"), parvis = mat("#e6e1d2"), eau = mat("#2c86b4", { roughness: .15, metalness: .2 });
+  const aPlat = (m, px, py, pz, r) => { const o = piece(anneau, m, px, py, pz, r, r, r); o.rotation.x = Math.PI / 2; return o; };
+  g.add(piece(socleGeo, dore, 0, 0, 0), piece(cyl, parvis, 0, .035, 0, .9, .012, .9), aPlat(blanc, 0, .05, 0, .9));
+  // Chaque étage tourne de 5° sur le précédent et la tour s'élargit à mi-hauteur : les arêtes dessinent une vrille
+  const tx = -.13, tz = -.1, etages = 13, pas = .082; let y = .047;
+  for (let k = 0; k < etages; k++, y += pas) { const l = .27 + .07 * Math.sin(Math.PI * k / (etages - 1)), tour = k * .087, plancher = k % 4 === 3 ? jardin : blanc;
+    const vitre = piece(hexa, verre, tx, y, tz, l, pas - .016, l), dalle = piece(hexa, plancher, tx, y + pas - .016, tz, l + .035, .016, l + .035); vitre.rotation.y = dalle.rotation.y = tour; g.add(vitre, dalle); }
+  const sommet = y + .05;
+  g.add(piece(hexa, dore, tx, y, tz, .2, .02, .2), aPlat(dore, tx, y + .05, tz, .2), piece(cone, blanc, tx, y + .02, tz, .05, .34, .05), piece(bulle, dore, tx, y + .37, tz, .04, .04, .04));
+  // Halo doré incliné : le groupe tourne autour de la verticale, comme le rotor d'une éolienne autour de son axe
+  const halo = new THREE.Group(), cercle = piece(anneau, dore, 0, 0, 0, .52, .52, .4); halo.position.set(tx, .047 + etages * pas * .62, tz); halo.rotation.x = -Math.PI / 2; cercle.rotation.x = .2; halo.add(cercle); halo.name = "rotor"; g.add(halo);
+  // Serre : dôme de verre sur sa couronne, un bosquet dedans
+  const sx = .22, sz = .14;
+  g.add(piece(cyl, blanc, sx, .047, sz, .4, .03, .4), piece(cyl, jardin, sx, .077, sz, .36, .006, .36), piece(dome, bulleVerre, sx, .077, sz, .38, .34, .38), aPlat(dore, sx, .08, sz, .39));
+  for (const [ax, az, as] of [[-.05, .02, 1], [.06, -.04, .75], [.03, .07, .6]]) g.add(piece(cyl, tronc, sx + ax, .08, sz + az, .012, .05 * as, .012), piece(bulle, feuillage, sx + ax, .08 + .085 * as, sz + az, .09 * as, .1 * as, .09 * as));
+  const passerelle = piece(boite, verre, (tx + sx) / 2, .21, (tz + sz) / 2, Math.hypot(sx - tx, sz - tz) - .2, .03, .035); passerelle.rotation.y = -Math.atan2(sz - tz, sx - tx); g.add(passerelle);
+  // Arbres solaires : trois corolles photovoltaïques par mât
+  for (const [ax, az, h] of [[.3, -.24, .3], [.13, -.34, .22]]) { g.add(piece(cyl, blanc, ax, .047, az, .016, h, .016));
+    for (let k = 0; k < 3; k++) { const a = k * 2.094 + ax * 9, f = piece(cyl, SITE.pv, ax + Math.cos(a) * .045, .047 + h - k * .03, az + Math.sin(a) * .045, .11, .008, .11); f.rotation.set(Math.sin(a) * .35, 0, -Math.cos(a) * .35); g.add(f); } }
+  g.add(piece(cyl, blanc, -.35, .047, .16, .02, .2, .02), piece(cyl, blanc, -.35, .247, .16, .15, .012, .15), aPlat(dore, -.35, .262, .16, .15), piece(bulle, blanc, -.35, .29, .16, .05, .03, .05));
+  g.add(piece(cyl, eau, -.12, .047, .32, .2, .008, .2), aPlat(blanc, -.12, .055, .32, .2));
+  for (const [ax, az, as] of [[-.3, .3, 1], [.05, .37, .8], [-.4, -.12, .9], [.4, -.05, .8]]) g.add(piece(cyl, tronc, ax, .047, az, .014 * as, .06 * as, .014 * as), piece(bulle, feuillage, ax, .047 + .09 * as, az, .09 * as, .09 * as, .09 * as));
   for (const m of g.children) m.castShadow = m !== g.children[0];
-  g.scale.set(e, e, e); g.position.set(x, 0, z); g.userData = { i: t.i }; scene.add(g); followers.push(g);
+  g.scale.set(e, e, e); g.position.set(x, 0, z); g.userData = { i: t.i, rotor: halo, ph: 0 }; scene.add(g); followers.push(g);
   // Anneau doré qui pulse sur la case et liseré autour d'elle : la lecture se fait de loin
   const onde = new THREE.Mesh(new THREE.RingGeometry(R * .9, R * 1.12, 6), new THREE.MeshBasicMaterial({ color: or, transparent: true, opacity: .8, side: THREE.DoubleSide, depthWrite: false }));
   onde.rotation.x = -Math.PI / 2; onde.rotation.z = Math.PI / 6; onde.position.set(t.x, 0, t.z); onde.userData = { i: t.i, dy: .09, ring: true }; scene.add(onde); followers.push(onde);
@@ -671,12 +719,22 @@ for (const [r, ts] of Object.entries(regTiles)) { const d = DATA.departements.fi
 GR.forEach((g, gi) => { if (!g.code) return; const ts = tiles.filter(t => t.g === gi);
   addLabel(`${esc(g.nom)}<small>1 case ≈ ${fmt(g.rayonKm * 2, 1)} km, contre ${fmt(GR[0].rayonKm * 2)} km en métropole</small>`, "rlabel",
     { g: gi, x: ts.reduce((a, t) => a + t.x, 0) / ts.length, z: Math.max(...ts.map(t => t.z)) + R * 1.2, y: 0 }, ["raccordement", "territoire"]); });
-for (const o of zoneObjs) { const { z, t } = o; addLabel(`<span class="pr">${esc(z.pr)}</span><span>${esc(z.n)}</span>${z.a ? `<span class="by">${z.a}</span>` : ""}`, "banner " + (z.pr === "P1" ? "p1" : "p2") + (o === zoneCible ? " cible" : ""), { g: t.g, i: t.i, x: t.x, z: t.z, y: 1.6 * PS }, ["raccordement"]); }
+for (const o of zoneObjs) { const { z, t } = o; addLabel(`<span class="pr">${esc(z.pr)}</span><span>${esc(z.n)}</span>${z.a ? `<span class="by">${z.a}</span>` : ""}`, "banner " + (z.pr === "P1" ? "p1" : "p2") + (o === zoneCible ? " cible" : ""), { g: t.g, i: t.i, x: t.x, z: t.z, y: o.h + .3 * PS }, ["raccordement"]); }
 const parCarte = {}; for (const o of prodObjs) (parCarte[o.t.g] ||= []).push(o);
 for (const os of Object.values(parCarte)) for (const { p, t } of os.slice(0, 6))
   addLabel(`<span>${esc(p.n)}</span><span class="by">${fmt(p.mw)} MW</span>`, "banner prod", { g: t.g, i: t.i, x: t.x, z: t.z, y: 2.4 * PS }, ["territoire"]);
 ADRESSES.forEach((a, k) => { const t = a.tile; if (!t) return;
   addLabel((ADRESSES.length > 1 ? `<b class="rang${k ? " deux" : ""}">${k + 1}</b>` : "") + `<span>${esc(a.libelle)}</span>`, "banner adresse", { g: t.g, i: t.i, x: t.x, z: t.z, y: (k && !autreTile ? 5 : 3.6) * PS }, ["raccordement", "territoire"]); });
+// « Raccorder » selon la puissance : un anneau par domaine de tension autour de l'adresse, celui du projet teinté selon le
+// critère Raccordement et nommé avec son gestionnaire. Ce ne sont pas des distances : la légende le dit
+markers.tension = new THREE.Group(); scene.add(markers.tension);
+for (const a of ADRESSES) { const t = a.tile, rac = a.verdict && a.verdict.raccordement, seuils = DATA.seuils || [];
+  if (!rac || !t || !t.land || (a !== ADRESSES[0] && !autreTile) || !seuils.some(s => s.d === rac.domaine)) continue;
+  const etat = (a.verdict.criteres.find(c => c.nom === "Raccordement") || {}).etat, teinte = CHARTE({ ok: "vert", attention: "orange" }[etat] || "encre");
+  seuils.forEach((s, k) => { const actif = s.d === rac.domaine, r = R * (1.7 + .45 * k), w = R * (actif ? .1 : .03);
+    const m = new THREE.Mesh(new THREE.RingGeometry(r - w, r + w, 6), new THREE.MeshBasicMaterial({ color: col(actif ? teinte : CHARTE("discret")), transparent: true, opacity: actif ? .9 : .45, side: THREE.DoubleSide, depthWrite: false }));
+    m.rotation.x = -Math.PI / 2; m.rotation.z = Math.PI / 6; m.position.set(t.x, 0, t.z); m.userData = { i: t.i, dy: .1 }; markers.tension.add(m); followers.push(m);
+    if (actif) addLabel(`<span>${fmt(rac.mw, rac.mw % 1 ? 1 : 0)} MW</span><span class="by">${esc(rac.domaine)} · ${esc(rac.gestionnaire)}</span>`, "banner tension " + etat, { g: t.g, i: t.i, x: t.x, z: t.z + r * .87, y: .1 }, ["raccordement"]); }); }
 
 // À l'échelle du monde, seuls les territoires étudiés se nomment
 const etiquettesMonde = GR.map((g, gi) => { const ts = land.filter(t => t.g === gi); if (!ts.length) return null; const el = document.createElement("div");
@@ -703,8 +761,8 @@ for (const t of land) { const d = DEP[t.dep] || {}, r = [];
   t.raisons = r; }
 const avis = n => n > .15 ? "favorable" : n < -.15 ? "défavorable" : "neutre";
 const LENS = {
-  raccordement: { tile: t => [ramp(NOTE, (t.note + 1) / 2), t.baseH], show: ["sites", "zones", "liens", "production", "fret"],
-    legend: `<h3>Note des cases</h3><div class="bar" style="background:linear-gradient(90deg,${NOTE.join(",")})"></div><div class="ticks"><span>défavorable</span><span>neutre</span><span>favorable</span></div><div class="teintes" style="margin-top:6px"><span><i style="background:${CHARTE("soleil")}"></i>votre site</span><span><i style="background:${CHARTE("encre")}"></i>zone RTE</span><span><i style="background:#f1c75b"></i>site clé en main</span></div><p>Vert : zone de raccordement prioritaire RTE ou site clé en main à proximité, poste 400 kV dans le département. Rouge : contraintes RTE prévues, relief, électricité carbonée, région importatrice. Indicatif : seule une étude Enedis ou RTE fait foi.</p><p>Anneau sombre et bannière : zone prioritaire RTE (SDDR 2025). Hangar au drapeau doré : site clé en main France 2030. Maquettes : centrales d'au moins 200 MW (20 MW en Corse et outre-mer) ; ports (socle bleu), aéroports (socle gris-bleu) et chantiers rail-route (socle violet) au-delà d'un seuil de fret, détaillés dans la vue Territoire. Bâtiment au liseré doré : votre adresse, reliée à la zone RTE utile et au site le plus proche.</p>` },
+  raccordement: { tile: t => [ramp(NOTE, (t.note + 1) / 2), t.baseH], show: ["sites", "zones", "liens", "production", "fret", "tension"],
+    legend: `<h3>Note des cases</h3><div class="bar" style="background:linear-gradient(90deg,${NOTE.join(",")})"></div><div class="ticks"><span>défavorable</span><span>neutre</span><span>favorable</span></div><div class="teintes" style="margin-top:6px"><span><i style="background:${CHARTE("soleil")}"></i>votre site</span><span><i style="background:${CHARTE("encre")}"></i>zone RTE</span><span><i style="background:#f1c75b"></i>site clé en main</span></div><p>Vert : zone de raccordement prioritaire RTE ou site clé en main à proximité, poste 400 kV dans le département. Rouge : contraintes RTE prévues, relief, électricité carbonée, région importatrice. Indicatif : seule une étude Enedis ou RTE fait foi.</p><p>Anneaux autour de votre site : les domaines de tension (HTA, zone grise, HTB), celui de votre puissance en couleur avec son gestionnaire ; ce ne sont pas des distances.</p><p>Anneau sombre, colonne et bannière : zone prioritaire RTE (SDDR 2025), colonne d'autant plus haute que la capacité arrive tôt. Hangar au drapeau doré : site clé en main France 2030. Maquettes : centrales d'au moins 200 MW (20 MW en Corse et outre-mer) ; ports (socle bleu), aéroports (socle gris-bleu) et chantiers rail-route (socle violet) au-delà d'un seuil de fret, détaillés dans la vue Territoire. Bâtiment au liseré doré : votre adresse, reliée à la zone RTE utile et au site le plus proche.</p>` },
   // Paysage réel : couleurs naturelles et relief IGN, sans note ; l'électricité du territoire passe par l'encart
   territoire: { tile: t => [t.biome, t.baseH], show: ["mountains", "vegetation", "production", "fret"],
     legend: () => `<h3>Territoire</h3><div class="teintes">${TEINTES.map(([c, n]) => `<span><i style="background:${c}"></i>${n}</span>`).join("")}</div><p>Couleurs naturelles, hauteur selon l'altitude moyenne (IGN).</p>${legendeElectricite()}${legendeProduction()}${legendeFret()}` },
@@ -727,7 +785,7 @@ function legendeFret() { const ps = fretObjs.filter(o => o.t.g === carte).map(o 
   const lignes = Object.keys(FRET).map(m => [m, ps.filter(p => p.m === m)]).filter(([, l]) => l.length)
     .map(([m, l]) => `<span><i style="background:${FRET[m]}"></i>${esc(NOM_FRET[m])}</span><span>${l.length}</span>`).join("");
   return `<h3>Fret</h3>${lignes ? `<div class="filieres">${lignes}</div>` : "<p>Aucun pôle de fret au-dessus du seuil sur cette carte.</p>"}<p>Ports d'au moins ${zni ? "0,5" : "5"} Mt de marchandises par an hors tare (SDES${zni ? "" : " ; 0,5 Mt en Corse"}), aéroports d'au moins ${zni ? "3 000" : "20 000"} t de fret et de poste (DGAC${zni ? "" : " ; 3 000 t en Corse"}), dernière année publiée. Chantiers rail-route de SNCF Réseau (liste de 2022) d'au moins 2 km de voies de manutention : repère de capacité, aucun tonnage n'étant publié. HAROPA (Le Havre, Rouen, Paris) est publié d'un bloc et placé au Havre ; ports et aéroports au centre de leur commune.</p>`; }
-let lens = "raccordement", animating = true, vueMonde = false, tuileLevee = null;
+let lens = "raccordement", animating = true, relief = true, vueMonde = false, tuileLevee = null;
 const legendeMonde = () => `<h3>Le monde en tuiles</h3><div class="teintes"><span><i class="monde" style="background:${NOTE[4]}"></i>pays étudié : données, relief, maquettes</span><span><i class="monde" style="background:${TERNE_MONDE}"></i>autre pays : pas encore de données</span></div><p>Étudiés aujourd'hui : France métropolitaine, Corse et les cinq départements d'outre-mer, agrandis à leur place. Les collectivités d'outre-mer n'ont pas de données et restent ternes. Contours des pays : Natural Earth (domaine public), frontières de fait. Une tuile ≈ ${fmt(2 * (DATA.monde ? DATA.monde.rayon * 10 : 0))} km.</p>`;
 // La légende se lit en couleurs et en repères ; ses explications restent à un clic
 const majLegende = () => { const L = LENS[lens], el = document.getElementById("legend"); el.innerHTML = vueMonde && DATA.monde ? legendeMonde() : typeof L.legend === "function" ? L.legend() : L.legend;
@@ -735,7 +793,8 @@ const majLegende = () => { const L = LENS[lens], el = document.getElementById("l
 // La terre part sèche et reverdit par vagues depuis l'adresse, à la manière de Terra Nil : les vraies couleurs arrivent au passage du front
 const depart = new Float64Array(land.length), passe = new Uint8Array(land.length).fill(1), VITESSE_VAGUE = 18; let vagueLancee = false;
 function lancerVague(x, z) { vagueLancee = true; if (REDUCED) return; const t = performance.now() / 1000;
-  land.forEach((c, i) => { depart[i] = t + Math.hypot(c.x - x, c.z - z) / VITESSE_VAGUE; passe[i] = 0; }); animating = true; }
+  // Au-delà de 20 s de trajet (l'outre-mer, vu de métropole), les cases sautent ensemble : la boucle d'animation s'arrête
+  land.forEach((c, i) => { depart[i] = t + Math.min(20, Math.hypot(c.x - x, c.z - z) / VITESSE_VAGUE); passe[i] = 0; }); animating = true; }
 function secherTerre() { if (REDUCED) return; depart.fill(Infinity);
   land.forEach((c, i) => { const s = col("#cdb68c").offsetHSL(0, 0, (hash(c.r, c.c) - .5) * .05); s.toArray(curC, i * 3); landMesh.setColorAt(i, s); }); landMesh.instanceColor.needsUpdate = true; }
 function setLens(name) { lens = name; const L = LENS[name];
@@ -743,7 +802,7 @@ function setLens(name) { lens = name; const L = LENS[name];
   mountains.visible = L.show.includes("mountains");
   for (const [k, g] of Object.entries(markers)) g.visible = L.show.includes(k);
   document.querySelectorAll(".lens").forEach(b => b.setAttribute("aria-pressed", b.dataset.lens === name));
-  majLegende(); animating = true; if (vagueLancee) lancerVague(controls.target.x, controls.target.z); }
+  majLegende(); animating = relief = true; if (vagueLancee) lancerVague(controls.target.x, controls.target.z); }
 
 // Verdict de l'adresse, ou fiche du département cliqué
 const ICON = {
@@ -864,13 +923,12 @@ const ray = new THREE.Raycaster(), mouse = new THREE.Vector2(), tip = document.g
 const pickMonde = () => { const h = MONDE.length && ray.intersectObject(mondeMesh)[0]; return h ? MONDE[h.instanceId] : null; };
 const lensLine = (t, d) => lens === "raccordement" ? `Raccordement ${avis(t.note)}${t.raisons.length ? " : " + t.raisons.join(", ") : ""}` : !d ? "" : `Électricité ${d.co2 == null ? "n.d." : (d.co2 <= 100 ? "décarbonée" : "carbonée") + " (" + fmt(d.co2) + " g/kWh)"} · couverture régionale ${d.tc == null ? "n.d." : fmt(d.tc * 100) + " %"} · ${fmt(d.gwh)} GWh industriels`;
 function pick(e) { const b = renderer.domElement.getBoundingClientRect(); mouse.set((e.clientX - b.left) / b.width * 2 - 1, -(e.clientY - b.top) / b.height * 2 + 1); ray.setFromCamera(mouse, camera); const h = ray.intersectObject(landMesh)[0]; return h ? h.instanceId : -1; }
-const pickHub = () => { if (!markers.production.visible) return null; const h = ray.intersectObject(markers.production, true)[0]; return h ? h.object.userData.hub : null; };
-const pickFret = () => { if (!markers.fret.visible) return null; const h = ray.intersectObject(markers.fret, true)[0]; return h ? h.object.userData.fret : null; };
+const pickLot = calque => { if (!markers[calque].visible) return null; const h = ray.intersectObject(markers[calque], true)[0]; return h ? h.object.sujets[h.batchId] : null; };
+const pickHub = () => pickLot("production"), pickFret = () => pickLot("fret"), pickSite = () => pickLot("sites");
 // Volume d'un pôle de fret : tonnage de l'année pour un port ou un aéroport, voies de manutention pour un chantier
 const detailFret = p => p.m === "port" ? `${fmt(p.v / 1e6, 1)} Mt de marchandises en ${p.a}${p.evp ? " · " + fmt(p.evp) + " EVP" : ""}`
   : p.m === "aeroport" ? `${fmt(p.v)} t de fret et de poste en ${p.a}${p.vc ? " · " + fmt(p.vc) + " vols cargo" : ""}`
   : `${fmt(p.ml / 1000, 1)} km de voies de manutention${p.eng ? " · " + esc(p.eng) : ""}</div><div>Capacité, pas un tonnage : aucun n'est publié`;
-const pickSite = () => { if (!markers.sites.visible) return null; const h = ray.intersectObject(markers.sites, true)[0]; return h ? h.object.userData.site : null; };
 renderer.domElement.addEventListener("pointermove", e => { if (e.pointerType !== "mouse") return; const i = pick(e);
   if (i !== hovered) { hovered = i; hoverBand.set(i < 0 ? [] : ringOf([land[i]], .16 * PS, col(CHARTE("discret")))); renderer.domElement.style.cursor = i < 0 ? "" : "pointer"; }
   const hub = pickHub(), fret = !hub && pickFret(), site = !hub && !fret && pickSite();
@@ -1078,7 +1136,7 @@ function montrerTuile(t) {
   if (tuile3d.groupe) { tuile3d.scene.remove(tuile3d.groupe); tuile3d.jetables.forEach(o => o.dispose()); tuile3d.jetables = []; tuile3d.decor.traverse(o => { if (o.material) o.material.dispose(); }); }
   const g = tuile3d.groupe = new THREE.Group(), decor = tuile3d.decor = new THREE.Group(), H = R * 1.05 + t.baseH * .2; g.add(decor);
   // Maquettes un peu agrandies : sur la tuile seule, elles ne masquent plus rien
-  const portees = [markers.production, markers.fret, markers.sites].flatMap(grp => grp.children.filter(o => o.userData.i === t.i)); for (const a of ADRESSES) if (a.tile === t && a.batiment) portees.push(a.batiment);
+  const portees = Object.values(maquettes).flatMap(l => l.filter(o => o.userData.i === t.i)); for (const a of ADRESSES) if (a.tile === t && a.batiment) portees.push(a.batiment);
   const k = portees.length > 1 ? 1.2 : 1.45, dalles = portees.map(o => ({ x: o.position.x - t.x, z: o.position.z - t.z, r: o.scale.x * k * .5 }));
   for (const o of portees) { const c = copie(o); c.position.set(o.position.x - t.x, H, o.position.z - t.z); c.scale.multiplyScalar(k); c.traverse(m => { if (m.isMesh && m !== c.children[0]) m.castShadow = true; }); g.add(c); }
   const angle = hash(t.r, t.c) * 6.283, bord = a => ({ x: Math.sin(a) * R, z: Math.cos(a) * R }), dep = dalles[0] || bord(angle + Math.PI), fin = bord(angle), mi = { x: (dep.x + fin.x) / 2 + (hash(t.c, 3) - .5) * R * .7, z: (dep.z + fin.z) / 2 + (hash(t.r, 5) - .5) * R * .7 };
@@ -1142,16 +1200,19 @@ function tick(ms) {
   if (animating) { let moving = false;
     for (let i = 0; i < land.length; i++) { if (t < depart[i]) { moving = true; continue; }
       // La case saute au passage du front, ses maquettes avec elle
-      if (!passe[i]) { passe[i] = 1; curH[i] += .42 * PS; }
+      const h = curH[i]; if (!passe[i]) { passe[i] = 1; curH[i] += .42 * PS; }
       const dh = tgtH[i] - curH[i]; if (Math.abs(dh) > .003) { curH[i] += dh * .12; moving = true; } else curH[i] = tgtH[i];
+      if (curH[i] !== h) relief = true;
       for (let j = 0; j < 3; j++) { const q = i * 3 + j, dc = tgtC[q] - curC[q]; if (Math.abs(dc) > .002) { curC[q] += dc * .14; moving = true; } else curC[q] = tgtC[q]; }
       writeTile(i); tmpC.fromArray(curC, i * 3); landMesh.setColorAt(i, tmpC); }
     landMesh.instanceMatrix.needsUpdate = true; landMesh.instanceColor.needsUpdate = true;
     [regionBand, depBand, selBand, hoverBand, adresseBand].forEach(b => b.update()); animating = moving; }
   for (const g of followers) { const u = g.userData; g.position.y = curH[u.i] + (u.dy || 0);
-    if (u.rotor && !REDUCED) u.rotor.rotation.z = t * 1.6 + u.ph;
+    if (u.rotor && !REDUCED) { u.rotor.rotation.z = t * 1.6 + u.ph; poser(u.rotor); }
     if (u.pollen && !REDUCED) { g.rotation.y = t * .16; g.position.y += .14 * Math.sin(t * .9); }
     if (u.ring && !REDUCED) { const s = 1 + ((t * .6) % 1) * .35; g.scale.set(s, s, s); g.material.opacity = .85 * (1 - (t * .6) % 1); } }
+  // La vague met plus d'une minute à atteindre l'outre-mer : seules les images où une case a bougé reposent maquettes et ombres
+  if (relief) { relief = false; Object.values(maquettes).forEach(l => l.forEach(poser)); renderer.shadowMap.needsUpdate = true; }
   if (vol) { const k = Math.min(1, (ms - vol.t0) / vol.d), e = k * k * (3 - 2 * k), a = vol.fromA.clone().lerp(vol.toA, e).normalize();
     // Distance géométrique : du monde à la case, la plongée garde la même allure à l'œil
     controls.target.lerpVectors(vol.fromT, vol.toT, e); camera.position.copy(controls.target).addScaledVector(a, vol.d0 * Math.pow(vol.d1 / vol.d0, e));

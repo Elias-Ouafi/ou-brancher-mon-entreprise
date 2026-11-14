@@ -40,9 +40,10 @@ disponible » plutôt que de deviner.
 
 *La carte générée pour l'exemple de référence : un data center de 12 MW et 70 000 MWh par an au
 « 3 allée des Peupliers, 91380 Chilly-Mazarin » (`essentiel --puissance 12 --conso 70000
---activite data-center`, le 29 octobre 2026, captures refaites le 1er novembre). En haut, la vue « Raccorder » (touche 1) : les cases
+--activite data-center`, le 29 octobre 2026, captures refaites le 14 novembre). En haut, la vue « Raccorder » (touche 1) : les cases
 sont notées du rouge au vert, l'adresse est reliée à la zone prioritaire RTE Sud Île-de-France
-(capacité en 2030) et au site clé en main de Massy ; la fiche donne le verdict : raccordement en
+(capacité en 2030) et au site clé en main de Massy, l'anneau vert autour du site dit le domaine
+de tension de ses 12 MW (HTA, Enedis) ; la fiche donne le verdict : raccordement en
 HTA chez Enedis, carbone sous le seuil de 100 g, facture d'environ 5,3 M€ HTVA par an (un clic
 ajoute l'accise réduite possible, environ 1,1 M€ de moins), foncier avec un site clé en main à
 5 km ; seul le plan de prévention des inondations de l'Yvette reste à vérifier. En bas, la vue « Territoire »

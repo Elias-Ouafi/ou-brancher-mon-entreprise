@@ -252,6 +252,8 @@ def test_donnees_de_la_carte(settings_carte: Settings, grilles: list) -> None:
     assert all(p["case"] for p in donnees["fret"])
     # Prix moyen par tranche pour l'encart de la vue Territoire, de la plus petite à la plus grosse
     assert donnees["prix"] and donnees["prix"][0]["mn"] == 0 and donnees["prix"][0]["e"] > 0
+    # Un anneau par domaine de tension du persona : la basse tension reste hors de la carte
+    assert [s["d"] for s in donnees["seuils"]] == ["HTA", "HTA – zone grise", "HTB"]
     assert donnees["adresse"]["departement"] == territoire().code_departement
     assert donnees["donnees"].startswith("Données chargées le 01/07/2026")
 
@@ -345,6 +347,8 @@ def test_essentiel_place_l_adresse_sur_la_carte(
     assert verdict_adresse["criteres"][0]["etat"] == "attention"
     # Les jauges de l'encart lisent des nombres ; sans donnée, elles affichent « n.d. »
     assert {"carbone", "prix"} <= set(verdict_adresse)
+    # L'anneau teinté de la carte : domaine et gestionnaire du projet, lus du diagnostic
+    assert verdict_adresse["raccordement"] == {"mw": 100, "domaine": "HTB", "gestionnaire": "RTE"}
     assert verdict_adresse["phrase"].startswith("À vérifier avant de s'engager : raccordement")
     assert cli.main(["essentiel", "--adresse", "Lyon", "--sans-carte"]) == 0
     assert len(appels) == 1
