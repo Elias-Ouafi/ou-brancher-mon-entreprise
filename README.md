@@ -21,6 +21,10 @@ facture et le terrain prêt le plus proche. Données publiques uniquement, chaqu
 source et sa limite. Ligne de commande ou application dans le navigateur, en local. État et suite
 du projet : [PLAN.md](PLAN.md).
 
+![L'application en trois temps : la fenêtre d'accueil où l'on saisit l'adresse et le projet ; le verdict « Brancher ici ? » sur la carte pour 12 MW à Chilly-Mazarin ; le tableau qui compare Chilly-Mazarin et Saint-Denis de La Réunion ligne à ligne, sans classement](docs/exemples/application.png)
+
+*Trois captures de l'application locale, prises le 14 novembre.*
+
 **Pour qui** : les projets de **1 à 50 MW** (data centers, hubs de bornes de recharge, sites
 industriels et logistiques), pour qui la puissance disponible, son délai et le coût de l'électricité
 décident du site. Pour des bureaux, le prix de l'électricité est le même partout et ne départage pas
@@ -123,7 +127,8 @@ Le navigateur s'ouvre sur `http://127.0.0.1:8770/` et une fenêtre demande l'adr
    phrases au plus par critère. « Lire le détail », Markdown et JSON gardent toutes les limites
    méthodologiques ; une copie reste dans `data/reports/`.
 
-« Nouvelle analyse », en haut, rouvre la fenêtre.
+« Nouvelle analyse », en haut, rouvre la fenêtre. Relancée, l'application s'ouvre sur la dernière
+analyse, épingle comprise ; le même bouton permet d'en changer.
 
 Le serveur n'écoute que sur la machine (127.0.0.1) et s'arrête par Ctrl+C. `--port` change le
 port.
