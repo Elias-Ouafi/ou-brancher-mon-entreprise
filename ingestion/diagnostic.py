@@ -32,6 +32,7 @@ from ingestion.georisques import (
     lire_zonage,
     risques_gaspar,
 )
+from ingestion.image_site import ImageSite, ImageSiteError, lire_image_site
 from ingestion.main_oeuvre import (
     MINUTES_TRAJET,
     MainOeuvre,
@@ -898,6 +899,9 @@ class Diagnostic:
     productible: Productible | None = None
     solaire_consulte: bool = False
     solaire_erreur: str | None = None
+    # Prise de vue aérienne la plus récente à l'adresse (BD ORTHO), lue à la demande
+    image_site: ImageSite | None = None
+    image_site_erreur: str | None = None
     # Nombre de friches d'au moins 1 ha à moins de `RAYON_FRICHES_KM`, et les plus proches ;
     # `None` si Cartofriches n'est pas chargé
     nb_friches: int | None = None
@@ -2254,6 +2258,7 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
                 ("reseaux_chaleur", d.reseaux_chaleur is not None),
                 ("acces_routier", d.acces_routier is not None),
                 ("solaire", d.solaire_consulte and d.productible is not None),
+                ("image_site", d.image_site is not None),
                 ("zones_activite", d.nb_zones_activite is not None),
                 ("restrictions_eau", d.eau is not None),
                 ("zones_repartition_eaux", d.zones_repartition is not None),
@@ -2712,6 +2717,11 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
     ):
         texte(s, f"Obligation solaire : {obligation}")
     limite(s, "obligations_solaires")
+    if d.image_site is not None:
+        texte(s, f"Image du site : {ligne_image_site(d.image_site)}")
+        limite(s, "image_site")
+    elif d.image_site_erreur is not None:
+        texte(s, f"Image du site non consultée : {d.image_site_erreur}")
     if d.acces_routier is not None:
         texte(
             s,
@@ -2877,6 +2887,16 @@ def completer_solaire(diagnostic: Diagnostic, *, settings: Settings | None = Non
     return replace(diagnostic, batiment=batiment, productible=productible, solaire_consulte=True)
 
 
+def completer_image_site(diagnostic: Diagnostic, *, settings: Settings | None = None) -> Diagnostic:
+    t = diagnostic.territoire
+    try:
+        image = lire_image_site(latitude=t.latitude, longitude=t.longitude, settings=settings)
+    except ImageSiteError as error:
+        logger.warning("image du site non consultee : %s", error)
+        return replace(diagnostic, image_site_erreur=str(error))
+    return replace(diagnostic, image_site=image)
+
+
 def completer_acces_routier(
     diagnostic: Diagnostic, *, settings: Settings | None = None
 ) -> Diagnostic:
@@ -2961,6 +2981,7 @@ def completer_en_ligne(diagnostic: Diagnostic, *, settings: Settings | None = No
         completer_urbanisme,
         completer_eau,
         completer_solaire,
+        completer_image_site,
         completer_acces_routier,
         completer_zones_activite,
         completer_main_oeuvre,
@@ -3012,6 +3033,25 @@ _MOIS = [
     "janvier", "février", "mars", "avril", "mai", "juin",
     "juillet", "août", "septembre", "octobre", "novembre", "décembre",
 ]  # fmt: skip
+
+
+def libelle_prise_de_vue(debut: date, fin: date) -> str:
+    if debut == fin:
+        return f"le {debut.day} {_MOIS[debut.month - 1]} {debut.year}"
+    if (debut.month, debut.year) == (fin.month, fin.year):
+        return f"du {debut.day} au {fin.day} {_MOIS[fin.month - 1]} {fin.year}"
+    return (
+        f"du {debut.day} {_MOIS[debut.month - 1]} {debut.year}"
+        f" au {fin.day} {_MOIS[fin.month - 1]} {fin.year}"
+    )
+
+
+def ligne_image_site(image: ImageSite) -> str:
+    prise = libelle_prise_de_vue(image.debut, image.fin)
+    return (
+        f"vue aérienne de {image.cote_m} m de côté, prise de vue {prise}"
+        f" (BD ORTHO de l'IGN) : {image.url}"
+    )
 
 
 def heures_carbone(c: Carbone) -> str | None:

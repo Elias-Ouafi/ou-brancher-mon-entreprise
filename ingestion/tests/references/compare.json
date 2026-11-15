@@ -314,7 +314,8 @@
         "zones_repartition_eaux": "Une zone de répartition des eaux dit un déficit structurel reconnu par arrêté, pas le débit ni le niveau de nappe du jour (voir les restrictions d'eau). Une zone souterraine vise un aquifère précis, parfois profond (Albien en Île-de-France) : le prélèvement n'est concerné que s'il puise dans cet aquifère. Hors zone, un prélèvement peut rester soumis à déclaration ou autorisation selon son volume (autres rubriques de R214-1) et aux arrêtés de restriction. La liste des communes classées est arrêtée par chaque préfet de département (R211-72) : le contour du Sandre peut en différer à la marge. Aucune zone n'est publiée en outre-mer dans ce référentiel.",
         "main_oeuvre": "Compte des résidents de 15 ans ou plus non scolarisés selon leur diplôme le plus élevé, retraités compris : ni des actifs, ni des candidats disponibles ; la concurrence entre employeurs et la spécialité du diplôme ne sont pas connues. Une commune compte entière dès que son centre est dans l'isochrone. Les 45 minutes sont une hypothèse de l'outil (aucun texte français ne fixe ce temps), en voiture et sans embouteillage. Mayotte n'est pas dans le fichier de l'Insee.",
         "recrutements_techniques": "Intentions d'embauche déclarées par les employeurs pour l'année, pas des embauches réalisées. Métiers retenus par l'outil (électricité, froid et conditionnement d'air, maintenance : seed metiers_techniques_bmo). Le département remplace le bassin d'emploi, faute de table officielle du bassin vers la commune ; les bassins sous secret statistique ne sont pas comptés, ce qui minore les projets.",
-        "reseaux_chaleur": "Distance à vol d'oiseau au tracé, à 50 m près : ni la capacité du réseau à reprendre de la chaleur, ni la température acceptée, ni l'accord de l'exploitant ne sont connus. Un réseau sans tracé publié est placé au centre de sa commune ; les réseaux en construction et de froid ne sont pas retenus. La source ne recense aucun réseau en outre-mer et un seul en Corse (Haute-Corse). Pour un data center, l'accise réduite (L312-70) demande de valoriser la chaleur : à vérifier avec l'exploitant."
+        "reseaux_chaleur": "Distance à vol d'oiseau au tracé, à 50 m près : ni la capacité du réseau à reprendre de la chaleur, ni la température acceptée, ni l'accord de l'exploitant ne sont connus. Un réseau sans tracé publié est placé au centre de sa commune ; les réseaux en construction et de froid ne sont pas retenus. La source ne recense aucun réseau en outre-mer et un seul en Corse (Haute-Corse). Pour un data center, l'accise réduite (L312-70) demande de valoriser la chaleur : à vérifier avec l'exploitant.",
+        "image_site": "Image aérienne à 20 cm de la dernière campagne de l'IGN, jamais une vue du jour : un chantier, une démolition ou un bâtiment livré depuis la prise de vue n'y figure pas, et les ombres et le feuillage en masquent une partie. Les dates sont celles des vols du graphe de mosaïquage, qui peuvent différer de quelques jours selon la dalle. Ni la propriété, ni l'occupation, ni l'état du terrain ne s'en déduisent ; l'image se confronte à une visite. L'imagerie satellite ORTHO-SAT n'est pas utilisée : aucune date de prise de vue n'y est publiée par tuile."
       },
       "risques": null,
       "risques_erreur": null,
@@ -452,6 +453,8 @@
       "productible": null,
       "solaire_consulte": false,
       "solaire_erreur": null,
+      "image_site": null,
+      "image_site_erreur": null,
       "nb_friches": 2,
       "friches": [
         {
@@ -785,7 +788,8 @@
         "zones_repartition_eaux": "Une zone de répartition des eaux dit un déficit structurel reconnu par arrêté, pas le débit ni le niveau de nappe du jour (voir les restrictions d'eau). Une zone souterraine vise un aquifère précis, parfois profond (Albien en Île-de-France) : le prélèvement n'est concerné que s'il puise dans cet aquifère. Hors zone, un prélèvement peut rester soumis à déclaration ou autorisation selon son volume (autres rubriques de R214-1) et aux arrêtés de restriction. La liste des communes classées est arrêtée par chaque préfet de département (R211-72) : le contour du Sandre peut en différer à la marge. Aucune zone n'est publiée en outre-mer dans ce référentiel.",
         "main_oeuvre": "Compte des résidents de 15 ans ou plus non scolarisés selon leur diplôme le plus élevé, retraités compris : ni des actifs, ni des candidats disponibles ; la concurrence entre employeurs et la spécialité du diplôme ne sont pas connues. Une commune compte entière dès que son centre est dans l'isochrone. Les 45 minutes sont une hypothèse de l'outil (aucun texte français ne fixe ce temps), en voiture et sans embouteillage. Mayotte n'est pas dans le fichier de l'Insee.",
         "recrutements_techniques": "Intentions d'embauche déclarées par les employeurs pour l'année, pas des embauches réalisées. Métiers retenus par l'outil (électricité, froid et conditionnement d'air, maintenance : seed metiers_techniques_bmo). Le département remplace le bassin d'emploi, faute de table officielle du bassin vers la commune ; les bassins sous secret statistique ne sont pas comptés, ce qui minore les projets.",
-        "reseaux_chaleur": "Distance à vol d'oiseau au tracé, à 50 m près : ni la capacité du réseau à reprendre de la chaleur, ni la température acceptée, ni l'accord de l'exploitant ne sont connus. Un réseau sans tracé publié est placé au centre de sa commune ; les réseaux en construction et de froid ne sont pas retenus. La source ne recense aucun réseau en outre-mer et un seul en Corse (Haute-Corse). Pour un data center, l'accise réduite (L312-70) demande de valoriser la chaleur : à vérifier avec l'exploitant."
+        "reseaux_chaleur": "Distance à vol d'oiseau au tracé, à 50 m près : ni la capacité du réseau à reprendre de la chaleur, ni la température acceptée, ni l'accord de l'exploitant ne sont connus. Un réseau sans tracé publié est placé au centre de sa commune ; les réseaux en construction et de froid ne sont pas retenus. La source ne recense aucun réseau en outre-mer et un seul en Corse (Haute-Corse). Pour un data center, l'accise réduite (L312-70) demande de valoriser la chaleur : à vérifier avec l'exploitant.",
+        "image_site": "Image aérienne à 20 cm de la dernière campagne de l'IGN, jamais une vue du jour : un chantier, une démolition ou un bâtiment livré depuis la prise de vue n'y figure pas, et les ombres et le feuillage en masquent une partie. Les dates sont celles des vols du graphe de mosaïquage, qui peuvent différer de quelques jours selon la dalle. Ni la propriété, ni l'occupation, ni l'état du terrain ne s'en déduisent ; l'image se confronte à une visite. L'imagerie satellite ORTHO-SAT n'est pas utilisée : aucune date de prise de vue n'y est publiée par tuile."
       },
       "risques": null,
       "risques_erreur": null,
@@ -883,6 +887,8 @@
       "productible": null,
       "solaire_consulte": false,
       "solaire_erreur": null,
+      "image_site": null,
+      "image_site_erreur": null,
       "nb_friches": 0,
       "friches": [],
       "reseaux_chaleur": [],

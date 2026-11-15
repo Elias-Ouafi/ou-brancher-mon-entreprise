@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import logging
 import re
 from datetime import datetime
+from io import BytesIO
 from pathlib import Path
 from xml.sax.saxutils import escape
 
@@ -10,7 +12,15 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
-from reportlab.platypus import KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import (
+    Image,
+    KeepTogether,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
 
 from ingestion import comparaison
 from ingestion.config import Settings
@@ -23,9 +33,11 @@ from ingestion.diagnostic import (
     _distance,
     _euros_arrondis,
     entete,
+    libelle_prise_de_vue,
     phrase_verdict,
     verdict,
 )
+from ingestion.image_site import ImageSiteError, telecharger_image
 from reporting import charte, implantation_charts, visuels
 from reporting.carte import _nombre, resume_adresse
 from reporting.implantation import Comparaisons, pied_de_page, texte_compact
@@ -45,6 +57,8 @@ from reporting.pdf import (
     _pied_de_page,
 )
 from reporting.tuile import Tuile, dessin_tuile, legende, lire_tuile
+
+logger = logging.getLogger(__name__)
 
 # Un rapport qui se regarde : le verdict, puis un dessin et trois phrases au plus par critère.
 # Les limites de chaque indicateur restent dans les sorties texte, Markdown et JSON
@@ -113,6 +127,42 @@ def _pastille(etat: str) -> Drawing:
 def _trois_phrases(critere: Critere) -> str:
     phrases = re.split(r"(?<=[.!?])\s+(?=[A-ZÀ-Ý0-9])", critere.detail.strip())
     return " ".join([*phrases[:NB_PHRASES_DETAIL], CONSEILS[critere.nom]])
+
+
+# La vue aérienne se récupère à la demande ; sans elle le rapport se fait sans image
+def _vue_aerienne(diagnostic: Diagnostic, settings: Settings | None) -> list:
+    image = diagnostic.image_site
+    if image is None:
+        return []
+    try:
+        jpeg = telecharger_image(image, settings=settings)
+    except ImageSiteError as error:
+        logger.warning("vue aerienne absente du rapport : %s", error)
+        return []
+    cote = 52 * mm
+    legende = Paragraph(
+        _pdf(
+            f"Vue aérienne de {image.cote_m} m de côté, prise de vue"
+            f" {libelle_prise_de_vue(image.debut, image.fin)} (BD ORTHO, IGN). Image d'une"
+            " campagne passée : un chantier ou une démolition depuis cette date n'y figure pas."
+        ),
+        STYLES["cellule_note"],
+    )
+    table = Table(
+        [[Image(BytesIO(jpeg), cote, cote), legende]],
+        colWidths=[cote + 8, LARGEUR - cote - 8],
+        hAlign="LEFT",
+    )
+    table.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+            ]
+        )
+    )
+    return [table, Spacer(1, 6)]
 
 
 # Même lecture que l'encart de la carte : la tuile à gauche, le résumé à droite
@@ -456,6 +506,7 @@ def rendre(
     ]
     tuile = lire_tuile(diagnostic.territoire, settings) if settings else None
     blocs += _carte_adresse(diagnostic, tuile)
+    blocs += _vue_aerienne(diagnostic, settings)
     lieu = " · ".join(entete(diagnostic))
     blocs.append(Paragraph(_pdf(f"{_projet(diagnostic)} · {lieu}"), STYLES["note"]))
     blocs.append(Paragraph("Les cinq critères", STYLES["h1"]))

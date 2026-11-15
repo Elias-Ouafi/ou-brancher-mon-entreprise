@@ -116,7 +116,7 @@ Le navigateur s'ouvre sur `http://127.0.0.1:8770/` et une fenêtre demande l'adr
    plus dans l'application, `compare` en ligne de commande en prend jusqu'à six) ;
 2. si vous les connaissez, déplier « Préciser le projet » : puissance, consommation, activité,
    surface, chiffre d'affaires, valeur ajoutée, export CSV de la courbe de charge Enedis ;
-   « Diagnostic complet » interroge aussi Géorisques, l'urbanisme, VigiEau, PVGIS et la desserte ;
+   « Diagnostic complet » interroge aussi Géorisques, l'urbanisme, VigiEau, PVGIS, la desserte et la vue aérienne datée du site (BD ORTHO, reprise dans le PDF) ;
 3. « Analyser » : la carte s'ouvre cadrée sur ce que vous avez saisi, la tuile pour une adresse
    ou deux adresses voisines, la région si elles en occupent deux bouts, le monde si l'une est
    outre-mer. Une adresse ambiguë propose les communes possibles sous son champ ;
@@ -272,7 +272,7 @@ flowchart LR
     SEEDS[("Seeds : ADEME, tarifs, référentiels, limites")] --> G
     GEO[("Contours Etalab · relief IGN · Natural Earth")] -->|"ingestion/ (Python)"| B
     G --> CLI(["essentiel · diagnose · compare · carte · app · europe"])
-    BAN[("À la demande : BAN · Géorisques · API Carto · BD TOPO · itinéraire IGN · VigiEau · PVGIS")] --> CLI
+    BAN[("À la demande : BAN · Géorisques · API Carto · BD TOPO · BD ORTHO · itinéraire IGN · VigiEau · PVGIS")] --> CLI
 ```
 
 - **Ingestion idempotente en PySpark** : chaque lot est typé et normalisé par une session Spark
@@ -380,7 +380,7 @@ données dbt. La couverture est mesurée à chaque run complet (`pytest --cov`, 
 [Tracés des réseaux de chaleur et de froid](https://www.data.gouv.fr/datasets/64f05d3568e4d575eb454ffe) (France Chaleur Urbaine, Licence Ouverte 2.0) ·
 [base Diplômes-Formation du recensement](https://www.insee.fr/fr/statistiques/9006527) (Insee, Licence Ouverte 2.0) ·
 [enquête Besoins en main-d'œuvre](https://www.data.gouv.fr/datasets/561fa564c751df4f2acdbb48) (France Travail, Licence Ouverte) ·
-[BD TOPO et calcul d'itinéraire de la Géoplateforme](https://geoservices.ign.fr) (IGN, Licence Ouverte) ·
+[BD TOPO, BD ORTHO et calcul d'itinéraire de la Géoplateforme](https://geoservices.ign.fr) (IGN, Licence Ouverte) ·
 [VigiEau](https://vigieau.gouv.fr) (ministère de la Transition écologique) ·
 [zones de répartition des eaux du Sandre](https://www.sandre.eaufrance.fr/atlas/srv/api/records/e5325942-18f6-472c-973a-1f35bb207eb0) (référentiel ZRPE, Licence Ouverte) ·
 [PVGIS](https://joint-research-centre.ec.europa.eu/photovoltaic-geographical-information-system-pvgis_en) (JRC, Commission européenne) ·
