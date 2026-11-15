@@ -219,7 +219,7 @@ soit essayée par une machine plutôt qu'à la main. Chaque étape a son critèr
 tâche planifiée.
 
 **Constat** :
-- 956 tests sans réseau, dont sept parcours dans Chromium ;
+- 964 tests sans réseau, dont sept parcours dans Chromium ;
   couverture **94,7 %** des lignes et des branches
   d'`ingestion/` et de `reporting/`, plancher à 92,5 % ;
 - reste sous 90 % : `ingestion/pipeline.py` à 86 % ;
