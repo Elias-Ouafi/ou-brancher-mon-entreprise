@@ -151,7 +151,7 @@ def _add_carte_option(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--sans-carte",
         action="store_true",
-        help="ne place pas l'adresse sur la carte (data/reports/carte.html)",
+        help="ne place pas l'adresse (ou les adresses) sur la carte (data/reports/carte.html)",
     )
 
 
@@ -197,8 +197,8 @@ def _echec(error: Exception) -> int:
 ECHECS_PREVUS = (GeocodingError, DiagnosticIndisponibleError, CourbeError, OSError)
 
 
-# La carte montre le verdict de l'adresse ; son échec ne fait pas échouer la commande
-def _placer_sur_carte(diagnostic: Diagnostic, settings: Settings) -> None:
+# La carte montre le verdict de chaque adresse ; son échec ne fait pas échouer la commande
+def _placer_sur_carte(diagnostics: list[Diagnostic], settings: Settings) -> None:
     import duckdb
     import httpx
 
@@ -206,10 +206,15 @@ def _placer_sur_carte(diagnostic: Diagnostic, settings: Settings) -> None:
     from reporting.carte import mettre_a_jour_carte, verdict_carte
 
     try:
+        epingles = [
+            (d.territoire, verdict_carte(avec_risques_locaux(d, settings=settings)))
+            for d in diagnostics
+        ]
         path = mettre_a_jour_carte(
             settings=settings,
-            territoire=diagnostic.territoire,
-            verdict_adresse=verdict_carte(avec_risques_locaux(diagnostic, settings=settings)),
+            territoire=epingles[0][0],
+            verdict_adresse=epingles[0][1],
+            autres=epingles[1:],
         )
     except (
         DiagnosticIndisponibleError,
@@ -341,6 +346,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="ne consulte ni Géorisques, ni le Géoportail de l'urbanisme, ni VigiEau",
     )
+    _add_carte_option(compare)
 
     carte = subparsers.add_parser(
         "carte", help="carte 3D par système électrique : raccorder et territoire"
@@ -528,7 +534,7 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 print(formater_essentiel(diagnostic))
             if not args.sans_carte:
-                _placer_sur_carte(diagnostic, settings)
+                _placer_sur_carte([diagnostic], settings)
         case "diagnose":
             try:
                 diagnostic = _diagnostiquer(args.adresse, args, settings)
@@ -555,7 +561,7 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 _signaler(f"Rapport : {path}")
             if not args.sans_carte:
-                _placer_sur_carte(diagnostic, settings)
+                _placer_sur_carte([diagnostic], settings)
         case "compare":
             from ingestion import comparaison
 
@@ -593,6 +599,8 @@ def main(argv: list[str] | None = None) -> int:
                 _signaler(f"Comparaison : {chemin}")
             else:
                 print(sortie)
+            if not args.sans_carte:
+                _placer_sur_carte(diagnostics, settings)
         case "carte":
             import webbrowser
 
@@ -649,7 +657,7 @@ def main(argv: list[str] | None = None) -> int:
             diagnostic = avec_risques_locaux(diagnostic, settings=settings_demo)
             print(demo.AVERTISSEMENT, end="\n\n")
             print(formater_essentiel(diagnostic))
-            _placer_sur_carte(diagnostic, settings_demo)
+            _placer_sur_carte([diagnostic], settings_demo)
             carte_demo = settings_demo.reports_dir / "carte.html"
             if carte_demo.exists() and not args.sans_ouvrir:
                 webbrowser.open(carte_demo.resolve().as_uri())

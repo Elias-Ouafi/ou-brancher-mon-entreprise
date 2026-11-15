@@ -116,7 +116,7 @@ Le navigateur s'ouvre sur `http://127.0.0.1:8770/` et une fenêtre demande l'adr
    plus dans l'application, `compare` en ligne de commande en prend jusqu'à six) ;
 2. si vous les connaissez, déplier « Préciser le projet » : puissance, consommation, activité,
    surface, chiffre d'affaires, valeur ajoutée, export CSV de la courbe de charge Enedis ;
-   « Diagnostic complet » interroge aussi Géorisques, l'urbanisme, VigiEau, PVGIS et la desserte ;
+   « Diagnostic complet » interroge aussi Géorisques, l'urbanisme, VigiEau, PVGIS, la desserte et la vue aérienne datée du site (BD ORTHO, reprise dans le PDF) ;
 3. « Analyser » : la carte s'ouvre cadrée sur ce que vous avez saisi, la tuile pour une adresse
    ou deux adresses voisines, la région si elles en occupent deux bouts, le monde si l'une est
    outre-mer. Une adresse ambiguë propose les communes possibles sous son champ ;
@@ -180,7 +180,7 @@ Toutes s'écrivent `.\.venv\Scripts\python.exe -m ingestion.cli <commande>`.
 | Commande | Effet |
 |---|---|
 | `essentiel --adresse "…" [--puissance MW] [--conso MWh] [--activite data-center\|irve\|industrie\|logistique] [--courbe CSV] [--ca €] [--va €] [--surface m²] [--format json]` | Réponse courte : prix, carbone, prix de vente des locaux d'activité (DVF) et verdict « brancher ici ? » ; avec `--puissance` et `--conso` au-delà de 36 kVA, la part acheminement (TURPE 7) de la facture ; `--courbe` lit l'export Enedis, `--ca` donne la part de la facture dans le chiffre d'affaires, `--va` l'électro-intensité fiscale (taux réduit d'accise dès 0,5 % de la valeur ajoutée), `--activite` le profil de charge (journée type mesurée par Enedis pour l'industrie, puissance constante sinon) et le régime d'accise de l'activité ; avec `--va` ou `--activite`, l'accise au tarif réduit de la loi de finances 2026 face au tarif normal (10 €/MWh au-delà du premier GWh pour un data center, 5,5, 3 ou 0,5 €/MWh selon le palier d'électro-intensité pour l'industrie), sous conditions |
-| `diagnose --adresse "…" [--puissance MW] [--conso MWh] [--activite data-center\|irve\|industrie\|logistique] [--courbe CSV] [--ca €] [--va €] [--surface m²] [--format pdf\|md\|json]` | Diagnostic complet : industrie locale, réseau, raccordement (dont la qualité de fourniture du département), prix, acheminement, carbone, risques et sismicité, voisinage (argiles, cavités à 500 m, Seveso à 5 km, installations classées à 1 km, sols pollués à 500 m), foncier (zone d'urbanisme, friches à moins de 10 km, zones d'activité à moins de 5 km, réseaux de chaleur à moins de 10 km, débouché de la chaleur fatale d'un data center, prix des locaux), eau (arrêtés de restriction du jour, zone de répartition des eaux), desserte (temps vers le fret, autoroute), main-d'œuvre (diplômés à moins de 45 min en voiture, recrutements techniques du département), bâtiment et productible solaire, obligations de solarisation (toiture neuve ou existante, parking extérieur), puis le verdict « brancher ici ? » critère par critère ; `--sans-risques` coupe tous les appels à la demande (Géorisques, urbanisme, eau, solaire, desserte, zones d'activité, isochrone de la main-d'œuvre) |
+| `diagnose --adresse "…" [--puissance MW] [--conso MWh] [--activite data-center\|irve\|industrie\|logistique] [--courbe CSV] [--ca €] [--va €] [--surface m²] [--format pdf\|md\|json]` | Diagnostic complet : industrie locale, réseau, raccordement (dont la qualité de fourniture du département et, quand RTE raccorde, les pièces du dossier), prix, acheminement, carbone, risques et sismicité, voisinage (argiles, cavités à 500 m, Seveso à 5 km, installations classées à 1 km, sols pollués à 500 m), foncier (zone d'urbanisme, friches à moins de 10 km, zones d'activité à moins de 5 km, réseaux de chaleur à moins de 10 km, débouché de la chaleur fatale d'un data center, prix des locaux), eau (arrêtés de restriction du jour, zone de répartition des eaux), desserte (temps vers le fret, autoroute), main-d'œuvre (diplômés à moins de 45 min en voiture, recrutements techniques du département), bâtiment et productible solaire, obligations de solarisation (toiture neuve ou existante, parking extérieur), puis le verdict « brancher ici ? » critère par critère ; `--sans-risques` coupe tous les appels à la demande (Géorisques, urbanisme, eau, solaire, desserte, zones d'activité, isochrone de la main-d'œuvre) |
 | `compare --adresse "A" --adresse "B" … [mêmes options que diagnose]` | 2 à 6 adresses côte à côte, sans classement, avec le prix des locaux, une ligne courte par source consultée à la demande (zonage, friches, réseau de chaleur le plus proche, zones d'activité, accès routier, bâtiment et solaire, eau, risques ; « — » pour l'adresse qui ne l'a pas été), le parking et la toiture à solariser et le verdict « brancher ici ? » de chacune ; `texte`, `md`, `csv`, `json` |
 | `app [--port 8770] [--sans-ouvrir]` | Application locale dans le navigateur : fenêtre d'accueil pour une ou deux adresses et le projet (courbe de charge comprise), carte cadrée sur les adresses, verdict ou comparaison côte à côte, rapport PDF en un clic, Markdown ou JSON |
 | `carte [--adresse "…"] [--puissance MW] [--reconstruire] [--sans-ouvrir] [--output FICHIER]` | Carte 3D hors ligne (`data/reports/carte.html` par défaut) |
@@ -199,8 +199,10 @@ choisir le fichier et `--sans-graphiques` pour un rapport sans images.
 Les commandes qui répondent à une question (`essentiel`, `diagnose`, `compare`, `carte`, `europe`)
 n'affichent que la réponse, les alertes et le chemin des fichiers écrits ; `--verbose`, avant ou
 après la commande, montre le journal technique. `essentiel` et `diagnose` épinglent aussi leur
-adresse sur la carte (`--sans-carte` pour s'en passer ; `carte --sans-ouvrir` écrit la page sans
-lancer le navigateur). La carte n'est refaite que si le warehouse, les contours ou le gabarit sont
+adresse sur la carte, et `compare` ses 2 à 6 adresses, numérotées et sans classement (`--sans-carte`
+pour s'en passer ; `carte --sans-ouvrir` écrit la page sans lancer le navigateur). Le bouton « Image »
+enregistre la vue en PNG avec un cartouche (adresses, verdicts, date, sources) ; sans WebGL, la page
+affiche la fiche et les critères sans la carte. La carte n'est refaite que si le warehouse, les contours ou le gabarit sont
 plus récents qu'elle ; sinon seule l'épingle et son verdict changent.
 
 **La carte** s'ouvre sur le monde en tuiles (touche 0, ou la molette en reculant) : chaque pays y
@@ -228,7 +230,7 @@ discrète : bourdonnement à 50 Hz pour une centrale thermique ou nucléaire, so
 eau pour l'hydraulique, ressac pour les énergies marines, quand cette filière porte plus de la
 moitié de la puissance en service sur la case ; sinon, ou pour le solaire, rien. Les sons sont
 synthétisés dans la page (aucun fichier) et ne disent rien que la fiche ne dise. Les boutons en bas à droite
-passent d'une carte à l'autre. Deux vues (touches 1 et 2). « Raccorder », par défaut : chaque
+passent d'une carte à l'autre. Trois vues (touches 1 à 3). « Raccorder », par défaut : chaque
 case de 24 km est notée du rouge (défavorable) au vert (favorable) en passant par le blanc (neutre),
 selon la proximité d'une zone prioritaire RTE et d'un site clé en main France 2030, les postes
 400 kV, les contraintes RTE prévues, le relief, le carbone et l'équilibre régional ; zones RTE
@@ -247,6 +249,12 @@ hors tare (0,5 Mt en Corse et outre-mer, SDES), aéroports d'au moins 20 000 t d
 (3 000 t, DGAC), en maquettes de quai à portique et d'aérogare avec avion cargo ; chantiers
 rail-route de SNCF Réseau d'au moins 2 km de voies de manutention, en maquette de voie, wagons et
 portique. Pour le rail, la longueur de voies est un repère de capacité : aucun tonnage n'est publié.
+« Terrain » (touche 3) pose autour de chaque adresse ce que son diagnostic a trouvé, chaque objet sur sa case
+(24 km : la distance exacte se lit dans le diagnostic) : friches de 1 ha ou plus à moins de 10 km, zones
+d'activité à moins de 5 km, sites Seveso à moins de 5 km, pôle de fret le plus proche de chaque mode relié
+par un arc avec son temps de trajet ; les cases passent à l'orange selon les contraintes prévues du réseau
+de transport du département. Une couche vide veut dire rien de trouvé ou source non consultée
+(`--sans-risques`).
 Un clic sur une case affiche la fiche du département ; le survol d'une case donne sa note et ses
 raisons, celui d'un pôle sa puissance et sa production, celui d'un pôle de fret son tonnage.
 
@@ -264,7 +272,7 @@ flowchart LR
     SEEDS[("Seeds : ADEME, tarifs, référentiels, limites")] --> G
     GEO[("Contours Etalab · relief IGN · Natural Earth")] -->|"ingestion/ (Python)"| B
     G --> CLI(["essentiel · diagnose · compare · carte · app · europe"])
-    BAN[("À la demande : BAN · Géorisques · API Carto · BD TOPO · itinéraire IGN · VigiEau · PVGIS")] --> CLI
+    BAN[("À la demande : BAN · Géorisques · API Carto · BD TOPO · BD ORTHO · itinéraire IGN · VigiEau · PVGIS")] --> CLI
 ```
 
 - **Ingestion idempotente en PySpark** : chaque lot est typé et normalisé par une session Spark
@@ -345,7 +353,7 @@ quart de minute, chacun avec ce qu'il attend (domaine de tension, raccordement, 
 électrique) : `essentiel` à 12 MW à Chilly-Mazarin, `diagnose` à 45 MW, `compare` de deux adresses,
 une adresse en Corse et un appel à `/api/analyse` de l'application. `--rapide` saute `pytest`,
 `--sans-essai` saute l'essai réel, `--complet` y ajoute un `diagnose` avec les sources à la
-demande et nomme celle qui ne répond pas. 947 tests sans réseau, dont un
+demande et nomme celle qui ne répond pas. 964 tests sans réseau, dont un
 `dbt build` complet sur une base synthétique qui reproduit les pièges des sources, plus les tests de
 données dbt. La couverture est mesurée à chaque run complet (`pytest --cov`, lignes et branches : 94,6 % le 10 novembre 2026) et la suite échoue sous 92,5 %. Une matrice joue chaque activité à chaque palier de puissance, dans chaque territoire et chaque format, par la vraie ligne de commande, et chaque source à la demande est jouée contre huit pannes. Les sorties de `essentiel`, `diagnose` et `compare` sont comparées à des références figées (`ingestion/tests/references/`) : après un changement de libellé voulu, `pytest ingestion/tests/test_references.py --maj-references` les réécrit, et leur diff se relit avant de commiter. Sept parcours de l'application sont joués dans Chromium par `pytest-playwright` (`test_navigateur.py`, sautés si le paquet n'est pas installé) contre le vrai serveur et la base synthétique, réseau coupé : accueil, adresse, verdict et PDF ; adresse ambiguë ; deux adresses, tableau et CSV ; courbe gardée puis retirée ; serveur arrêté ; page ouverte en `file://` ; bouton « Son » et règle de la filière dominante. Toute erreur de console ou requête hors de la machine fait échouer le parcours. La CI GitHub Actions joue `ruff` et `pytest` à chaque PR, sous Ubuntu et sous Windows.
 
@@ -372,7 +380,7 @@ données dbt. La couverture est mesurée à chaque run complet (`pytest --cov`, 
 [Tracés des réseaux de chaleur et de froid](https://www.data.gouv.fr/datasets/64f05d3568e4d575eb454ffe) (France Chaleur Urbaine, Licence Ouverte 2.0) ·
 [base Diplômes-Formation du recensement](https://www.insee.fr/fr/statistiques/9006527) (Insee, Licence Ouverte 2.0) ·
 [enquête Besoins en main-d'œuvre](https://www.data.gouv.fr/datasets/561fa564c751df4f2acdbb48) (France Travail, Licence Ouverte) ·
-[BD TOPO et calcul d'itinéraire de la Géoplateforme](https://geoservices.ign.fr) (IGN, Licence Ouverte) ·
+[BD TOPO, BD ORTHO et calcul d'itinéraire de la Géoplateforme](https://geoservices.ign.fr) (IGN, Licence Ouverte) ·
 [VigiEau](https://vigieau.gouv.fr) (ministère de la Transition écologique) ·
 [zones de répartition des eaux du Sandre](https://www.sandre.eaufrance.fr/atlas/srv/api/records/e5325942-18f6-472c-973a-1f35bb207eb0) (référentiel ZRPE, Licence Ouverte) ·
 [PVGIS](https://joint-research-centre.ec.europa.eu/photovoltaic-geographical-information-system-pvgis_en) (JRC, Commission européenne) ·

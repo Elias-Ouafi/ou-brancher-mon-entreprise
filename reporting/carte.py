@@ -165,7 +165,7 @@ def construire_donnees(
     *,
     territoire: Territoire | None = None,
     verdict_adresse: dict[str, Any] | None = None,
-    autre: Seconde | None = None,
+    autres: list[Seconde] | None = None,
     genere_le: datetime | None = None,
     monde: Monde | None = None,
 ) -> dict[str, Any]:
@@ -241,7 +241,7 @@ def construire_donnees(
         "prix": gold.get("prix", []),
         "seuils": gold.get("seuils", []),
         "donnees": gold.get("donnees"),
-        "adresse": construire_adresse(grilles, territoire, verdict_adresse, autre),
+        "adresse": construire_adresse(grilles, territoire, verdict_adresse, autres),
     }
 
 
@@ -292,6 +292,46 @@ def resume_adresse(diagnostic: Diagnostic) -> list[dict[str, str]]:
     return [{"nom": nom, "valeur": valeur, "etat": etat} for nom, valeur, etat in lignes]
 
 
+# Les plus proches de chaque couche : au-delà, les cases de la carte ne se lisent plus
+NB_PAR_COUCHE = 8
+
+
+# Ce que le diagnostic sait autour de l'adresse, avec sa position ; `construire_adresse` la range
+# par case. Une couche vide veut dire « rien trouvé » ou « source non consultée » : la carte
+# ne distingue pas les deux, le diagnostic le dit
+def couches_carte(d: Diagnostic) -> dict[str, list[dict[str, Any]]]:
+    acces = {(a.type_acces, a.nom): a for a in d.acces_routier or []}
+    return {
+        "friches": [
+            {"n": f.nom, "ha": f.surface_m2 / 10_000, "km": f.distance_km}
+            | {"lat": f.latitude, "lon": f.longitude}
+            for f in d.friches[:NB_PAR_COUCHE]
+            if f.latitude is not None and f.longitude is not None
+        ],
+        "zones": [
+            {"n": z.nom, "ha": z.surface_ha, "km": z.distance_km}
+            | {"lat": z.latitude, "lon": z.longitude}
+            for z in d.zones_activite[:NB_PAR_COUCHE]
+            if z.latitude is not None and z.longitude is not None
+        ],
+        "seveso": [
+            {"n": i.nom, "s": i.seveso, "km": i.distance_km}
+            | {"lat": i.latitude, "lon": i.longitude}
+            for i in (d.voisinage.seveso if d.voisinage else [])[:NB_PAR_COUCHE]
+            if i.latitude is not None and i.longitude is not None
+        ],
+        "acces": [
+            {"t": mode, "n": nom, "lat": lat, "lon": lon}
+            | (
+                {"min": a.duree_min, "route": a.distance_route_km}
+                if (a := acces.get((mode, nom)))
+                else {}
+            )
+            for mode, nom, lat, lon in d.poles_proches
+        ],
+    }
+
+
 def verdict_carte(diagnostic: Diagnostic) -> dict[str, Any]:
     criteres = verdict(diagnostic)
     zone = diagnostic.zone_rte
@@ -315,16 +355,35 @@ def verdict_carte(diagnostic: Diagnostic) -> dict[str, Any]:
         else None,
         "zone": zone.zone if zone and zone.distance_km <= DISTANCE_ZONE_UTILE_KM else None,
         "site": site.id_site if site else None,
+        "couches": couches_carte(diagnostic),
     }
 
 
-# La seconde adresse de l'application (deux au plus) voyage dans la première, sous `autre` :
-# la page générée garde une seule ligne à remplacer
+# Les couches du verdict passent de coordonnées à des cases de la carte ; hors carte, elles tombent
+def _verdict_sur_cases(
+    grilles: list[Grille], verdict_adresse: dict[str, Any] | None, departement: str | None
+) -> dict[str, Any] | None:
+    if not verdict_adresse or "couches" not in verdict_adresse:
+        return verdict_adresse
+    couches: dict[str, list[dict[str, Any]]] = {}
+    for genre, elements in verdict_adresse["couches"].items():
+        couches[genre] = []
+        for e in elements:
+            case = reperer(grilles, e["lon"], e["lat"], departement)
+            if case:
+                couches[genre].append(
+                    {k: v for k, v in e.items() if k not in ("lat", "lon")} | {"case": case}
+                )
+    return {**verdict_adresse, "couches": couches}
+
+
+# Les adresses suivantes (deux au plus dans l'application, six avec `compare`) voyagent dans la
+# première, sous `autres` : la page générée garde une seule ligne à remplacer
 def construire_adresse(
     grilles: list[Grille],
     territoire: Territoire | None,
     verdict_adresse: dict[str, Any] | None = None,
-    autre: Seconde | None = None,
+    autres: list[Seconde] | None = None,
 ) -> dict[str, Any] | None:
     if territoire is None:
         return None
@@ -334,10 +393,10 @@ def construire_adresse(
         "case": reperer(
             grilles, territoire.longitude, territoire.latitude, territoire.code_departement
         ),
-        "verdict": verdict_adresse,
+        "verdict": _verdict_sur_cases(grilles, verdict_adresse, territoire.code_departement),
     }
-    if autre is not None:
-        adresse["autre"] = construire_adresse(grilles, *autre)
+    if autres:
+        adresse["autres"] = [construire_adresse(grilles, *autre) for autre in autres]
     return adresse
 
 
@@ -410,7 +469,7 @@ def generer_carte(
     settings: Settings | None = None,
     territoire: Territoire | None = None,
     verdict_adresse: dict[str, Any] | None = None,
-    autre: Seconde | None = None,
+    autres: list[Seconde] | None = None,
     output: Path | None = None,
 ) -> Path:
     settings = settings or get_settings()
@@ -430,7 +489,7 @@ def generer_carte(
             gold,
             territoire=territoire,
             verdict_adresse=verdict_adresse,
-            autre=autre,
+            autres=autres,
             monde=_monde(grilles, settings),
         )
     )
@@ -458,7 +517,7 @@ def mettre_a_jour_carte(
     settings: Settings | None = None,
     territoire: Territoire | None = None,
     verdict_adresse: dict[str, Any] | None = None,
-    autre: Seconde | None = None,
+    autres: list[Seconde] | None = None,
     output: Path | None = None,
 ) -> Path:
     settings = settings or get_settings()
@@ -468,9 +527,9 @@ def mettre_a_jour_carte(
             settings=settings,
             territoire=territoire,
             verdict_adresse=verdict_adresse,
-            autre=autre,
+            autres=autres,
             output=path,
         )
-    adresse = construire_adresse(_grilles(settings), territoire, verdict_adresse, autre)
+    adresse = construire_adresse(_grilles(settings), territoire, verdict_adresse, autres)
     path.write_text(placer_adresse(path.read_text(encoding="utf-8"), adresse), encoding="utf-8")
     return path

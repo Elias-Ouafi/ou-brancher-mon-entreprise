@@ -182,6 +182,7 @@ def test_compare_pour_chaque_activite_et_chaque_format(
         AJACCIO,
         *_projet(12, 70_000, activite),
         "--sans-risques",
+        "--sans-carte",
         "--format",
         format,
     )

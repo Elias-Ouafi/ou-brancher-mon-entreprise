@@ -4,6 +4,7 @@ import json
 import math
 import os
 from pathlib import Path
+from types import SimpleNamespace
 
 import httpx
 import pyarrow.parquet as pq
@@ -11,7 +12,9 @@ import pytest
 from pytest_httpx import HTTPXMock
 
 from ingestion import cli
+from ingestion.acces_routier import Acces
 from ingestion.config import Settings
+from ingestion.diagnostic import Friche
 from ingestion.extract_geo import (
     CONTOURS_JEU,
     RELIEF_JEU,
@@ -21,6 +24,7 @@ from ingestion.extract_geo import (
     lire_altitudes,
 )
 from ingestion.geocode import AdresseIntrouvableError
+from ingestion.georisques import Installation
 from ingestion.hexagones import (
     PAYS_ETUDIES,
     RAYON_SCENE,
@@ -32,6 +36,7 @@ from ingestion.hexagones import (
     points_terrestres,
 )
 from ingestion.tests.test_diagnostic import territoire as _territoire
+from ingestion.zones_activite import ZoneActivite
 from reporting import carte
 
 
@@ -256,6 +261,39 @@ def test_donnees_de_la_carte(settings_carte: Settings, grilles: list) -> None:
     assert [s["d"] for s in donnees["seuils"]] == ["HTA", "HTA – zone grise", "HTB"]
     assert donnees["adresse"]["departement"] == territoire().code_departement
     assert donnees["donnees"].startswith("Données chargées le 01/07/2026")
+
+
+# Friches, zones d'activité, Seveso et pôles de fret : seuls ceux qui ont une position tombant sur
+# une case voyagent, avec leur case à la place de leurs coordonnées
+def test_couches_rangees_par_case(monkeypatch: pytest.MonkeyPatch) -> None:
+    diagnostic = SimpleNamespace(
+        friches=[
+            Friche("f1", "Friche A", "t", None, None, 25_000.0, None, None, 1.5, 45.3, 5.3),
+            Friche("f2", "Sans position", "t", None, None, 12_000.0, None, None, 2.0),
+        ],
+        zones_activite=[ZoneActivite("Zone B", 0.8, 12.0, False, 45.31, 5.31)],
+        voisinage=SimpleNamespace(
+            seveso=[Installation("Usine", "Lyon", "Autorisation", "seuil haut", 3.0, 45.3, 5.3)]
+        ),
+        acces_routier=[Acces("port", "Port X", 10.0, 14.0, 20.0)],
+        poles_proches=[("port", "Port X", 45.2, 5.2), ("rail", "Gare", 45.25, 5.25)],
+    )
+
+    couches = carte.couches_carte(diagnostic)
+    assert [f["n"] for f in couches["friches"]] == ["Friche A"]
+    assert couches["friches"][0]["ha"] == 2.5
+    assert couches["acces"][0]["min"] == 20.0 and "min" not in couches["acces"][1]
+
+    # Le port est hors des cases de la carte : il tombe ; le reste prend sa case
+    monkeypatch.setattr(
+        carte, "reperer", lambda g, lon, lat, dep: [0, 1, 2] if lon > 5.22 else None
+    )
+    verdict = carte._verdict_sur_cases([], {"phrase": "a", "couches": couches}, "69")
+    assert verdict["phrase"] == "a"
+    assert verdict["couches"]["friches"][0]["case"] == [0, 1, 2]
+    assert "lat" not in verdict["couches"]["friches"][0]
+    assert [a["n"] for a in verdict["couches"]["acces"]] == ["Gare"]
+    assert carte._verdict_sur_cases([], None, "69") is None
 
 
 def test_page_autonome_et_echappee(settings_carte: Settings, grilles: list) -> None:

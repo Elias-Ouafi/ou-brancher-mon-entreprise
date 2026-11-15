@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     apicarto_base_url: str = "https://apicarto.ign.fr/api/"
 
     geoplateforme_wfs_url: str = "https://data.geopf.fr/wfs/ows"
+    geoplateforme_wms_url: str = "https://data.geopf.fr/wms-r/wms"
 
     # Profil voiture seulement : la Géoplateforme n'a pas de profil poids lourd
     itineraire_url: str = "https://data.geopf.fr/navigation/itineraire"

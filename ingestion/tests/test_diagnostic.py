@@ -30,6 +30,7 @@ from ingestion.diagnostic import (
 from ingestion.eau import SituationEau
 from ingestion.geocode import Territoire
 from ingestion.georisques import Voisinage, lire_rapport
+from ingestion.image_site import ImageSite
 from ingestion.main_oeuvre import MainOeuvre
 from ingestion.solaire import Productible
 from ingestion.tests.conftest import FIXTURES_DIR
@@ -260,6 +261,22 @@ def test_verdict_connection_follows_who_connects(
     assert ("RTE" in raccordement.detail) is (etat == "attention")
 
 
+# La liste des pièces du dossier suit le gestionnaire : RTE seulement, ni Enedis ni EDF SEI
+@pytest.mark.parametrize(
+    ("commune", "puissance", "liste"),
+    [("69123", 100, True), ("69123", 0.25, False), ("2A004", 45, False)],
+)
+def test_connection_file_checklist_only_when_rte_connects(
+    medallion_db: Path, commune: str, puissance: float, liste: bool
+) -> None:
+    d = lire_diagnostic(territoire(commune), puissance_mw=puissance, database=medallion_db)
+    texte = formater_diagnostic(d)
+    assert ("Dossier de raccordement RTE" in texte) is liste
+    if liste:
+        assert "42 000 € HT" in texte
+        assert "1 000 €/MW" in texte
+
+
 # Réseau insulaire au-dessus du seuil européen : le carbone passe à vérifier
 def test_verdict_flags_carbon_heavy_grid(medallion_db: Path) -> None:
     def carbone(commune: str) -> str:
@@ -376,13 +393,14 @@ def test_every_figure_comes_with_its_limit(medallion_db: Path, warehouse: Any) -
         acces_routier=[],
         productible=Productible(1100.0, None, None),
         solaire_consulte=True,
+        image_site=ImageSite(date(2024, 8, 22), date(2024, 8, 27), 400, "https://wms.test/"),
         main_oeuvre=MainOeuvre(45, 2, 250_700.0, 101_100.0, 452_500.0, "2023"),
     )
     texte = formater_diagnostic(diagnostic)
     limites = [
         limite for (limite,) in _rows(warehouse, "SELECT limite FROM gold.limites_methodologiques")
     ]
-    assert len(limites) == 34
+    assert len(limites) == 35
     for limite in limites:
         assert limite in texte
 
