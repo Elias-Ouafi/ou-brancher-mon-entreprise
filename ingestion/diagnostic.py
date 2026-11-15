@@ -416,7 +416,9 @@ from (
         surface_m2,
         type_zone_urbanisme,
         pollution_sol,
-        {_DISTANCE_KM_SQL} as distance_km
+        {_DISTANCE_KM_SQL} as distance_km,
+        latitude,
+        longitude
     from gold.fct_friches
     where abs(latitude - $latitude) < {RAYON_FRICHES_KM} / 111.0
       and abs(longitude - $longitude) < {RAYON_FRICHES_KM} / (111.0 * cos(radians($latitude)))
@@ -738,6 +740,8 @@ class Friche:
     type_zone_urbanisme: str | None
     pollution_sol: str | None
     distance_km: float
+    latitude: float | None = None
+    longitude: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -2260,6 +2264,29 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
     }
 
 
+# Pièces exigées par la procédure de raccordement de RTE (CRE, délibération 2026-32 du 4 février
+# 2026, § 2) : une liste à rassembler, jamais une note du projet. La CRE a demandé à RTE une
+# évolution qui tienne mieux compte de la maturité au plus tard le 1er octobre 2026 : la procédure
+# en vigueur se relit chez RTE. La procédure d'Enedis (HTA) n'est pas couverte.
+def _pieces_dossier_rte(puissance_mw: float) -> list[str]:
+    forfait = _euros_arrondis(puissance_mw * 1000)
+    return [
+        "Dossier de raccordement RTE, pièces à rassembler (CRE, délibération 2026-32) :",
+        "  - à la demande de proposition technique et financière : 42 000 € HT (déduits du premier"
+        " acompte) et un calendrier prévisionnel (décision d'investissement, début et fin des"
+        " travaux, mise en service, dépôt et obtention de l'autorisation environnementale et du"
+        " permis de construire quand ils sont obligatoires) ;",
+        "  - pour entrer dans la file d'attente : justificatif d'avancement du projet (à défaut"
+        f" 1 000 €/MW, soit {forfait} ici), justificatif de maîtrise foncière de la parcelle du"
+        " point de raccordement, premier acompte ;",
+        "  - pour y rester : ces deux justificatifs chaque année (le versement de remplacement,"
+        " deux fois au plus) ; un calendrier non tenu peut allonger le délai.",
+        "  Limite : liste de la procédure approuvée en février 2026, à relire chez RTE avant de"
+        " déposer ; la maturité des projets doit y entrer plus largement, et Enedis (HTA) a sa"
+        " propre procédure.",
+    ]
+
+
 def sections(diagnostic: Diagnostic) -> list[Section]:
     d = diagnostic
     resultat: list[Section] = []
@@ -2438,6 +2465,9 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
                 " financier des industriels.",
             )
         limite(s, "zones_raccordement_rte")
+    if d.seuil is not None and "RTE" in d.seuil.gestionnaire:
+        for ligne in _pieces_dossier_rte(d.seuil.puissance_mw):
+            texte(s, ligne)
     if d.site_cle_en_main is not None:
         site = d.site_cle_en_main
         texte(
