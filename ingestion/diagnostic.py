@@ -32,6 +32,7 @@ from ingestion.georisques import (
     lire_zonage,
     risques_gaspar,
 )
+from ingestion.image_site import ImageSite, ImageSiteError, lire_image_site
 from ingestion.main_oeuvre import (
     MINUTES_TRAJET,
     MainOeuvre,
@@ -416,7 +417,9 @@ from (
         surface_m2,
         type_zone_urbanisme,
         pollution_sol,
-        {_DISTANCE_KM_SQL} as distance_km
+        {_DISTANCE_KM_SQL} as distance_km,
+        latitude,
+        longitude
     from gold.fct_friches
     where abs(latitude - $latitude) < {RAYON_FRICHES_KM} / 111.0
       and abs(longitude - $longitude) < {RAYON_FRICHES_KM} / (111.0 * cos(radians($latitude)))
@@ -738,6 +741,8 @@ class Friche:
     type_zone_urbanisme: str | None
     pollution_sol: str | None
     distance_km: float
+    latitude: float | None = None
+    longitude: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -894,6 +899,9 @@ class Diagnostic:
     productible: Productible | None = None
     solaire_consulte: bool = False
     solaire_erreur: str | None = None
+    # Prise de vue aérienne la plus récente à l'adresse (BD ORTHO), lue à la demande
+    image_site: ImageSite | None = None
+    image_site_erreur: str | None = None
     # Nombre de friches d'au moins 1 ha à moins de `RAYON_FRICHES_KM`, et les plus proches ;
     # `None` si Cartofriches n'est pas chargé
     nb_friches: int | None = None
@@ -2250,6 +2258,7 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
                 ("reseaux_chaleur", d.reseaux_chaleur is not None),
                 ("acces_routier", d.acces_routier is not None),
                 ("solaire", d.solaire_consulte and d.productible is not None),
+                ("image_site", d.image_site is not None),
                 ("zones_activite", d.nb_zones_activite is not None),
                 ("restrictions_eau", d.eau is not None),
                 ("zones_repartition_eaux", d.zones_repartition is not None),
@@ -2258,6 +2267,29 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
             if present and code in d.limites
         },
     }
+
+
+# Pièces exigées par la procédure de raccordement de RTE (CRE, délibération 2026-32 du 4 février
+# 2026, § 2) : une liste à rassembler, jamais une note du projet. La CRE a demandé à RTE une
+# évolution qui tienne mieux compte de la maturité au plus tard le 1er octobre 2026 : la procédure
+# en vigueur se relit chez RTE. La procédure d'Enedis (HTA) n'est pas couverte.
+def _pieces_dossier_rte(puissance_mw: float) -> list[str]:
+    forfait = _euros_arrondis(puissance_mw * 1000)
+    return [
+        "Dossier de raccordement RTE, pièces à rassembler (CRE, délibération 2026-32) :",
+        "  - à la demande de proposition technique et financière : 42 000 € HT (déduits du premier"
+        " acompte) et un calendrier prévisionnel (décision d'investissement, début et fin des"
+        " travaux, mise en service, dépôt et obtention de l'autorisation environnementale et du"
+        " permis de construire quand ils sont obligatoires) ;",
+        "  - pour entrer dans la file d'attente : justificatif d'avancement du projet (à défaut"
+        f" 1 000 €/MW, soit {forfait} ici), justificatif de maîtrise foncière de la parcelle du"
+        " point de raccordement, premier acompte ;",
+        "  - pour y rester : ces deux justificatifs chaque année (le versement de remplacement,"
+        " deux fois au plus) ; un calendrier non tenu peut allonger le délai.",
+        "  Limite : liste de la procédure approuvée en février 2026, à relire chez RTE avant de"
+        " déposer ; la maturité des projets doit y entrer plus largement, et Enedis (HTA) a sa"
+        " propre procédure.",
+    ]
 
 
 def sections(diagnostic: Diagnostic) -> list[Section]:
@@ -2438,6 +2470,9 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
                 " financier des industriels.",
             )
         limite(s, "zones_raccordement_rte")
+    if d.seuil is not None and "RTE" in d.seuil.gestionnaire:
+        for ligne in _pieces_dossier_rte(d.seuil.puissance_mw):
+            texte(s, ligne)
     if d.site_cle_en_main is not None:
         site = d.site_cle_en_main
         texte(
@@ -2682,6 +2717,11 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
     ):
         texte(s, f"Obligation solaire : {obligation}")
     limite(s, "obligations_solaires")
+    if d.image_site is not None:
+        texte(s, f"Image du site : {ligne_image_site(d.image_site)}")
+        limite(s, "image_site")
+    elif d.image_site_erreur is not None:
+        texte(s, f"Image du site non consultée : {d.image_site_erreur}")
     if d.acces_routier is not None:
         texte(
             s,
@@ -2847,6 +2887,16 @@ def completer_solaire(diagnostic: Diagnostic, *, settings: Settings | None = Non
     return replace(diagnostic, batiment=batiment, productible=productible, solaire_consulte=True)
 
 
+def completer_image_site(diagnostic: Diagnostic, *, settings: Settings | None = None) -> Diagnostic:
+    t = diagnostic.territoire
+    try:
+        image = lire_image_site(latitude=t.latitude, longitude=t.longitude, settings=settings)
+    except ImageSiteError as error:
+        logger.warning("image du site non consultee : %s", error)
+        return replace(diagnostic, image_site_erreur=str(error))
+    return replace(diagnostic, image_site=image)
+
+
 def completer_acces_routier(
     diagnostic: Diagnostic, *, settings: Settings | None = None
 ) -> Diagnostic:
@@ -2931,6 +2981,7 @@ def completer_en_ligne(diagnostic: Diagnostic, *, settings: Settings | None = No
         completer_urbanisme,
         completer_eau,
         completer_solaire,
+        completer_image_site,
         completer_acces_routier,
         completer_zones_activite,
         completer_main_oeuvre,
@@ -2982,6 +3033,25 @@ _MOIS = [
     "janvier", "février", "mars", "avril", "mai", "juin",
     "juillet", "août", "septembre", "octobre", "novembre", "décembre",
 ]  # fmt: skip
+
+
+def libelle_prise_de_vue(debut: date, fin: date) -> str:
+    if debut == fin:
+        return f"le {debut.day} {_MOIS[debut.month - 1]} {debut.year}"
+    if (debut.month, debut.year) == (fin.month, fin.year):
+        return f"du {debut.day} au {fin.day} {_MOIS[fin.month - 1]} {fin.year}"
+    return (
+        f"du {debut.day} {_MOIS[debut.month - 1]} {debut.year}"
+        f" au {fin.day} {_MOIS[fin.month - 1]} {fin.year}"
+    )
+
+
+def ligne_image_site(image: ImageSite) -> str:
+    prise = libelle_prise_de_vue(image.debut, image.fin)
+    return (
+        f"vue aérienne de {image.cote_m} m de côté, prise de vue {prise}"
+        f" (BD ORTHO de l'IGN) : {image.url}"
+    )
 
 
 def heures_carbone(c: Carbone) -> str | None:

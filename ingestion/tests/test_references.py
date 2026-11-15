@@ -41,7 +41,16 @@ ADRESSES = {
 PROJET = ["--puissance", "12", "--conso", "70000", "--activite", "data-center"]
 ESSENTIEL = ["essentiel", "--adresse", "Lyon", *PROJET, "--sans-carte"]
 DIAGNOSE = ["diagnose", "--adresse", "Lyon", *PROJET, "--sans-risques", "--sans-carte"]
-COMPARE = ["compare", "--adresse", "Lyon", "--adresse", "Ajaccio", *PROJET, "--sans-risques"]
+COMPARE = [
+    "compare",
+    "--adresse",
+    "Lyon",
+    "--adresse",
+    "Ajaccio",
+    *PROJET,
+    "--sans-risques",
+    "--sans-carte",
+]
 # La base synthétique n'a pas de prix pour la tranche IF de l'exemple de référence (exprès : c'est
 # elle qui joue « non publié ») : deux autres projets figent les libellés du prix, des scénarios,
 # de la HTB et de l'accise réduite

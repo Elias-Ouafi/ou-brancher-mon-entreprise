@@ -71,7 +71,7 @@ voisinage du site (argiles, cavités, Seveso, installations classées, sols poll
 | Entreprises raccordées à Enedis (2025) : volume, industrie et premier secteur NAF de la commune, rang dans le département ; consommation déjà relevée à l'adresse (« Déjà raccordé ici ») | `fct_conso_entreprises_commune`, `fct_conso_entreprises_adresse`, seed `dim_naf2` |
 | Verdict « brancher ici ? » en cinq critères (raccordement, risques, carbone, facture, foncier), dans `essentiel`, `diagnose`, `compare` et sur la carte | `verdict`, `phrase_verdict` |
 | Carte 3D épurée autour du verdict : vue « Raccorder » par défaut, adresse reliée à la zone RTE utile et au site clé en main ; épinglée par `essentiel` et `diagnose` (seule l'épingle bouge si les données n'ont pas changé) | `carte`, `reporting/carte.py` |
-| Une carte par système électrique (métropole et Corse, chaque DROM), ouverte sur celle de l'adresse ; deux vues : « Raccorder », cases notées du rouge au blanc puis au vert, et « Territoire », paysage réel (mer bleue, verdure, relief IGN) avec carbone et prix moyen dans l'encart ; dans les deux vues, 95 pôles de production du registre national en maquettes par filière, et les sites clés en main en maquette, nommés au survol | `ingestion/hexagones.py`, `fct_sites_production` |
+| Une carte par système électrique (métropole et Corse, chaque DROM), ouverte sur celle de l'adresse ; trois vues : « Raccorder », cases notées du rouge au blanc puis au vert, « Terrain » (friches, zones d'activité, Seveso, desserte) et « Territoire », paysage réel (mer bleue, verdure, relief IGN) avec carbone et prix moyen dans l'encart ; dans les deux vues, 95 pôles de production du registre national en maquettes par filière, et les sites clés en main en maquette, nommés au survol | `ingestion/hexagones.py`, `fct_sites_production` |
 | Grands pôles de fret dans les deux vues de la carte, en maquettes (port à portique, aéroport et avion cargo, chantier rail-route) : 34 pôles en 2025 au-dessus des seuils | `ingestion/extract_fret.py`, `fct_poles_fret`, seeds `dim_ports_fret` et `dim_aeroports_fret` |
 | Risques sans dépendre de l'API Géorisques : export GASPAR chargé par `refresh` | `fct_risques_commune` |
 | Zone de sismicité réglementaire (1 à 5) à l'adresse, sans l'API : couche WFS de Géorisques chargée par `refresh`, point dans polygone en Python | `ingestion/extract_sismique.py`, `fct_zonage_sismique` |
@@ -105,7 +105,7 @@ voisinage du site (argiles, cavités, Seveso, installations classées, sols poll
 | Sortie réduite à la réponse (journal sous `--verbose`) ; avant tout chargement, la commande `refresh` à lancer | `ingestion/cli.py` |
 | Pannes des sources à la demande : chacune des huit sources jouée contre huit pannes (délai dépassé, connexion coupée, 500, 404, corps vide, page de maintenance, JSON inattendu, liste vide) : le diagnostic aboutit, l'échec est dit dans sa section (pour les risques, par le repli sur l'export GASPAR), aucun critère du verdict ne change d'état ; mêmes pannes sur `diagnose`, `compare` et l'application entiers. Un JSON qui n'est pas un objet est un échec de la source ; un corps vide de Géorisques n'est plus lu comme « rien à signaler », sauf pour `rga` | `test_pannes.py` |
 | Matrice des cas d'usage : 160 cas joués par la vraie ligne de commande sur la base synthétique, vérifiés sur des invariants : `essentiel` pour chaque activité à chaque palier de puissance (bornes de `seuils_raccordement` comprises), `diagnose` et `compare` dans tous leurs formats, les onze communes de la recette à 12 et 45 MW, chaque option, l'accise réduite selon l'activité, les projets refusés, le warehouse absent ; les quinze chaînes de chargement rejouées deux fois (rien de dupliqué, Parquet jamais écrasé) et les commandes d'entretien, `tempo`, `ecowatt`, `report` et `app` lancées par `cli.main` ; une consommation que la puissance ne permet pas (plus de 8 784 heures) est refusée en ligne de commande et dans l'application | `test_cas_usage.py`, `test_commandes.py`, `incoherence_projet` |
-| Sorties de référence : douze sorties de `essentiel`, `diagnose` et `compare` et le rapport Markdown figés sur la base synthétique, comparés à chaque run ; un libellé changé fait échouer le test, `--maj-references` réécrit les références ; PDF relu par `pypdf` : pages, pied de page, sections, tuile, aucun caractère sans glyphe ; chaque maquette et chaque relief de la tuile dessinés ; couverture mesurée à chaque run (`pytest --cov`, lignes et branches : 94,6 %), échec sous 92,5 % ; courbe de charge illisible refusée avec le numéro de la ligne fautive. Essai réel : le PDF complet de Chilly-Mazarin (9 pages) n'a aucun caractère sans glyphe | `test_references.py`, `ingestion/tests/references/` |
+| Sorties de référence : douze sorties de `essentiel`, `diagnose` et `compare` et le rapport Markdown figés sur la base synthétique, comparés à chaque run ; un libellé changé fait échouer le test, `--maj-references` réécrit les références ; PDF relu par `pypdf` : pages, pied de page, sections, tuile, aucun caractère sans glyphe ; chaque maquette et chaque relief de la tuile dessinés ; couverture mesurée à chaque run (`pytest --cov`, lignes et branches : 94,7 %), échec sous 92,5 % ; courbe de charge illisible refusée avec le numéro de la ligne fautive. Essai réel : le PDF complet de Chilly-Mazarin (9 pages) n'a aucun caractère sans glyphe | `test_references.py`, `ingestion/tests/references/` |
 | Parcours du néophyte : `app` ouvre une fenêtre d'accueil qui demande une adresse, une seconde si l'on veut comparer (deux au plus), le projet replié ; la carte s'ouvre cadrée sur les adresses (la tuile si elles la partagent, la région si elles en occupent deux bouts, le monde si l'une est outre-mer), chacune avec son bâtiment (liseré doré pour la première, vert pour la seconde) ; fiche adaptée : verdict et cartes chiffrées pour une adresse, mêmes lignes côte à côte et un onglet par adresse pour deux ; rapport PDF en un clic | `reporting/carte.html`, `reporting/app.py` |
 | PDF court et visuel : 3 pages pour l'exemple de référence ; le verdict et sa tuile, puis une fiche par critère (échelle des domaines de tension, plans de prévention, jauge du carbone, parts de la facture et accise, distances et prix des locaux) avec trois phrases au plus, dont la limite qui pèse sur la décision et un conseil ; repères du site en tableau, deux graphiques du territoire | `reporting/implantation_pdf.py`, `reporting/visuels.py` |
 | Essai réel élargi : `verifier.py` joue cinq cas sur le warehouse réel en 15 s environ et dit pour chacun ce qu'il attend (domaine de tension, raccordement du verdict, système électrique) : `essentiel` à 12 MW à Chilly-Mazarin (HTA), `diagnose --sans-risques` à 45 MW (HTB 1, RTE), `compare` de Chilly-Mazarin et Lyon, `essentiel` à Ajaccio (HTA, EDF SEI, Corse, au-dessus du seuil carbone), `/api/analyse` du vrai serveur de l'application ; `--complet` ajoute un `diagnose` avec les sources à la demande et nomme celle qui ne répond pas | `.claude/scripts/verifier.py` |
@@ -113,6 +113,10 @@ voisinage du site (argiles, cavités, Seveso, installations classées, sols poll
 | CI GitHub Actions sous Ubuntu et sous Windows (le poste de développement : console cp1252, chemins), mêmes commandes ; seul le job Ubuntu est exigé par la protection de `main` | `.github/workflows/ci.yml` |
 | Application jouée dans un navigateur : sept parcours dans Chromium (`pytest-playwright`, groupe `e2e`, sautés sans le paquet) contre le vrai serveur de `app` et la base synthétique, seul le géocodage simulé, réseau coupé : accueil → adresse → verdict épinglé → PDF ; adresse ambiguë → choix d'une commune ; deux adresses → côte à côte → tableau détaillé → CSV ; courbe déposée → gardée après rechargement → retirée ; serveur arrêté → message ; page en `file://` → lecture seule ; « Son » → règle de la filière dominante, lecture au clic. Une erreur de console ou une requête hors de la machine fait échouer le parcours | `test_navigateur.py` |
 | Main-d'œuvre dans `diagnose` et `compare`, sans effet sur le verdict : diplômés du supérieur et titulaires d'un CAP-BEP ou d'un bac des communes dont le centre est à moins de 45 min en voiture (isochrone de la Géoplateforme à la demande, base Diplômes-Formation 2023 de l'Insee) ; projets de recrutement et part jugée difficile des métiers de l'électricité, du froid et de la maintenance au département (BMO 2026, France Travail). À Chilly-Mazarin : 457 communes, 3,3 millions de diplômés du supérieur, 1,9 million de CAP-BEP ou bac ; 1 068 projets dans l'Essonne, dont 70,3 % difficiles. Mayotte « non disponible » (absente du fichier de l'Insee) | `ingestion/extract_main_oeuvre.py`, `ingestion/main_oeuvre.py`, `fct_diplomes_commune`, `fct_recrutements_techniques_departement`, seed `metiers_techniques_bmo` |
+| Dossier de raccordement RTE dans `diagnose` (et le rapport), quand RTE raccorde : pièces à rassembler d'après la procédure approuvée par la CRE (délibération 2026-32, 4 février 2026) : 42 000 € HT et calendrier prévisionnel à la demande, justificatif d'avancement (à défaut 1 000 €/MW) et de maîtrise foncière à l'entrée en file d'attente, les mêmes chaque année ensuite ; liste à relire chez RTE, la maturité devant y entrer plus largement (demandée au plus tard le 1er octobre 2026, version en vigueur non trouvée) ; la procédure d'Enedis (HTA) n'est pas couverte ; aucune note | `_pieces_dossier_rte` |
+| Comparaison épinglée sur la carte : `compare` place ses 2 à 6 adresses (numérotées 1 à 6, une teinte par rang, sans classement ; l'application garde deux adresses), la caméra recule pour les tenir toutes et le panneau les met côte à côte avec un onglet par adresse ; bouton « Image » : PNG de la vue en double définition, étiquettes d'adresse redessinées, cartouche des adresses, verdicts, date et sources (l'image reprend le cadrage de la vue, que le panneau décale) ; sans WebGL, la page affiche la fiche et les critères de chaque adresse sans la carte. Essayé sur Chilly-Mazarin, Lyon et Dunkerque à 12 MW | `reporting/carte.py`, `reporting/carte.html`, `test_navigateur.py` |
+| Image datée du site dans le rapport : `diagnose` (et `compare`, l'application) lit la date de prise de vue de la campagne la plus récente à l'adresse au graphe de mosaïquage de la BD ORTHO (WFS de la Géoplateforme, Licence Ouverte 2.0), puis le PDF affiche un carré de 400 m de côté en 800 px (WMS, 20 cm, sans stockage) avec sa date (« du 22 au 27 août 2024 ») ; sans date lisible ou sans réponse, pas d'image et le diagnostic le dit. La BD ORTHO remplace ORTHO-SAT, dont aucune date n'est publiée par tuile. Contrôlé à Chilly-Mazarin (22 au 27 août 2024) et à Ajaccio (10 juillet 2024). Limite `image_site` du seed | `ingestion/image_site.py`, `ingestion/diagnostic.py`, `reporting/implantation_pdf.py` |
+| Vue « Terrain » (touche 3) : autour de chaque adresse, ce que son diagnostic a trouvé, chaque objet posé sur sa case de 24 km, sans sa position exacte : friches de 1 ha ou plus à moins de 10 km (Cartofriches), zones d'activité de la BD TOPO à moins de 5 km, sites Seveso à moins de 5 km (Géorisques), pôle de fret le plus proche de chaque mode relié à l'adresse par un arc avec son temps de trajet ; une bannière par couche, étagées au-dessus de la case ; voile orange sur les cases selon les contraintes prévues du réseau de transport du département (plein à 20) ; légende avec les limites ; les plus proches seulement (huit au plus par couche, trois friches et trois zones aujourd'hui). Contrôlé à Chilly-Mazarin (Orly 18 min, HAROPA 144 min, Valenton 24 min, friche de 3,6 ha à 0,5 km, Seveso SMCA à 4 km) et à Ajaccio. Friches, zones d'activité et sites Seveso portent latitude et longitude dans le JSON | `reporting/carte.py`, `reporting/carte.html` |
 | Démonstration sans `refresh` : `demo` construit une fois la base synthétique des tests dans `data/demo/` (une minute environ, sans réseau), répond `essentiel` pour un hub de recharge fictif de 2 MW à Lyon, chiffres dits fictifs en première ligne, et ouvre la carte ; environ 2 s ensuite | `ingestion/demo.py`, `demo` |
 
 **À surveiller** :
@@ -173,9 +177,8 @@ Le détail de chaque ligne est dans son lot, plus bas.
 
 | Ordre | Étape | Condition ou date |
 |---|---|---|
-| 1 | **Carte, lot D** : `compare` épinglé sur la carte, export d'image, fiche sans WebGL ; puis lots E et F | Le lot D épingle `compare` sur la carte |
-| 2 | **Pistes retenues du lot A** : image datée du site, pièces du dossier de raccordement | Dans cet ordre ; chacune sa source, déjà lue ou à relire |
-| 3 | **8, 30, 6** Prix au-delà de 150 GWh, modèle prédictif, international | Chacune sa condition (lot B) ; l'international en dernier |
+| 1 | **Priorité 1 : relief continu et curseur horaire des îles** (lot E) | Altimétrie IGN déjà chargée |
+| — | **8, 30, 6** Prix au-delà de 150 GWh, modèle prédictif, international | Chacune sa condition (lot B) ; l'international en dernier |
 
 Pas à faire maintenant : l'étape **19** (capacité en soutirage de RTE) et les mises à jour des barèmes et des sources attendent leur date, listée dans « À se rappeler aux dates ».
 
@@ -191,7 +194,6 @@ Restent hors de l'application, à dessein :
 
 | Commande | Pourquoi elle reste en ligne de commande | Quand la reprendre |
 |---|---|---|
-| `compare` au-delà de deux adresses | L'application épingle et compare deux adresses ; six côte à côte ne tiennent pas dans la fiche | Lot D de la carte, si le besoin se confirme |
 | `europe` | Moyennes nationales seulement, hors du diagnostic à l'adresse | Avec l'étape 6, en dernier |
 | `refresh` | Une vingtaine de minutes et un seul writer DuckDB : l'application affiche la date des données et la commande à lancer | Pas prévu |
 | `tempo`, `ecowatt`, `report` | Comptes RTE requis ; rapport mensuel sans rôle dans le choix d'un site | Pas prévu ; à retirer s'il ne sert pas |
@@ -207,15 +209,8 @@ Ouverte 2.0, donne au mieux le matériau) et la surface du parking n'est pas con
 débit ou le niveau de nappe du jour face à une référence d'étiage reste hors de l'outil (Hub'Eau
 ne publie aucune référence, le QMNA5 se calcule station par station).
 
-**Pistes retenues**, dans l'ordre : utiles au persona, une source officielle et ouverte déjà
-identifiée, faisables sans chargement lourd.
-
-| Ordre | Manque | Piste | Source et ce qui reste à vérifier |
-|---|---|---|---|
-| 1 | Friches déclaratives, aucune vue récente du site | Image datée du site dans le rapport, à la demande et sans stockage : [ORTHO-SAT](https://www.data.gouv.fr/datasets/ortho-sat/informations) (IGN, Pléiades et SPOT 6/7), puis [BD ORTHO](https://www.data.gouv.fr/datasets/bd-ortho-r) (aérien, 20 cm) si plus fine | IGN, Licence Ouverte 2.0 ; tuiles servies sans compte le 1er novembre (HTTP 200, images non regardées) ; date de prise de vue de la tuile à lire, sans elle pas d'image |
-| 2 | Maturité du projet pour la file « premier prêt, premier servi » | Pièces d'un dossier de raccordement (autorisations, maîtrise du foncier) en liste de vérification, sans note | Procédure RTE de 2026 et délibération CRE 2026-32 à relire ; aucune donnée à charger |
-
-Le photovoltaïque détecté et la température de surface sont écartés.
+**Pistes retenues** : aucune en attente. Le photovoltaïque détecté et la température de surface
+sont écartés.
 
 ### Lot T : qualité des tests
 
@@ -224,8 +219,8 @@ soit essayée par une machine plutôt qu'à la main. Chaque étape a son critèr
 tâche planifiée.
 
 **Constat** :
-- 947 tests sans réseau, dont sept parcours dans Chromium ;
-  couverture **94,6 %** des lignes et des branches
+- 964 tests sans réseau, dont sept parcours dans Chromium ;
+  couverture **94,7 %** des lignes et des branches
   d'`ingestion/` et de `reporting/`, plancher à 92,5 % ;
 - reste sous 90 % : `ingestion/pipeline.py` à 86 % ;
 - le rendu 3D de la carte (vues, tuile, animations) n'est vérifié qu'à la main (skill
@@ -241,7 +236,7 @@ Rien à coder tant que la condition n'est pas levée.
 
 | Étape | Pourquoi pour ce persona | Condition pour s'y mettre |
 |---|---|---|
-| **Carte** Refonte (lots D à F, voir plus bas) | Une carte lisible imprimée, qui finit dans une présentation | Lot D d'abord : `compare` épinglé sur la carte |
+| **Carte** Refonte (lot E, voir plus bas) | Une carte lisible imprimée, qui finit dans une présentation | Lot E : le relief continu |
 | **8** Repère de prix au-delà de 150 000 MWh/an, après la fin de l'ARENH | Un projet de 20 MW constant dépasse la dernière tranche Eurostat (IG, sans borne) | Une source officielle et ouverte d'un prix à terme ; le classement pondéré dans `compare` reste écarté |
 | **30** Modèle prédictif d'implantation (cadrage plus bas) : par zone d'emploi, probabilité d'implantations nouvelles à 3 ans, apprise sur l'historique | Signaler tôt les territoires qui montent, en complément des faits à l'adresse ; il dira où les projets vont, pas où ils seraient rentables ni si la puissance est disponible | Données fiabilisées (critères à écrire) ; à concilier avec la « comparaison sans classement » ; historique de la capacité en soutirage, absent à ce jour |
 | **6** Extension internationale, voir plus bas | En dernier | Jeton ENTSO-E et contours des zones de prix |
@@ -304,12 +299,12 @@ vigueur : ligne de commande, local, page HTML autonome qui s'ouvre hors ligne (p
 pas de CDN), données publiques sourcées, « non disponible » plutôt qu'un chiffre inventé.
 
 **Constat.** three.js **r186** (septembre 2026) est au cœur de la carte (`reporting/carte.html`,
-grille hexagonale, maquettes, deux vues), avec `WebGLRenderer`. Les nouveautés utiles :
+grille hexagonale, maquettes, trois vues), avec `WebGLRenderer`. Les nouveautés utiles :
 `WebGPURenderer` (repli WebGL 2 automatique), shaders en JavaScript (TSL), `BatchedMesh` (en place :
 les maquettes d'un calque en deux appels de dessin). La vue par défaut « Raccorder » (zones RTE, sites clés en main, postes 400 kV) parle
 déjà au persona et montre ce que la puissance demandée change (domaine de tension, gestionnaire,
-année de capacité des zones). Friches, zones d'activité, desserte et eau
-ne sont aujourd'hui que dans `diagnose`, pas sur la carte (lot F).
+année de capacité des zones). La vue « Terrain » y ajoute les friches, zones d'activité, sites Seveso et la
+desserte ; l'eau n'est aujourd'hui que dans `diagnose`.
 
 ### Direction artistique : « le relevé »
 
@@ -341,15 +336,9 @@ Chaque effet doit répondre à une question du persona ; sinon il n'entre pas.
 
 | Fonction | Rendu three.js | Question servie | Données |
 |---|---|---|---|
-| Contraintes RTE | Voile sur les cases selon les contraintes prévues du département | Où le réseau est-il tendu ? | existant (contraintes) |
 | Capacité en soutirage (étape 19) | Cases teintées par capacité restante dès que RTE la publie ; d'ici là, rien d'inventé | La puissance est-elle là ? | RTE, 1er janvier 2027 |
-| `compare` sur la carte | Plusieurs épingles numérotées ; caméra qui passe d'un site à l'autre ; fiches côte à côte, **sans classement** | Le persona présélectionne 2 à 6 sites | existant |
-| Foncier et contraintes | Sites clés en main, friches et zones d'activité en maquettes ; ICPE et Seveso en marqueurs discrets | Le terrain est-il prêt et constructible ? | `fct_friches`, `ingestion/zones_activite.py`, voisinage Géorisques |
-| Desserte | Temps vers le port, l'aéroport, le rail-route, tracés en arcs depuis l'épingle | Logistique et industrie | `ingestion/acces_routier.py` |
 | Relief continu | Un maillage de terrain par système électrique tiré de l'altimétrie IGN déjà chargée, ombrage calculé dans le shader, hexagones projetés dessus en filet | Remplace les cônes de montagne ; donne la lecture « carte d'état-major » | existant (`ingestion/hexagones.py`) |
 | Carbone heure par heure (Corse, outre-mer) | Curseur de 24 h : lumière du soleil et couleur du réseau suivent `fct_carbone_horaire_zni` | Seul cas où l'heure de consommation change le carbone | existant |
-| Export d'image | Bouton « Image » : PNG haute définition de la vue, avec cartouche (adresse, date, sources) | La carte finit dans une présentation | — |
-| Sans WebGL | La fiche « Brancher ici ? » et les critères s'affichent quand même, carte remplacée par un message | Aujourd'hui un poste sans WebGL n'a qu'un message d'erreur | — |
 
 Hors de propos : globe terrestre, particules, néons, post-traitements lourds (bloom, profondeur de
 champ), WebXR. `WebGPURenderer` n'est pas retenu : le `WebGLRenderer` de la r186 tient
@@ -380,9 +369,7 @@ mise à jour dans `docs/exemples/`.
 
 | Lot | Contenu | Validation |
 |---|---|---|
-| D | `compare` épinglé sur la carte (le tableau est déjà dans l'application) ; export d'image ; fiche sans WebGL | `compare` à 3 sites |
-| E | Relief continu et ombrage ; curseur horaire des îles | Ajaccio : 522 g vers 13 h, 681 g vers 5 h |
-| F | Couches friches, zones d'activité et desserte (déjà calculées), voisinage Géorisques, voile des contraintes RTE, puis capacité en soutirage à sa publication | une adresse contrôlée à la main par couche |
+| E (priorité 1) | Relief continu et ombrage ; curseur horaire des îles | Ajaccio : 522 g vers 13 h, 681 g vers 5 h |
 
 ## Besoins des porteurs de projets
 
@@ -447,7 +434,8 @@ et la chaleur fatale n'est pas établi.
 - **Imagerie satellite ouverte (pistes dans le lot A)** : aucune image ne dit
   la capacité de raccordement ; elle peut renforcer le foncier, l'artificialisation et les risques.
   Les produits déjà dérivés passent avant les images brutes, qui demandent une chaîne de traitement.
-  Seule piste gardée : ORTHO-SAT à la demande. Hors de France (étape 6) :
+  Seule image gardée : la BD ORTHO à la demande (voir « État »), ORTHO-SAT n'ayant pas de date de
+  prise de vue par tuile. Hors de France (étape 6) :
   [HRL Imperméabilisation](https://land.copernicus.eu/en/products/high-resolution-layer-imperviousness)
   et [GHS-BUILT-S](https://registry.opendata.aws/ghs-built-s/) (CC BY 4.0).
   [Sentinel-1 et 2](https://ewds.climate.copernicus.eu/licences/ec-sentinel) bruts seulement si aucun

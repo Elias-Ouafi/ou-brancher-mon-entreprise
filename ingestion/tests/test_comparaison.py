@@ -301,7 +301,7 @@ def test_compare_command_writes_a_spreadsheet(
     sortie = tmp_path / "comparaison.csv"
 
     code = cli.main(
-        ["compare", "--adresse", "A", "--adresse", "B", "--sans-risques",
+        ["compare", "--adresse", "A", "--adresse", "B", "--sans-risques", "--sans-carte",
          "--format", "csv", "--output", str(sortie)]
     )  # fmt: skip
 
@@ -310,6 +310,30 @@ def test_compare_command_writes_a_spreadsheet(
     assert "Brancher ici ?" in sortie.read_text(encoding="utf-8-sig")
     entete = sortie.read_text(encoding="utf-8-sig").splitlines()[0]
     assert entete == "indicateur;10 Rue A 69003 Lyon;1 Cours B 20000 Ajaccio;limite"
+
+
+# La comparaison épingle toutes ses adresses sur la carte, sauf avec --sans-carte
+@dbt_requis
+@pytest.mark.parametrize(("option", "epinglees"), [([], 2), (["--sans-carte"], 0)])
+def test_compare_pins_every_address_on_the_map(
+    httpx_mock: HTTPXMock,
+    reglages: Settings,
+    monkeypatch: pytest.MonkeyPatch,
+    option: list[str],
+    epinglees: int,
+) -> None:
+    _ban(httpx_mock, "10 Rue A 69003 Lyon", "69383", "Lyon", "69, Rhône, Auvergne-Rhône-Alpes")
+    _ban(httpx_mock, "1 Cours B 20000 Ajaccio", "2A004", "Ajaccio", "2A, Corse-du-Sud, Corse")
+    monkeypatch.setattr(cli, "get_settings", lambda: reglages)
+    placees: list[int] = []
+    monkeypatch.setattr(
+        cli, "_placer_sur_carte", lambda diagnostics, _: placees.append(len(diagnostics))
+    )
+
+    code = cli.main(["compare", "--adresse", "A", "--adresse", "B", "--sans-risques", *option])
+
+    assert code == 0
+    assert placees == ([epinglees] if epinglees else [])
 
 
 def test_compare_takes_the_same_project_options_as_diagnose() -> None:

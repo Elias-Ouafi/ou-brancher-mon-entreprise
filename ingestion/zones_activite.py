@@ -34,6 +34,9 @@ class ZoneActivite:
     distance_km: float
     surface_ha: float
     contient_adresse: bool
+    # Centre du premier contour, pour placer la zone sur la carte
+    latitude: float | None = None
+    longitude: float | None = None
 
 
 # Plan local en km autour de l'adresse : assez juste à l'échelle de quelques km
@@ -65,6 +68,7 @@ def lire_zones(payload: dict[str, Any], *, latitude: float, longitude: float) ->
         if geometrie.get("type") != "MultiPolygon":
             continue
         polygones = geometrie["coordinates"]
+        contour = polygones[0][0]
         distance, surface_km2 = math.inf, 0.0
         for anneaux in polygones:
             plans = [[_plan(x, y, longitude, latitude) for x, y, *_ in a] for a in anneaux]
@@ -81,6 +85,8 @@ def lire_zones(payload: dict[str, Any], *, latitude: float, longitude: float) ->
                 distance_km=0.0 if dedans else distance,
                 surface_ha=surface_km2 * 100,
                 contient_adresse=dedans,
+                latitude=sum(y for _, y, *_ in contour) / len(contour),
+                longitude=sum(x for x, *_ in contour) / len(contour),
             )
         )
     return sorted(zones, key=lambda z: z.distance_km)
