@@ -20,6 +20,8 @@ GRIS = "#C9CCC8"
 TITRE_VERT = "#1F5B45"
 SOLEIL = "#D9971E"
 FEUILLE = "#6E9F4E"
+# Adresses 3 à 6 d'une comparaison : des teintes neutres, ni le vert ni l'orange des verdicts
+RANGS = ("#3F7E8C", "#9A6B3A", "#76608F", "#A8505A")
 # Tempo garde ses couleurs : ce sont les noms des jours, pas une note
 TEMPO = {"bleu": "#2F6DB5", "blanc": "#B8BEC6", "rouge": "#D0312D"}
 
@@ -87,6 +89,7 @@ def css() -> str:
         "titre-vert": TITRE_VERT,
         "soleil": SOLEIL,
         "feuille": FEUILLE,
+        **{f"rang{k + 3}": teinte for k, teinte in enumerate(RANGS)},
         "f-titre": f'"{TITRE}", Georgia, serif',
         "f-texte": f'"{TEXTE}", system-ui, sans-serif',
     }

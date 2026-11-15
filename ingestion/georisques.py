@@ -227,6 +227,8 @@ class Installation:
     # `seuil bas` ou `seuil haut` ; `None` hors Seveso
     seveso: str | None
     distance_km: float
+    latitude: float | None = None
+    longitude: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -283,6 +285,8 @@ def lire_installations(
                 regime=str(e["regime"]),
                 seveso=statut.removeprefix("Seveso ") if statut.startswith("Seveso") else None,
                 distance_km=_distance_km(latitude, longitude, e["latitude"], e["longitude"]),
+                latitude=e["latitude"],
+                longitude=e["longitude"],
             )
         )
     return sorted(installations, key=lambda i: i.distance_km)

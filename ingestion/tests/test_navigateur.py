@@ -15,6 +15,7 @@ from playwright.sync_api import Page, expect
 from pytest_httpx import HTTPXMock
 
 from ingestion.config import Settings
+from ingestion.diagnostic import lire_diagnostic
 from ingestion.extract_geo import CONTOURS_JEU, TERRES_JEU
 from ingestion.geocode import AdresseAmbigueError
 from ingestion.tests.medallion import DBT_BIN
@@ -262,3 +263,85 @@ def test_ambiance_sonore_coupee_puis_selon_la_filiere_dominante(
     son.click()
     expect(son).to_have_attribute("aria-pressed", "true")
     expect(son).to_have_text("Son")
+
+
+# Trois points de Lyon, chacun sur sa case : la comparaison épingle trois adresses, sans classement
+SITES = [
+    territoire("69123", "Lyon", adresse=nom, latitude=latitude, longitude=longitude)
+    for nom, latitude, longitude in (
+        ("Site A, Lyon", 45.3, 5.3),
+        ("Site B, Lyon", 45.7, 5.7),
+        ("Site C, Lyon", 45.5, 5.5),
+    )
+]
+
+
+def _carte_de_trois_sites(reglages: Settings) -> Path:
+    diagnostics = [
+        lire_diagnostic(t, puissance_mw=12, database=reglages.duckdb_path) for t in SITES
+    ]
+    epingles = [(d.territoire, carte.verdict_carte(d)) for d in diagnostics]
+    return carte.generer_carte(
+        settings=reglages,
+        territoire=epingles[0][0],
+        verdict_adresse=epingles[0][1],
+        autres=epingles[1:],
+    )
+
+
+def test_comparaison_de_trois_sites_epinglee_puis_exportee_en_image(
+    ecran: Page, reglages: Settings
+) -> None:
+    ecran.goto(_carte_de_trois_sites(reglages).resolve().as_uri())
+    ecran.wait_for_function("() => window.THREE && window.exporterImage")
+
+    fiche = ecran.locator("#city")
+    expect(fiche).to_contain_text("Vos 3 adresses")
+    expect(fiche.locator("table.cote thead .rang")).to_have_count(3)
+    expect(ecran.locator(".banner.adresse")).to_have_count(3)
+    expect(fiche.locator(".onglets [role=tab]")).to_have_count(4)
+
+    fiche.locator('[data-adresse="2"]').click()
+    expect(fiche).to_contain_text("Site C, Lyon")
+
+    with ecran.expect_download() as telechargement:
+        ecran.click("#image")
+    assert telechargement.value.suggested_filename == "carte-brancher.png"
+    assert Path(telechargement.value.path()).read_bytes().startswith(b"\x89PNG")
+
+
+def test_vue_terrain_et_sa_legende(ecran: Page, reglages: Settings) -> None:
+    ecran.goto(_carte_de_trois_sites(reglages).resolve().as_uri())
+    ecran.wait_for_function("() => window.THREE && typeof terrainObjs !== 'undefined'")
+
+    terrain = ecran.locator('.lens[data-lens="terrain"]')
+    expect(terrain).to_have_attribute("aria-pressed", "false")
+    ecran.keyboard.press("3")
+    expect(terrain).to_have_attribute("aria-pressed", "true")
+    legende = ecran.locator("#legend")
+    expect(legende).to_contain_text("Autour de l'adresse")
+    expect(legende).to_contain_text("Contraintes RTE")
+    ecran.keyboard.press("1")
+    expect(ecran.locator('.lens[data-lens="raccordement"]')).to_have_attribute(
+        "aria-pressed", "true"
+    )
+
+
+def test_sans_webgl_la_fiche_s_affiche_sans_la_carte(ecran: Page, reglages: Settings) -> None:
+    ecran.add_init_script(
+        """
+        const contexte = HTMLCanvasElement.prototype.getContext;
+        HTMLCanvasElement.prototype.getContext = function (type, ...suite) {
+            return /webgl/.test(type) ? null : contexte.call(this, type, ...suite);
+        };
+        """
+    )
+    ecran.goto(_carte_de_trois_sites(reglages).resolve().as_uri())
+
+    fiche = ecran.locator("#city")
+    expect(fiche).to_contain_text("Vos 3 adresses")
+    expect(fiche).to_contain_text("WebGL")
+    expect(fiche.locator("ul.criteres")).to_have_count(3)
+    expect(fiche).to_contain_text("Site B, Lyon")
+    expect(ecran.locator("#scene canvas")).to_have_count(0)
+    expect(ecran.locator(".lenses")).to_be_hidden()

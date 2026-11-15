@@ -93,7 +93,7 @@ def test_analyse_epingle_le_verdict(
     assert donnees["commande"].endswith("--conso 15000 --sans-risques --format pdf")
     assert sans_carte[0]["territoire"] == LYON
     assert sans_carte[0]["verdict_adresse"]["phrase"]
-    assert sans_carte[0]["autre"] is None
+    assert sans_carte[0]["autres"] == []
 
 
 AJACCIO = territoire("2A004", "Ajaccio", latitude=41.92, longitude=8.74)
@@ -113,7 +113,7 @@ def test_deux_adresses_epinglees_et_pas_une_de_plus(
 
     assert reponse.statut == HTTPStatus.OK
     assert [a["saisie"] for a in _json(reponse)["adresses"]] == ["Lyon", "Ajaccio"]
-    territoire_autre, verdict_autre = sans_carte[0]["autre"]
+    ((territoire_autre, verdict_autre),) = sans_carte[0]["autres"]
     assert territoire_autre == AJACCIO and verdict_autre["phrase"]
 
     corps["autres"] = ["Ajaccio", "Lyon"]
@@ -244,13 +244,15 @@ def test_gabarit_porte_les_marqueurs_de_l_application() -> None:
     assert 'id="q3"' not in gabarit
 
 
-def test_seconde_adresse_dans_la_ligne_de_la_premiere(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_adresses_suivantes_dans_la_ligne_de_la_premiere(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(carte, "reperer", lambda *args: [0, 1, 2])
-    adresse = carte.construire_adresse([], LYON, {"phrase": "a"}, (AJACCIO, {"phrase": "b"}))
+    suivantes = [(AJACCIO, {"phrase": "b"}), (LYON, {"phrase": "c"})]
+    adresse = carte.construire_adresse([], LYON, {"phrase": "a"}, suivantes)
     assert adresse["libelle"] == LYON.adresse and adresse["verdict"] == {"phrase": "a"}
-    assert adresse["autre"]["libelle"] == AJACCIO.adresse
-    assert adresse["autre"]["verdict"] == {"phrase": "b"} and "autre" not in adresse["autre"]
-    assert "autre" not in carte.construire_adresse([], LYON)
+    deuxieme, troisieme = adresse["autres"]
+    assert deuxieme["libelle"] == AJACCIO.adresse and deuxieme["verdict"] == {"phrase": "b"}
+    assert troisieme["verdict"] == {"phrase": "c"}
+    assert "autres" not in deuxieme and "autres" not in carte.construire_adresse([], LYON)
 
 
 COURBE = "Horodate;Valeur\n2026-09-01T00:30:00+02:00;12000000\n2026-09-01T01:00:00+02:00;6000000\n"

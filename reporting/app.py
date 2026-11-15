@@ -239,7 +239,7 @@ def analyser(corps: dict[str, Any], settings: Settings) -> Reponse:
             settings=settings,
             territoire=epingles[0][0],
             verdict_adresse=epingles[0][1],
-            autre=epingles[1] if len(epingles) > 1 else None,
+            autres=epingles[1:],
         )
     except ECHECS_PREVUS as error:
         return _erreur(error)

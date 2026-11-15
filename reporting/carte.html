@@ -67,6 +67,7 @@ button { font: inherit; }
 .champ input:focus-visible { outline: none; border-color: var(--feuille); box-shadow: 0 0 0 3px color-mix(in srgb, var(--feuille) 22%, transparent); }
 .rang { display: inline-grid; place-items: center; flex: none; width: 20px; height: 20px; border-radius: 50%; background: var(--soleil); color: var(--papier); font: 700 12px var(--f-body); }
 .rang.deux { background: var(--feuille); }
+.rang.r3 { background: var(--rang3); } .rang.r4 { background: var(--rang4); } .rang.r5 { background: var(--rang5); } .rang.r6 { background: var(--rang6); }
 .lien { margin-left: auto; background: none; border: 0; padding: 0; color: var(--parch-dim); font: inherit; font-size: 12px; text-decoration: underline; cursor: pointer; }
 .candidats { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12.5px; }
 .candidats .btn { font-size: 12.5px; padding: 3px 10px; }
@@ -201,16 +202,26 @@ button.hero:hover, button.mini:hover, button.hero:focus-visible, button.mini:foc
 .mini .v { display: block; font-size: 13px; font-weight: 700; line-height: 1.22; font-variant-numeric: tabular-nums; }
 .mini.attention { background: color-mix(in srgb, var(--warn) 10%, var(--panel)); border-color: color-mix(in srgb, var(--warn) 55%, var(--gold-dim)); }
 .detail { padding: 8px 10px; border-radius: 10px; background: var(--panel-2); font-size: 12.5px; line-height: 1.4; }
-/* Deux adresses : onglets pour passer de l'une à l'autre, et tableau côte à côte */
-.onglets { display: flex; gap: 4px; padding: 6px 10px 0; background: var(--panel); border-bottom: 1px solid var(--gold-dim); }
+/* Plusieurs adresses : onglets pour passer de l'une à l'autre, et tableau côte à côte */
+.onglets { display: flex; gap: 4px; overflow-x: auto; padding: 6px 10px 0; background: var(--panel); border-bottom: 1px solid var(--gold-dim); }
 .onglets button { display: flex; align-items: center; gap: 6px; min-width: 0; font: inherit; font-size: 12.5px; color: var(--parch-dim); background: none; border: 1px solid transparent; border-bottom: 0; border-radius: 10px 10px 0 0; padding: 6px 10px; margin-bottom: -1px; cursor: pointer; }
 .onglets button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .onglets button:hover, .onglets button:focus-visible { color: var(--parch); outline: none; }
 .onglets button[aria-selected="true"] { background: var(--panel-2); border-color: var(--gold-dim); color: var(--parch); font-weight: 600; }
-.city.cote { width: 620px; }
+.city.cote { width: min(calc(100vw - 32px), calc(150px + 235px * var(--n, 2))); }
+.city.cote .defile { overflow-x: auto; }
+/* Sans WebGL : la fiche seule, sans carte ni commandes */
+.sans-webgl .lenses, .sans-webgl .hint, .sans-webgl #tuile3d { display: none; }
+.sans-webgl .city { position: static; width: auto; max-width: 760px; max-height: none; margin: calc(var(--haut, 52px) + 16px) auto 16px; }
+.sans-webgl .avis { padding: 8px 14px; font-size: 13.5px; color: var(--parch-dim); border-bottom: 1px solid var(--gold-dim); }
+.sans-webgl ul.criteres { list-style: none; margin: 0; padding: 0; }
+.sans-webgl ul.criteres li { display: flex; gap: 10px; padding: 8px 14px; border-bottom: 1px solid var(--gold-dim); font-size: 13.5px; line-height: 1.35; }
+.sans-webgl ul.criteres .s { flex: none; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 12px; color: var(--papier); background: var(--discret); }
+.sans-webgl ul.criteres .s.ok { background: var(--vert); } .sans-webgl ul.criteres .s.attention { background: var(--orange); }
+.sans-webgl ul.criteres small { display: block; color: var(--parch-dim); margin-top: 2px; }
 table.cote { width: 100%; border-collapse: collapse; background: var(--panel); font-size: 13px; }
 table.cote th, table.cote td { text-align: left; vertical-align: top; padding: 7px 10px; border-bottom: 1px solid var(--gold-dim); }
-table.cote thead th { font-size: 12.5px; line-height: 1.3; width: 40%; }
+table.cote thead th { font-size: 12.5px; line-height: 1.3; width: calc(80% / var(--n, 2)); min-width: 130px; }
 table.cote thead th:first-child { width: 20%; }
 table.cote thead .rang { margin-right: 4px; }
 table.cote tbody th { font-weight: 500; color: var(--parch-dim); }
@@ -316,12 +327,13 @@ table.cote tbody th { font-weight: 500; color: var(--parch-dim); }
 <canvas id="tuile3d" hidden aria-hidden="true"></canvas>
 
 <div class="lenses">
-  <div class="vues"><button type="button" id="son" aria-pressed="false" title="Ambiance discrète de la case ouverte, selon sa filière de production dominante">Son coupé</button></div>
+  <div class="vues"><button type="button" id="image" title="Enregistre la vue en image PNG, avec un cartouche : adresses, date et sources">Image</button><button type="button" id="son" aria-pressed="false" title="Ambiance discrète de la case ouverte, selon sa filière de production dominante">Son coupé</button></div>
   <div class="vues" id="cartes" role="group" aria-label="Carte affichée"></div>
   <div class="legend frame" id="legend"></div>
   <div class="lensbar" role="toolbar" aria-label="Lentilles">
     <button class="lens" data-lens="raccordement" aria-pressed="true"><span class="disc"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" fill="#e3b341"/></svg></span>Raccorder</button>
     <button class="lens" data-lens="territoire" aria-pressed="false"><span class="disc"><svg viewBox="0 0 24 24"><path d="M2 20 9 7l4 7 2-3 7 9H2Z" fill="#8b877c"/><path d="m9 7 2 3.6-2-1-2 1L9 7Z" fill="#f1f3f4"/><path d="M18 20v-3" stroke="#6b4f2a" stroke-width="1.6"/><path d="m18 8-3.5 6h2l-2 3h7l-2-3h2L18 8Z" fill="#5f8f3e"/></svg></span>Territoire</button>
+    <button class="lens" data-lens="terrain" aria-pressed="false"><span class="disc"><svg viewBox="0 0 24 24"><path d="M3 19h18v-2H3z" fill="#b07a4a"/><path d="M4 17v-5l4-2v7zM10 17V8h4v9z" fill="#6f8aa3"/><path d="M17 17v-6h3v6z" fill="#c2571a"/></svg></span>Terrain</button>
   </div>
 </div>
 <div class="tip frame" id="tip" hidden></div>
@@ -481,8 +493,10 @@ const ringOf = (list, w, c) => { const set = new Set(list.map(t => t.i)), out = 
 
 // Repères : sites clés en main, zones RTE, adresse et liens vers ce qui compte pour elle
 const caseDe = ref => ref ? tileAt(...ref) : null;
-// Une ou deux adresses (la seconde voyage sous `autre`) ; la première porte le bâtiment et les liens
-const ADRESSES = DATA.adresse ? [DATA.adresse, DATA.adresse.autre].filter(Boolean) : [];
+// Une à six adresses (les suivantes voyagent sous `autres`) ; la première porte le bâtiment et les liens
+const ADRESSES = DATA.adresse ? [DATA.adresse, ...(DATA.adresse.autres || [])] : [];
+const CLASSE_RANG = ["", " deux", " r3", " r4", " r5", " r6"], TEINTE_RANG = ["soleil", "feuille", "rang3", "rang4", "rang5", "rang6"];
+const rang = k => `<b class="rang${CLASSE_RANG[k] || ""}">${k + 1}</b>`;
 let courante = 0;
 const VERDICT = DATA.adresse && DATA.adresse.verdict;
 const followers = [];
@@ -501,12 +515,14 @@ for (const o of zoneObjs) { o.h = (o.z.a ? 1.4 + .8 * (AN_MAX - o.z.a) : .5) * P
   m.scale.y = o.h; m.position.set(o.t.x, 0, o.t.z); m.userData = { i: o.t.i }; markers.zones.add(m); followers.push(m); }
 for (const a of ADRESSES) a.tile = caseDe(a.case);
 const adresseTile = DATA.adresse ? DATA.adresse.tile : null;
-const autreTile = ADRESSES[1] && ADRESSES[1].tile !== adresseTile ? ADRESSES[1].tile : null;
+// Des adresses sur la même case n'ont qu'un bâtiment, celui de la première ; `rangDansCase` décale leurs étiquettes
+ADRESSES.forEach((a, k) => { a.rangDansCase = ADRESSES.slice(0, k).filter(b => b.tile === a.tile).length; });
+const tuilesAdresses = ADRESSES.filter(a => a.tile && !a.rangDansCase).map(a => a.tile);
 // Arc lumineux de l'adresse vers la zone RTE utile et vers le site clé en main le plus proche
-const lienVers = (t, couleur, dh = 1.3) => { if (!adresseTile || !t) return; const a = batimentAdresse ? batimentAdresse.position : adresseTile, ha = adresseTile.baseH + 1.1 * PS + hautBatiment, hb = t.baseH + dh * PS;
+const lienVers = (t, couleur, dh = 1.3, A = ADRESSES[0], groupe = markers.liens) => { const dep = A && A.tile; if (!dep || !t) return; const a = A.batiment ? A.batiment.position : dep, ha = dep.baseH + 1.1 * PS + hautBatiment, hb = t.baseH + dh * PS;
   const haut = Math.max(ha, hb) + 1.5 * PS + Math.hypot(t.x - a.x, t.z - a.z) * .25;
   const courbe = new THREE.QuadraticBezierCurve3(new THREE.Vector3(a.x, ha, a.z), new THREE.Vector3((a.x + t.x) / 2, haut, (a.z + t.z) / 2), new THREE.Vector3(t.x, hb, t.z));
-  markers.liens.add(new THREE.Mesh(new THREE.TubeGeometry(courbe, 48, .09 * PS, 6), new THREE.MeshBasicMaterial({ color: col(couleur) }))); };
+  groupe.add(new THREE.Mesh(new THREE.TubeGeometry(courbe, 48, .09 * PS, 6), new THREE.MeshBasicMaterial({ color: col(couleur) }))); };
 // Une zone RTE peut compter plusieurs pôles : on relie le plus proche de l'adresse
 const ecart = o => Math.hypot(o.t.x - adresseTile.x, o.t.z - adresseTile.z);
 const zoneCible = VERDICT && adresseTile && zoneObjs.filter(o => o.z.n === VERDICT.zone).sort((a, b) => ecart(a) - ecart(b))[0], siteCible = VERDICT && DATA.sites.find(s => s.id === VERDICT.site);
@@ -579,10 +595,10 @@ const D_MAX = 2 / 3 * HW * .97;
 const MAX_MW = {}, nCase = {}; for (const p of DATA.production) { const t = caseDe(p.case); if (!t) continue; MAX_MW[t.g] = Math.max(MAX_MW[t.g] || 0, p.mw); if (t.land) nCase[t.i] = (nCase[t.i] || 0) + 1; }
 for (const s of [...DATA.sites, ...(DATA.fret || [])]) { const t = caseDe(s.case); if (t && t.land) nCase[t.i] = (nCase[t.i] || 0) + 1; }
 // Le bâtiment de chaque adresse prend sa place sur sa case, à côté de ce qu'elle porte déjà
-for (const t of [adresseTile, autreTile]) if (t && t.land) nCase[t.i] = (nCase[t.i] || 0) + 1;
+for (const t of tuilesAdresses) if (t.land) nCase[t.i] = (nCase[t.i] || 0) + 1;
 // Pôles, pôles de fret et sites clés en main d'une case se partagent les deux tiers, côte à côte sur un cercle.
 // Sur la case d'une adresse, le bâtiment de l'entreprise prend le centre et les autres s'écartent en couronne, au bord
-const parCase = {}, prodObjs = [], avecAdresse = new Set([adresseTile, autreTile].filter(t => t && t.land).map(t => t.i)), R_CASE = HW / 2 * .97;
+const parCase = {}, prodObjs = [], avecAdresse = new Set(tuilesAdresses.filter(t => t.land).map(t => t.i)), R_CASE = HW / 2 * .97;
 const place = (t, centre) => { const entoure = avecAdresse.has(t.i), n = nCase[t.i] - entoure;
   if (centre) return { d: n ? R_CASE * 1.12 : D_MAX * 1.2, x: t.x, z: t.z };
   const k = parCase[t.i] = (parCase[t.i] || 0) + 1, sin = Math.sin(Math.PI / n), angle = k * 2 * Math.PI / n + hash(t.c, t.r) * 6;
@@ -689,7 +705,7 @@ function poserEntreprise(t, teinte) { const or = col(teinte), { d: e, x, z } = p
   const pollen = nuagePollen(70, R * 1.5, R * 2.1, .17); pollen.position.set(t.x, 0, t.z); pollen.userData = { i: t.i, pollen: true }; scene.add(pollen); followers.push(pollen);
   return { g, haut: sommet * e, lisere: ringOf([t], .2 * PS, or) }; }
 // La seconde adresse a le même bâtiment, au liseré vert : on distingue les deux sans légende
-{ const poses = [[adresseTile, "soleil"], [autreTile, "feuille"]].filter(([t]) => t && t.land).map(([t, n]) => [t, poserEntreprise(t, CHARTE(n))]);
+{ const poses = ADRESSES.map((a, k) => [a, TEINTE_RANG[k]]).filter(([a]) => a.tile && a.tile.land && !a.rangDansCase).map(([a, n]) => [a.tile, poserEntreprise(a.tile, CHARTE(n))]);
   for (const [t, b] of poses) { ADRESSES.find(a => a.tile === t).batiment = b.g; if (t === adresseTile) { batimentAdresse = b.g; hautBatiment = b.haut; } }
   adresseBand.set(poses.flatMap(([, b]) => b.lisere)); }
 if (zoneCible) lienVers(zoneCible.t, CHARTE("encre"));
@@ -724,12 +740,38 @@ const parCarte = {}; for (const o of prodObjs) (parCarte[o.t.g] ||= []).push(o);
 for (const os of Object.values(parCarte)) for (const { p, t } of os.slice(0, 6))
   addLabel(`<span>${esc(p.n)}</span><span class="by">${fmt(p.mw)} MW</span>`, "banner prod", { g: t.g, i: t.i, x: t.x, z: t.z, y: 2.4 * PS }, ["territoire"]);
 ADRESSES.forEach((a, k) => { const t = a.tile; if (!t) return;
-  addLabel((ADRESSES.length > 1 ? `<b class="rang${k ? " deux" : ""}">${k + 1}</b>` : "") + `<span>${esc(a.libelle)}</span>`, "banner adresse", { g: t.g, i: t.i, x: t.x, z: t.z, y: (k && !autreTile ? 5 : 3.6) * PS }, ["raccordement", "territoire"]); });
+  addLabel((ADRESSES.length > 1 ? rang(k) : "") + `<span>${esc(a.libelle)}</span>`, "banner adresse", { g: t.g, i: t.i, x: t.x, z: t.z, y: (3.6 + 1.4 * a.rangDansCase) * PS }, ["raccordement", "territoire", "terrain"]); });
+// Vue « Terrain » : ce que le diagnostic sait autour de chaque adresse, rangé par case, et sous les cases le voile des contraintes RTE
+markers.terrain = new THREE.Group(); scene.add(markers.terrain);
+const TERRAIN = {
+  friches: { nom: "Friche", couleur: "#b07a4a", mot: e => `${fmt(e.ha, 1)} ha` },
+  zones: { nom: "Zone d'activité", couleur: "#6f8aa3", mot: e => `${fmt(e.ha, e.ha < 10 ? 1 : 0)} ha` },
+  seveso: { nom: "Seveso", couleur: "#c2571a", mot: e => e.s },
+  acces: { nom: "Desserte", couleur: "#3f8fd2", mot: e => e.min == null ? "" : `${fmt(e.min)} min` } };
+const FORMES = {
+  friches: (g, e, m) => g.add(piece(socleGeo, mat("#cdb88f"), 0, 0, 0, m, 1, m), piece(boite, mat("#8a6b4a"), -.2 * m, .035, .1 * m, .26 * m, .2 * m, .2 * m), piece(boite, mat("#8a6b4a"), .2 * m, .035, -.12 * m, .18 * m, .34 * m, .2 * m)),
+  zones: (g, e, m) => g.add(piece(socleGeo, mat("#b8bfc5"), 0, 0, 0, m, 1, m), piece(boite, mat("#6f8aa3"), -.18 * m, .035, 0, .3 * m, .2 * m, .5 * m), piece(boite, mat("#8aa0b3"), .22 * m, .035, .05, .26 * m, .14 * m, .4 * m)),
+  seveso: (g, e, m) => { const h = e.s === "seuil haut" ? 1 : .7; g.add(piece(socleGeo, mat("#c9b8aa"), 0, 0, 0, m, 1, m), piece(cyl, mat("#c2571a"), -.15 * m, .035, 0, .36 * m, .4 * m * h, .36 * m), piece(fut, mat("#d8d4cb"), .2 * m, .035, -.1 * m, .14 * m, .9 * m * h, .14 * m)); },
+  acces: (g, e, m) => g.add(piece(socleGeo, mat(FRET[e.t] || "#3f8fd2"), 0, 0, 0, m, 1, m), piece(cone, mat(FRET[e.t] || "#3f8fd2"), 0, .035, 0, .4 * m, .8 * m, .4 * m)) };
+const terrainObjs = [], pris = new Map(), etages = new Map();
+for (const A of ADRESSES) { const couches = (A.verdict && A.verdict.couches) || {};
+  for (const [genre, elements] of Object.entries(couches)) elements.forEach((e, n) => { const t = caseDe(e.case); if (!t || !t.land || !TERRAIN[genre]) return;
+    // Plusieurs objets sur une case se répartissent autour de son centre, hors du bâtiment de l'adresse
+    const rang = (pris.get(t.i) || 0) + (ADRESSES.some(a => a.tile === t) ? 1 : 0); pris.set(t.i, (pris.get(t.i) || 0) + 1);
+    const a = rang * 2.4, d = rang ? R * .5 : 0, g = new THREE.Group(), m = R * (.5 + (genre === "friches" || genre === "zones" ? .35 * Math.min(1, e.ha / 10) : 0));
+    FORMES[genre](g, e, m); g.position.set(t.x + d * Math.sin(a), 0, t.z + d * Math.cos(a)); g.userData = { i: t.i }; markers.terrain.add(g); followers.push(g);
+    terrainObjs.push({ genre, e, t });
+    if (genre === "acces") lienVers(t, TERRAIN.acces.couleur, .6, A, markers.terrain);
+    // Une bannière par couche (toutes pour la desserte, un mode chacune), étagées au-dessus de la case : une case fait des kilomètres, tout s'y empile
+    if (genre === "acces" || n === 0) { const etage = etages.get(t.i) || 0; etages.set(t.i, etage + 1); addLabel(`<span>${TERRAIN[genre].nom} · ${esc(e.n.length > 36 ? e.n.slice(0, 35) + "…" : e.n)}</span><span class="by">${[TERRAIN[genre].mot(e), e.km == null ? "" : fmt(e.km, e.km < 10 ? 1 : 0) + " km"].filter(Boolean).join(" · ")}</span>`, "banner prod", { g: t.g, i: t.i, x: g.position.x, z: g.position.z, y: (5 + 1.3 * etage) * PS }, ["terrain"]); } }); }
+const VOILE_RTE = col(CHARTE("orange")), voileRte = t => Math.max(0, Math.min(1, (((DEP[t.dep] || {}).k || 0) - 4) / 16));
+function legendeTerrain() { const lignes = Object.entries(TERRAIN).map(([k, T]) => `<span><i style="background:${T.couleur}"></i>${T.nom}</span><span>${terrainObjs.filter(o => o.genre === k && o.t.g === carte).length}</span>`).join("");
+  return `<h3>Autour de l'adresse</h3>${ADRESSES.length ? `<div class="filieres">${lignes}</div>` : "<p>Aucune adresse épinglée : python -m ingestion.cli essentiel --adresse \"…\" ou l'application la placent, avec ce qui l'entoure.</p>"}<h3>Contraintes RTE</h3><div class="bar" style="background:linear-gradient(90deg,${CHARTE("papier")},${CHARTE("orange")})"></div><div class="ticks"><span>peu</span><span>beaucoup</span></div><p>Les plus proches de chaque couche : friches de 1 ha ou plus à moins de 10 km (Cartofriches, Cerema), zones d'activité de la BD TOPO à moins de 5 km, sites Seveso en exploitation à moins de 5 km (Géorisques), pôle de fret le plus proche de chaque mode avec son temps de trajet en voiture quand il a été calculé. Une couche vide : rien trouvé, ou source non consultée (diagnostic lancé avec --sans-risques) ; le diagnostic le dit. Chaque objet est posé sur sa case (quelques km), pas à son adresse exacte : la distance et le détail se lisent dans le diagnostic.</p><p>Voile orange : contraintes prévues sur le réseau de transport du département d'ici 3 à 5 ans (RTE), plein à 20 contraintes ; il n'est pas une capacité d'accueil, qui reste non publique.</p>`; }
 // « Raccorder » selon la puissance : un anneau par domaine de tension autour de l'adresse, celui du projet teinté selon le
 // critère Raccordement et nommé avec son gestionnaire. Ce ne sont pas des distances : la légende le dit
 markers.tension = new THREE.Group(); scene.add(markers.tension);
 for (const a of ADRESSES) { const t = a.tile, rac = a.verdict && a.verdict.raccordement, seuils = DATA.seuils || [];
-  if (!rac || !t || !t.land || (a !== ADRESSES[0] && !autreTile) || !seuils.some(s => s.d === rac.domaine)) continue;
+  if (!rac || !t || !t.land || a.rangDansCase || !seuils.some(s => s.d === rac.domaine)) continue;
   const etat = (a.verdict.criteres.find(c => c.nom === "Raccordement") || {}).etat, teinte = CHARTE({ ok: "vert", attention: "orange" }[etat] || "encre");
   seuils.forEach((s, k) => { const actif = s.d === rac.domaine, r = R * (1.7 + .45 * k), w = R * (actif ? .1 : .03);
     const m = new THREE.Mesh(new THREE.RingGeometry(r - w, r + w, 6), new THREE.MeshBasicMaterial({ color: col(actif ? teinte : CHARTE("discret")), transparent: true, opacity: actif ? .9 : .45, side: THREE.DoubleSide, depthWrite: false }));
@@ -763,6 +805,7 @@ const avis = n => n > .15 ? "favorable" : n < -.15 ? "défavorable" : "neutre";
 const LENS = {
   raccordement: { tile: t => [ramp(NOTE, (t.note + 1) / 2), t.baseH], show: ["sites", "zones", "liens", "production", "fret", "tension"],
     legend: `<h3>Note des cases</h3><div class="bar" style="background:linear-gradient(90deg,${NOTE.join(",")})"></div><div class="ticks"><span>défavorable</span><span>neutre</span><span>favorable</span></div><div class="teintes" style="margin-top:6px"><span><i style="background:${CHARTE("soleil")}"></i>votre site</span><span><i style="background:${CHARTE("encre")}"></i>zone RTE</span><span><i style="background:#f1c75b"></i>site clé en main</span></div><p>Vert : zone de raccordement prioritaire RTE ou site clé en main à proximité, poste 400 kV dans le département. Rouge : contraintes RTE prévues, relief, électricité carbonée, région importatrice. Indicatif : seule une étude Enedis ou RTE fait foi.</p><p>Anneaux autour de votre site : les domaines de tension (HTA, zone grise, HTB), celui de votre puissance en couleur avec son gestionnaire ; ce ne sont pas des distances.</p><p>Anneau sombre, colonne et bannière : zone prioritaire RTE (SDDR 2025), colonne d'autant plus haute que la capacité arrive tôt. Hangar au drapeau doré : site clé en main France 2030. Maquettes : centrales d'au moins 200 MW (20 MW en Corse et outre-mer) ; ports (socle bleu), aéroports (socle gris-bleu) et chantiers rail-route (socle violet) au-delà d'un seuil de fret, détaillés dans la vue Territoire. Bâtiment au liseré doré : votre adresse, reliée à la zone RTE utile et au site le plus proche.</p>` },
+  terrain: { tile: t => { const k = voileRte(t); return [k ? t.biome.clone().lerp(VOILE_RTE, .55 * k) : t.biome, t.baseH]; }, show: ["terrain", "mountains", "vegetation"], legend: () => legendeTerrain() },
   // Paysage réel : couleurs naturelles et relief IGN, sans note ; l'électricité du territoire passe par l'encart
   territoire: { tile: t => [t.biome, t.baseH], show: ["mountains", "vegetation", "production", "fret"],
     legend: () => `<h3>Territoire</h3><div class="teintes">${TEINTES.map(([c, n]) => `<span><i style="background:${c}"></i>${n}</span>`).join("")}</div><p>Couleurs naturelles, hauteur selon l'altitude moyenne (IGN).</p>${legendeElectricite()}${legendeProduction()}${legendeFret()}` },
@@ -832,7 +875,7 @@ const PILL = { ok: ["good", "favorable"], attention: ["warn", "à vérifier"], i
 const cityEl = document.getElementById("city");
 const ficheVide = () => { selBand.set([]); cityEl.style.removeProperty("--rc"); cityEl.classList.remove("avec-tuile"); cacherTuile();
   const ts = land.filter(t => t.g === carte), deps = new Set(ts.map(t => t.dep)).size;
-  cityEl.classList.remove("cote"); cityEl.innerHTML = `<header><h2>${esc(nomCarte(carte))}</h2><div class="sub">${ts.length} cases · ${deps} département${deps > 1 ? "s" : ""}</div></header><div class="vide">${APP ? "« Nouvelle analyse », en haut, ouvre la saisie d'une ou deux adresses. " : "Pour choisir une adresse depuis la carte : python -m ingestion.cli app. "}Cliquez sur une case pour afficher les indicateurs de son département. Changez de carte ou de lentille en bas à droite (touches 1 et 2 pour les lentilles).</div>`; };
+  cityEl.classList.remove("cote"); cityEl.innerHTML = `<header><h2>${esc(nomCarte(carte))}</h2><div class="sub">${ts.length} cases · ${deps} département${deps > 1 ? "s" : ""}</div></header><div class="vide">${APP ? "« Nouvelle analyse », en haut, ouvre la saisie d'une ou deux adresses. " : "Pour choisir une adresse depuis la carte : python -m ingestion.cli app. "}Cliquez sur une case pour afficher les indicateurs de son département. Changez de carte ou de lentille en bas à droite (touches 1 à 3 pour les lentilles).</div>`; };
 // Ce que porte la case, en noms courts : la maquette se lit, le nom la confirme
 const contenuCase = t => { const l = [
   ...prodObjs.filter(o => o.t === t).map(o => `<b>${esc(nomFiliere(o.p.f))}</b> · ${esc(o.p.n)}, ${fmt(o.p.mw)} MW`),
@@ -842,7 +885,7 @@ const contenuCase = t => { const l = [
   const relief = t.altMax >= 1000 ? `jusqu'à ${fmt(t.altMax)} m` : `${fmt(t.alt)} m d'altitude`;
   return `<div class="tuile-contenu">${l.map(x => `<div>${x}</div>`).join("")}<div>${relief} · case ≈ ${fmt(GR[t.g].rayonKm * 2, GR[t.g].rayonKm < 5 ? 1 : 0)} km</div></div>`; };
 const ETATS = `<div class="etats">✓ favorable · ! à vérifier avant de s'engager · ? non évalué · i pour information. Un clic sur une carte chiffrée l'explique.</div>`;
-const onglets = choisi => ADRESSES.length < 2 ? "" : `<div class="onglets" role="tablist">${ADRESSES.map((a, k) => `<button type="button" role="tab" aria-selected="${choisi === k}" data-adresse="${k}"><b class="rang${k ? " deux" : ""}">${k + 1}</b><span>${esc(a.libelle)}</span></button>`).join("")}<button type="button" role="tab" aria-selected="${choisi === "cote"}" data-adresse="cote"><span>Côte à côte</span></button></div>`;
+const onglets = choisi => ADRESSES.length < 2 ? "" : `<div class="onglets" role="tablist">${ADRESSES.map((a, k) => `<button type="button" role="tab" aria-selected="${choisi === k}" data-adresse="${k}">${rang(k)}<span>${esc(a.libelle)}</span></button>`).join("")}<button type="button" role="tab" aria-selected="${choisi === "cote"}" data-adresse="cote"><span>Côte à côte</span></button></div>`;
 function showVerdict(enAttente = false, k = courante) { const A = ADRESSES[k], V = A && A.verdict; if (!V) return ficheVide(); courante = k; selBand.set([]); cityEl.style.removeProperty("--rc"); cityEl.classList.remove("cote"); cityEl.classList.add("avec-tuile"); if (enAttente) cacherTuile();
   const criteres = Object.fromEntries(V.criteres.map(c => [c.nom, c])), general = V.criteres.some(c => c.etat === "attention") ? "attention" : V.criteres.some(c => c.etat === "inconnu") ? "inconnu" : "ok";
   const plein = c => c && `${c.valeur}. ${c.detail}`;
@@ -854,14 +897,14 @@ function showVerdict(enAttente = false, k = courante) { const A = ADRESSES[k], V
   <div class="tuile-info${enAttente ? " attente" : ""}" id="tuileInfo"><div class="heros">${heroCarbone(V.carbone && V.carbone.g, V.carbone && V.carbone.seuil, plein(criteres.Carbone))}${heroPrix(V.prix && V.prix.eur_kwh, plein(criteres.Facture), criteres.Facture && criteres.Facture.valeur.includes("par an") ? criteres.Facture.valeur : null)}</div>
   <div class="minis">${lignes}</div><div class="detail" hidden></div></div></div>${ETATS}${actions(k)}${sources(esc(LIMITE), noteRapport(A), esc(FRAICHEUR))}`;
   if (A.tile && !enAttente) montrerTuile(A.tile); }
-// Deux adresses : les mêmes lignes en regard, sans classement
-function showCote() { selBand.set([]); cacherTuile(); cityEl.style.removeProperty("--rc"); cityEl.classList.remove("avec-tuile"); cityEl.classList.add("cote");
+// Plusieurs adresses : les mêmes lignes en regard, sans classement
+function showCote() { selBand.set([]); cacherTuile(); cityEl.style.removeProperty("--rc"); cityEl.classList.remove("avec-tuile"); cityEl.classList.add("cote"); cityEl.style.setProperty("--n", ADRESSES.length);
   const noms = [...new Set(ADRESSES.flatMap(a => a.verdict.resume.map(l => l.nom)))];
   const cellule = (a, nom) => { const l = a.verdict.resume.find(x => x.nom === nom); return l ? `<span class="cellule"><span class="s ${esc(l.etat)}" aria-label="${esc((PILL[l.etat] || PILL.info)[1])}">${SYMBOLE[l.etat] || "i"}</span><span>${esc(l.valeur.replace(" dans la commune", ""))}</span></span>` : "—"; };
-  cityEl.innerHTML = `<header><h2>Vos deux adresses</h2><div class="sub">Côte à côte, sans classement : à vous de peser les critères.</div></header>${onglets("cote")}
-  <table class="cote"><thead><tr><th></th>${ADRESSES.map((a, k) => `<th><b class="rang${k ? " deux" : ""}">${k + 1}</b>${esc(a.libelle)}</th>`).join("")}</tr></thead><tbody>
+  cityEl.innerHTML = `<header><h2>Vos ${ADRESSES.length} adresses</h2><div class="sub">Côte à côte, sans classement : à vous de peser les critères.</div></header>${onglets("cote")}
+  <div class="defile"><table class="cote"><thead><tr><th></th>${ADRESSES.map((a, k) => `<th>${rang(k)}${esc(a.libelle)}</th>`).join("")}</tr></thead><tbody>
   <tr><th>Brancher ici ?</th>${ADRESSES.map(a => `<td>${esc(a.verdict.phrase)}</td>`).join("")}</tr>
-  ${noms.map(n => `<tr><th>${esc(n)}</th>${ADRESSES.map(a => `<td>${cellule(a, n)}</td>`).join("")}</tr>`).join("")}</tbody></table>${ETATS.replace(" Un clic sur une carte chiffrée l'explique.", " Un onglet ouvre le détail d'une adresse.")}
+  ${noms.map(n => `<tr><th>${esc(n)}</th>${ADRESSES.map(a => `<td>${cellule(a, n)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>${ETATS.replace(" Un clic sur une carte chiffrée l'explique.", " Un onglet ouvre le détail d'une adresse.")}
   ${APP ? `<div class="actions">${ADRESSES.map((_, k) => `<button class="btn primaire" type="button" data-format="pdf" data-k="${k}">Rapport PDF · adresse ${k + 1}</button>`).join("")}<button class="btn" type="button" data-action="comparer">Tableau détaillé</button></div>` : ""}${sources(esc(LIMITE), esc(FRAICHEUR))}`; }
 // Après le verdict : le rapport PDF en un clic, puis le détail et les autres formats
 const actions = k => APP ? `<div class="actions"><button class="btn primaire" type="button" data-format="pdf" data-k="${k}">Télécharger le rapport PDF</button><button class="btn" type="button" data-action="lire" data-k="${k}">Lire le détail</button><button class="btn" type="button" data-format="md" data-k="${k}">Markdown</button><button class="btn" type="button" data-format="json" data-k="${k}">JSON</button></div>` : "";
@@ -877,7 +920,7 @@ function showDep(code, tuile) { const d = DEP[code]; if (!d) return;
   cityEl.innerHTML = `<header><h2>${esc(d.n)}</h2><div class="sub">${esc(d.c)} · ${esc(d.rn)}</div><button class="close" aria-label="Fermer la fiche">×</button></header>
   <div class="${tuile ? "tuile-corps" : ""}">${tuile ? `<div class="tuile-gauche"><div class="tuile-place" id="tuilePlace"></div>${contenuCase(tuile)}</div>` : ""}<div class="tuile-info"><div class="heros">${heroCarbone(d.co2)}${heroPrix(null)}</div>
   <div class="minis">${mini(`Conso. industrielle ${d.an || ""}`, `${fmt(d.gwh)} GWh`, "info", d.rk ? `Rang ${d.rk} sur ${d.nc} départements.` : "")}${mini("Postes RTE", fmt(d.p), "info", `Dont ${fmt(d.p3)} en 400 kV${d.pp ? ", " + d.pp + " en projet" : ""}.`)}${mini("Couverture régionale", d.tc == null ? "n.d." : fmt(d.tc * 100) + " %", equilibre, d.tc == null ? "" : d.tc >= 1 ? "La région produit plus qu'elle ne consomme." : "La région importe une partie de son électricité.")}</div><div class="detail" hidden></div></div></div>${sources(esc(LIMITE), esc(FRAICHEUR))}`;
-  cityEl.querySelector(".close").onclick = () => !VERDICT ? ficheVide() : autreTile ? showCote() : showVerdict();
+  cityEl.querySelector(".close").onclick = () => !VERDICT ? ficheVide() : PLUSIEURS ? showCote() : showVerdict();
   if (tuile) montrerTuile(tuile); }
 
 // Caméra : une carte à la fois, assez loin des autres pour que le brouillard les cache
@@ -906,16 +949,17 @@ GR.forEach((g, gi) => { if (!tiles.some(t => t.g === gi && t.land)) return; cons
   b.dataset.carte = gi; b.textContent = nomCarte(gi); b.onclick = () => montrerCarte(gi); boutons.appendChild(b); });
 // Arrivée sur l'adresse : la caméra plonge, la case se soulève, puis sa tuile sort vers l'encart
 const vueAdresse = (immediat, duree = 1100) => { suivreCarte(adresseTile.g); showVerdict(true, 0); allerA(adresseTile.x, adresseTile.z + (innerWidth <= 1320 ? 7 : 0), 26, immediat, { duree, apres: sortirTuile }); }; // Sur écran étroit, l'encart couvre le centre : le bâtiment reste au-dessus
-// Deux adresses : la caméra recule juste assez pour les tenir toutes deux, la tuile si elles la partagent,
+// Plusieurs adresses : la caméra recule juste assez pour les tenir toutes, la tuile si elles la partagent,
 // la région si elles en occupent deux bouts, le monde si elles n'ont pas le même système électrique
-const DEUX = !!(autreTile && adresseTile && VERDICT && ADRESSES[1].verdict);
-function vueAdresses(immediat, duree = 1100) { const a = adresseTile, b = autreTile; showCote();
-  if (a.g !== b.g) return montrerMonde(immediat);
-  const milieu = [(a.x + b.x) / 2, (a.z + b.z) / 2], ecart = Math.hypot(a.x - b.x, a.z - b.z);
-  suivreCarte(a.g); allerA(milieu[0], milieu[1] + (innerWidth <= 1320 ? ecart * .25 + 5 : 0), Math.max(30, ecart * 1.9 + 16), immediat, { duree, apres: () => { if (!vagueLancee) { setLens(lens); lancerVague(...milieu); } } }); }
+const PLUSIEURS = tuilesAdresses.length > 1 && !!VERDICT && ADRESSES.every(a => a.verdict);
+function vueAdresses(immediat, duree = 1100) { const ts = tuilesAdresses; showCote();
+  if (ts.some(t => t.g !== ts[0].g)) return montrerMonde(immediat);
+  const x0 = Math.min(...ts.map(t => t.x)), x1 = Math.max(...ts.map(t => t.x)), z0 = Math.min(...ts.map(t => t.z)), z1 = Math.max(...ts.map(t => t.z)),
+    milieu = [(x0 + x1) / 2, (z0 + z1) / 2], ecart = Math.hypot(x1 - x0, z1 - z0);
+  suivreCarte(ts[0].g); allerA(milieu[0], milieu[1] + (innerWidth <= 1320 ? ecart * .25 + 5 : 0), Math.max(30, ecart * 1.9 + 16), immediat, { duree, apres: () => { if (!vagueLancee) { setLens(lens); lancerVague(...milieu); } } }); }
 function choisir(v) { if (v === "cote") return vueAdresses(); const k = +v, t = ADRESSES[k].tile; showVerdict(false, k);
   if (t) { suivreCarte(t.g); allerA(t.x, t.z + (innerWidth <= 1320 ? 7 : 0), 26); } }
-if (adresseTile) { const b = document.createElement("button"); b.textContent = DEUX ? "Adresses" : "Adresse"; b.onclick = () => DEUX ? vueAdresses() : vueAdresse(); boutons.appendChild(b); }
+if (adresseTile) { const b = document.createElement("button"); b.textContent = PLUSIEURS ? "Adresses" : "Adresse"; b.onclick = () => PLUSIEURS ? vueAdresses() : vueAdresse(); boutons.appendChild(b); }
 soleil(emprises[0].x, emprises[0].z);
 
 // Survol et sélection
@@ -951,9 +995,9 @@ renderer.domElement.addEventListener("pointerup", e => { if (!down || Math.hypot
   if (vueMonde) return montrerCarte(land[i].g);
   const k = ADRESSES.findIndex(a => a.tile === land[i] && a.verdict); if (k >= 0) return showVerdict(false, k); showDep(land[i].dep, land[i]); });
 document.querySelectorAll(".lens").forEach(b => b.onclick = () => setLens(b.dataset.lens));
-// Les touches 1 et 2 ne changent pas de lentille pendant la saisie d'un champ
+// Les touches 1 à 3 ne changent pas de lentille pendant la saisie d'un champ
 addEventListener("keydown", e => { if (e.key === "Escape") return fermer(); if (e.target.closest && e.target.closest("input, select, textarea")) return;
-  const k = { "1": "raccordement", "2": "territoire" }[e.key]; if (k) setLens(k); if (e.key === "0") montrerMonde(); });
+  const k = { "1": "raccordement", "2": "territoire", "3": "terrain" }[e.key]; if (k) setLens(k); if (e.key === "0") montrerMonde(); });
 
 // Application locale : la page parle au serveur de `app`, qui géocode, diagnostique, épingle et rend le rapport.
 // Tout part de la fenêtre d'accueil : une adresse, une seconde si l'on veut comparer (deux au plus)
@@ -990,6 +1034,29 @@ const HORS_LIGNE = "Le serveur de l'application ne répond pas : relancer python
 const occupe = oui => document.querySelectorAll("#analyser, [data-format], [data-action]").forEach(b => b.disabled = oui);
 function enregistrer(blob, nom) { const lien = document.createElement("a"); lien.href = URL.createObjectURL(blob); lien.download = nom;
   document.body.appendChild(lien); lien.click(); lien.remove(); setTimeout(() => URL.revokeObjectURL(lien.href), 5000); }
+// Image : la vue rendue en haute définition, ses étiquettes d'adresse redessinées, sous un cartouche (adresses, date, sources)
+function exporterImage() {
+  const pr = renderer.getPixelRatio(); renderer.setPixelRatio(Math.max(2, pr)); renderer.setSize(innerWidth, innerHeight); renderer.render(scene, camera);
+  const W = renderer.domElement.width, H = renderer.domElement.height, e = W / innerWidth, pas = 19 * e, marge = 18 * e, lignes = ADRESSES.length;
+  const bande = marge * 2 + pas * (2 + lignes) + 6 * e, cv = document.createElement("canvas"); cv.width = W; cv.height = H + bande;
+  const c = cv.getContext("2d"), police = (px, gras) => `${gras ? 700 : 400} ${px * e}px ${getComputedStyle(document.body).fontFamily}`;
+  c.drawImage(renderer.domElement, 0, 0);
+  renderer.setPixelRatio(pr); renderer.setSize(innerWidth, innerHeight);
+  c.textBaseline = "middle";
+  ADRESSES.forEach((a, k) => { const L = labels.find(l => !l.el.hidden && l.el.classList.contains("adresse") && l.x === a.tile?.x && l.z === a.tile?.z && l.el.textContent.endsWith(a.libelle)); if (!L) return;
+    const x = parseFloat(L.el.style.left) * e, y = parseFloat(L.el.style.top) * e, txt = a.libelle.length > 34 ? a.libelle.slice(0, 33) + "…" : a.libelle;
+    c.font = police(13, true); const w = c.measureText(txt).width + (lignes > 1 ? 30 * e : 0) + 20 * e, h = 26 * e;
+    c.fillStyle = CHARTE("papier"); c.strokeStyle = CHARTE(TEINTE_RANG[k]); c.lineWidth = 2 * e; c.beginPath(); c.roundRect(x - w / 2, y - h - 6 * e, w, h, 8 * e); c.fill(); c.stroke();
+    let x0 = x - w / 2 + 10 * e; if (lignes > 1) { c.fillStyle = CHARTE(TEINTE_RANG[k]); c.beginPath(); c.arc(x0 + 9 * e, y - h / 2 - 6 * e, 9 * e, 0, 7); c.fill(); c.fillStyle = CHARTE("papier"); c.textAlign = "center"; c.fillText(k + 1, x0 + 9 * e, y - h / 2 - 5.5 * e); x0 += 24 * e; }
+    c.textAlign = "left"; c.fillStyle = CHARTE("encre"); c.fillText(txt, x0, y - h / 2 - 6 * e); });
+  c.fillStyle = CHARTE("papier"); c.fillRect(0, H, W, bande); c.fillStyle = CHARTE("filet"); c.fillRect(0, H, W, 2 * e);
+  let y = H + marge + pas / 2; c.textAlign = "left"; c.fillStyle = CHARTE("encre"); c.font = police(15, true);
+  c.fillText(`Carte ${nomCarte(carte)} · ${lignes ? (lignes > 1 ? `${lignes} adresses, sans classement` : "adresse épinglée") : "sans adresse"}`, marge, y);
+  c.font = police(13); ADRESSES.forEach((a, k) => { y += pas; c.fillText(`${lignes > 1 ? k + 1 + ". " : ""}${a.libelle}${a.verdict ? " — " + a.verdict.phrase : ""}`, marge, y); });
+  y += pas; c.fillStyle = CHARTE("discret"); c.font = police(12);
+  c.fillText(`${FRAICHEUR} ${LIMITE}`.slice(0, 230), marge, y);
+  cv.toBlob(b => enregistrer(b, "carte-brancher.png"), "image/png"); }
+$("image").onclick = exporterImage;
 async function analyser(projet, lireApres = false) {
   if (accueilEl.hidden) ouvrirAccueil();
   if (!projet.adresse) { dire("Saisissez l'adresse du site."); $("q").focus(); return; }
@@ -1234,7 +1301,7 @@ setLens("raccordement"); secherTerre();
 montrerMonde(true); cadrer(DISTANCE_MONDE);
 if (!adresseTile) { ficheVide(); setTimeout(() => lancerVague(mondeCentre.x, mondeCentre.z), 400); }
 else if (!VERDICT) showDep(DATA.adresse.departement, adresseTile);
-if (DEUX) { if (REDUCED) vueAdresses(true); else { showCote(); setTimeout(() => vueAdresses(false, 2400), 700); } }
+if (PLUSIEURS) { if (REDUCED) vueAdresses(true); else { showCote(); setTimeout(() => vueAdresses(false, 2400), 700); } }
 else if (adresseTile) { if (REDUCED) vueAdresse(true); else { if (VERDICT) showVerdict(true); setTimeout(() => VERDICT ? vueAdresse(false, 2400) : allerA(adresseTile.x, adresseTile.z, 26, false, { duree: 2400, apres: sortirTuile }), 700); } }
 requestAnimationFrame(tick);
 </script>
@@ -1252,8 +1319,23 @@ try {
   console.error(e);
   document.body.insertAdjacentHTML("beforeend", '<div class="erreur frame">three.js indisponible : ouvrir la carte dans un navigateur récent.</div>');
 }
+// Sans WebGL (poste sans accélération, navigateur restreint) la carte ne peut pas se dessiner : la fiche s'affiche seule
+const webgl = (() => { try { const cv = document.createElement("canvas"); return !!(cv.getContext("webgl2") || cv.getContext("webgl")); } catch { return false; } })();
+function ficheSansWebGL(source) {
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  const ligne = /^DATA\.adresse = \/\*__ADRESSE__\*\/(.*);$/m.exec(source), principale = ligne && JSON.parse(ligne[1]);
+  const limite = (/const LIMITE = "([^"]*)"/.exec(source) || [])[1] || "", SYMBOLE = { ok: "✓", attention: "!", inconnu: "?", info: "i" };
+  const adresses = principale ? [principale, ...(principale.autres || [])].filter(a => a.verdict) : [];
+  document.body.classList.add("sans-webgl");
+  document.getElementById("city").innerHTML = adresses.length
+    ? `<header><h2>${adresses.length > 1 ? `Vos ${adresses.length} adresses` : "Brancher ici ?"}</h2><div class="sub">La carte 3D demande WebGL, absent de ce navigateur : voici la fiche, sans la carte.</div></header>`
+      + adresses.map((a, k) => `<div class="avis"><b>${adresses.length > 1 ? k + 1 + ". " : ""}${esc(a.libelle)}</b><br>${esc(a.verdict.phrase)}</div>
+        <ul class="criteres">${a.verdict.criteres.map(c => `<li><span class="s ${esc(c.etat)}">${SYMBOLE[c.etat] || "i"}</span><span><b>${esc(c.nom)}</b> · ${esc(c.valeur)}<small>${esc(c.detail)}</small></span></li>`).join("")}</ul>`).join("")
+      + `<div class="avis">${esc(limite)}</div>`
+    : `<header><h2>Carte indisponible</h2></header><div class="vide">La carte 3D demande WebGL, absent de ce navigateur, et aucune adresse n'est épinglée : <code>python -m ingestion.cli essentiel --adresse "…"</code> donne la réponse en texte.</div>`; }
 // En script classique, ses fonctions restent globales
-if (window.THREE) document.body.append(Object.assign(document.createElement("script"), { textContent: texte("carte") }));
+if (window.THREE && !webgl) ficheSansWebGL(texte("carte"));
+else if (window.THREE) document.body.append(Object.assign(document.createElement("script"), { textContent: texte("carte") }));
 </script>
 </body>
 </html>

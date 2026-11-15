@@ -299,7 +299,9 @@
       "surface_m2": 50000.0,
       "type_zone_urbanisme": "U",
       "pollution_sol": null,
-      "distance_km": 1.80017083
+      "distance_km": 1.80017083,
+      "latitude": 45.76801802,
+      "longitude": 4.85
     },
     {
       "site_id": "F2",
@@ -310,7 +312,9 @@
       "surface_m2": 30000.0,
       "type_zone_urbanisme": "U",
       "pollution_sol": null,
-      "distance_km": 4.370403858
+      "distance_km": 4.370403858,
+      "latitude": 45.79504505,
+      "longitude": 4.85
     }
   ],
   "reseaux_chaleur": [
