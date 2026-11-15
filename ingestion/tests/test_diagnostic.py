@@ -30,6 +30,7 @@ from ingestion.diagnostic import (
 from ingestion.eau import SituationEau
 from ingestion.geocode import Territoire
 from ingestion.georisques import Voisinage, lire_rapport
+from ingestion.image_site import ImageSite
 from ingestion.main_oeuvre import MainOeuvre
 from ingestion.solaire import Productible
 from ingestion.tests.conftest import FIXTURES_DIR
@@ -392,13 +393,14 @@ def test_every_figure_comes_with_its_limit(medallion_db: Path, warehouse: Any) -
         acces_routier=[],
         productible=Productible(1100.0, None, None),
         solaire_consulte=True,
+        image_site=ImageSite(date(2024, 8, 22), date(2024, 8, 27), 400, "https://wms.test/"),
         main_oeuvre=MainOeuvre(45, 2, 250_700.0, 101_100.0, 452_500.0, "2023"),
     )
     texte = formater_diagnostic(diagnostic)
     limites = [
         limite for (limite,) in _rows(warehouse, "SELECT limite FROM gold.limites_methodologiques")
     ]
-    assert len(limites) == 34
+    assert len(limites) == 35
     for limite in limites:
         assert limite in texte
 

@@ -115,6 +115,7 @@ voisinage du site (argiles, cavités, Seveso, installations classées, sols poll
 | Main-d'œuvre dans `diagnose` et `compare`, sans effet sur le verdict : diplômés du supérieur et titulaires d'un CAP-BEP ou d'un bac des communes dont le centre est à moins de 45 min en voiture (isochrone de la Géoplateforme à la demande, base Diplômes-Formation 2023 de l'Insee) ; projets de recrutement et part jugée difficile des métiers de l'électricité, du froid et de la maintenance au département (BMO 2026, France Travail). À Chilly-Mazarin : 457 communes, 3,3 millions de diplômés du supérieur, 1,9 million de CAP-BEP ou bac ; 1 068 projets dans l'Essonne, dont 70,3 % difficiles. Mayotte « non disponible » (absente du fichier de l'Insee) | `ingestion/extract_main_oeuvre.py`, `ingestion/main_oeuvre.py`, `fct_diplomes_commune`, `fct_recrutements_techniques_departement`, seed `metiers_techniques_bmo` |
 | Dossier de raccordement RTE dans `diagnose` (et le rapport), quand RTE raccorde : pièces à rassembler d'après la procédure approuvée par la CRE (délibération 2026-32, 4 février 2026) : 42 000 € HT et calendrier prévisionnel à la demande, justificatif d'avancement (à défaut 1 000 €/MW) et de maîtrise foncière à l'entrée en file d'attente, les mêmes chaque année ensuite ; liste à relire chez RTE, la maturité devant y entrer plus largement (demandée au plus tard le 1er octobre 2026, version en vigueur non trouvée) ; la procédure d'Enedis (HTA) n'est pas couverte ; aucune note | `_pieces_dossier_rte` |
 | Comparaison épinglée sur la carte : `compare` place ses 2 à 6 adresses (numérotées 1 à 6, une teinte par rang, sans classement ; l'application garde deux adresses), la caméra recule pour les tenir toutes et le panneau les met côte à côte avec un onglet par adresse ; bouton « Image » : PNG de la vue en double définition, étiquettes d'adresse redessinées, cartouche des adresses, verdicts, date et sources (l'image reprend le cadrage de la vue, que le panneau décale) ; sans WebGL, la page affiche la fiche et les critères de chaque adresse sans la carte. Essayé sur Chilly-Mazarin, Lyon et Dunkerque à 12 MW | `reporting/carte.py`, `reporting/carte.html`, `test_navigateur.py` |
+| Image datée du site dans le rapport : `diagnose` (et `compare`, l'application) lit la date de prise de vue de la campagne la plus récente à l'adresse au graphe de mosaïquage de la BD ORTHO (WFS de la Géoplateforme, Licence Ouverte 2.0), puis le PDF affiche un carré de 400 m de côté en 800 px (WMS, 20 cm, sans stockage) avec sa date (« du 22 au 27 août 2024 ») ; sans date lisible ou sans réponse, pas d'image et le diagnostic le dit. La BD ORTHO remplace ORTHO-SAT, dont aucune date n'est publiée par tuile. Contrôlé à Chilly-Mazarin (22 au 27 août 2024) et à Ajaccio (10 juillet 2024). Limite `image_site` du seed | `ingestion/image_site.py`, `ingestion/diagnostic.py`, `reporting/implantation_pdf.py` |
 | Vue « Terrain » (touche 3) : autour de chaque adresse, ce que son diagnostic a trouvé, chaque objet posé sur sa case de 24 km, sans sa position exacte : friches de 1 ha ou plus à moins de 10 km (Cartofriches), zones d'activité de la BD TOPO à moins de 5 km, sites Seveso à moins de 5 km (Géorisques), pôle de fret le plus proche de chaque mode relié à l'adresse par un arc avec son temps de trajet ; une bannière par couche, étagées au-dessus de la case ; voile orange sur les cases selon les contraintes prévues du réseau de transport du département (plein à 20) ; légende avec les limites ; les plus proches seulement (huit au plus par couche, trois friches et trois zones aujourd'hui). Contrôlé à Chilly-Mazarin (Orly 18 min, HAROPA 144 min, Valenton 24 min, friche de 3,6 ha à 0,5 km, Seveso SMCA à 4 km) et à Ajaccio. Friches, zones d'activité et sites Seveso portent latitude et longitude dans le JSON | `reporting/carte.py`, `reporting/carte.html` |
 | Démonstration sans `refresh` : `demo` construit une fois la base synthétique des tests dans `data/demo/` (une minute environ, sans réseau), répond `essentiel` pour un hub de recharge fictif de 2 MW à Lyon, chiffres dits fictifs en première ligne, et ouvre la carte ; environ 2 s ensuite | `ingestion/demo.py`, `demo` |
 
@@ -176,8 +177,7 @@ Le détail de chaque ligne est dans son lot, plus bas.
 
 | Ordre | Étape | Condition ou date |
 |---|---|---|
-| 1 | **Priorité 1 : image datée du site dans le rapport** | Date de prise de vue de la tuile ORTHO-SAT à lire ; sans elle pas d'image |
-| 2 | **Priorité 2 : relief continu et curseur horaire des îles** (lot E) | Altimétrie IGN déjà chargée |
+| 1 | **Priorité 1 : relief continu et curseur horaire des îles** (lot E) | Altimétrie IGN déjà chargée |
 | — | **8, 30, 6** Prix au-delà de 150 GWh, modèle prédictif, international | Chacune sa condition (lot B) ; l'international en dernier |
 
 Pas à faire maintenant : l'étape **19** (capacité en soutirage de RTE) et les mises à jour des barèmes et des sources attendent leur date, listée dans « À se rappeler aux dates ».
@@ -209,14 +209,8 @@ Ouverte 2.0, donne au mieux le matériau) et la surface du parking n'est pas con
 débit ou le niveau de nappe du jour face à une référence d'étiage reste hors de l'outil (Hub'Eau
 ne publie aucune référence, le QMNA5 se calcule station par station).
 
-**Pistes retenues**, dans l'ordre : utiles au persona, une source officielle et ouverte déjà
-identifiée, faisables sans chargement lourd.
-
-| Priorité | Manque | Piste | Source et ce qui reste à vérifier |
-|---|---|---|---|
-| 1 | Friches déclaratives, aucune vue récente du site | Image datée du site dans le rapport, à la demande et sans stockage : [ORTHO-SAT](https://www.data.gouv.fr/datasets/ortho-sat/informations) (IGN, Pléiades et SPOT 6/7), puis [BD ORTHO](https://www.data.gouv.fr/datasets/bd-ortho-r) (aérien, 20 cm) si plus fine | IGN, Licence Ouverte 2.0 ; tuiles servies sans compte le 1er novembre (HTTP 200, images non regardées) ; date de prise de vue de la tuile à lire, sans elle pas d'image |
-
-Le photovoltaïque détecté et la température de surface sont écartés.
+**Pistes retenues** : aucune en attente. Le photovoltaïque détecté et la température de surface
+sont écartés.
 
 ### Lot T : qualité des tests
 
@@ -375,7 +369,7 @@ mise à jour dans `docs/exemples/`.
 
 | Lot | Contenu | Validation |
 |---|---|---|
-| E (priorité 2) | Relief continu et ombrage ; curseur horaire des îles | Ajaccio : 522 g vers 13 h, 681 g vers 5 h |
+| E (priorité 1) | Relief continu et ombrage ; curseur horaire des îles | Ajaccio : 522 g vers 13 h, 681 g vers 5 h |
 
 ## Besoins des porteurs de projets
 
@@ -440,7 +434,8 @@ et la chaleur fatale n'est pas établi.
 - **Imagerie satellite ouverte (pistes dans le lot A)** : aucune image ne dit
   la capacité de raccordement ; elle peut renforcer le foncier, l'artificialisation et les risques.
   Les produits déjà dérivés passent avant les images brutes, qui demandent une chaîne de traitement.
-  Seule piste gardée : ORTHO-SAT à la demande. Hors de France (étape 6) :
+  Seule image gardée : la BD ORTHO à la demande (voir « État »), ORTHO-SAT n'ayant pas de date de
+  prise de vue par tuile. Hors de France (étape 6) :
   [HRL Imperméabilisation](https://land.copernicus.eu/en/products/high-resolution-layer-imperviousness)
   et [GHS-BUILT-S](https://registry.opendata.aws/ghs-built-s/) (CC BY 4.0).
   [Sentinel-1 et 2](https://ewds.climate.copernicus.eu/licences/ec-sentinel) bruts seulement si aucun
