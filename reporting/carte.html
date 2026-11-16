@@ -143,6 +143,11 @@ button { font: inherit; }
 .lenses { position: fixed; z-index: 4; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
 .vues { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; max-width: 300px; }
+.heure { box-sizing: border-box; width: 300px; max-width: 100%; padding: 8px 12px; border-radius: 14px; display: grid; gap: 4px; font-size: 12.5px; }
+.heure label { font-weight: 600; color: var(--vert); }
+.heure input { width: 100%; accent-color: var(--vert); }
+.heure small { color: var(--parch-dim); font-size: 11px; }
+.heure .btn { justify-self: start; padding: 2px 10px; font-size: 12px; }
 .vues button { background: var(--panel); color: var(--parch); border: 1px solid var(--gold-dim); border-radius: 12px; padding: 3px 10px; font-size: 12.5px; cursor: pointer; }
 .vues button:hover, .vues button:focus-visible { border-color: var(--gold); outline: none; }
 .vues button[aria-pressed="true"] { border-color: var(--vert); color: var(--vert); }
@@ -328,6 +333,13 @@ table.cote tbody th { font-weight: 500; color: var(--parch-dim); }
 
 <div class="lenses">
   <div class="vues"><button type="button" id="image" title="Enregistre la vue en image PNG, avec un cartouche : adresses, date et sources">Image</button><button type="button" id="son" aria-pressed="false" title="Ambiance discrète de la case ouverte, selon sa filière de production dominante">Son coupé</button></div>
+  <div class="heure frame" id="heure" hidden>
+    <label for="heureCurseur">Carbone heure par heure · <span id="heureNom"></span></label>
+    <input type="range" id="heureCurseur" min="0" max="23" step="1" value="12">
+    <output id="heureSortie" for="heureCurseur"></output>
+    <button type="button" class="btn" id="heureRaz" hidden>Lumière d'origine</button>
+    <small>Estimation : profil thermique de la dernière année publiée par EDF SEI, calé sur l'ADEME ; un ordre de grandeur.</small>
+  </div>
   <div class="vues" id="cartes" role="group" aria-label="Carte affichée"></div>
   <div class="legend frame" id="legend"></div>
   <div class="lensbar" role="toolbar" aria-label="Lentilles">
@@ -391,6 +403,7 @@ for (const t of land) {
   // Collines boisées en vert sombre, roche grise en haute montagne
   if (t.alt > 300) c.lerp(col("#41632f"), Math.min(1, (t.alt - 300) / 600));
   if (t.alt > 1100) c.lerp(col("#8f8c82"), Math.min(.85, (t.alt - 1100) / 700));
+  if (t.altMax >= 2300) c.lerp(col("#f1f3f4"), Math.min(.8, (t.altMax - 2300) / 1500 + .25));
   c.offsetHSL(0, 0, (hash(t.c, t.r) - .5) * .06); t.biome = c;
   t.baseH = hauteur(t.alt);
 }
@@ -421,19 +434,62 @@ sun.shadow.mapSize.set(4096, 4096); sun.shadow.bias = -.0008; scene.add(sun);
 const seabed = new THREE.Mesh(new THREE.PlaneGeometry(16000, 16000), new THREE.MeshStandardMaterial({ color: col(CHARTE("mer")), roughness: .9 }));
 seabed.rotation.x = -Math.PI / 2; seabed.position.y = -.05; seabed.receiveShadow = true; scene.add(seabed);
 // Le soleil et ses ombres suivent la carte affichée
-const soleil = (x, z) => { sun.position.set(x - 45, 90, z + 35); sun.target.position.set(x, 0, z); renderer.shadowMap.needsUpdate = true; };
+// Avec le curseur horaire (Corse et outre-mer), il suit l'heure : levé à l'est vers 6 h, couché à l'ouest vers 18 h, pâle et bleuté la nuit
+let soleilXZ = [0, 0];
+const soleil = (x, z) => { soleilXZ = [x, z]; let o = [-45, 90, 35];
+  if (heureActive()) { const p = Math.max(0, Math.min(1, (heure + .5 - 6) / 12)), s = Math.sin(Math.PI * p);
+    o = [100 * Math.cos(Math.PI * p), 25 + 70 * s, 35]; sun.intensity = (.25 + .75 * s) * 1.1 * Math.PI; sun.color.set("#9fb4d8").lerp(col("#ffd9a3"), Math.min(1, s * 1.6)); }
+  else { sun.intensity = 1.1 * Math.PI; sun.color.set("#ffd9a3"); }
+  sun.position.set(x + o[0], o[1], z + o[2]); sun.target.position.set(x, 0, z); renderer.shadowMap.needsUpdate = true; majHeure(); };
 // Métropole et Corse forment une carte, chaque département d'outre-mer la sienne, posée à sa place sur le monde
 let carte = 0;
 const nomCarte = gi => GR[gi].code ? GR[gi].nom : "Métropole et Corse";
 
 const hexGeo = new THREE.CylinderGeometry(R * .97, R * .97, 1, 6); hexGeo.translate(0, .5, 0);
 const dummy = new THREE.Object3D();
-const landMesh = new THREE.InstancedMesh(hexGeo, new THREE.MeshStandardMaterial({ roughness: .85, flatShading: true }), land.length);
-landMesh.castShadow = landMesh.receiveShadow = true; scene.add(landMesh);
 const curH = new Float32Array(land.length), tgtH = new Float32Array(land.length), curC = new Float32Array(land.length * 3), tgtC = new Float32Array(land.length * 3);
-land.forEach((t, i) => { t.i = i; curH[i] = tgtH[i] = t.baseH; landMesh.setColorAt(i, t.biome); t.biome.toArray(curC, i * 3); t.biome.toArray(tgtC, i * 3); });
-function writeTile(i) { const t = land[i]; dummy.position.set(t.x, 0, t.z); dummy.rotation.set(0, 0, 0); dummy.scale.set(1, curH[i], 1); dummy.updateMatrix(); landMesh.setMatrixAt(i, dummy.matrix); }
-land.forEach((_, i) => writeTile(i));
+land.forEach((t, i) => { t.i = i; curH[i] = tgtH[i] = t.baseH; t.biome.toArray(curC, i * 3); t.biome.toArray(tgtC, i * 3); });
+
+// Relief continu : un maillage pour toute la terre, aux sommets partagés entre cases. Le centre d'une case a sa hauteur
+// (celle que suivent maquettes, bandes et bannières) ; un sommet prend la moyenne des trois cases qui le touchent, la mer
+// comptant pour 0,26 et une terre voisine pour 0,45 : la pente va de case en case sans marche, les cases restent des
+// aplats de couleur cernés d'un filet
+const HAUT_MER = .26, HAUT_VOISIN = .45;
+const voisines = land.map(t => [0, 1, 2, 3, 4, 5].map(k => nb(t, k)));
+const idCoin = new Map(), coinXZ = [], coinDe = new Int32Array(land.length * 6);
+land.forEach((t, i) => { for (let k = 0; k < 6; k++) { const a = Math.PI / 3 * k, x = t.x + R * Math.sin(a), z = t.z + R * Math.cos(a), cle = Math.round(x * 200) + "," + Math.round(z * 200);
+  let id = idCoin.get(cle); if (id === undefined) { id = coinXZ.length; idCoin.set(cle, id); coinXZ.push([x, z]); } coinDe[i * 6 + k] = id; } });
+const hCoin = new Float32Array(coinXZ.length), nCoin = new Float32Array(coinXZ.length * 3), nCentre = new Float32Array(land.length * 3);
+const hVoisine = n => !n ? HAUT_MER : n.land ? curH[n.i] : n.fog ? HAUT_VOISIN : HAUT_MER;
+const sommets = new Float32Array(land.length * 54), normales = new Float32Array(land.length * 54), couleurs = new Float32Array(land.length * 54);
+const geoTerre = new THREE.BufferGeometry();
+geoTerre.setAttribute("position", new THREE.BufferAttribute(sommets, 3)); geoTerre.setAttribute("normal", new THREE.BufferAttribute(normales, 3)); geoTerre.setAttribute("color", new THREE.BufferAttribute(couleurs, 3));
+const landMesh = new THREE.Mesh(geoTerre, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .85, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }));
+landMesh.castShadow = landMesh.receiveShadow = true; landMesh.frustumCulled = false; scene.add(landMesh);
+// Filet des cases : chaque arête une fois, posée sur le relief
+const aretes = []; { const vues = new Set(); for (let i = 0; i < land.length; i++) for (let k = 0; k < 6; k++) { const a = coinDe[i * 6 + k], b = coinDe[i * 6 + (k + 1) % 6], cle = Math.min(a, b) * 1e6 + Math.max(a, b); if (!vues.has(cle)) { vues.add(cle); aretes.push(a, b); } } }
+const geoFilet = new THREE.BufferGeometry(), posFilet = new Float32Array(aretes.length * 3);
+geoFilet.setAttribute("position", new THREE.BufferAttribute(posFilet, 3));
+const filet = new THREE.LineSegments(geoFilet, new THREE.LineBasicMaterial({ color: col(CHARTE("encre")), transparent: true, opacity: .2 })); filet.frustumCulled = false; filet.renderOrder = 1; scene.add(filet);
+function majRelief() {
+  for (let i = 0; i < land.length; i++) { const v = voisines[i]; for (let k = 0; k < 6; k++) hCoin[coinDe[i * 6 + k]] = (curH[i] + hVoisine(v[(k + 5) % 6]) + hVoisine(v[k])) / 3; }
+  nCoin.fill(0); nCentre.fill(0);
+  for (let i = 0; i < land.length; i++) { const t = land[i], h = curH[i];
+    for (let k = 0; k < 6; k++) { const a = coinDe[i * 6 + k], b = coinDe[i * 6 + (k + 1) % 6], [ax, az] = coinXZ[a], [bx, bz] = coinXZ[b];
+      const ux = ax - t.x, uy = hCoin[a] - h, uz = az - t.z, vx = bx - t.x, vy = hCoin[b] - h, vz = bz - t.z;
+      const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+      for (const q of [a, b]) { nCoin[q * 3] += nx; nCoin[q * 3 + 1] += ny; nCoin[q * 3 + 2] += nz; }
+      nCentre[i * 3] += nx; nCentre[i * 3 + 1] += ny; nCentre[i * 3 + 2] += nz; } }
+  const ecrire = (o, x, y, z, n, q) => { const l = Math.hypot(n[q], n[q + 1], n[q + 2]) || 1; sommets[o] = x; sommets[o + 1] = y; sommets[o + 2] = z; normales[o] = n[q] / l; normales[o + 1] = n[q + 1] / l; normales[o + 2] = n[q + 2] / l; };
+  for (let i = 0; i < land.length; i++) { const t = land[i];
+    for (let k = 0; k < 6; k++) { const a = coinDe[i * 6 + k], b = coinDe[i * 6 + (k + 1) % 6], o = (i * 6 + k) * 9;
+      ecrire(o, t.x, curH[i], t.z, nCentre, i * 3); ecrire(o + 3, coinXZ[a][0], hCoin[a], coinXZ[a][1], nCoin, a * 3); ecrire(o + 6, coinXZ[b][0], hCoin[b], coinXZ[b][1], nCoin, b * 3); } }
+  for (let e = 0; e < aretes.length; e += 2) for (let j = 0; j < 2; j++) { const id = aretes[e + j], o = (e + j) * 3; posFilet[o] = coinXZ[id][0]; posFilet[o + 1] = hCoin[id] + .02; posFilet[o + 2] = coinXZ[id][1]; }
+  geoTerre.attributes.position.needsUpdate = geoTerre.attributes.normal.needsUpdate = geoFilet.attributes.position.needsUpdate = true;
+  geoTerre.computeBoundingSphere(); }
+function majCouleurs() { for (let i = 0; i < land.length; i++) for (let v = 0; v < 18; v++) { couleurs[i * 54 + v * 3] = curC[i * 3]; couleurs[i * 54 + v * 3 + 1] = curC[i * 3 + 1]; couleurs[i * 54 + v * 3 + 2] = curC[i * 3 + 2]; }
+  geoTerre.attributes.color.needsUpdate = true; }
+majRelief(); majCouleurs();
 const waterMesh = new THREE.InstancedMesh(hexGeo, new THREE.MeshStandardMaterial({ roughness: .35, metalness: .1, flatShading: true }), water.length);
 waterMesh.receiveShadow = true; scene.add(waterMesh);
 water.forEach((t, i) => { const d = t.dist, h = d <= 1 ? .26 : d <= 3 ? .18 : .1; dummy.position.set(t.x, 0, t.z); dummy.scale.set(1, h, 1); dummy.updateMatrix(); waterMesh.setMatrixAt(i, dummy.matrix);
@@ -454,7 +510,7 @@ mondeMesh.count = MONDE.length; scene.add(mondeMesh);
 if (MONDE.length) { const k = DATA.monde.rayon / R; MONDE.forEach((t, i) => { dummy.position.set(t.x, 0, t.z); dummy.scale.set(k, .3 + hash(t.x, t.z) * .08, k); dummy.updateMatrix(); mondeMesh.setMatrixAt(i, dummy.matrix);
   const c = col(t.pays.e ? CHARTE("feuille") : TERNE_MONDE); c.offsetHSL(0, 0, (hash(t.z, t.x) - .5) * .04); mondeMesh.setColorAt(i, c); }); }
 
-// Montagnes selon l'altitude maximale : le relief pèse sur l'accès et les travaux
+// Les sommets (altitude maximale) ne se dessinent plus en cônes dans la scène : le relief continu les porte ; ces repères ne servent qu à la tuile ouverte
 const mountains = new THREE.Group(); scene.add(mountains);
 function instanced(geo, color, list, group) { const m = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ ...(color && { color: col(color) }), roughness: .8, flatShading: true }), Math.max(list.length, 1));
   m.count = list.length;
@@ -469,18 +525,18 @@ for (const t of land) {
     rocks.push({ x: t.x + ox, y: top, z: t.z + oz, sx: s, sy: H, ry: hash(t.r, j) * 6 });
     if (t.altMax >= 2300) snows.push({ x: t.x + ox, y: top + H * .64, z: t.z + oz, sx: s * .37, sy: H * .37, ry: hash(t.r, j) * 6 }); } }
 }
-instanced(coneGeo, "#8b877c", rocks, mountains); instanced(coneGeo, "#f1f3f4", snows, mountains);
 
 // Bandes de frontière qui suivent la hauteur des cases
 const vtx = (t, k, s) => { const a = 60 * k * Math.PI / 180; return [t.x + R * .97 * s * Math.sin(a), t.z + R * .97 * s * Math.cos(a)]; };
 class Band {
-  constructor(opacity = 1, yOff = .03) { this.yOff = yOff; this.hex = new Int32Array(0); this.mesh = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, transparent: opacity < 1, opacity, depthWrite: opacity === 1 })); this.mesh.renderOrder = 2; scene.add(this.mesh); }
+  constructor(opacity = 1, yOff = .03) { this.yOff = yOff; this.hex = new Int32Array(0); this.coin = new Int8Array(0); this.fr = new Float32Array(0); this.mesh = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, transparent: opacity < 1, opacity, depthWrite: opacity === 1 })); this.mesh.renderOrder = 2; scene.add(this.mesh); }
   set(edges) {
-    const pos = new Float32Array(edges.length * 12), cl = new Float32Array(edges.length * 12), idx = []; this.hex = new Int32Array(edges.length * 4);
-    edges.forEach((e, n) => { const t = land[e.i], s = 1 - e.w / R; [vtx(t, e.k, 1), vtx(t, e.k + 1, 1), vtx(t, e.k + 1, s), vtx(t, e.k, s)].forEach((p, j) => { pos.set([p[0], 0, p[1]], (n * 4 + j) * 3); e.c.toArray(cl, (n * 4 + j) * 3); this.hex[n * 4 + j] = e.i; });
+    const pos = new Float32Array(edges.length * 12), cl = new Float32Array(edges.length * 12), idx = []; this.hex = new Int32Array(edges.length * 4); this.coin = new Int8Array(edges.length * 4); this.fr = new Float32Array(edges.length * 4);
+    // Chaque sommet : sa case, son coin et sa part du chemin du centre au coin, pour suivre la pente du relief
+    edges.forEach((e, n) => { const t = land[e.i], s = 1 - e.w / R; [[e.k, 1], [e.k + 1, 1], [e.k + 1, s], [e.k, s]].forEach(([k, f], j) => { const p = vtx(t, k, f); pos.set([p[0], 0, p[1]], (n * 4 + j) * 3); e.c.toArray(cl, (n * 4 + j) * 3); this.hex[n * 4 + j] = e.i; this.coin[n * 4 + j] = k % 6; this.fr[n * 4 + j] = .97 * f; });
       const b = n * 4; idx.push(b, b + 1, b + 2, b, b + 2, b + 3); });
     const g = this.mesh.geometry; g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); g.setAttribute("color", new THREE.BufferAttribute(cl, 3)); g.setIndex(idx); this.update(); }
-  update() { const p = this.mesh.geometry.attributes.position; if (!p || !this.hex.length) return; for (let v = 0; v < this.hex.length; v++) p.array[v * 3 + 1] = curH[this.hex[v]] + this.yOff; p.needsUpdate = true; this.mesh.geometry.computeBoundingSphere(); }
+  update() { const p = this.mesh.geometry.attributes.position; if (!p || !this.hex.length) return; for (let v = 0; v < this.hex.length; v++) { const i = this.hex[v], h = curH[i]; p.array[v * 3 + 1] = h + (hCoin[coinDe[i * 6 + this.coin[v]]] - h) * this.fr[v] + this.yOff; } p.needsUpdate = true; this.mesh.geometry.computeBoundingSphere(); }
 }
 const regionBand = new Band(1, .025), depBand = new Band(.28, .02), selBand = new Band(1, .05), hoverBand = new Band(.9, .06), adresseBand = new Band(1, .055);
 const rE = [], dE = [];
@@ -535,6 +591,8 @@ const NOM_FILIERE = { "Thermique non renouvelable": "Thermique fossile", "Energi
 const nomFiliere = f => NOM_FILIERE[f] || f;
 markers.production = new THREE.Group(); scene.add(markers.production);
 const mat = (c, extra) => new THREE.MeshStandardMaterial({ color: col(c), roughness: .75, flatShading: true, ...extra });
+// Maquette d'architecte : blanc cassé mat, la filière n'y met qu'une touche de sa couleur (`mat` garde la couleur, `ma` la blanchit)
+const ma = (c, extra) => mat(col(c).lerp(col("#f3efe4"), .78), { roughness: .95, ...extra });
 const piece = (geo, m, x, y, z, sx = 1, sy = 1, sz = 1) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.scale.set(sx, sy, sz); o.castShadow = true; return o; };
 // Les maquettes d'un calque en deux appels de dessin (avec et sans ombre portée) au lieu d'un par pièce : chaque groupe reste
 // hors de la scène et ne sert qu'à poser ses pièces dans le lot. La couleur passe par instance, l'émission l'éclaircit, le métal se perd
@@ -563,21 +621,21 @@ const panache = (m, x, y, z, s) => [piece(bulle, m, x, y + s * .3, z, s, s * .7,
 // Chaque maquette tient dans un disque de diamètre 1, socle compris
 const MAQUETTES = {
   // Un réacteur pour 1 200 MW environ (4 au plus) : enceinte à dôme, salle des machines, tour aéroréfrigérante
-  "Nucléaire": (g, p) => { const n = Math.max(1, Math.min(4, Math.round(p.mw / 1200))), beton = mat("#cfc9ba"), hall = mat("#8f9aa3"), vapeur = mat("#eef1f3", { roughness: 1 });
+  "Nucléaire": (g, p) => { const n = Math.max(1, Math.min(4, Math.round(p.mw / 1200))), beton = ma("#cfc9ba"), hall = ma("#8f9aa3"), vapeur = ma("#eef1f3", { roughness: 1 });
     const tour = mat(FILIERES["Nucléaire"], { side: THREE.DoubleSide }), rt = n > 2 ? .17 : .2, ht = n > 2 ? .26 : .3;
     for (const x of rangee(n, .2)) g.add(piece(cyl, beton, x, 0, .16, .12, .13, .12), piece(dome, beton, x, .13, .16, .12, .09, .12), piece(boite, hall, x, 0, .01, .16, .07, .1));
     for (const x of rangee(n, n > 2 ? .21 : .26)) g.add(piece(tourGeo, tour, x, 0, -.22, rt, ht, rt), ...panache(vapeur, x, ht, -.22, rt * .55)); },
   // Barrage-voûte entre deux versants, retenue en amont, usine et canal de fuite en aval
   // Tourné d'un demi-tour : la retenue fait face à la caméra
-  "Hydraulique": g => { const A = .63, beton = mat("#d6d2c6"), eau = mat("#1f6f9e", { roughness: .2, metalness: .1 }), roche = mat("#7d7466"), v = new THREE.Group();
+  "Hydraulique": g => { const A = .63, beton = ma("#d6d2c6"), eau = mat("#1f6f9e", { roughness: .2, metalness: .1 }), roche = ma("#7d7466"), v = new THREE.Group();
     v.rotation.y = Math.PI; g.add(v); g = v;
     const lac = arc(0, .2, .395, A, -A, 12).concat([[-.26, -.4], [.26, -.4]]);
     g.add(piece(prisme(arc(0, .2, .42, -A, A, 12).concat(arc(0, .2, .37, A, -A, 12)), .24), beton, 0, 0, 0),
-      piece(prisme(lac, .16), mat("#6f7d52"), 0, 0, 0), piece(prisme(lac, .03), eau, 0, .155, 0),
+      piece(prisme(lac, .16), ma("#6f7d52"), 0, 0, 0), piece(prisme(lac, .03), eau, 0, .155, 0),
       piece(cone, roche, -.3, 0, -.15, .28, .34, .28), piece(cone, roche, .3, 0, -.15, .28, .3, .28),
       piece(boite, beton, 0, 0, .1, .14, .06, .07), piece(boite, eau, 0, 0, .25, .08, .012, .16));
     g.children[3].rotation.y = .6; },
-  "Thermique non renouvelable": g => { const murs = mat("#9a958a"), toit = mat("#6f6c66"), cheminee = mat("#d8d4cb"), rouge = mat(FILIERES["Thermique non renouvelable"]), cuve = mat("#c9c3b4"), fumee = mat("#b7b9bb", { roughness: 1 });
+  "Thermique non renouvelable": g => { const murs = ma("#9a958a"), toit = ma("#6f6c66"), cheminee = ma("#d8d4cb"), rouge = mat(FILIERES["Thermique non renouvelable"]), cuve = ma("#c9c3b4"), fumee = ma("#b7b9bb", { roughness: 1 });
     g.add(piece(boite, murs, -.08, 0, -.04, .2, .26, .2), piece(boite, toit, -.08, .25, -.04, .22, .03, .22), piece(boite, murs, .12, 0, .14, .3, .12, .13),
       piece(fut, cheminee, -.27, 0, -.22, .1, .56, .1), piece(cyl, rouge, -.27, .43, -.22, .075, .04, .075), piece(cyl, rouge, -.27, .51, -.22, .07, .04, .07),
       piece(cyl, cuve, .26, 0, -.2, .14, .08, .14), piece(cyl, cuve, .08, 0, -.3, .12, .07, .12), ...panache(fumee, -.27, .56, -.22, .09)); },
@@ -586,7 +644,7 @@ const MAQUETTES = {
     for (let k = 0; k < 3; k++) { const pale = piece(boite, m, 0, 0, 0, .06, .42, .03); pale.rotation.z = k * 2 * Math.PI / 3; rotor.add(pale); }
     rotor.name = "rotor"; g.add(rotor); g.userData.rotor = rotor; },
   "Solaire": g => { const m = mat("#3c6fa0", { metalness: .3 }); for (const x of [-.27, 0, .27]) { const p = piece(boite, m, x, .1, 0, .22, .03, .5); p.rotation.x = -.5; g.add(p); } },
-  "Bioénergies": g => { g.add(piece(dome, mat(FILIERES["Bioénergies"]), -.05, 0, 0, .8, .9, .8), piece(cyl, mat("#8b877c"), .32, 0, 0, .1, .7, .1)); },
+  "Bioénergies": g => { g.add(piece(dome, mat(FILIERES["Bioénergies"]), -.05, 0, 0, .8, .9, .8), piece(cyl, ma("#8b877c"), .32, 0, 0, .1, .7, .1)); },
 };
 // Socle hexagonal posé sur la case, pas affleurant : deux faces au même niveau scintillent
 const socleGeo = new THREE.CylinderGeometry(.5, .5, .035, 6); socleGeo.translate(0, .0175, 0);
@@ -839,9 +897,26 @@ function lancerVague(x, z) { vagueLancee = true; if (REDUCED) return; const t = 
   // Au-delà de 20 s de trajet (l'outre-mer, vu de métropole), les cases sautent ensemble : la boucle d'animation s'arrête
   land.forEach((c, i) => { depart[i] = t + Math.min(20, Math.hypot(c.x - x, c.z - z) / VITESSE_VAGUE); passe[i] = 0; }); animating = true; }
 function secherTerre() { if (REDUCED) return; depart.fill(Infinity);
-  land.forEach((c, i) => { const s = col("#cdb68c").offsetHSL(0, 0, (hash(c.r, c.c) - .5) * .05); s.toArray(curC, i * 3); landMesh.setColorAt(i, s); }); landMesh.instanceColor.needsUpdate = true; }
-function setLens(name) { lens = name; const L = LENS[name];
-  land.forEach((t, i) => { const [c, h0] = L.tile(t), h = t === tuileLevee ? h0 + 1.1 * PS : h0; c.toArray(tgtC, i * 3); tgtH[i] = h; if (REDUCED) { curH[i] = h; c.toArray(curC, i * 3); } });
+  land.forEach((c, i) => { const s = col("#cdb68c").offsetHSL(0, 0, (hash(c.r, c.c) - .5) * .05); s.toArray(curC, i * 3); }); majCouleurs(); }
+// Curseur horaire : régions de la carte affichée qui ont un profil de 24 h (Corse, outre-mer hors Mayotte)
+const HORAIRE = DATA.horaire || {};
+let heure = null;
+// Une carte d'outre-mer a toujours son curseur ; la Corse, sur la carte de la métropole, seulement quand la caméra la regarde
+const tuilesHoraire = land.filter(t => HORAIRE[t.reg]); let corseVue = false, imageHoraire = 0;
+const regionsHoraire = () => [...new Set(tuilesHoraire.filter(t => t.g === carte && (GR[carte].code || corseVue)).map(t => t.reg))];
+const heureActive = () => heure !== null && regionsHoraire().length > 0;
+// Rouge au-delà de 800 g, vert sous 100 g : le seuil décarboné reste lisible sur la teinte
+const couleurCarbone = g => ramp(NOTE, 1 - g / 800);
+const teinteHeure = (t, c) => heureActive() && HORAIRE[t.reg] ? c.clone().lerp(couleurCarbone(HORAIRE[t.reg][heure]), .5) : c;
+function majHeure() { const panneau = document.getElementById("heure"), regions = regionsHoraire(); panneau.hidden = !regions.length; if (!regions.length) return;
+  const r = regions[0], d = DATA.departements.find(x => x.r === r), g = heure === null ? null : HORAIRE[r][heure];
+  document.getElementById("heureNom").textContent = d ? d.rn : "";
+  document.getElementById("heureSortie").textContent = g === null ? "Glissez pour suivre la journée" : `${heure} h : ${fmt(g)} g CO₂e/kWh`;
+  document.getElementById("heureRaz").hidden = heure === null; if (heure !== null) document.getElementById("heureCurseur").value = heure; }
+function poserTuiles() { const L = LENS[lens];
+  land.forEach((t, i) => { const [c0, h0] = L.tile(t), c = teinteHeure(t, c0), h = t === tuileLevee ? h0 + 1.1 * PS : h0; c.toArray(tgtC, i * 3); tgtH[i] = h; if (REDUCED) { curH[i] = h; c.toArray(curC, i * 3); } });
+  animating = relief = true; }
+function setLens(name) { lens = name; const L = LENS[name]; poserTuiles();
   mountains.visible = L.show.includes("mountains");
   for (const [k, g] of Object.entries(markers)) g.visible = L.show.includes(k);
   document.querySelectorAll(".lens").forEach(b => b.setAttribute("aria-pressed", b.dataset.lens === name));
@@ -925,10 +1000,11 @@ function showDep(code, tuile) { const d = DEP[code]; if (!d) return;
 
 // Caméra : une carte à la fois, assez loin des autres pour que le brouillard les cache
 let vol = null, bounds = null;
-function allerA(x, z, dist, immediat, { duree = 900, apres = null, axe = [-.05, .75, .66] } = {}) { const off = new THREE.Vector3(...axe).normalize(), toT = new THREE.Vector3(x, 0, z);
+// `devance` : part du trajet (0 à 1) où `apres` part, pendant que la caméra finit son approche, sans arrêt entre les deux
+function allerA(x, z, dist, immediat, { duree = 900, apres = null, axe = [-.05, .75, .66], devance = 1 } = {}) { const off = new THREE.Vector3(...axe).normalize(), toT = new THREE.Vector3(x, 0, z);
   if (immediat) { vol = null; controls.target.copy(toT); camera.position.copy(toT).addScaledVector(off, dist); if (apres) apres(); return; }
   const dep = camera.position.clone().sub(controls.target), d0 = dep.length();
-  vol = { t0: performance.now(), d: REDUCED ? 1 : duree, fromT: controls.target.clone(), toT, fromA: dep.normalize(), toA: off, d0, d1: dist, apres }; }
+  vol = { t0: performance.now(), d: REDUCED ? 1 : duree, fromT: controls.target.clone(), toT, fromA: dep.normalize(), toA: off, d0, d1: dist, apres, devance, fait: false }; }
 const AXE_MONDE = [0, .93, .37];
 const montrerMonde = immediat => { if (!MONDE.length) return montrerCarte(0, immediat); allerA(mondeCentre.x, mondeCentre.z, DISTANCE_MONDE, immediat, { duree: 1400, axe: AXE_MONDE }); };
 const boutons = document.getElementById("cartes");
@@ -948,7 +1024,7 @@ if (MONDE.length) { const b = document.createElement("button"); b.textContent = 
 GR.forEach((g, gi) => { if (!tiles.some(t => t.g === gi && t.land)) return; const b = document.createElement("button");
   b.dataset.carte = gi; b.textContent = nomCarte(gi); b.onclick = () => montrerCarte(gi); boutons.appendChild(b); });
 // Arrivée sur l'adresse : la caméra plonge, la case se soulève, puis sa tuile sort vers l'encart
-const vueAdresse = (immediat, duree = 1100) => { suivreCarte(adresseTile.g); showVerdict(true, 0); allerA(adresseTile.x, adresseTile.z + (innerWidth <= 1320 ? 7 : 0), 26, immediat, { duree, apres: sortirTuile }); }; // Sur écran étroit, l'encart couvre le centre : le bâtiment reste au-dessus
+const vueAdresse = (immediat, duree = 1100) => { suivreCarte(adresseTile.g); showVerdict(true, 0); allerA(adresseTile.x, adresseTile.z + (innerWidth <= 1320 ? 7 : 0), 26, immediat, { duree, apres: sortirTuile, devance: .78 }); }; // Sur écran étroit, l'encart couvre le centre : le bâtiment reste au-dessus
 // Plusieurs adresses : la caméra recule juste assez pour les tenir toutes, la tuile si elles la partagent,
 // la région si elles en occupent deux bouts, le monde si elles n'ont pas le même système électrique
 const PLUSIEURS = tuilesAdresses.length > 1 && !!VERDICT && ADRESSES.every(a => a.verdict);
@@ -956,7 +1032,7 @@ function vueAdresses(immediat, duree = 1100) { const ts = tuilesAdresses; showCo
   if (ts.some(t => t.g !== ts[0].g)) return montrerMonde(immediat);
   const x0 = Math.min(...ts.map(t => t.x)), x1 = Math.max(...ts.map(t => t.x)), z0 = Math.min(...ts.map(t => t.z)), z1 = Math.max(...ts.map(t => t.z)),
     milieu = [(x0 + x1) / 2, (z0 + z1) / 2], ecart = Math.hypot(x1 - x0, z1 - z0);
-  suivreCarte(ts[0].g); allerA(milieu[0], milieu[1] + (innerWidth <= 1320 ? ecart * .25 + 5 : 0), Math.max(30, ecart * 1.9 + 16), immediat, { duree, apres: () => { if (!vagueLancee) { setLens(lens); lancerVague(...milieu); } } }); }
+  suivreCarte(ts[0].g); allerA(milieu[0], milieu[1] + (innerWidth <= 1320 ? ecart * .25 + 5 : 0), Math.max(30, ecart * 1.9 + 16), immediat, { duree, devance: .78, apres: () => { if (!vagueLancee) { setLens(lens); lancerVague(...milieu); } } }); }
 function choisir(v) { if (v === "cote") return vueAdresses(); const k = +v, t = ADRESSES[k].tile; showVerdict(false, k);
   if (t) { suivreCarte(t.g); allerA(t.x, t.z + (innerWidth <= 1320 ? 7 : 0), 26); } }
 if (adresseTile) { const b = document.createElement("button"); b.textContent = PLUSIEURS ? "Adresses" : "Adresse"; b.onclick = () => PLUSIEURS ? vueAdresses() : vueAdresse(); boutons.appendChild(b); }
@@ -966,7 +1042,7 @@ soleil(emprises[0].x, emprises[0].z);
 const ray = new THREE.Raycaster(), mouse = new THREE.Vector2(), tip = document.getElementById("tip"); let hovered = -1, down = null;
 const pickMonde = () => { const h = MONDE.length && ray.intersectObject(mondeMesh)[0]; return h ? MONDE[h.instanceId] : null; };
 const lensLine = (t, d) => lens === "raccordement" ? `Raccordement ${avis(t.note)}${t.raisons.length ? " : " + t.raisons.join(", ") : ""}` : !d ? "" : `Électricité ${d.co2 == null ? "n.d." : (d.co2 <= 100 ? "décarbonée" : "carbonée") + " (" + fmt(d.co2) + " g/kWh)"} · couverture régionale ${d.tc == null ? "n.d." : fmt(d.tc * 100) + " %"} · ${fmt(d.gwh)} GWh industriels`;
-function pick(e) { const b = renderer.domElement.getBoundingClientRect(); mouse.set((e.clientX - b.left) / b.width * 2 - 1, -(e.clientY - b.top) / b.height * 2 + 1); ray.setFromCamera(mouse, camera); const h = ray.intersectObject(landMesh)[0]; return h ? h.instanceId : -1; }
+function pick(e) { const b = renderer.domElement.getBoundingClientRect(); mouse.set((e.clientX - b.left) / b.width * 2 - 1, -(e.clientY - b.top) / b.height * 2 + 1); ray.setFromCamera(mouse, camera); const h = ray.intersectObject(landMesh)[0]; return h ? Math.floor(h.faceIndex / 6) : -1; }
 const pickLot = calque => { if (!markers[calque].visible) return null; const h = ray.intersectObject(markers[calque], true)[0]; return h ? h.object.sujets[h.batchId] : null; };
 const pickHub = () => pickLot("production"), pickFret = () => pickLot("fret"), pickSite = () => pickLot("sites");
 // Volume d'un pôle de fret : tonnage de l'année pour un port ou un aéroport, voies de manutention pour un chantier
@@ -990,11 +1066,14 @@ renderer.domElement.addEventListener("pointermove", e => { if (e.pointerType !==
   tip.style.left = Math.min(innerWidth - 270, e.clientX + 16) + "px"; tip.style.top = (e.clientY + 18) + "px"; });
 renderer.domElement.addEventListener("pointerleave", () => { tip.hidden = true; hovered = -1; hoverBand.set([]); });
 // Reprendre la main pendant un vol : la tuile sort quand même
-renderer.domElement.addEventListener("pointerdown", e => { document.querySelector(".hint").classList.add("vu"); down = [e.clientX, e.clientY]; if (vol) { const f = vol.apres; vol = null; if (f) f(); } });
+renderer.domElement.addEventListener("pointerdown", e => { document.querySelector(".hint").classList.add("vu"); down = [e.clientX, e.clientY]; if (vol) { const f = vol.fait ? null : vol.apres; vol = null; if (f) f(); } });
 renderer.domElement.addEventListener("pointerup", e => { if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 6 || e.button !== 0) return; const i = pick(e); if (i < 0) return;
   if (vueMonde) return montrerCarte(land[i].g);
   const k = ADRESSES.findIndex(a => a.tile === land[i] && a.verdict); if (k >= 0) return showVerdict(false, k); showDep(land[i].dep, land[i]); });
 document.querySelectorAll(".lens").forEach(b => b.onclick = () => setLens(b.dataset.lens));
+const changerHeure = h => { heure = h; soleil(...soleilXZ); poserTuiles(); };
+document.getElementById("heureCurseur").oninput = e => changerHeure(+e.target.value);
+document.getElementById("heureRaz").onclick = () => changerHeure(null);
 // Les touches 1 à 3 ne changent pas de lentille pendant la saisie d'un champ
 addEventListener("keydown", e => { if (e.key === "Escape") return fermer(); if (e.target.closest && e.target.closest("input, select, textarea")) return;
   const k = { "1": "raccordement", "2": "territoire", "3": "terrain" }[e.key]; if (k) setLens(k); if (e.key === "0") montrerMonde(); });
@@ -1258,21 +1337,20 @@ function sortirTuile() { if (!adresseTile) return; if (tuileLevee !== adresseTil
   tuile3d.el.style.transition = "transform 1s cubic-bezier(.2,.8,.2,1), opacity .4s"; tuile3d.el.style.transform = "none"; tuile3d.el.style.opacity = 1; }
 
 // Boucle de rendu
-const tmpC = new THREE.Color();
 const barre = document.querySelector(".topbar");
 function resize() { document.documentElement.style.setProperty("--haut", barre.offsetHeight + "px"); renderer.setSize(innerWidth, innerHeight); tuile3d.taille = 0; camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
 addEventListener("resize", resize); resize();
 function tick(ms) {
   const t = ms / 1000;
-  if (animating) { let moving = false;
+  if (animating) { let moving = false, hauteursBougees = false;
     for (let i = 0; i < land.length; i++) { if (t < depart[i]) { moving = true; continue; }
       // La case saute au passage du front, ses maquettes avec elle
       const h = curH[i]; if (!passe[i]) { passe[i] = 1; curH[i] += .42 * PS; }
       const dh = tgtH[i] - curH[i]; if (Math.abs(dh) > .003) { curH[i] += dh * .12; moving = true; } else curH[i] = tgtH[i];
       if (curH[i] !== h) relief = true;
       for (let j = 0; j < 3; j++) { const q = i * 3 + j, dc = tgtC[q] - curC[q]; if (Math.abs(dc) > .002) { curC[q] += dc * .14; moving = true; } else curC[q] = tgtC[q]; }
-      writeTile(i); tmpC.fromArray(curC, i * 3); landMesh.setColorAt(i, tmpC); }
-    landMesh.instanceMatrix.needsUpdate = true; landMesh.instanceColor.needsUpdate = true;
+      if (curH[i] !== h) hauteursBougees = true; }
+    if (hauteursBougees) majRelief(); majCouleurs();
     [regionBand, depBand, selBand, hoverBand, adresseBand].forEach(b => b.update()); animating = moving; }
   for (const g of followers) { const u = g.userData; g.position.y = curH[u.i] + (u.dy || 0);
     if (u.rotor && !REDUCED) { u.rotor.rotation.z = t * 1.6 + u.ph; poser(u.rotor); }
@@ -1280,11 +1358,14 @@ function tick(ms) {
     if (u.ring && !REDUCED) { const s = 1 + ((t * .6) % 1) * .35; g.scale.set(s, s, s); g.material.opacity = .85 * (1 - (t * .6) % 1); } }
   // La vague met plus d'une minute à atteindre l'outre-mer : seules les images où une case a bougé reposent maquettes et ombres
   if (relief) { relief = false; Object.values(maquettes).forEach(l => l.forEach(poser)); renderer.shadowMap.needsUpdate = true; }
-  if (vol) { const k = Math.min(1, (ms - vol.t0) / vol.d), e = k * k * (3 - 2 * k), a = vol.fromA.clone().lerp(vol.toA, e).normalize();
+  if (vol) { const k = Math.min(1, (ms - vol.t0) / vol.d), e = k * k * k * (k * (6 * k - 15) + 10), a = vol.fromA.clone().lerp(vol.toA, e).normalize();
     // Distance géométrique : du monde à la case, la plongée garde la même allure à l'œil
     controls.target.lerpVectors(vol.fromT, vol.toT, e); camera.position.copy(controls.target).addScaledVector(a, vol.d0 * Math.pow(vol.d1 / vol.d0, e));
-    if (k >= 1) { const f = vol.apres; vol = null; if (f) f(); } }
+    if (!vol.fait && vol.apres && k >= vol.devance && k < 1) { vol.fait = true; vol.apres(); }
+    if (k >= 1) { const f = vol.fait ? null : vol.apres; vol = null; if (f) f(); } }
   const tg = controls.target; tg.x = Math.max(bounds.x0, Math.min(bounds.x1, tg.x)); tg.z = Math.max(bounds.z0, Math.min(bounds.z1, tg.z));
+  if (tuilesHoraire.length && !(imageHoraire++ & 7)) { const v = !GR[carte].code && tuilesHoraire.some(t => t.g === carte && Math.hypot(t.x - tg.x, t.z - tg.z) < 12);
+    if (v !== corseVue) { corseVue = v; soleil(...soleilXZ); poserTuiles(); } }
   controls.update(); const dist = camera.position.distanceTo(tg); cadrer(dist); renderer.render(scene, camera);
   const monde = dist > SEUIL_MONDE; if (monde !== vueMonde) { vueMonde = monde; majLegende(); }
   if (!monde) { const gi = emprises.findIndex(e => tg.x >= e.x0 && tg.x <= e.x1 && tg.z >= e.z0 && tg.z <= e.z1); if (gi >= 0) suivreCarte(gi); }
@@ -1302,7 +1383,7 @@ montrerMonde(true); cadrer(DISTANCE_MONDE);
 if (!adresseTile) { ficheVide(); setTimeout(() => lancerVague(mondeCentre.x, mondeCentre.z), 400); }
 else if (!VERDICT) showDep(DATA.adresse.departement, adresseTile);
 if (PLUSIEURS) { if (REDUCED) vueAdresses(true); else { showCote(); setTimeout(() => vueAdresses(false, 2400), 700); } }
-else if (adresseTile) { if (REDUCED) vueAdresse(true); else { if (VERDICT) showVerdict(true); setTimeout(() => VERDICT ? vueAdresse(false, 2400) : allerA(adresseTile.x, adresseTile.z, 26, false, { duree: 2400, apres: sortirTuile }), 700); } }
+else if (adresseTile) { if (REDUCED) vueAdresse(true); else { if (VERDICT) showVerdict(true); setTimeout(() => VERDICT ? vueAdresse(false, 2400) : allerA(adresseTile.x, adresseTile.z, 26, false, { duree: 2400, apres: sortirTuile, devance: .78 }), 700); } }
 requestAnimationFrame(tick);
 </script>
 <script type="module">

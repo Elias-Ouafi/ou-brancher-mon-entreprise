@@ -108,6 +108,10 @@ select mode as m, nom as n, code_departement as c, annee as a, volume_t as v,
     latitude as la, longitude as lo
 from gold.fct_poles_fret order by mode, volume_t desc nulls last, longueur_voies_m desc
 """
+_HORAIRE_SQL = """
+select code_insee_region as r, heure_locale as h, round(intensite_estimee_g_co2e_kwh) as g
+from gold.fct_carbone_horaire_zni order by code_insee_region, heure_locale
+"""
 _PRIX_SQL = """
 select code_tranche as t, conso_min_mwh as mn, conso_max_mwh as mx,
     round(prix_reference_eur_kwh, 4) as e, dernier_semestre as s
@@ -145,6 +149,11 @@ def lire_donnees_gold(database: Path) -> dict[str, Any]:
             gold["fret"] = _lignes(connection, _FRET_SQL)
         except duckdb.CatalogException:
             gold["fret"] = []
+        # Corse et outre-mer seulement ; absent d'un warehouse antérieur au curseur horaire
+        try:
+            gold["horaire"] = _lignes(connection, _HORAIRE_SQL)
+        except duckdb.CatalogException:
+            gold["horaire"] = []
         gold["donnees"] = ligne_chargements(lire_chargements(connection))
         return gold
 
@@ -239,9 +248,22 @@ def construire_donnees(
             for p in gold.get("fret", [])
         ],
         "prix": gold.get("prix", []),
+        "horaire": _horaire_par_region(gold.get("horaire", [])),
         "seuils": gold.get("seuils", []),
         "donnees": gold.get("donnees"),
         "adresse": construire_adresse(grilles, territoire, verdict_adresse, autres),
+    }
+
+
+# Région → 24 valeurs (g CO₂e/kWh, de 0 h à 23 h) ; une région sans les 24 heures est écartée
+def _horaire_par_region(lignes: list[dict[str, Any]]) -> dict[str, list[int]]:
+    par_region: dict[str, dict[int, int]] = {}
+    for ligne in lignes:
+        par_region.setdefault(ligne["r"], {})[ligne["h"]] = int(ligne["g"])
+    return {
+        region: [heures[h] for h in range(24)]
+        for region, heures in par_region.items()
+        if len(heures) == 24
     }
 
 
