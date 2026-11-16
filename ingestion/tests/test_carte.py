@@ -259,6 +259,9 @@ def test_donnees_de_la_carte(settings_carte: Settings, grilles: list) -> None:
     assert donnees["prix"] and donnees["prix"][0]["mn"] == 0 and donnees["prix"][0]["e"] > 0
     # Un anneau par domaine de tension du persona : la basse tension reste hors de la carte
     assert [s["d"] for s in donnees["seuils"]] == ["HTA", "HTA – zone grise", "HTB"]
+    # Carbone heure par heure : une région n'entre que si ses 24 heures sont là
+    assert donnees["horaire"]
+    assert all(len(heures) == 24 for heures in donnees["horaire"].values())
     assert donnees["adresse"]["departement"] == territoire().code_departement
     assert donnees["donnees"].startswith("Données chargées le 01/07/2026")
 

@@ -118,6 +118,7 @@ voisinage du site (argiles, cavités, Seveso, installations classées, sols poll
 | Image datée du site dans le rapport : `diagnose` (et `compare`, l'application) lit la date de prise de vue de la campagne la plus récente à l'adresse au graphe de mosaïquage de la BD ORTHO (WFS de la Géoplateforme, Licence Ouverte 2.0), puis le PDF affiche un carré de 400 m de côté en 800 px (WMS, 20 cm, sans stockage) avec sa date (« du 22 au 27 août 2024 ») ; sans date lisible ou sans réponse, pas d'image et le diagnostic le dit. La BD ORTHO remplace ORTHO-SAT, dont aucune date n'est publiée par tuile. Contrôlé à Chilly-Mazarin (22 au 27 août 2024) et à Ajaccio (10 juillet 2024). Limite `image_site` du seed | `ingestion/image_site.py`, `ingestion/diagnostic.py`, `reporting/implantation_pdf.py` |
 | Vue « Terrain » (touche 3) : autour de chaque adresse, ce que son diagnostic a trouvé, chaque objet posé sur sa case de 24 km, sans sa position exacte : friches de 1 ha ou plus à moins de 10 km (Cartofriches), zones d'activité de la BD TOPO à moins de 5 km, sites Seveso à moins de 5 km (Géorisques), pôle de fret le plus proche de chaque mode relié à l'adresse par un arc avec son temps de trajet ; une bannière par couche, étagées au-dessus de la case ; voile orange sur les cases selon les contraintes prévues du réseau de transport du département (plein à 20) ; légende avec les limites ; les plus proches seulement (huit au plus par couche, trois friches et trois zones aujourd'hui). Contrôlé à Chilly-Mazarin (Orly 18 min, HAROPA 144 min, Valenton 24 min, friche de 3,6 ha à 0,5 km, Seveso SMCA à 4 km) et à Ajaccio. Friches, zones d'activité et sites Seveso portent latitude et longitude dans le JSON | `reporting/carte.py`, `reporting/carte.html` |
 | Démonstration sans `refresh` : `demo` construit une fois la base synthétique des tests dans `data/demo/` (une minute environ, sans réseau), répond `essentiel` pour un hub de recharge fictif de 2 MW à Lyon, chiffres dits fictifs en première ligne, et ouvre la carte ; environ 2 s ensuite | `ingestion/demo.py`, `demo` |
+| Relief continu, curseur horaire des îles et finitions de la carte | Terre en un maillage continu aux sommets partagés (hauteur d'un sommet : moyenne des trois cases qui le touchent, la mer à 0,26 et une terre voisine à 0,45), cases en aplats cernés d'un filet, bandes de frontière qui suivent la pente, sommets de plus de 2 300 m en neige ; plus de cônes de montagne dans la scène. Curseur de 24 h sur les cartes d'outre-mer et, sur celle de la métropole, quand la caméra regarde la Corse : le soleil se lève à l'est et se couche à l'ouest, les cases de la région passent du vert au rouge selon `fct_carbone_horaire_zni` (estimation, 522 g à 13 h et 681 g à 5 h à Ajaccio, 677 g et 905 g à La Réunion). Maquettes de production en blanc cassé mat avec une touche de la couleur de la filière ; vol du monde à l'adresse d'un seul geste, la tuile sortant avant l'arrêt de la caméra | `reporting/carte.html`, `reporting/carte.py`, `fct_carbone_horaire_zni` |
 
 **À surveiller** :
 - **Géorisques** : depuis Python (`httpx`), les points du voisinage (`installations_classees`, `ssp/*`, `rga`,
@@ -177,8 +178,7 @@ Le détail de chaque ligne est dans son lot, plus bas.
 
 | Ordre | Étape | Condition ou date |
 |---|---|---|
-| 1 | **Priorité 1 : relief continu et curseur horaire des îles** (lot E) | Altimétrie IGN déjà chargée |
-| — | **8, 30, 6** Prix au-delà de 150 GWh, modèle prédictif, international | Chacune sa condition (lot B) ; l'international en dernier |
+| — | **6** Extension internationale | Reportée à plus tard (lot B) |
 
 Pas à faire maintenant : l'étape **19** (capacité en soutirage de RTE) et les mises à jour des barèmes et des sources attendent leur date, listée dans « À se rappeler aux dates ».
 
@@ -236,10 +236,7 @@ Rien à coder tant que la condition n'est pas levée.
 
 | Étape | Pourquoi pour ce persona | Condition pour s'y mettre |
 |---|---|---|
-| **Carte** Refonte (lot E, voir plus bas) | Une carte lisible imprimée, qui finit dans une présentation | Lot E : le relief continu |
-| **8** Repère de prix au-delà de 150 000 MWh/an, après la fin de l'ARENH | Un projet de 20 MW constant dépasse la dernière tranche Eurostat (IG, sans borne) | Une source officielle et ouverte d'un prix à terme ; le classement pondéré dans `compare` reste écarté |
-| **30** Modèle prédictif d'implantation (cadrage plus bas) : par zone d'emploi, probabilité d'implantations nouvelles à 3 ans, apprise sur l'historique | Signaler tôt les territoires qui montent, en complément des faits à l'adresse ; il dira où les projets vont, pas où ils seraient rentables ni si la puissance est disponible | Données fiabilisées (critères à écrire) ; à concilier avec la « comparaison sans classement » ; historique de la capacité en soutirage, absent à ce jour |
-| **6** Extension internationale, voir plus bas | En dernier | Jeton ENTSO-E et contours des zones de prix |
+| **6** Extension internationale, voir plus bas | Reportée à plus tard, après tout le reste | Jeton ENTSO-E et contours des zones de prix |
 
 ### À se rappeler aux dates
 
@@ -321,14 +318,12 @@ les cartes en relief de la presse de données.
 
 | Élément | Proposition | Pourquoi |
 |---|---|---|
-| Fond | En place : papier clair, encre vert nuit, mer en bleu gris désaturé (`reporting/charte.py`). Reste au lot E : relief en ombrage gris chaud | Même identité que le PDF (fond clair) ; lisible imprimé et en capture pour un comité de direction |
+| Fond | En place : papier clair, encre vert nuit, mer en bleu gris désaturé (`reporting/charte.py`). relief continu ombré par la lumière du soleil | Même identité que le PDF (fond clair) ; lisible imprimé et en capture pour un comité de direction |
 | Accent | Un seul : vert « décarboné » pour ce qui est favorable et sourcé ; orange brûlé pour « à vérifier » ; l'échelle rouge → blanc → vert reste réservée à la note des cases | Le vert porte le message bas-carbone |
 | Typographie | En place : **Spectral** (Production Type, Paris ; SIL OFL) pour les titres, **Inter** (OFL, chiffres tabulaires) pour le texte et les nombres ; embarquées en base64 dans la page et enregistrées dans reportlab pour le PDF | Même rendu d'un poste à l'autre ; « ₂ », « ≥ » et « → » présents dans le PDF |
 | Maquettes | Gardées (centrales, fret, sites) mais en « maquette d'architecte » : blanc cassé mat, une seule couleur de filière en touche, ombres douces | Elles restent la signature de la carte ; moins de couleurs, plus de lisibilité |
 | Mouvement | Une arrivée de caméra (France → adresse, 1,5 s), transitions entre vues ; tout coupé sous `prefers-reduced-motion` | L'effet « avant-gardiste » vient de la mise en scène, pas de l'accumulation d'effets |
 | Interdits | Ni Marianne, ni bloc-marque, ni police Marianne du système de design de l'État | Réservés à l'État (charte de la marque État, loi de 1918 sur les sceaux) : l'outil n'est pas un service public |
-
-Pas encore faits : les maquettes en « maquette d'architecte » et l'arrivée de caméra continue.
 
 ### three.js : ce qui sert le persona
 
@@ -337,8 +332,8 @@ Chaque effet doit répondre à une question du persona ; sinon il n'entre pas.
 | Fonction | Rendu three.js | Question servie | Données |
 |---|---|---|---|
 | Capacité en soutirage (étape 19) | Cases teintées par capacité restante dès que RTE la publie ; d'ici là, rien d'inventé | La puissance est-elle là ? | RTE, 1er janvier 2027 |
-| Relief continu | Un maillage de terrain par système électrique tiré de l'altimétrie IGN déjà chargée, ombrage calculé dans le shader, hexagones projetés dessus en filet | Remplace les cônes de montagne ; donne la lecture « carte d'état-major » | existant (`ingestion/hexagones.py`) |
-| Carbone heure par heure (Corse, outre-mer) | Curseur de 24 h : lumière du soleil et couleur du réseau suivent `fct_carbone_horaire_zni` | Seul cas où l'heure de consommation change le carbone | existant |
+| Relief continu (en place) | Un maillage de terrain tiré de l'altimétrie IGN déjà chargée : sommets partagés entre cases, normales lissées, cases en aplats cernés d'un filet | Remplace les cônes de montagne ; donne la lecture « carte d'état-major » | existant (`ingestion/hexagones.py`) |
+| Carbone heure par heure (en place, Corse, outre-mer) | Curseur de 24 h : lumière du soleil et couleur du réseau suivent `fct_carbone_horaire_zni` | Seul cas où l'heure de consommation change le carbone | existant |
 
 Hors de propos : globe terrestre, particules, néons, post-traitements lourds (bloom, profondeur de
 champ), WebXR. `WebGPURenderer` n'est pas retenu : le `WebGLRenderer` de la r186 tient
@@ -360,16 +355,6 @@ rendu identique à la r128 ; les parcours dans Chromium refusent toute requête 
 Non vérifié : Firefox et Edge, absents du poste. Repli si l'un d'eux refuse l'import `blob:` : un
 paquet unique déjà assemblé (IIFE) versionné dans `reporting/vendor/`, l'outil d'assemblage (Node)
 ne servant qu'à la mise à jour de three.js.
-
-### Lots, dans l'ordre
-
-Chaque lot n'est coché qu'après ruff, pytest (dont `dbt build`), un essai réel de `carte` sur
-Chilly-Mazarin, Lyon, Ajaccio et Saint-Denis de La Réunion (skill `essai-carte`), et une capture
-mise à jour dans `docs/exemples/`.
-
-| Lot | Contenu | Validation |
-|---|---|---|
-| E (priorité 1) | Relief continu et ombrage ; curseur horaire des îles | Ajaccio : 522 g vers 13 h, 681 g vers 5 h |
 
 ## Besoins des porteurs de projets
 
@@ -456,22 +441,6 @@ et la chaleur fatale n'est pas établi.
   [Insee](https://www.insee.fr/fr/information/2008466) (Licence Ouverte 2.0), BMO (Licence Ouverte). Besoin des data centers en électriciens et
   techniciens CVC : [communiqué de Data4](https://data4group.com/wp-content/uploads/2024/11/D4FDCstudy_France-Best-Place-to-build-AI-ready-DC.pdf)
   et offres d'emploi, sans chiffre public français.
-- **Modèle prédictif (étape 30, rien de décidé)** : « le plus intéressant »
-  n'est pas observable ; la cible mesurable est l'implantation constatée. Cible candidate : surface
-  de locaux non résidentiels autorisée à 3 ans ([Sitadel](https://www.data.gouv.fr/datasets/689c42fa521ccf80ce954f83/),
-  depuis 2013, Licence Ouverte ; champs de surface et de destination à vérifier), recoupée avec les
-  créations d'établissements ([Sirene](https://www.insee.fr/fr/information/3591226), historique
-  depuis 1973). Maille : [306 zones d'emploi](https://www.insee.fr/fr/information/4652957), soit
-  environ 3 000 lignes zone × année : un modèle simple et explicable, à comparer d'abord à la simple
-  reconduction de la tendance passée, qu'il doit battre. Contrôle sur le passé par blocs de temps et
-  d'espace : une séparation aléatoire
-  [surestime les scores](https://meetingorganizer.copernicus.org/EGU23/EGU23-16096.html) et les
-  [fuites d'information](https://arxiv.org/abs/2207.07048) sont le premier risque ; chaque variable
-  doit être connue à sa date (zones RTE du SDDR 2025 et sites clés en main exclus des années
-  antérieures). Limites : ce qui a été construit n'était pas forcément un bon choix (les projets
-  abandonnés manquent) ; capacité de raccordement sans historique ; file d'attente changée fin 2026,
-  donc un passé peu représentatif ; trop peu de data centers pour les apprendre seuls (huit raccordés
-  à RTE, chiffre relayé). Une méthode publiée propre à ce sujet n'a pas été trouvée.
 
 ## Règles en vigueur
 
