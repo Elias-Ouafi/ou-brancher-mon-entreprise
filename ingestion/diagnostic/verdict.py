@@ -13,7 +13,6 @@ from ingestion.diagnostic.formats import (
 )
 from ingestion.diagnostic.lignes_facture import heures_carbone, prix_court
 from ingestion.diagnostic.lignes_site import (
-    ligne_urbanisme,
     liste_plans,
     risques_recenses,
     voisinage_court,
@@ -181,10 +180,6 @@ def _critere_foncier(d: Diagnostic) -> Critere:
         detail += f" Adresse dans la zone d'activité {d.zones_activite[0].nom}."
     if d.nb_friches is not None:
         detail += f" {d.nb_friches} friche(s) de 1 ha ou plus à moins de {RAYON_FRICHES_KM} km."
-    if (zone := d.urbanisme) is not None:
-        detail += f" Zonage : {ligne_urbanisme(zone)}."
-        if zone.est_inconstructible_activite:
-            etat = "attention"
     return Critere("Foncier", etat, valeur, detail)
 
 

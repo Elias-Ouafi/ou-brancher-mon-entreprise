@@ -43,7 +43,6 @@ from ingestion.solaire import (
     Productible,
     part_toiture,
 )
-from ingestion.urbanisme import ZoneUrbanisme
 from ingestion.zones_activite import (
     RAYON_KM as RAYON_ZONES_ACTIVITE_KM,
 )
@@ -128,25 +127,6 @@ def _plan_court(p: PlanPrevention) -> str:
     etat = f"{p.etat} en {date_etat.year}" if date_etat else p.etat
     familles = f"{p.risques.lower()}, " if p.risques else ""
     return f"{p.libelle_plan} ({familles}{etat})"
-
-
-def ligne_urbanisme(zone: ZoneUrbanisme) -> str:
-    nom = f"{zone.nom_type} {zone.libelle}".strip()
-    if zone.libelle_long and zone.libelle_long != zone.libelle:
-        nom += f" ({zone.libelle_long})"
-    phrase = f"{nom}, document {zone.document or 'non identifié'}"
-    if zone.date_validite:
-        phrase += f" validé le {zone.date_validite}"
-    if zone.est_inconstructible_activite:
-        phrase += (
-            " : hors exception locale (STECAL), l'activité industrielle ou logistique n'y est"
-            " pas permise"
-        )
-    else:
-        phrase += " : destination des constructions à confirmer au règlement de la zone"
-    if zone.url_reglement:
-        phrase += f" ({zone.url_reglement})"
-    return phrase
 
 
 def ligne_zones_repartition(zones: list[ZoneRepartition]) -> str:

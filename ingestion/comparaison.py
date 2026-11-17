@@ -166,20 +166,6 @@ def _parking(d: Diagnostic) -> str:
     return "seuil non fixé" if seuil is None else f"plus de {nombre_fr(seuil)} m²"
 
 
-def _urbanisme(d: Diagnostic) -> str:
-    if d.urbanisme_erreur is not None:
-        return "non consulté (Géoportail de l'urbanisme injoignable)"
-    if not d.urbanisme_consulte:
-        return "—"
-    zone = d.urbanisme
-    if zone is None:
-        return "aucune zone numérisée à l'adresse"
-    nom = f"{zone.nom_type} {zone.libelle}".strip()
-    if zone.est_inconstructible_activite:
-        return f"{nom} : activité non permise hors STECAL"
-    return f"{nom} : destination à confirmer au règlement"
-
-
 def _eau(d: Diagnostic) -> str:
     if d.eau_erreur is not None:
         return "non consultées (VigiEau injoignable)"
@@ -316,8 +302,6 @@ def lignes(diagnostics: list[Diagnostic]) -> list[Ligne]:
         ligne("Locaux d'activité (vente DVF)", _locaux, "prix_locaux"),
     ]
     # Une ligne par source consultée à la demande : « — » pour l'adresse qui ne l'a pas été
-    if any(d.urbanisme_consulte for d in diagnostics) or consultee("urbanisme_erreur"):
-        resultat.append(ligne("Zonage d'urbanisme", _urbanisme, "zonage_urbanisme"))
     if consultee("nb_friches"):
         resultat.append(ligne("Friches (Cartofriches)", _friches, "friches"))
     if consultee("reseaux_chaleur"):

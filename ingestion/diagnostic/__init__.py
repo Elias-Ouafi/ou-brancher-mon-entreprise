@@ -10,7 +10,6 @@ from ingestion.diagnostic.completer import (
     completer_main_oeuvre,
     completer_risques,
     completer_solaire,
-    completer_urbanisme,
     completer_voisinage,
     completer_zones_activite,
 )
@@ -90,7 +89,6 @@ __all__ = [
     "completer_main_oeuvre",
     "completer_risques",
     "completer_solaire",
-    "completer_urbanisme",
     "completer_voisinage",
     "completer_zones_activite",
     "diagnostic_en_dict",

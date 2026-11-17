@@ -34,8 +34,6 @@ class Settings(BaseSettings):
     # Export GASPAR servi hors de l'API Géorisques : repli quand elle se tait
     gaspar_url: str = "https://files.georisques.fr/GASPAR/gaspar.zip"
 
-    apicarto_base_url: str = "https://apicarto.ign.fr/api/"
-
     geoplateforme_wfs_url: str = "https://data.geopf.fr/wfs/ows"
     geoplateforme_wms_url: str = "https://data.geopf.fr/wms-r/wms"
 
