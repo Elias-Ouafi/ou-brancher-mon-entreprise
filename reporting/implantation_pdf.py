@@ -30,9 +30,9 @@ from ingestion.diagnostic import (
     LIBELLES_ACCISE,
     Critere,
     Diagnostic,
-    _distance,
-    _euros_arrondis,
+    distance_fr,
     entete,
+    euros_arrondis,
     libelle_prise_de_vue,
     phrase_verdict,
     verdict,
@@ -296,14 +296,14 @@ def _visuel_facture(d: Diagnostic, comparaisons: Comparaisons) -> list:
             ("Acheminement par le réseau (TURPE 7)", a.total_eur, ENCRE),
             ("Énergie, taxes et contributions", facture - a.total_eur, TEINTES_ETAT["info"]),
         ]
-        dessins.append(visuels.barre_parts(parts, LARGEUR_VISUEL, _euros_arrondis))
+        dessins.append(visuels.barre_parts(parts, LARGEUR_VISUEL, euros_arrondis))
     elif a is not None:
         parts = [
             ("Acheminement : puissance souscrite", a.puissance_eur, ENCRE),
             ("Acheminement : énergie acheminée", a.energie_eur, TEINTES_ETAT["info"]),
             ("Acheminement : gestion et comptage", a.gestion_comptage_eur, DISCRET),
         ]
-        dessins.append(visuels.barre_parts(parts, LARGEUR_VISUEL, _euros_arrondis))
+        dessins.append(visuels.barre_parts(parts, LARGEUR_VISUEL, euros_arrondis))
     if (r := d.accise_reduite) is not None:
         lignes = [
             ("Accise au tarif normal", r.accise_normale_eur, DISCRET),
@@ -312,7 +312,7 @@ def _visuel_facture(d: Diagnostic, comparaisons: Comparaisons) -> list:
         dessins += [
             Spacer(1, 4),
             visuels.barres(
-                [(nom, eur, _euros_arrondis(eur), teinte) for nom, eur, teinte in lignes],
+                [(nom, eur, euros_arrondis(eur), teinte) for nom, eur, teinte in lignes],
                 LARGEUR_VISUEL,
                 marge=200,
             ),
@@ -339,7 +339,7 @@ def _visuel_foncier(d: Diagnostic, _: Comparaisons) -> list:
     if distances:
         dessins.append(
             visuels.barres(
-                [(nom, km, _distance(km)[2:], teinte) for nom, km, teinte in distances],
+                [(nom, km, distance_fr(km)[2:], teinte) for nom, km, teinte in distances],
                 LARGEUR_VISUEL,
                 marge=230,
             )

@@ -13,7 +13,7 @@ from typing import Any
 RACINE = Path(__file__).resolve().parents[2]
 
 # Exemples de référence du plan : 12 MW en HTA, 45 MW en HTB
-CHILLY = "3 allée des peupliers 91380 Chilly-Mazarin"
+DUNKERQUE = "Place Charles Valentin 59140 Dunkerque"
 PROJET_12_MW = ["--puissance", "12", "--conso", "70000"]
 PROJET_45_MW = ["--puissance", "45", "--conso", "300000"]
 HTA = {"domaine de tension": "hta", "raccordement": "HTA, Enedis (ou ELD)"}
@@ -41,7 +41,7 @@ def cli(*args: str) -> dict[str, Any]:
     return json.loads(resultat.stdout)
 
 
-# Le vrai serveur de `app`, sur un port libre ; l'analyse épingle Chilly-Mazarin sur
+# Le vrai serveur de `app`, sur un port libre ; l'analyse épingle Dunkerque sur
 # data/reports/carte.html, comme le fait l'application
 def api_analyse() -> dict[str, Any]:
     os.chdir(RACINE)
@@ -51,7 +51,7 @@ def api_analyse() -> dict[str, Any]:
     serveur = creer_serveur(port=0)
     threading.Thread(target=serveur.serve_forever, daemon=True).start()
     try:
-        corps = json.dumps({"adresse": CHILLY, "puissance_mw": 12, "conso_mwh": 70000})
+        corps = json.dumps({"adresse": DUNKERQUE, "puissance_mw": 12, "conso_mwh": 70000})
         requete = urllib.request.Request(
             url(serveur) + "api/analyse",
             data=corps.encode("utf-8"),
@@ -89,27 +89,27 @@ Essai = tuple[str, Callable[[], dict[str, Any]], dict[str, Any]]
 
 ESSAIS: list[Essai] = [
     (
-        "essentiel, 12 MW à Chilly-Mazarin",
-        lambda: cli("essentiel", "--adresse", CHILLY, *PROJET_12_MW, "--sans-carte"),
+        "essentiel, 12 MW à Dunkerque",
+        lambda: cli("essentiel", "--adresse", DUNKERQUE, *PROJET_12_MW, "--sans-carte"),
         HTA | CONTINENT,
     ),
     (
-        "diagnose --sans-risques, 45 MW à Chilly-Mazarin",
+        "diagnose --sans-risques, 45 MW à Dunkerque",
         lambda: cli(
-            "diagnose", "--adresse", CHILLY, *PROJET_45_MW, "--sans-risques", "--sans-carte"
+            "diagnose", "--adresse", DUNKERQUE, *PROJET_45_MW, "--sans-risques", "--sans-carte"
         ),
         {"domaine de tension": "htb1", "raccordement": "HTB, RTE"} | CONTINENT,
     ),
     (
-        "compare, Chilly-Mazarin et Lyon à 12 MW",
+        "compare, Dunkerque et Lyon à 12 MW",
         lambda: cli(
             "compare",
-            *("--adresse", CHILLY),
+            *("--adresse", DUNKERQUE),
             *("--adresse", "1 place Bellecour 69002 Lyon"),
             *PROJET_12_MW,
             "--sans-risques",
         ),
-        {"communes": ["Chilly-Mazarin", "Lyon"]},
+        {"communes": ["Dunkerque", "Lyon"]},
     ),
     (
         "essentiel, 12 MW à Ajaccio",
@@ -131,8 +131,8 @@ ESSAIS: list[Essai] = [
 ]
 
 ESSAI_COMPLET: Essai = (
-    "diagnose avec les sources à la demande, 12 MW à Chilly-Mazarin",
-    lambda: cli("diagnose", "--adresse", CHILLY, *PROJET_12_MW, "--sans-carte"),
+    "diagnose avec les sources à la demande, 12 MW à Dunkerque",
+    lambda: cli("diagnose", "--adresse", DUNKERQUE, *PROJET_12_MW, "--sans-carte"),
     HTA | CONTINENT | {"sources à la demande en échec": []},
 )
 

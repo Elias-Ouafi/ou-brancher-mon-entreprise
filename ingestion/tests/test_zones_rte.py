@@ -7,8 +7,8 @@ import pytest
 
 from ingestion.diagnostic import (
     ZoneRte,
-    _calendrier_zone,
-    _distance,
+    calendrier_zone,
+    distance_fr,
     formater_diagnostic,
     lire_diagnostic,
 )
@@ -86,7 +86,7 @@ def test_block_3_states_zone_calendar_and_limit(medallion_db: Path) -> None:
     )
     p3 = diagnostic.zone_rte_p3
     assert p3 is not None
-    assert f"Plus proche encore, Châteauroux ({_distance(p3.distance_km)})" in bloc
+    assert f"Plus proche encore, Châteauroux ({distance_fr(p3.distance_km)})" in bloc
     assert diagnostic.limites["zones_raccordement_rte"] in bloc
 
 
@@ -102,10 +102,10 @@ def _zone(priorite: str, annee: int | None) -> ZoneRte:
 
 
 def test_p1_and_p2_calendars_differ() -> None:
-    assert "annoncée à partir de 2028, travaux lancés" in _calendrier_zone(_zone("P1", 2028))
-    assert "possible à partir de 2030, si les projets" in _calendrier_zone(_zone("P2", 2030))
+    assert "annoncée à partir de 2028, travaux lancés" in calendrier_zone(_zone("P1", 2028))
+    assert "possible à partir de 2030, si les projets" in calendrier_zone(_zone("P2", 2030))
 
 
 @pytest.mark.parametrize(("km", "texte"), [(0.4, "à moins d'un km"), (7.2, "à 7 km")])
 def test_distance_is_rounded_to_the_kilometre(km: float, texte: str) -> None:
-    assert _distance(km) == texte
+    assert distance_fr(km) == texte
