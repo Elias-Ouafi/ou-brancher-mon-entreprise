@@ -23,7 +23,6 @@ from ingestion.solaire import (
     Productible,
 )
 from ingestion.turpe import Acheminement
-from ingestion.urbanisme import ZoneUrbanisme
 from ingestion.zones_activite import ZoneActivite
 
 PROFIL_DEFAUT = "bureau_36kva"
@@ -443,11 +442,6 @@ class Diagnostic:
     prix_locaux: PrixLocaux | None = None
     surface_m2: float | None = None
     activite: str | None = None
-    # Zone d'urbanisme de l'adresse (Géoportail de l'urbanisme) ; `urbanisme_consulte` distingue
-    # « aucun document numérisé » de « non consulté »
-    urbanisme: ZoneUrbanisme | None = None
-    urbanisme_consulte: bool = False
-    urbanisme_erreur: str | None = None
     eau: SituationEau | None = None
     eau_erreur: str | None = None
     voisinage: Voisinage | None = None

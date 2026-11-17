@@ -159,7 +159,6 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
         if d.entreprises_adresse is None
         else asdict(d.entreprises_adresse),
         "courbe": None if d.courbe is None else asdict(d.courbe),
-        "urbanisme": None if d.urbanisme is None else asdict(d.urbanisme),
         "eau": None
         if d.eau is None
         else {
@@ -243,7 +242,6 @@ def essentiel_en_dict(diagnostic: Diagnostic) -> dict[str, Any]:
                 ("zones_activite", d.nb_zones_activite is not None),
                 ("restrictions_eau", d.eau is not None),
                 ("zones_repartition_eaux", d.zones_repartition is not None),
-                ("zonage_urbanisme", d.urbanisme_consulte and d.urbanisme_erreur is None),
             )
             if present and code in d.limites
         },

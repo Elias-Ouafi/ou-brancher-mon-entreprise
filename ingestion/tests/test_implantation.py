@@ -22,7 +22,6 @@ from ingestion.solaire import Productible
 from ingestion.tests.conftest import FIXTURES_DIR
 from ingestion.tests.medallion import DBT_BIN
 from ingestion.tests.test_diagnostic import territoire
-from ingestion.urbanisme import ZoneUrbanisme
 from reporting import charte, implantation, implantation_charts, implantation_pdf
 from reporting.carte import resume_adresse
 from reporting.implantation import generer_rapport_implantation, lire_comparaisons, nom_fichier
@@ -75,8 +74,6 @@ def _lyon(medallion_db: Path) -> Diagnostic:
         diagnostic,
         cout=COUT,
         risques=lire_rapport(rapport),
-        urbanisme=ZoneUrbanisme("U", "UB", None, "DOC", None, None),
-        urbanisme_consulte=True,
         eau=SituationEau([]),
         voisinage=Voisinage(None, 0, [], 0, 0, [], 0, 0, 0),
         nb_zones_activite=0,

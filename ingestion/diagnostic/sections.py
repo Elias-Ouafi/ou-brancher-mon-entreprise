@@ -40,7 +40,6 @@ from ingestion.diagnostic.lignes_site import (
     ligne_recrutements,
     ligne_reseaux_chaleur,
     ligne_solaire,
-    ligne_urbanisme,
     ligne_zones_activite,
     ligne_zones_repartition,
     lignes_obligations_solaires,
@@ -464,18 +463,6 @@ def sections(diagnostic: Diagnostic) -> list[Section]:
         texte(s, f"Tension sur la ressource : {ligne_zones_repartition(d.zones_repartition)}")
         limite(s, "zones_repartition_eaux")
     s = bloc("7. Foncier, desserte, main-d'œuvre et prix des locaux d'activité (DVF)")
-    if d.urbanisme is not None:
-        texte(s, f"Zonage d'urbanisme : {ligne_urbanisme(d.urbanisme)}")
-        limite(s, "zonage_urbanisme")
-    elif d.urbanisme_erreur is not None:
-        texte(s, f"Zonage d'urbanisme non consulté : {d.urbanisme_erreur}")
-    elif d.urbanisme_consulte:
-        texte(
-            s,
-            "Zonage d'urbanisme : aucune zone numérisée au Géoportail de l'urbanisme à cette"
-            " adresse (document non publié ou non numérisé).",
-        )
-        limite(s, "zonage_urbanisme")
     if d.solaire_consulte and d.productible is not None:
         texte(s, f"Bâtiment et solaire : {ligne_solaire(d.batiment, d.productible)}")
         limite(s, "solaire")

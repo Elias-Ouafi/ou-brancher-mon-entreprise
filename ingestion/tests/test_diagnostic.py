@@ -34,7 +34,6 @@ from ingestion.main_oeuvre import MainOeuvre
 from ingestion.solaire import Productible
 from ingestion.tests.conftest import FIXTURES_DIR
 from ingestion.tests.medallion import ANNEE_REFERENCE, DBT_BIN
-from ingestion.urbanisme import ZoneUrbanisme
 
 pytestmark = pytest.mark.skipif(DBT_BIN is None, reason="dbt non installé (uv sync --group dbt)")
 
@@ -384,8 +383,6 @@ def test_every_figure_comes_with_its_limit(medallion_db: Path, warehouse: Any) -
             database=medallion_db,
         ),
         risques=lire_rapport(rapport),
-        urbanisme=ZoneUrbanisme("U", "UB", None, "DOC", None, None),
-        urbanisme_consulte=True,
         eau=SituationEau([]),
         voisinage=Voisinage(None, 0, [], 0, 0, [], 0, 0, 0),
         nb_zones_activite=0,
@@ -399,7 +396,7 @@ def test_every_figure_comes_with_its_limit(medallion_db: Path, warehouse: Any) -
     limites = [
         limite for (limite,) in _rows(warehouse, "SELECT limite FROM gold.limites_methodologiques")
     ]
-    assert len(limites) == 35
+    assert len(limites) == 34
     for limite in limites:
         assert limite in texte
 

@@ -29,7 +29,7 @@ ici ? » en cinq critères :
 | Risques | Plans de prévention de la commune, sismicité, voisinage (Seveso, installations classées, sols pollués, argiles) |
 | Carbone | Facteur du système électrique face au seuil de 100 gCO₂e/kWh, heure par heure sur les îles |
 | Facture | Prix moyen par tranche de consommation, part acheminement (TURPE 7), accise réduite possible |
-| Foncier | Zonage d'urbanisme, friches, zones d'activité, sites clés en main, prix des locaux, desserte |
+| Foncier | Friches, zones d'activité, sites clés en main, prix des locaux, desserte |
 
 `diagnose` ajoute l'eau, le solaire, la main-d'œuvre et une vue aérienne datée du site.
 
@@ -134,7 +134,7 @@ flowchart LR
 - **Silver et gold** : dbt-duckdb (`dbt/`), reconstruits à chaque `refresh`. Les barèmes datés
   (TURPE, accise, facteurs ADEME) sont des seeds ; `limites_methodologiques` porte la limite de chaque indicateur.
 - **Étoile** : `dbt/models/etoile/`, pour l'analyse en SQL ou en outil de BI.
-- **À la demande** : ce qui dépend du point et change sans prévenir (urbanisme, eau, solaire, itinéraires)
+- **À la demande** : ce qui dépend du point et change sans prévenir (eau, solaire, itinéraires)
   est appelé au moment de la question, jamais stocké ; une source en panne est signalée dans sa section
   sans bloquer le reste.
 
@@ -157,7 +157,7 @@ modèles silver et gold, limite dans le seed `limites_methodologiques`.
 .\.venv\Scripts\python.exe .claude/scripts/verifier.py
 ```
 
-`ruff`, puis `pytest` (964 tests sans réseau, `dbt build` sur base synthétique, sorties de référence
+`ruff`, puis `pytest` (946 tests sans réseau, `dbt build` sur base synthétique, sorties de référence
 figées, sept parcours de l'application dans Chromium via `pytest-playwright`, couverture plancher de
 92,5 %), puis un essai réel sur cinq cas (warehouse et réseau requis). `--rapide` saute `pytest`,
 `--sans-essai` saute l'essai réel. Après un changement voulu de libellé :
@@ -173,7 +173,7 @@ Toutes les sources sont officielles et en licence ouverte : [ODRÉ](https://odre
 [Ember](https://ember-energy.org), [DVF](https://www.data.gouv.fr/en/datasets/dvf),
 [Cartofriches](https://cartofriches.cerema.fr), [France Chaleur Urbaine](https://www.data.gouv.fr/datasets/64f05d3568e4d575eb454ffe),
 [Insee](https://www.insee.fr), [France Travail](https://www.data.gouv.fr/datasets/561fa564c751df4f2acdbb48),
-[IGN](https://geoservices.ign.fr) (BD TOPO, BD ORTHO, altimétrie, API Carto),
+[IGN](https://geoservices.ign.fr) (BD TOPO, BD ORTHO, altimétrie),
 [VigiEau](https://vigieau.gouv.fr), [Sandre](https://www.sandre.eaufrance.fr),
 [PVGIS](https://joint-research-centre.ec.europa.eu/photovoltaic-geographical-information-system-pvgis_en),
 [SDES](https://www.data.gouv.fr/datasets/maritime-transport-de-marchandises),
