@@ -191,7 +191,7 @@ def test_same_street_in_several_communes_is_ambiguous(
     )
 
     with pytest.raises(AdresseAmbigueError) as erreur:
-        geocode("3 allée des peupliers", settings=ban_settings)
+        geocode("3 allée des tilleuls", settings=ban_settings)
 
     assert erreur.value.candidats == ["3 A. 33000 Bordeaux", "3 A. 02100 Quentin"]
 
@@ -245,12 +245,12 @@ def test_postcode_in_the_request_must_match(httpx_mock: HTTPXMock, ban_settings:
             feature(score=0.80, citycode="91161", postcode="91380", label="Chilly-Mazarin"),
         )
     )
-    territoire = geocode("3 allée des peupliers 91380", settings=ban_settings)
+    territoire = geocode("3 allée des tilleuls 91380", settings=ban_settings)
     assert territoire.code_insee_commune == "91161"
 
     httpx_mock.add_response(json=feature(postcode="33000"))
     with pytest.raises(AdresseIntrouvableError, match="code postal 75001"):
-        geocode("3 allée des peupliers 75001", settings=ban_settings)
+        geocode("3 allée des tilleuls 75001", settings=ban_settings)
 
 
 def test_commune_level_match_is_flagged(

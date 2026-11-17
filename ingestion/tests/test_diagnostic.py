@@ -17,7 +17,6 @@ from ingestion.diagnostic import (
     Critere,
     DiagnosticIndisponibleError,
     PlanPrevention,
-    code_commune_parent,
     code_departement,
     diagnostic_en_dict,
     formater_diagnostic,
@@ -28,7 +27,7 @@ from ingestion.diagnostic import (
     verdict,
 )
 from ingestion.eau import SituationEau
-from ingestion.geocode import Territoire
+from ingestion.geocode import Territoire, code_commune_parent
 from ingestion.georisques import Voisinage, lire_rapport
 from ingestion.image_site import ImageSite
 from ingestion.main_oeuvre import MainOeuvre
@@ -827,7 +826,7 @@ def test_essentiel_lists_the_candidates_of_an_ambiguous_address(
     monkeypatch.setattr(cli, "get_settings", lambda: settings)
     monkeypatch.setattr(cli, "geocode", ambigue)
 
-    assert cli.main(["essentiel", "--adresse", "3 allée des peupliers"]) == 1
+    assert cli.main(["essentiel", "--adresse", "3 allée des tilleuls"]) == 1
     assert "adresse ambigue" in caplog.text
     assert "33000 Bordeaux ; 3 A. 02100 Saint-Quentin" in caplog.text
     assert "Preciser le code postal ou la commune" in caplog.text

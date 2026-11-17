@@ -6,7 +6,7 @@ description: Générer la carte 3D pour une adresse et la vérifier dans le navi
 # Essayer la carte
 
 1. Générer sans ouvrir le navigateur du poste :
-   `.\.venv\Scripts\python.exe -m ingestion.cli carte --adresse "3 allée des peupliers 91380 Chilly-Mazarin" --puissance 12 --sans-ouvrir`
+   `.\.venv\Scripts\python.exe -m ingestion.cli carte --adresse "Place Charles Valentin 59140 Dunkerque" --puissance 12 --sans-ouvrir`
    (`--reconstruire` si le gabarit ou les données ont changé et que la carte n'est pas refaite).
 2. Servir `data/reports` : `preview_start` avec la configuration `carte` de
    `.claude/launch.json`, puis ouvrir `/carte.html`.
