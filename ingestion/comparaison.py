@@ -12,17 +12,17 @@ from ingestion.diagnostic import (
     RAYON_FRICHES_KM,
     RAYON_RESEAUX_CHALEUR_KM,
     Diagnostic,
-    _distance,
-    _euros_arrondis,
-    _gwh,
-    _liste_risques,
-    _nombre,
-    _nombre_court,
-    _pourcentage,
     diagnostic_en_dict,
+    distance_fr,
+    euros_arrondis,
+    gwh_fr,
     ligne_chargements,
     lignes_obligations_solaires,
+    liste_risques,
+    nombre_court,
+    nombre_fr,
     phrase_verdict,
+    pourcentage,
     sections,
     verdict,
 )
@@ -51,21 +51,22 @@ def _geocodage(d: Diagnostic) -> str:
     precision = {"housenumber": "numéro", "street": "rue"}.get(d.territoire.precision)
     if precision is None:
         return f"commune seulement ({d.territoire.precision or 'inconnue'})"
-    return f"{precision}, score {_nombre(d.territoire.score, 2)}"
+    return f"{precision}, score {nombre_fr(d.territoire.score, 2)}"
 
 
 def _pression_commune(d: Diagnostic) -> str:
     if not d.commune_a_des_sites:
         return "aucun site raccordé au transport"
-    return f"{d.nb_sites_commune} site(s), {_gwh(d.conso_industrielle_commune_gwh or 0)}/an"
+    return f"{d.nb_sites_commune} site(s), {gwh_fr(d.conso_industrielle_commune_gwh or 0)}/an"
 
 
 def _pression_departement(d: Diagnostic) -> str:
     if not d.nb_sites_departement:
         return "aucun site raccordé au transport"
     rang = f", rang {d.rang_pression_departement}/{d.nb_departements_classes}"
-    return f"{d.nb_sites_departement} site(s), {_gwh(d.conso_industrielle_departement_gwh)}/an" + (
-        rang if d.rang_pression_departement else ""
+    return (
+        f"{d.nb_sites_departement} site(s), {gwh_fr(d.conso_industrielle_departement_gwh)}/an"
+        + (rang if d.rang_pression_departement else "")
     )
 
 
@@ -76,7 +77,7 @@ def _couverture(d: Diagnostic) -> str:
         d.statut_equilibre or "", "?"
     )
     return (
-        f"{_nombre(d.taux_couverture_region * 100)} %, {statut} ; dépendance"
+        f"{nombre_fr(d.taux_couverture_region * 100)} %, {statut} ; dépendance"
         f" {d.rang_dependance_region}/{d.nb_regions_classees}"
     )
 
@@ -107,7 +108,7 @@ def _zone(d: Diagnostic) -> str:
     z = d.zone_rte
     condition = "dès les autorisations" if z.priorite == "P1" else "si les projets se concrétisent"
     return (
-        f"{z.zone} ({z.priorite}), {_distance(z.distance_km)} ; capacité {z.annee_capacite},"
+        f"{z.zone} ({z.priorite}), {distance_fr(z.distance_km)} ; capacité {z.annee_capacite},"
         f" {condition}"
     )
 
@@ -116,7 +117,7 @@ def _site(d: Diagnostic) -> str:
     if d.site_cle_en_main is None:
         return "aucun dans ce territoire"
     site = d.site_cle_en_main
-    return f"{site.commune}, {_distance(site.distance_km)} ; prêt en {site.maturite_site}"
+    return f"{site.commune}, {distance_fr(site.distance_km)} ; prêt en {site.maturite_site}"
 
 
 def _risques(d: Diagnostic, famille: str) -> str:
@@ -126,8 +127,8 @@ def _risques(d: Diagnostic, famille: str) -> str:
         return "non consultés"
     if d.risques.maille == "commune":
         recenses = d.risques.selon(Exposition.INCONNU, famille)
-        return f"commune seulement : {_liste_risques(recenses) or 'aucun'}"
-    return _liste_risques(d.risques.selon(Exposition.EXPOSE, famille)) or "aucun recensé"
+        return f"commune seulement : {liste_risques(recenses) or 'aucun'}"
+    return liste_risques(d.risques.selon(Exposition.EXPOSE, famille)) or "aucun recensé"
 
 
 def _carbone(d: Diagnostic) -> str:
@@ -136,7 +137,7 @@ def _carbone(d: Diagnostic) -> str:
     c = d.carbone
     verdict = "oui" if c.est_decarbone else "non"
     return (
-        f"{verdict}, {_nombre_court(c.intensite_acv_g_co2e_kwh)} gCO₂e/kWh ({c.systeme_electrique})"
+        f"{verdict}, {nombre_court(c.intensite_acv_g_co2e_kwh)} gCO₂e/kWh ({c.systeme_electrique})"
     )
 
 
@@ -145,10 +146,10 @@ def _locaux(d: Diagnostic) -> str:
     if p is None:
         return "non disponible"
     lieu = "" if p.niveau == "commune" else " (département)"
-    ligne = f"{_nombre(p.prix_m2_median)} €/m²{lieu}, {_nombre(p.nb_ventes)} ventes"
+    ligne = f"{nombre_fr(p.prix_m2_median)} €/m²{lieu}, {nombre_fr(p.nb_ventes)} ventes"
     if d.surface_m2:
-        cout = _euros_arrondis(p.prix_m2_median * d.surface_m2)
-        ligne += f" ; {cout} pour {_nombre(d.surface_m2)} m²"
+        cout = euros_arrondis(p.prix_m2_median * d.surface_m2)
+        ligne += f" ; {cout} pour {nombre_fr(d.surface_m2)} m²"
     return ligne
 
 
@@ -162,7 +163,7 @@ def _toiture_existante(d: Diagnostic) -> str:
 
 def _parking(d: Diagnostic) -> str:
     seuil = SEUIL_PARKING_M2.get(d.code_departement, SEUIL_PARKING_DEFAUT_M2)
-    return "seuil non fixé" if seuil is None else f"plus de {_nombre(seuil)} m²"
+    return "seuil non fixé" if seuil is None else f"plus de {nombre_fr(seuil)} m²"
 
 
 def _urbanisme(d: Diagnostic) -> str:
@@ -202,9 +203,9 @@ def _solaire(d: Diagnostic) -> str:
         lieu = "aucun bâtiment à moins de 60 m"
     else:
         qui = b.usage.lower() if b.usage else "usage inconnu"
-        position = "" if b.contient_adresse else f", à {_nombre(b.distance_m)} m"
-        lieu = f"{qui}, {_nombre(b.emprise_m2)} m² au sol{position}"
-    return f"{lieu} ; {_nombre(d.productible.kwh_par_kwc_an)} kWh/kWc/an"
+        position = "" if b.contient_adresse else f", à {nombre_fr(b.distance_m)} m"
+        lieu = f"{qui}, {nombre_fr(b.emprise_m2)} m² au sol{position}"
+    return f"{lieu} ; {nombre_fr(d.productible.kwh_par_kwc_an)} kWh/kWc/an"
 
 
 def _acces(d: Diagnostic) -> str:
@@ -215,11 +216,11 @@ def _acces(d: Diagnostic) -> str:
     morceaux = []
     for a in d.acces_routier:
         if a.type_acces == "autoroute":
-            morceaux.append(f"autoroute {a.nom} {_distance(a.distance_vol_km)}")
+            morceaux.append(f"autoroute {a.nom} {distance_fr(a.distance_vol_km)}")
         elif a.duree_min is None:
-            morceaux.append(f"{LIBELLES_ACCES[a.type_acces]} {_distance(a.distance_vol_km)}")
+            morceaux.append(f"{LIBELLES_ACCES[a.type_acces]} {distance_fr(a.distance_vol_km)}")
         else:
-            morceaux.append(f"{LIBELLES_ACCES[a.type_acces]} à {_nombre(a.duree_min)} min")
+            morceaux.append(f"{LIBELLES_ACCES[a.type_acces]} à {nombre_fr(a.duree_min)} min")
     if not any(a.type_acces == "autoroute" for a in d.acces_routier):
         morceaux.insert(0, "pas d'autoroute à moins de 10 km")
     return " ; ".join(morceaux)
@@ -234,7 +235,7 @@ def _zones_activite(d: Diagnostic) -> str:
     if not d.nb_zones_activite:
         return f"aucune {rayon}"
     proche = d.zones_activite[0]
-    lieu = "adresse dedans" if proche.contient_adresse else _distance(proche.distance_km)
+    lieu = "adresse dedans" if proche.contient_adresse else distance_fr(proche.distance_km)
     return f"{d.nb_zones_activite} {rayon} ; {proche.nom} ({lieu})"
 
 
@@ -245,9 +246,9 @@ def _friches(d: Diagnostic) -> str:
     if not d.nb_friches:
         return f"aucune référencée {rayon}"
     proche = d.friches[0]
-    surface = _nombre(proche.surface_m2 / 10_000, 1)
+    surface = nombre_fr(proche.surface_m2 / 10_000, 1)
     return (
-        f"{d.nb_friches} {rayon} ; la plus proche : {surface} ha, {_distance(proche.distance_km)}"
+        f"{d.nb_friches} {rayon} ; la plus proche : {surface} ha, {distance_fr(proche.distance_km)}"
     )
 
 
@@ -257,7 +258,7 @@ def _reseaux_chaleur(d: Diagnostic) -> str:
     if not d.reseaux_chaleur:
         return f"aucun à moins de {RAYON_RESEAUX_CHALEUR_KM} km"
     proche = d.reseaux_chaleur[0]
-    return f"{proche.nom}, {_distance(proche.distance_km)}"
+    return f"{proche.nom}, {distance_fr(proche.distance_km)}"
 
 
 def _main_oeuvre(d: Diagnostic) -> str:
@@ -268,8 +269,8 @@ def _main_oeuvre(d: Diagnostic) -> str:
     if not m.nb_communes:
         return "non disponible"
     return (
-        f"{_nombre(round(m.nb_superieur, -2))} du supérieur,"
-        f" {_nombre(round(m.nb_cap_bep_bac, -2))} CAP-BEP ou bac"
+        f"{nombre_fr(round(m.nb_superieur, -2))} du supérieur,"
+        f" {nombre_fr(round(m.nb_cap_bep_bac, -2))} CAP-BEP ou bac"
     )
 
 
@@ -278,7 +279,7 @@ def _recrutements(d: Diagnostic) -> str:
         return "—"
     if not r.projets or r.part_difficiles is None:
         return "aucun projet déclaré"
-    return f"{_nombre(r.projets)} projets, {_pourcentage(r.part_difficiles)} difficiles"
+    return f"{nombre_fr(r.projets)} projets, {pourcentage(r.part_difficiles)} difficiles"
 
 
 def _brancher_ici(d: Diagnostic) -> str:
@@ -288,7 +289,7 @@ def _brancher_ici(d: Diagnostic) -> str:
 def _non_evalues(d: Diagnostic) -> str:
     if d.risques is None or d.risques.maille == "commune":
         return "—"
-    return _liste_risques(d.risques.selon(Exposition.INCONNU)) or "aucun"
+    return liste_risques(d.risques.selon(Exposition.INCONNU)) or "aucun"
 
 
 def lignes(diagnostics: list[Diagnostic]) -> list[Ligne]:

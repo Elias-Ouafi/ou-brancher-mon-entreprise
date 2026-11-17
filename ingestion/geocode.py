@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 # En dessous, le meilleur résultat est souvent une autre adresse (« Fort-de-France » → Dracy-le-Fort
 # à 0,59) ; une faute de frappe avec code postal reste au-dessus (0,75)
 SCORE_MINIMUM = 0.65
-# Deux communes à moins de cet écart de score : la BAN ne sait pas trancher (« 3 allée des
-# Tilleuls » : Bordeaux 0,980, Saint-Quentin 0,975…)
+# Deux communes à moins de cet écart de score : la BAN ne sait pas trancher (un nom de voie
+# répandu sans code postal : Bordeaux 0,980, Saint-Quentin 0,975…)
 MARGE_AMBIGUITE = 0.05
 NB_CANDIDATS = 5
 ARRONDISSEMENTS: dict[str, str] = {"751": "75056", "693": "69123", "132": "13055"}

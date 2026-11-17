@@ -11,8 +11,9 @@ import pytest
 from fontTools.ttLib import TTFont
 from pypdf import PdfReader
 
-from ingestion import cli, demo, diagnostic, turpe
+from ingestion import cli, demo, turpe
 from ingestion.config import Settings
+from ingestion.diagnostic import chargements, lignes_site, modeles
 from ingestion.extract_geo import CONTOURS_JEU
 from ingestion.tests.medallion import DBT_BIN
 from ingestion.tests.test_diagnostic import territoire
@@ -128,7 +129,8 @@ def commande(
     monkeypatch.setattr(cli, "get_settings", lambda: reglages)
     monkeypatch.setattr(cli, "geocode", lambda adresse, **_: ADRESSES[adresse])
     # Fraîcheur des données, barèmes à revérifier, échéances : tout ce qui dépend du jour
-    monkeypatch.setattr(diagnostic, "date", _Jour)
+    for module in (chargements, lignes_site, modeles):
+        monkeypatch.setattr(module, "date", _Jour)
     monkeypatch.setattr(turpe, "date", _Jour)
     monkeypatch.setattr(implantation, "datetime", _Horloge)
 
