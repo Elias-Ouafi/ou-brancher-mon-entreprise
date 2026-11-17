@@ -2,8 +2,8 @@
 
 Le projet se décrit dans [README.md](README.md) (usage, architecture) et [PLAN.md](PLAN.md) (état,
 étapes, décisions en vigueur). Les lire avant toute étape ; ce fichier ne les répète pas. La
-prochaine étape se lit dans « Prochaines étapes, dans l'ordre » de PLAN (détail dans les lots A, T, B) ; une étape finie
-en sort pour devenir une ligne de « État » (skill `cloturer-etape`).
+prochaine étape se lit dans « Prochaines étapes » de PLAN ; une étape finie en sort pour devenir une
+ligne de « État » (skill `cloturer-etape`).
 
 ## Environnement
 
@@ -23,7 +23,7 @@ en sort pour devenir une ligne de « État » (skill `cloturer-etape`).
 2. `pytest` (964 tests sans réseau, dont sept parcours de l'application dans Chromium, couverture mesurée, plancher 92,5 %, dont un `dbt build` sur base synthétique ;
    sorties de référence réécrites par `pytest ingestion/tests/test_references.py --maj-references`)
 3. essai réel, cinq cas avec leur attendu (warehouse et réseau requis) : `essentiel` à
-   Chilly-Mazarin (12 MW et 70 000 MWh), `diagnose` à 45 MW, `compare`, Ajaccio, `/api/analyse`
+   Dunkerque (12 MW et 70 000 MWh), `diagnose` à 45 MW, `compare`, Ajaccio, `/api/analyse`
 
 `--rapide` saute pytest, `--sans-essai` saute l'essai réel, `--complet` ajoute un `diagnose` avec
 les sources à la demande. Une étape du plan n'est cochée qu'après

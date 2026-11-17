@@ -8,7 +8,7 @@ import duckdb
 import pytest
 
 from ingestion.datasets import CONTRAINTES_OUVRAGES
-from ingestion.diagnostic import _duree, formater_diagnostic, lire_diagnostic
+from ingestion.diagnostic import duree_fr, formater_diagnostic, lire_diagnostic
 from ingestion.tests.medallion import DBT_BIN, contraintes_ouvrages
 from ingestion.tests.test_diagnostic import territoire
 from ingestion.transform import records_to_table, write_parquet
@@ -122,7 +122,7 @@ def test_substations_are_counted_by_voltage_domain(medallion_db: Path) -> None:
     [("]4h-6h]", "épisodes de 4 à 6 h"), ("]0h-2h]", "épisodes de moins de 2 h"), ("", "")],
 )
 def test_episode_length_is_written_in_plain_french(duree: str, texte: str) -> None:
-    assert _duree(duree) == texte
+    assert duree_fr(duree) == texte
 
 
 @dbt_requis

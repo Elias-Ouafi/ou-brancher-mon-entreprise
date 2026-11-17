@@ -451,9 +451,9 @@ def test_prix_command_runs_the_ingestion(
     [(67_375, "67 400 €"), (5_496_000, "5 500 000 €"), (950.4, "950 €"), (12.3, "12 €")],
 )
 def test_bills_keep_three_significant_digits(valeur: float, texte: str) -> None:
-    from ingestion.diagnostic import _euros_arrondis
+    from ingestion.diagnostic import euros_arrondis
 
-    assert _euros_arrondis(valeur) == texte
+    assert euros_arrondis(valeur) == texte
 
 
 @dbt_requis

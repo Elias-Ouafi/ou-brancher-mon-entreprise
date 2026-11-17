@@ -17,7 +17,6 @@ from ingestion.diagnostic import (
     Critere,
     DiagnosticIndisponibleError,
     PlanPrevention,
-    code_commune_parent,
     code_departement,
     diagnostic_en_dict,
     formater_diagnostic,
@@ -28,7 +27,7 @@ from ingestion.diagnostic import (
     verdict,
 )
 from ingestion.eau import SituationEau
-from ingestion.geocode import Territoire
+from ingestion.geocode import Territoire, code_commune_parent
 from ingestion.georisques import Voisinage, lire_rapport
 from ingestion.image_site import ImageSite
 from ingestion.main_oeuvre import MainOeuvre
