@@ -56,15 +56,14 @@ dont 1,4 M€ d'acheminement) ; 45 MW et 300 000 MWh (HTB 1, 3,79 M€ d'achemin
 
 Rien à coder maintenant. Dans l'ordre :
 
-1. Clore la branche du relief continu et du curseur horaire (PR vers `main`).
-2. **1er janvier 2027, étape 19** : capacité d'accueil en soutirage de RTE (délibération CRE
+1. **1er janvier 2027, étape 19** : capacité d'accueil en soutirage de RTE (délibération CRE
    2026-173), à intégrer dès publication ; la capacité d'Enedis en HTA reste réservée à son portail.
-3. **1er janvier et 1er février 2027** : tarifs d'accise de la loi de finances 2027, à ajouter au seed `accise_electricite`.
-4. **1er août 2027** : nouvelle grille TURPE 7, à reporter dans les seeds `turpe_*` (les sorties le signalent).
-5. **Avril et octobre** : actualisation de DVF, puis `refresh`.
-6. **Chaque printemps** : nouveaux millésimes Diplômes-Formation (Insee) et BMO (France Travail) dans `ingestion/config.py`.
-7. **Chaque mois** : `ecowatt`, pour garder l'historique du signal, qui n'est pas rejouable.
-8. **Étape 6, extension internationale** (en attente d'un jeton ENTSO-E et des contours des zones
+2. **1er janvier et 1er février 2027** : tarifs d'accise de la loi de finances 2027, à ajouter au seed `accise_electricite`.
+3. **1er août 2027** : nouvelle grille TURPE 7, à reporter dans les seeds `turpe_*` (les sorties le signalent).
+4. **Avril et octobre** : actualisation de DVF, puis `refresh`.
+5. **Chaque printemps** : nouveaux millésimes Diplômes-Formation (Insee) et BMO (France Travail) dans `ingestion/config.py`.
+6. **Chaque mois** : `ecowatt`, pour garder l'historique du signal, qui n'est pas rejouable.
+7. **Étape 6, extension internationale** (en attente d'un jeton ENTSO-E et des contours des zones
    de prix) : zones de prix (Italie, pays nordiques), Royaume-Uni, États-Unis. Pour l'Europe de
    l'Ouest, l'ordre de facilité des données : Pays-Bas, Belgique, Espagne, Autriche, Luxembourg,
    Suisse, Portugal, Allemagne, Royaume-Uni, Irlande, Italie.
