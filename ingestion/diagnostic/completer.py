@@ -37,7 +37,6 @@ from ingestion.solaire import (
     lire_batiment,
     lire_productible_pvgis,
 )
-from ingestion.urbanisme import UrbanismeError, lire_zone_urbanisme
 from ingestion.zones_activite import ZonesActiviteError, lire_zones_activite
 
 logger = logging.getLogger(__name__)
@@ -135,16 +134,6 @@ def completer_voisinage(diagnostic: Diagnostic, *, settings: Settings | None = N
         logger.warning("voisinage non consulte : %s", error)
         return replace(diagnostic, voisinage_erreur=str(error))
     return replace(diagnostic, voisinage=voisinage)
-
-
-def completer_urbanisme(diagnostic: Diagnostic, *, settings: Settings | None = None) -> Diagnostic:
-    t = diagnostic.territoire
-    try:
-        zone = lire_zone_urbanisme(latitude=t.latitude, longitude=t.longitude, settings=settings)
-    except UrbanismeError as error:
-        logger.warning("zonage d'urbanisme non consulte : %s", error)
-        return replace(diagnostic, urbanisme_erreur=str(error))
-    return replace(diagnostic, urbanisme=zone, urbanisme_consulte=True)
 
 
 def completer_solaire(diagnostic: Diagnostic, *, settings: Settings | None = None) -> Diagnostic:
@@ -251,7 +240,6 @@ def completer_en_ligne(diagnostic: Diagnostic, *, settings: Settings | None = No
     for completer in (
         completer_risques,
         completer_voisinage,
-        completer_urbanisme,
         completer_eau,
         completer_solaire,
         completer_image_site,

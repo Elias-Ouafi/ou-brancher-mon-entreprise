@@ -30,7 +30,6 @@ LYON = territoire("69123", "Lyon", latitude=45.76, longitude=4.83)
 SOURCES = [
     ("completer_risques", "risques_erreur"),
     ("completer_voisinage", "voisinage_erreur"),
-    ("completer_urbanisme", "urbanisme_erreur"),
     ("completer_eau", "eau_erreur"),
     ("completer_solaire", "solaire_erreur"),
     ("completer_acces_routier", "acces_routier_erreur"),

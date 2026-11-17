@@ -13,7 +13,7 @@ site industriel ou logistique. Pour lui, l'électricité est le critère d'impla
   selon la saturation du poste source ; au-delà de 40 MW, RTE en HTB, 2 à 7 ans de délai (seed
   `seuils_raccordement`). En Corse et outre-mer, EDF SEI ou Électricité de Mayotte à toute
   puissance, jamais RTE. L'open data ne publie pas la capacité : d'où les zones prioritaires RTE.
-- **Foncier** : sites clés en main, zonage d'urbanisme, friches, zones d'activité, prix des locaux.
+- **Foncier** : sites clés en main, friches, zones d'activité, prix des locaux.
 - **Facture** : identique d'une ville à l'autre (péréquation), mais décisive pour la rentabilité ;
   1 MW constant fait environ 8 800 MWh par an. La part acheminement dépend du domaine de tension.
 - **Carbone** : bas sur le continent ; décisif en Corse et outre-mer et pour les data centers.
@@ -31,7 +31,7 @@ dont 1,4 M€ d'acheminement) ; 45 MW et 300 000 MWh (HTB 1, 3,79 M€ d'achemin
 | Carbone | Facteur ADEME par système électrique ; profil horaire des îles (EDF SEI) | `fct_carbone_territoire`, `fct_carbone_horaire_zni` |
 | Raccordement | Gestionnaire et domaine de tension selon la puissance, zones RTE, qualité de fourniture du département, pièces du dossier RTE | seeds `seuils_raccordement`, `gestionnaires_zni`, `fct_continuite_departement` |
 | Risques | GASPAR, plans de prévention, zonage sismique (WFS), voisinage Géorisques (argiles, cavités, Seveso, ICPE, sols pollués) | `fct_risques_commune`, `ingestion/georisques.py` |
-| Foncier et site | Urbanisme, friches, zones d'activité, réseaux de chaleur, prix des locaux (DVF), bâtiment et solaire, obligations de solarisation, vue aérienne datée, accès routier | `ingestion/urbanisme.py`, `solaire.py`, `image_site.py`, `acces_routier.py`, `extract_*.py` |
+| Foncier et site | Friches, zones d'activité, réseaux de chaleur, prix des locaux (DVF), bâtiment et solaire, obligations de solarisation, vue aérienne datée, accès routier | `ingestion/urbanisme.py`, `solaire.py`, `image_site.py`, `acces_routier.py`, `extract_*.py` |
 | Eau et main-d'œuvre | Arrêtés VigiEau, zones de répartition des eaux ; diplômés dans l'isochrone de 45 min, recrutements techniques | `ingestion/eau.py`, `main_oeuvre.py` |
 | Entreprises voisines | Consommation Enedis par commune et à l'adresse, profils de charge réels (> 250 kVA) | `fct_conso_entreprises_*`, `profils_charge_reels` |
 | Données | Médaillon bronze Parquet + `MERGE`, silver et gold dbt, étoile (5 dimensions, 8 faits) ; `refresh` charge tout | `ingestion/`, `dbt/` |
@@ -39,12 +39,12 @@ dont 1,4 M€ d'acheminement) ; 45 MW et 300 000 MWh (HTB 1, 3,79 M€ d'achemin
 | Application | Fenêtre d'accueil, une ou deux adresses, courbe de charge, rapport PDF, Markdown ou JSON | `reporting/app.py` |
 | PDF et charte | PDF court (3 pages) et visuel ; charte commune (papier clair, vert, Spectral et Inter) | `reporting/implantation_pdf.py`, `charte.py` |
 | Démonstration | `demo` construit une base synthétique sans réseau | `ingestion/demo.py` |
-| Qualité | 964 tests sans réseau, sept parcours Chromium, couverture 94,7 % (plancher 92,5 %), sorties de référence figées, pannes des sources jouées, CI Ubuntu et Windows | `ingestion/tests/`, `.claude/scripts/verifier.py` |
+| Qualité | 946 tests sans réseau, sept parcours Chromium, couverture 94,7 % (plancher 92,5 %), sorties de référence figées, pannes des sources jouées, CI Ubuntu et Windows | `ingestion/tests/`, `.claude/scripts/verifier.py` |
 
 ### À surveiller
 
-- **API Carto (urbanisme)** : 404 depuis le 12 novembre 2026, cause inconnue. Le diagnostic dit
-  « zonage d'urbanisme non consulté » et le critère foncier reste « pour information ».
+- **Zonage d'urbanisme** : retiré (l'API Carto de l'IGN répond 404 depuis le 12 novembre 2026). À rebrancher
+  quand le Géoportail de l'urbanisme sera de nouveau joignable ; le critère foncier ne le lit plus.
 - **Géorisques** : le rapport à l'adresse est instable ; repli sur GASPAR et le zonage WFS.
 - **Fourchette de prix à 3 ans** : indicative tant que moins de 20 périodes sont contrôlées (8 aujourd'hui).
 - **EDF SEI** : données jusqu'à 2024, sans Mayotte ; facteurs ADEME de décembre 2020.
@@ -88,7 +88,7 @@ profil poids lourd ; structure des toitures et surface des parkings ; niveau de 
 **Données**
 - Bronze : un Parquet n'est jamais écrasé (suffixe `-2`, `-3`…), puis `MERGE` DuckDB. Seeds recréés à chaque `dbt build`.
 - Chaque sortie donne la date de chargement de ses sources ; au-delà de 45 jours, elle demande un `refresh`.
-- Sources à la demande (urbanisme, eau, voisinage, solaire, itinéraires) : jamais stockées ; une panne
+- Sources à la demande (eau, voisinage, solaire, itinéraires) : jamais stockées ; une panne
   est dite dans sa section et ne change aucun critère du verdict.
 - Distance à un poste RTE ou EDF exclue : coordonnées retirées en 2026 pour sécurité publique.
 

@@ -30,7 +30,6 @@ from ingestion.solaire import Batiment, Productible
 from ingestion.tests.conftest import FIXTURES_DIR
 from ingestion.tests.medallion import DBT_BIN
 from ingestion.tests.test_diagnostic import territoire
-from ingestion.urbanisme import ZoneUrbanisme
 from ingestion.zones_activite import ZoneActivite
 
 dbt_requis = pytest.mark.skipif(DBT_BIN is None, reason="dbt non installé (uv sync --group dbt)")
@@ -139,8 +138,6 @@ def test_on_demand_sources_get_one_short_row_each(medallion_db: Path) -> None:
     lyon, corse = _diagnostics(medallion_db)
     lyon = replace(
         lyon,
-        urbanisme=ZoneUrbanisme("A", "A", None, "69123_PLU", None, None),
-        urbanisme_consulte=True,
         eau=SituationEau([ZoneRestriction("SUP", "Rhône", "crise", date(2026, 9, 30), 3, None)]),
         nb_zones_activite=2,
         zones_activite=[ZoneActivite("ZI Nord", 0.0, 40, contient_adresse=True)],
@@ -156,10 +153,6 @@ def test_on_demand_sources_get_one_short_row_each(medallion_db: Path) -> None:
     corse = replace(corse, eau_erreur="coupure")
     tableau = lignes([lyon, corse])
 
-    assert _valeurs(tableau, "Zonage d'urbanisme") == [
-        "zone agricole A : activité non permise hors STECAL",
-        "—",
-    ]
     assert _valeurs(tableau, "Restrictions d'eau (VigiEau)") == [
         "crise en vigueur jusqu'au 30/09/2026 ; usages très réduits ou suspendus",
         "non consultées (VigiEau injoignable)",
@@ -177,7 +170,7 @@ def test_on_demand_sources_get_one_short_row_each(medallion_db: Path) -> None:
         "—",
     ]
     codes = {code for code, _ in limites([lyon, corse], tableau)}
-    assert {"zonage_urbanisme", "restrictions_eau", "zones_activite", "acces_routier",
+    assert {"restrictions_eau", "zones_activite", "acces_routier",
             "solaire", "friches"} <= codes  # fmt: skip
 
 

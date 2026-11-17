@@ -14,9 +14,9 @@ Modèle à suivre : le commit `242e88d` (DVF, étape 12), `git show 242e88d`.
 2. Interroger l'API ou le fichier réel une fois pour voir les colonnes, les pièges (BOM, codes
    INSEE tronqués, secret statistique, pagination plafonnée) et le total annoncé.
 3. Choisir le mode : médaillon (ci-dessous) pour un jeu national chargé par `refresh` ; **appel à
-   la demande, sans stockage**, pour ce qui dépend du point et change sans prévenir (zone
-   d'urbanisme, arrêtés sur l'eau, itinéraires). Modèle à la demande : `ingestion/eau.py` (client
-   httpx, erreur propre `…Error`, `completer_…` dans `ingestion/diagnostic.py` qui journalise
+   la demande, sans stockage**, pour ce qui dépend du point et change sans prévenir (arrêtés
+   sur l'eau, itinéraires). Modèle à la demande : `ingestion/eau.py` (client
+   httpx, erreur propre `…Error`, `completer_…` dans `ingestion/diagnostic/completer.py` qui journalise
    l'échec sans bloquer, ajouté à `completer_en_ligne` que partagent `diagnose`, `compare` et
    `app`, coupé par `--sans-risques`). Noter le choix dans « Règles en vigueur » de PLAN.
 

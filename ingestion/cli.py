@@ -315,7 +315,7 @@ def build_parser() -> argparse.ArgumentParser:
     diagnose.add_argument(
         "--sans-risques",
         action="store_true",
-        help="ne consulte ni Géorisques, ni l'urbanisme, ni l'eau, ni la BD TOPO (hors ligne)",
+        help="ne consulte ni Géorisques, ni l'eau, ni la BD TOPO (hors ligne)",
     )
     diagnose.add_argument(
         "--sans-graphiques",
@@ -344,7 +344,7 @@ def build_parser() -> argparse.ArgumentParser:
     compare.add_argument(
         "--sans-risques",
         action="store_true",
-        help="ne consulte ni Géorisques, ni le Géoportail de l'urbanisme, ni VigiEau",
+        help="ne consulte ni Géorisques, ni VigiEau",
     )
     _add_carte_option(compare)
 
